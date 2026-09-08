@@ -53,7 +53,7 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
       const history=object(await checked('folio_history',()=>reader.folioHistory(reservationId,selectedInvoice.folioDate as string)));
       const rows=Array.isArray(history.folioHistory)?history.folioHistory.map(object):[];
       const matching=rows.filter(r=>String(r.folioNo)===String(selectedInvoice.folioNo)&&String(r.invoiceNo)===String(selectedInvoice.invoiceNo)&&r.reservationInfo&&String(object(r.reservationInfo).reservationId)===reservationId);
-      if(matching.length===1&&history.hasMore!==true&&rows.length===1&&typeof matching[0].folioWindowNo==='number'){
+      if(savePdf&&matching.length===1&&history.hasMore!==true&&rows.length===1&&typeof matching[0].folioWindowNo==='number'){
         const windowNo=matching[0].folioWindowNo;
         const report=object(await checked('folio_report',()=>reader.folioReport(reservationId,windowNo,selectedInvoice.folioDate as string)));
         const folio=object(report.folio);const bytes=typeof folio.folio==='string'?atob(folio.folio):'';
@@ -73,7 +73,7 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
       const all=windows.flatMap(w=>Array.isArray(w.folios)?w.folios.map(object).map(f=>({window:w.folioWindowNo,folio:f})):[]);
       const matches=all.filter(r=>String(r.folio.invoiceNo)===String(selectedInvoice.invoiceNo)&&String(r.folio.folioNo)===String(selectedInvoice.folioNo));
       reservationFolioLookup={status:'read',identityMatches,returned:all.length,matching:matches.length};
-      if(identityMatches&&matches.length===1&&all.length===1&&typeof matches[0].window==='number'){
+      if(savePdf&&identityMatches&&matches.length===1&&all.length===1&&typeof matches[0].window==='number'){
         const report=object(await checked('reservation_folio_report',()=>reader.folioReport(reservationId,matches[0].window as number,selectedInvoice.folioDate as string)));
         const folio=object(report.folio);const bytes=typeof folio.folio==='string'?atob(folio.folio):'';
         const reportScopeMatches=folio.hotelId===hotel&&!!folio.reservationId&&String(object(folio.reservationId).id)===reservationId;
