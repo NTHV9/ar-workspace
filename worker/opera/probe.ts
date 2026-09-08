@@ -17,7 +17,7 @@ function shape(value:unknown,depth=0):unknown {
 /** Categorical private diagnostics only: no customer names, amounts, IDs or raw responses. */
 export async function probeOpera(env:OperaEnv,hotel:string) {
   const reader=makeReader(env,hotel);
-  const checked=async(stage:string,read:()=>Promise<unknown>)=>{try{return await read();}catch(e){throw e instanceof OperaError?new OperaError(e.code,e.upstreamStatus,e.stage??stage):new OperaError('provider_unavailable',undefined,stage);}};
+  const checked=async(stage:string,read:()=>Promise<unknown>)=>{try{return await read();}catch(e){throw e instanceof OperaError?new OperaError(e.code,e.upstreamStatus,e.stage??stage,e.providerMessage):new OperaError('provider_unavailable',undefined,stage);}};
   const discovery=object(await checked('account_discovery',()=>reader.accounts(0,50)));
   if(!Array.isArray(discovery.accountsDetails))throw new OperaError('invalid_response');
   const accounts=discovery.accountsDetails.map(object);

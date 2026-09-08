@@ -49,7 +49,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       if(origin&&origin!==new URL(request.url).origin)return json({error:'forbidden'},403);
       const hotel=new URL(request.url).searchParams.get('hotel');
       if(!hotel||!['KAT','TSK'].includes(hotel))return json({error:'invalid_hotel'},400);
-      try{return json(await probeOpera(env,hotel));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined},503);}
+      try{return json(await probeOpera(env,hotel));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined},503);}
     }
     const allRows = async (table: string, query: string) => {
       const result: unknown[] = [];

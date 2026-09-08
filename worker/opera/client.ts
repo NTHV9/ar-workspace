@@ -1,6 +1,6 @@
 export type OperaErrorCode = 'invalid_configuration'|'invalid_request'|'redirect_rejected'|'provider_unavailable'|'provider_unauthorized'|'provider_rejected'|'response_too_large'|'invalid_response'|'timeout'|'duplicate_member'|'pagination_incomplete'|'pagination_changed';
 export class OperaError extends Error {
-  constructor(readonly code: OperaErrorCode,readonly upstreamStatus?:number,readonly stage?:string) { super(code); this.name='OperaError'; }
+  constructor(readonly code: OperaErrorCode,readonly upstreamStatus?:number,readonly stage?:string,readonly providerMessage?:string) { super(code); this.name='OperaError'; }
 }
 export interface OperaReadConfig { origin:string; appKey:string; hotelId:string; timeoutMs?:number; maxResponseBytes?:number }
 export type FetchPort = (request:Request)=>Promise<Response>;
@@ -46,7 +46,18 @@ export class OperaReader {
     try {
       const response=await this.transport(new Request(url,{method:'GET',headers:{Authorization:`Bearer ${token}`,'x-app-key':this.config.appKey,'x-hotelid':this.config.hotelId,Accept:'application/json'},redirect:'manual',signal:controller.signal}));
       if(response.status>=300&&response.status<400){await response.body?.cancel();throw new OperaError('redirect_rejected');}
-      if(!response.ok){await response.body?.cancel();throw new OperaError(response.status===401||response.status===403?'provider_unauthorized':response.status>=500||response.status===429?'provider_unavailable':'provider_rejected',response.status);}
+      if(!response.ok){
+        let providerMessage: string|undefined;
+        // Discovery has only owner-confirmed hotel IDs and pagination inputs. Inspect bounded
+        // validation title/detail only, never return account payloads or token endpoint bodies.
+        if(response.status===400&&path==='/ars/v1/accounts'&&response.body){
+          const reader=response.body.getReader();let text='';const decoder=new TextDecoder();let bytes=0;
+          try{while(true){const p=await reader.read();if(p.done)break;bytes+=p.value.byteLength;if(bytes>4096){await reader.cancel();break;}text+=decoder.decode(p.value,{stream:true});}
+            const error=JSON.parse(text);providerMessage=[error.title,error.detail,error['o:errorCode']].filter(v=>typeof v==='string').join(' · ').replaceAll(token,'[redacted]').replaceAll(this.config.appKey,'[redacted]').replace(/Bearer\s+[^\s"']+/gi,'Bearer [redacted]').slice(0,400);
+          }catch{/* only the categorical status survives unreadable errors */}finally{reader.releaseLock();}
+        }else await response.body?.cancel();
+        throw new OperaError(response.status===401||response.status===403?'provider_unauthorized':response.status>=500||response.status===429?'provider_unavailable':'provider_rejected',response.status,undefined,providerMessage);
+      }
       if(!response.headers.get('Content-Type')?.toLowerCase().includes('json')){await response.body?.cancel();throw new OperaError('invalid_response');}
       const declared=Number(response.headers.get('Content-Length'));
       if(declared>this.maxResponseBytes){await response.body?.cancel();throw new OperaError('response_too_large');}
