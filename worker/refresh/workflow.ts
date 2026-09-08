@@ -12,7 +12,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
     if(payload.historyAudit){
       if(!accountId)throw new Error('audit_account_required');
-      return step.do('history-count-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>payload.historyAuditOffset===undefined?auditHistory(makeReader(this.env,hotel),hotel,accountId):auditHistoryWindow(makeReader(this.env,hotel),hotel,accountId,payload.historyAuditOffset));
+      if(payload.historyAuditOffset!==undefined){const offset=payload.historyAuditOffset;return step.do('history-window-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistoryWindow(makeReader(this.env,hotel),hotel,accountId,offset));}
+      return step.do('history-count-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistory(makeReader(this.env,hotel),hotel,accountId));
     }
     try {
       const reader=makeReader(this.env,hotel);
