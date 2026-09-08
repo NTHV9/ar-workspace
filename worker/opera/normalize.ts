@@ -34,7 +34,7 @@ function requiredText(value: unknown): string {
   return value;
 }
 function optionalText(value: unknown): string | null {
-  if (value === undefined || value === null || value === '') return null;
+  if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) return null;
   return requiredText(value);
 }
 function identifier(value: unknown): string {
@@ -94,7 +94,9 @@ export function normalizeAccount(current: unknown, hotel: string, businessDate: 
   // Require a positive currency assertion; neither hotel nor a requested currency is evidence.
   field('summary_total', () => amountCents(summary.total));
   const totals = field('summary', () => balances(summary, 'THB'));
-  const open = field('account_balance', () => amountCents(account.balance, 'THB'));
+  // Some OPERA accounts provide the account total only in Summary. That total
+  // has already passed explicit THB and debit/credit reconciliation above.
+  const open = account.balance == null ? totals.total : field('account_balance', () => amountCents(account.balance, 'THB'));
   if (open !== totals.total) invalid('account_reconciliation');
   if (!Array.isArray(account.invoices)) invalid('invoices_missing');
   const aging = field('aging_info', () => record(account.agingInfo)).aging;

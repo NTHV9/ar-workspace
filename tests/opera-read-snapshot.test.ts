@@ -51,6 +51,14 @@ describe('verified OPERA snapshot reads', () => {
     expect(snapshot.invoices).toHaveLength(1);
     expect(snapshot.invoices[0]).toMatchObject({ id: '123', open: 60, original: 100, applied_amount: 40 });
   });
+  it('verifies offsetting nonzero invoices through zero-inclusive history when open-only hides the pair',async()=>{
+    const pair=[invoice(123,60),invoice(124,-60)];
+    const {reader,requests}=harness(current(pair,0),history([]),history([...pair,invoice(125,0)]));
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08');
+    expect(result.invoices.map(i=>i.open)).toEqual([60,-60]);
+    expect(result.account.items).toBe(2);
+    expect(requests[2].searchParams.get('inclZeroBalance')).toBe('true');
+  });
   it.each([
     { label: 'same total with a different transaction ID', rows: [invoice(999)] },
     { label: 'same ID with a changed balance', rows: [invoice(123, 59)] },

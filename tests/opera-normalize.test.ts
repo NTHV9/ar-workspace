@@ -14,6 +14,27 @@ function fixture() {
 }
 
 describe('OPERA account normalization', () => {
+  it('normalizes whitespace-only optional reference text to null', () => {
+    const data = fixture(); Object.assign(data.accountDetails.invoices[0], { reference: ' \t\n ' });
+    expect(normalizeAccount(data, 'KAT', '2026-09-08').invoices[0].reference).toBeNull();
+  });
+  it('still rejects nonstring optional references', () => {
+    const data = fixture(); Object.assign(data.accountDetails.invoices[0], { reference: 123 });
+    expect(() => normalizeAccount(data, 'KAT', '2026-09-08')).toThrow('normalize_invoice_reference_text');
+  });
+  it.each([undefined, null])('uses verified summary total when account balance is %s', (balance) => {
+    const data = fixture(); Object.assign(data.accountDetails, { balance });
+    expect(normalizeAccount(data, 'KAT', '2026-09-08').account.open).toBe(60);
+  });
+  it('rejects a present account balance without an amount instead of falling back', () => {
+    const data = fixture(); Object.assign(data.accountDetails, { balance: {} });
+    expect(() => normalizeAccount(data, 'KAT', '2026-09-08')).toThrow('normalize_account_balance_money');
+  });
+  it('requires summary currency evidence even when account balance is absent', () => {
+    const data = fixture(); Object.assign(data.accountDetails, { balance: undefined });
+    data.accountDetails.summary.total.currencyCode = undefined!;
+    expect(() => normalizeAccount(data, 'KAT', '2026-09-08')).toThrow('normalize_summary_total_currency');
+  });
   it.each([
     { field: 'invoice_original_shape', mutate: (d: ReturnType<typeof fixture>) => { d.accountDetails.invoices[0].originalAmount = undefined!; } },
     { field: 'invoice_transaction_date_text', mutate: (d: ReturnType<typeof fixture>) => { d.accountDetails.invoices[0].transactionDate = ' '; } },

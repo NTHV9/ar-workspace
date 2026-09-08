@@ -33,16 +33,24 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
   const current=await reader.account(accountId);
   const snapshot=normalizeAccount(current,hotel,businessDate);
   if(snapshot.account.id!==accountId)throw new OperaError('invalid_response',undefined,'account_identity');
-  const history=await collectPages(async(offset,limit)=>{
-    const page=asObject(await reader.openHistory(accountId,offset,limit));
+  const readAuditHistory=async(includeZero:boolean)=>collectPages(async(offset,limit)=>{
+    const page=asObject(includeZero?await reader.history(accountId,offset,limit):await reader.openHistory(accountId,offset,limit));
     if(!Array.isArray(page.details))throw new OperaError('invalid_response',undefined,'history_shape');
     const rows:{kind:'invoice'|'payment';value:Row}[]=[];
     for(const raw of page.details){const group=asObject(raw);if(group.hotelId!==hotel||id(group.accountId)!==accountId)throw new OperaError('invalid_response',undefined,'history_scope');
       for(const [field,kind]of [['invoices','invoice'],['payments','payment']] as const){if(group[field]===undefined)continue;if(!Array.isArray(group[field]))throw new OperaError('invalid_response');for(const row of group[field])rows.push({kind,value:asObject(row)});}}
     return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
   },r=>{const t=r.value.transactionNo;if((typeof t!=='number'&&typeof t!=='string')||String(t)==='')throw new OperaError('invalid_response');return `${r.kind}:${t}`;},20);
-  const open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
+  let history=await readAuditHistory(false);
+  let open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
   const expected=new Map(snapshot.invoices.filter(i=>i.open!==0).map(i=>[i.id,Math.round(i.open*100)]));
+  const matches=()=>open.length===expected.size&&open.every(r=>expected.get(String(r.value.transactionNo))===amountCents(r.value.balance,'THB'));
+  if(!matches()){
+    // The environment's open-only filter can suppress offsetting +/- pairs.
+    // Verify against all zero-inclusive pages rather than dropping current items.
+    history=await readAuditHistory(true);
+    open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
+  }
   if(open.length!==expected.size||open.some(r=>expected.get(String(r.value.transactionNo))!==amountCents(r.value.balance,'THB'))){
     const actual=new Map(open.map(r=>[String(r.value.transactionNo),amountCents(r.value.balance,'THB')]));
     const currentOnly=[...expected].filter(([id])=>!actual.has(id)),historyOnly=[...actual].filter(([id])=>!expected.has(id));
