@@ -28,7 +28,7 @@ export function createTokenProvider(origin:string,enterpriseId:string,secret:str
       if(credentials.grantType==='client_credentials')headers.enterpriseId=enterpriseId;
       const response=await transport(new Request(`${url.origin}/oauth/v1/tokens`,{method:'POST',headers,body,redirect:'manual',signal:controller.signal}));
       if(response.status>=300&&response.status<400){await response.body?.cancel();throw new OperaError('redirect_rejected');}
-      if(!response.ok){await response.body?.cancel();throw new OperaError('provider_unauthorized');}
+      if(!response.ok){await response.body?.cancel();throw new OperaError('provider_unauthorized',response.status,'authentication');}
       if(!response.body)throw new OperaError('invalid_response');
       const reader=response.body.getReader();let text='';let bytes=0;const decoder=new TextDecoder();
       try{while(true){const p=await reader.read();if(p.done)break;bytes+=p.value.byteLength;if(bytes>64*1024){await reader.cancel();throw new OperaError('response_too_large');}text+=decoder.decode(p.value,{stream:true});}text+=decoder.decode();}finally{reader.releaseLock();}
