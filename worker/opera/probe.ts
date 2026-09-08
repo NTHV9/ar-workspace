@@ -82,7 +82,7 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
         reservationFolioLookup={status:bytes.startsWith('%PDF-')?'native_pdf_received':'invalid_pdf',byteCount:bytes.length,identityMatches,reportScopeMatches,returned:all.length,matching:matches.length,selectedInvoiceTextVerified:false,stored};
       }
     }
-    catch(e){reservationFolioLookup={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
+    catch(e){reservationFolioLookup={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
   }
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){
     const a=object(object(raw).accountDetails);const summary=a.summary?object(a.summary):{};
