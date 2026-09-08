@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-worker/
+*.tsbuildinfo
+.wrangler/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+coverage/
+test-results/
+playwright-report/
+private/
+*.log
+*.pem
+*.key
