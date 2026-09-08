@@ -1,12 +1,12 @@
 import { OperaReader, OperaError } from './client';
 import { createTokenProvider } from './auth';
 import { normalizeAccount } from './normalize';
-export interface OperaEnv { OPERA_BASE_URL?:string; OPERA_ENTERPRISE_ID?:string; OPERA_HOTEL_IDS?:string; OPERA_CLIENT_ID?:string; OPERA_CLIENT_SECRET?:string; OPERA_APP_KEY?:string; OPERA_SCOPE?:string }
+export interface OperaEnv { OPERA_BASE_URL?:string; OPERA_ENTERPRISE_ID?:string; OPERA_HOTEL_IDS?:string; OPERA_CLIENT_ID?:string; OPERA_CLIENT_SECRET?:string; OPERA_APP_KEY?:string; OPERA_SCOPE?:string; OPERA_TIMEOUT_MS?:string }
 function object(value:unknown):Record<string,unknown> {if(!value||typeof value!=='object'||Array.isArray(value))throw new OperaError('invalid_response');return value as Record<string,unknown>;}
 export function makeReader(env:OperaEnv,hotel:string,sharedToken?:()=>Promise<string>) {
   if(!env.OPERA_BASE_URL||!env.OPERA_CLIENT_ID||!env.OPERA_CLIENT_SECRET||!env.OPERA_APP_KEY||!env.OPERA_HOTEL_IDS?.split(',').includes(hotel))throw new OperaError('invalid_configuration');
   const getToken=sharedToken??createTokenProvider(env.OPERA_BASE_URL,env.OPERA_ENTERPRISE_ID??'',JSON.stringify({grantType:'client_credentials',clientId:env.OPERA_CLIENT_ID,clientSecret:env.OPERA_CLIENT_SECRET,appKey:env.OPERA_APP_KEY,scope:env.OPERA_SCOPE??'urn:opc:hgbu:ws:__myscopes__'}));
-  return new OperaReader({origin:env.OPERA_BASE_URL,appKey:env.OPERA_APP_KEY,hotelId:hotel},getToken);
+  return new OperaReader({origin:env.OPERA_BASE_URL,appKey:env.OPERA_APP_KEY,hotelId:hotel,timeoutMs:Number(env.OPERA_TIMEOUT_MS??60000)},getToken);
 }
 function shape(value:unknown,depth=0):unknown {
   if(value===null)return 'null';

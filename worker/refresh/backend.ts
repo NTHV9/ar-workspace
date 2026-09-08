@@ -5,6 +5,7 @@ export interface RefreshEnv extends OperaEnv {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
   OPERA_REFRESH_ENABLED?:string;
+  REFRESH_STALE_MINUTES?:string;
 }
 /** Admin key is server-only. No response body is propagated on failures. */
 export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<string,unknown>):Promise<T> {
@@ -29,7 +30,9 @@ export async function previousInvoices(env:RefreshEnv,hotel:string,accountId:str
 }
 export async function requestRefresh(env:RefreshEnv,hotel:string,accountId:string|null,reason:string,recovery=0):Promise<RefreshJob> {
   if(!env.AR_REFRESH||!env.OPERA_CLIENT_ID||!env.OPERA_CLIENT_SECRET||!env.OPERA_APP_KEY)throw new OperaError('invalid_configuration');
-  const job=await backendRpc<RefreshJob>(env,'ar_request_refresh',{p_hotel:hotel,p_account_id:accountId,p_reason:reason,p_stale_minutes:30});
+  const staleMinutes=Number(env.REFRESH_STALE_MINUTES??30);
+  if(!Number.isSafeInteger(staleMinutes)||staleMinutes<1||staleMinutes>2147483647)throw new OperaError('invalid_configuration');
+  const job=await backendRpc<RefreshJob>(env,'ar_request_refresh',{p_hotel:hotel,p_account_id:accountId,p_reason:reason,p_stale_minutes:staleMinutes});
   if(job.id&&['queued','running'].includes(job.status)) {
     const canonical=await backendRpc<{hotel:string;account_id:string|null}>(env,'ar_refresh_job',{p_run_id:job.id});
     try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:canonical.hotel,accountId:canonical.account_id??undefined}});}

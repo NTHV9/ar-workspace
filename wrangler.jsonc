@@ -11,7 +11,9 @@
     "SUPABASE_URL": "https://jmyvpurzmoiecpydjrci.supabase.co",
     "OPERA_BASE_URL": "https://mtcb2pr.hospitality-api.ap-mumbai-1.ocs.oraclecloud.com",
     "OPERA_ENTERPRISE_ID": "TSTLKL",
-    "OPERA_HOTEL_IDS": "KAT,TSK"
+    "OPERA_HOTEL_IDS": "KAT,TSK",
+    "REFRESH_STALE_MINUTES": "30",
+    "OPERA_TIMEOUT_MS": "60000"
   },
   "observability": { "enabled": false }
 }

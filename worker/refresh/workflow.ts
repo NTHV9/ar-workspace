@@ -34,7 +34,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
       });
       let invalidAccounts=0;
       for(let index=0;index<ids.length;index++){
-        const outcome=await step.do(`account-${index}`,{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
+        const outcome=await step.do(`account-${index}`,{retries:{limit:3,delay:'5 seconds',backoff:'exponential'},timeout:'8 minutes'},async()=>{
           if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
           try {
             const previous=await previousInvoices(this.env,hotel,ids[index]);
