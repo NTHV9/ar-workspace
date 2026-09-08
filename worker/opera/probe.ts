@@ -45,11 +45,25 @@ export async function probeOpera(env:OperaEnv,hotel:string) {
       statementSelection={status:'prepared',requested:1,returned:returned.length,exactScope:statements.length===1&&statements[0].hotelId===hotel&&object(statements[0].accountId).id===accountId&&returned.length===1&&returned[0].transactionNo===selectedInvoice.transactionNo,balanceMatchesSelection:statements.length===1&&!!statements[0].balance&&Number(object(statements[0].balance).amount)===Number(object(selectedInvoice.balance).amount),reportDescriptorPresent:statements.some(s=>typeof s.reportFileName==='string'||typeof s.statementName==='string'),nativePdfBytesReceived:false};
     }catch(e){statementSelection={status:'unavailable',code:e instanceof OperaError?e.code:'unavailable',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
   }
+  let nativeFolio:unknown={status:'selector_not_available'};
+  if(selectedInvoice?.reservationId&&typeof selectedInvoice.folioDate==='string'&&selectedInvoice.folioNo!==undefined){
+    try{
+      const reservationId=String(object(selectedInvoice.reservationId).id);
+      const history=object(await reader.folioHistory(reservationId,selectedInvoice.folioDate));
+      const rows=Array.isArray(history.folioHistory)?history.folioHistory.map(object):[];
+      const matching=rows.filter(r=>String(r.folioNo)===String(selectedInvoice.folioNo)&&String(r.invoiceNo)===String(selectedInvoice.invoiceNo)&&r.reservationInfo&&String(object(r.reservationInfo).reservationId)===reservationId);
+      if(matching.length===1&&history.hasMore!==true&&rows.length===1&&typeof matching[0].folioWindowNo==='number'){
+        const report=object(await reader.folioReport(reservationId,matching[0].folioWindowNo,selectedInvoice.folioDate));
+        const folio=object(report.folio);const bytes=typeof folio.folio==='string'?atob(folio.folio):'';
+        nativeFolio={status:bytes.startsWith('%PDF-')?'native_pdf_received':'invalid_pdf',byteCount:bytes.length,hotelMatches:folio.hotelId===hotel,reservationMatches:folio.reservationId&&object(folio.reservationId).id===reservationId,selectorSource:'folio_history',selectedInvoiceTextVerified:false,stored:false};
+      }else nativeFolio={status:'selector_ambiguous_or_missing',matching:matching.length,returned:rows.length};
+    }catch(e){nativeFolio={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
+  }
   const normalizationChecks=[];
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){
     const a=object(object(raw).accountDetails);const summary=a.summary?object(a.summary):{};
     let normalized='passed';try{normalizeAccount(raw,hotel,String(date));}catch(e){normalized=e instanceof OperaError?e.stage??e.code:'failed';}
     normalizationChecks.push({sample,normalized,invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:r.agingStartDay,end:r.agingEndDay,sequence:r.sequence};}):null});
   }
-  return {hotel,status:'read_verified',statementSelection,normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
+  return {hotel,status:'read_verified',statementSelection,nativeFolio,normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }

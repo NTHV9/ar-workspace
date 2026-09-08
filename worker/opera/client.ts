@@ -46,6 +46,14 @@ export class OperaReader {
     if(!transactionIds.length||transactionIds.some(id=>!/^\d+$/.test(id)))throw new OperaError('invalid_request');
     return this.read('/ars/v1/statements',[['hotelId',this.config.hotelId],['accountID',accountId],...transactionIds.map(id=>['transactionNo',id]),['inclFolios','false'],['inclPrinted','true'],['inclZero','false']]);
   }
+  folioHistory(reservationId:string,folioDate:string,offset=0,limit=20) {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
+    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/folioHistory`,[['reservationIdId',reservationId],['folioDate',folioDate],['folioEndDate',folioDate],['aR','true'],['checkOut','true'],...this.page(offset,limit)]);
+  }
+  folioReport(reservationId:string,folioWindowNo:number,folioDate:string) {
+    if(!Number.isSafeInteger(folioWindowNo)||folioWindowNo<1||!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
+    return this.read(`/med/config/v1/hotels/${this.id(this.config.hotelId)}/reservations/${this.id(reservationId)}/folioReports`,[['folioWindowNo',String(folioWindowNo)],['folioDate',folioDate],['referenceCurrency','THB']]);
+  }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
   private async read(path:string,query:string[][]):Promise<unknown> {
     let token:string;
