@@ -30,7 +30,8 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
         if (response.ok) googleEnabled = (await response.json() as {external?:{google?:boolean}}).external?.google === true;
       } catch { /* Configuration stays fail-closed; no provider error details reach the client. */ }
     }
-    return json({ supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null, googleEnabled });
+    const configuredBudget=Number(env.DOC_EDITOR_MAX_BYTES??67108864);
+    return json({ supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null, googleEnabled,documentEditorMaxBytes:Number.isSafeInteger(configuredBudget)&&configuredBudget>0&&configuredBudget<=536870912?configuredBudget:67108864 });
   }
   if (path === '/api/health') {
     if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ status: 'unavailable', supabase: 'not_configured', opera: 'not_connected', commit: env.COMMIT_SHA ?? 'development' }, 503);
