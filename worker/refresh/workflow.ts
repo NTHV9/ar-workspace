@@ -1,6 +1,7 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 import { makeReader } from '../opera/probe';
 import { OperaError } from '../opera/client';
+import { auditHistory } from '../opera/history-audit';
 import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
 
@@ -9,6 +10,10 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
+    if(payload.historyAudit){
+      if(!accountId)throw new Error('audit_account_required');
+      return step.do('history-count-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistory(makeReader(this.env,hotel),hotel,accountId));
+    }
     try {
       const reader=makeReader(this.env,hotel);
       let acquired=false;
