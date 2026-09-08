@@ -14,3 +14,6 @@
 
 .compression-label { display:block; font-size:9px; color:#66748c; margin-top:3px; }
 .ledger input:disabled { cursor:not-allowed; opacity:.4; }
+
+.native-pdf-pages { margin:24px auto; max-width:850px; }
+.native-pdf-pages canvas { display:block; width:100%; height:auto; margin-bottom:20px; background:white; box-shadow:0 2px 12px #172b4d20; }

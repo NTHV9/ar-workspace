@@ -18,6 +18,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   const operaProbe=path==='/api/opera/probe'&&request.method==='POST';
   const refreshRequest=path==='/api/refresh'&&['GET','POST'].includes(request.method);
   const collectionValidation=path==='/api/collection/validate-selection'&&request.method==='POST';
+  const pdfValidation=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/(KAT|TSK)\/(pdf|json)$/.exec(path);
   if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation) return json({ error: 'method_not_allowed' }, 405);
   if (path === '/api/config') {
     let googleEnabled = false;
@@ -39,7 +40,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: connected?'connected':'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
     } catch { return json({ status: 'unavailable', supabase: 'unavailable', opera: 'not_connected' }, 503); }
   }
-  if (!operaProbe && !refreshRequest && !collectionValidation && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
+  if (!operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
   if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ error: 'supabase_unavailable' }, 503);
@@ -49,6 +50,12 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if (!auth.ok) return json({ error: auth.status >= 500 ? 'auth_unavailable' : 'unauthorized' }, auth.status >= 500 ? 503 : 401);
     const user = await auth.json() as { email?: string; email_confirmed_at?: string; is_anonymous?: boolean };
     if (user.email?.toLowerCase() !== 'ar@katathani.com' || !user.email_confirmed_at || user.is_anonymous) return json({ error: 'forbidden' }, 403);
+    if(pdfValidation){
+      const [,runId,hotel,extension]=pdfValidation;
+      const response=await upstream(`${env.SUPABASE_URL}/storage/v1/object/authenticated/ar-working-files/validation/${runId}/${hotel}.${extension}`,{headers});
+      if(!response.ok){await response.body?.cancel();return json({error:'private_document_unavailable'},response.status===404?404:503);}
+      return new Response(response.body,{headers:{'Content-Type':extension==='pdf'?'application/pdf':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+    }
     if(collectionValidation){
       if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);
       if(!request.headers.get('Content-Type')?.includes('application/json')||!request.body)return json({error:'invalid_request'},400);

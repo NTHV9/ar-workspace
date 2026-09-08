@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handleApi } from '../worker/index';
 
 describe('protected Worker API', () => {
+  it('requires login for private PDF bytes and expected document identity',async()=>{
+    for(const extension of ['pdf','json'])expect((await handleApi(new Request(`https://app.test/api/pdf-validation/00000000-0000-4000-8000-000000000000/KAT/${extension}`),{})).status).toBe(401);
+  });
   afterEach(()=>vi.unstubAllGlobals());
   const env = { SUPABASE_URL:'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY:'synthetic-test-key' };
   it('rejects provider redirects without following them with credentials', async()=>{
