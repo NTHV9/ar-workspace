@@ -6,6 +6,8 @@ export interface NormalizedInvoice {
   transaction_date: string; original: number; open: number; aging: string; age: number | null;
   current_amount: number; applied_amount: number; reference: string | null; reservation_id: string | null;
   folio_date: string | null; internal_folio_window_id: string | null;
+  compressed: boolean | null; parent_invoice_no: string | null;
+  collection_role: 'unverified'|'standalone'|'parent'|'child'; parent_invoice_id: string | null; parent_open: number | null;
 }
 export interface AccountSnapshot {
   account: { hotel: string; id: string; name: string; type: string; account_no: string | null; open: number;
@@ -132,6 +134,9 @@ export function normalizeAccount(current: unknown, hotel: string, businessDate: 
       reservation_id: invoice.reservationId == null ? null : field('invoice_reservation_id', () => identifier(record(invoice.reservationId).id)),
       folio_date: invoice.folioDate == null ? null : field('invoice_folio_date', () => date(invoice.folioDate)),
       internal_folio_window_id: field('invoice_internal_folio_window_id', () => optionalIdentifier(invoice.internalFolioWindowID)),
+      compressed: invoice.compressed==null?null:typeof invoice.compressed==='boolean'?invoice.compressed:invalid('compressed'),
+      parent_invoice_no:field('parent_invoice_no',()=>optionalIdentifier(invoice.parentInvoiceNo)),
+      collection_role:'unverified',parent_invoice_id:null,parent_open:null,
     };
   });
   const outstanding = invoices.filter((invoice) => invoice.open !== 0);

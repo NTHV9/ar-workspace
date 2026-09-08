@@ -17,7 +17,8 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   const path = new URL(request.url).pathname;
   const operaProbe=path==='/api/opera/probe'&&request.method==='POST';
   const refreshRequest=path==='/api/refresh'&&['GET','POST'].includes(request.method);
-  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest) return json({ error: 'method_not_allowed' }, 405);
+  const collectionValidation=path==='/api/collection/validate-selection'&&request.method==='POST';
+  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation) return json({ error: 'method_not_allowed' }, 405);
   if (path === '/api/config') {
     let googleEnabled = false;
     if (env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY) {
@@ -38,7 +39,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: connected?'connected':'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
     } catch { return json({ status: 'unavailable', supabase: 'unavailable', opera: 'not_connected' }, 503); }
   }
-  if (!operaProbe && !refreshRequest && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
+  if (!operaProbe && !refreshRequest && !collectionValidation && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
   if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ error: 'supabase_unavailable' }, 503);
@@ -48,6 +49,18 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if (!auth.ok) return json({ error: auth.status >= 500 ? 'auth_unavailable' : 'unauthorized' }, auth.status >= 500 ? 503 : 401);
     const user = await auth.json() as { email?: string; email_confirmed_at?: string; is_anonymous?: boolean };
     if (user.email?.toLowerCase() !== 'ar@katathani.com' || !user.email_confirmed_at || user.is_anonymous) return json({ error: 'forbidden' }, 403);
+    if(collectionValidation){
+      if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);
+      if(!request.headers.get('Content-Type')?.includes('application/json')||!request.body)return json({error:'invalid_request'},400);
+      const reader=request.body.getReader();let body='';let size=0;const decoder=new TextDecoder();
+      try{while(true){const p=await reader.read();if(p.done)break;size+=p.value.byteLength;if(size>16384){await reader.cancel();return json({error:'invalid_request'},413);}body+=decoder.decode(p.value,{stream:true});}}finally{reader.releaseLock();}
+      let input;try{input=JSON.parse(body);}catch{return json({error:'invalid_request'},400);}
+      if(!input||!['KAT','TSK'].includes(input.hotel)||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>2000||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>100||input.ids.some((id:unknown)=>typeof id!=='string'||!id||id.length>2000)||new Set(input.ids).size!==input.ids.length)return json({error:'invalid_request'},400);
+      // Ignore client-supplied roles/balances/eligibility. Recheck authoritative rows with user RLS.
+      const r=await upstream(`${env.SUPABASE_URL}/rest/v1/rpc/ar_validate_collection_selection`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids})});
+      if(!r.ok)return json({error:'selection_verification_unavailable'},503);
+      const valid=await r.json()===true;return json({valid,...(!valid?{error:'selection_not_collectible'}:{})},valid?200:409);
+    }
     if(refreshRequest){
       if(request.method==='GET')return json(await backendRpc(env,'ar_refresh_status',{}));
       const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'forbidden'},403);

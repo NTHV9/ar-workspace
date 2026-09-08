@@ -1,6 +1,7 @@
 import { OperaError, type OperaReader } from '../opera/client';
 import { collectPages,verifiedNextCursor } from '../opera/pagination';
 import { historyRootCount } from '../opera/history-count';
+import { resolveCollectionRelationships } from '../opera/collection-relationship';
 import { normalizeAccount, amountCents, type AccountSnapshot } from '../opera/normalize';
 import type { PreviousInvoice } from './backend';
 type Row=Record<string,unknown>;
@@ -82,5 +83,6 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
     }
     // No match/error is never zero. Unmatched old rows remain missing with their old balance.
   }
+  resolveCollectionRelationships(snapshot,history.filter(r=>r.kind==='invoice').map(r=>r.value));
   return snapshot;
 }

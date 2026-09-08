@@ -24,7 +24,17 @@ export function sourceAging(rows: Account[], hotel: string): AgingBucket[] {
   return first.map((bucket,index)=>({...bucket,amount:accounts.reduce((s,a)=>s+a.agingBuckets![index].amount,0),debit:accounts.reduce((s,a)=>s+a.agingBuckets![index].debit,0),credit:accounts.reduce((s,a)=>s+a.agingBuckets![index].credit,0)}));
 }
 export interface Comparison { key: string; name: string; kat: number; tsk: number; total: number; over90: number; share: number; items: number; accounts: number; members: Account[] }
-export interface Invoice { id: string; hotel: string; accountId: string; guest: string; invoiceNo: string; folioNo: string; date: string; due: string | null; original: number; open: number; aging: string; stage: string }
+export interface Invoice { id: string; hotel: string; accountId: string; guest: string; invoiceNo: string; folioNo: string; date: string; due: string | null; original: number; open: number; aging: string; stage: string;
+ collection_role?:'unverified'|'standalone'|'parent'|'child'; collection_selectable?:boolean; parent_invoice_no?:string|null; parent_invoice_id?:string|null; parent_open?:number|null; verification_state?:string;
+}
+export function selectableInvoice(invoice:Invoice,review=false){return review||invoice.collection_selectable===true&&['standalone','parent'].includes(invoice.collection_role??'')&&invoice.verification_state==='verified'&&invoice.open>0;}
+export function selectionReason(invoice:Invoice){
+ if(invoice.collection_role==='child')return `Included in parent invoice ${invoice.parent_invoice_no??'—'} · cannot collect separately`;
+ if(invoice.collection_role==='unverified'||!invoice.collection_role)return 'Invoice relationship not verified · selection unavailable';
+ if(invoice.verification_state!=='verified')return 'Source verification required · selection unavailable';
+ if(invoice.open<=0)return 'No positive balance to collect';
+ return invoice.collection_role==='parent'?'Parent invoice · contains compressed invoices':'';
+}
 export function filterAccounts(rows: Account[], filters: { hotel: string; type: string; search: string }) {
   return rows.filter(row => (filters.hotel === 'All' || row.hotel === filters.hotel) && (filters.type === 'All' || row.type === filters.type) && `${row.name} ${row.id}`.toLowerCase().includes(filters.search.toLowerCase()));
 }
