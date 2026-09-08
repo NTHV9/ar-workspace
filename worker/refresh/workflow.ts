@@ -49,6 +49,10 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
         });
         if(!outcome.ok)invalidAccounts++;
       }
+      if(payload.validateOnly){
+        await step.do('finish-validation-only',async()=>{await backendRpc(this.env,'ar_fail_refresh',{p_run_id:runId,p_error_code:'validation_only_finished'});return {validated:invalidAccounts===0};});
+        return {hotel,status:invalidAccounts?'validation_failed':'validated',accounts:ids.length};
+      }
       if(invalidAccounts)throw new OperaError('invalid_response',undefined,'account_validation');
       await step.do('verify-membership-and-publish',{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
         const job=await backendRpc<{status:string}>(this.env,'ar_refresh_job',{p_run_id:runId});

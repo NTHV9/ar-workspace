@@ -33,14 +33,18 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
   const current=await reader.account(accountId);
   const snapshot=normalizeAccount(current,hotel,businessDate);
   if(snapshot.account.id!==accountId)throw new OperaError('invalid_response',undefined,'account_identity');
-  const readAuditHistory=async(includeZero:boolean)=>collectPages(async(offset,limit)=>{
+  const readAuditHistory=async(includeZero:boolean)=>{
+    let oldBalanceRows=0;
+    try{return await collectPages(async(offset,limit)=>{
     const page=asObject(includeZero?await reader.history(accountId,offset,limit):await reader.openHistory(accountId,offset,limit));
     if(!Array.isArray(page.details))throw new OperaError('invalid_response',undefined,'history_shape');
     const rows:{kind:'invoice'|'payment';value:Row}[]=[];
     for(const raw of page.details){const group=asObject(raw);if(group.hotelId!==hotel||id(group.accountId)!==accountId)throw new OperaError('invalid_response',undefined,'history_scope');
-      for(const [field,kind]of [['invoices','invoice'],['payments','payment']] as const){if(group[field]===undefined)continue;if(!Array.isArray(group[field]))throw new OperaError('invalid_response');for(const row of group[field])rows.push({kind,value:asObject(row)});}}
+      for(const [field,kind]of [['invoices','invoice'],['payments','payment']] as const){if(group[field]===undefined)continue;if(!Array.isArray(group[field]))throw new OperaError('invalid_response');for(const row of group[field]){const value=asObject(row);if(kind==='invoice'&&value.invoiceType==='OldBalance')oldBalanceRows++;rows.push({kind,value});}}}
     return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
   },r=>{const t=r.value.transactionNo;if((typeof t!=='number'&&typeof t!=='string')||String(t)==='')throw new OperaError('invalid_response');return `${r.kind}:${t}`;},20);
+    }catch(error){if(error instanceof OperaError)throw new OperaError(error.code,error.upstreamStatus,error.stage,error.providerMessage,{...error.diagnostics,oldBalanceRows,includeZero});throw error;}
+  };
   let history=await readAuditHistory(false);
   let open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
   const expected=new Map(snapshot.invoices.filter(i=>i.open!==0).map(i=>[i.id,Math.round(i.open*100)]));
