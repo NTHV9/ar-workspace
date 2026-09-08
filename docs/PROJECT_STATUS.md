@@ -2,7 +2,7 @@
 
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: Goal PDF Workspace — editorพร้อมตรวจ, Native Statementยังไม่ครบ
 
-**Goal ยัง active และยังไม่สำเร็จครบ** เพราะ native Statement PDF transport ยังไม่มีหลักฐานรับไฟล์จริง. เจ้าของอนุมัติให้ทำงานต่อขณะนอนแล้ว; ไม่ต้องรับ Secret เพิ่มสำหรับส่วนที่ทำสำเร็จ.
+**Goal เป็น blocked และยังไม่สำเร็จครบ** หลังตรวจสาม goal turns ต่อเนื่อง: native Statement PDF transport ยังไม่มีหลักฐานรับไฟล์จริง และต้องรอ operation/คู่มือจาก Oracle หรือข้อมูลใหม่ที่ยืนยันช่องทางสร้างและดาวน์โหลดไฟล์. เจ้าของอนุมัติให้ทำงานต่อขณะนอนแล้ว; ไม่ต้องรับ Secret เพิ่มสำหรับส่วนที่ทำสำเร็จ.
 
 ### Implemented / pushed / deployed
 - Source `e34439c4fc67c11608e8bf45c107ff584a8059f6` บน `codex/opera-refresh` / public `NTHV9/ar-workspace`; Worker `ar-workspace` deployment `40373775cc7d450898675d3607ceef26`; Workflow version `497a0ef1-975f-4be6-aa4c-d034098d74db`. เว็บ https://ar-workspace.ar-c82.workers.dev .

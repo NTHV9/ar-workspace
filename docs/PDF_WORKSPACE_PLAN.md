@@ -1,6 +1,6 @@
 # PDF workspace implementation plan — 2026-09-09
 
-Authority: PRODUCT_SPEC sections15–16, DECISIONS_AND_OPEN_ITEMS, approved pdf-workspace-v1.png and latest owner authorization. Goal is active. Work in the explicitly requested workspace and existing dedicated codex/opera-refresh branch; only root commits/deploys/applies migrations. No customer payload/secret/media in Git. No email or legacy changes.
+Authority: PRODUCT_SPEC sections15–16, DECISIONS_AND_OPEN_ITEMS, approved pdf-workspace-v1.png and latest owner authorization. Goal is blocked pending the native Statement execution/download contract after three consecutive goal-turn audits. Work in the explicitly requested workspace and existing dedicated codex/opera-refresh branch; only root commits/deploys/applies migrations. No customer payload/secret/media in Git. No email or legacy changes.
 
 ## Tasks and acceptance
 
