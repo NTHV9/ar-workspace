@@ -1,5 +1,18 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: Native Invoice/Folio PDF trial และ Selected-only data
+
+- ผู้ใช้อนุมัติทำงานต่อขณะไม่อยู่หน้าคอม ใช้ Worker Secrets/sessionเดิม ไม่ขอรหัสหรือ Secret เพิ่ม.
+- Deployed/pushed source `2eabb3f7308ca0b41dacdc5d5ce918db9691d00a`, branch `codex/opera-refresh`; Worker deployment `43721fd0927246d28846d0a462e58b00`, Workflow version `6a8df2c6-510c-4e8c-b5af-d92e73f75f1f`. HealthยืนยันSHAและบริการจริง.
+- Native PDF ผ่านเส้นทาง: GET reservation-scoped `/csh/v1/hotels/{hotel}/reservations/{reservation}/folios` + includeFolioHistory/Reservation/Foliohistory และช่วงวันที่เฉพาะ → จับคู่hotel/reservation/invoiceNo/folioNoและWindowจริง → GET `/med/config/v1/.../folioReports` พร้อม reservationIdContext=OPERA, reservationIdType=Reservation, Windowและวันที่ที่ตรวจแล้ว.
+- ทางเดิม folioHistory: reservationIdIdได้400/RSV00060; root idได้400/FOF00404 (Voiding Foliosไม่active). ไม่เปิดหรือแก้ OPERA control. เส้นทางalternativeข้างต้นใช้ได้จริง. ก่อนเติมreservation contextในReportพบ500; หลังตรงตัวอย่างOracleรับPDFได้.
+- KAT native PDF116672bytes และTSK104534bytes เก็บในprivate ar-working-files: validation/9a3245bb-72c3-4bf7-8ef8-0292dc7c9e5d/KAT.pdf และ validation/b596238f-58ac-4af3-9e3f-c1814d67fc32/TSK.pdf พร้อมexpected identity JSONในโฟลเดอร์เดียวกัน. รวม4objects; bucket public=false. ไม่มีcustomerPDF/JSON/screenshotในGit.
+- เปิดPDFผ่านloginจริง Browser→Worker→Private Storage→PDF.js viewerได้ทั้ง2ไฟล์ เป็นCopy of Invoice1หน้าต่อโรงแรม. เลขFolioในPDFตรง; Invoice numberภายในOPERAไม่พบในข้อความแบบพิมพ์นี้ จึงอาศัยmapping APIร่วมกับFolioและHotelในการตรวจ ไม่อ้างว่าทุกidentifierถูกพิมพ์ในPDF. ตรวจภาพจริงในbrowserแล้ว ไม่เก็บภาพลูกค้าเข้าGit. ยอดfooterของFolioไม่ใช้แทนAR openหรือหลักฐานชำระAR.
+- เพิ่มหน้า **validation viewer เท่านั้น** (`pdfCheck`/`pdfHotel` query) และauthenticated private PDF/metadata GET routes. PDF.js6.3.289 lazy loaded; worker .mjs MIMEถูกต้อง. ยังไม่ใช่PDF Workspace/editorตามต้นแบบเต็มรูปแบบ. การตรวจตัวเลขในviewerเป็นscreening ไม่ใช่approvalอัตโนมัติ.
+- Selected A/C data trialผ่านทั้งKATและTSK: requested2/returned2, exactscope=true, balanceMatches=true, excludedMiddleAbsent=true. Runs713a5b28-df1b-46ea-8471-789218a9a30b และdc8b74bf-4c4b-433a-a9d2-6be8f8668d6b. เป็นGETเตรียมStatement data **ไม่ใช่Statement PDFรวมSelected-onlyที่ผ่านแล้ว**.
+- Build/Typecheckผ่าน,103 unit testsผ่าน, final targetedBrowser3ข้อผ่าน (privatePDF/metadata401และlogin gate,collection401,child selection). Authenticated PDF renderingตรวจจริงเพิ่มเติมในIAB. ไม่มีmigrationรอบนี้;เพิ่มเพียงprivate validation objects. No-email/no-accounting-write. Native reportGETอาจมีผลprint historyตามขอบเขตที่อนุมัติ;ปิดretryและจำกัดไว้ในexplicit private validation jobs ไม่ทำจากปุ่มตรวจconnectionทั่วไป.
+- ขั้นต่อไปที่ยังเหลือ: native Statement PDFSelected-only, batchหลายInvoice/หลายหน้า/non-reservation cases, durable document job/identity validation และPDF Workspace/editorตามต้นแบบ. ไม่เปิดBilling/Sendหรืออ้างPDFworkflowพร้อมครบจากsample2ไฟล์นี้.
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: กันบิลย่อยจากการเลือกทวงแยก
 
 - Implemented/pushed/deployed source `2a1c2e720ce5437497e7b75132235904a62a83ed`, branch `codex/opera-refresh`; Worker `ar-workspace` deployment `64d5813c462949ea822cc3247a3eb85a`, Workflow version `727962d3-f055-4c19-abd4-3be45e6eb15a`. Health endpoint ยืนยัน source/Supabase/OPERA ตรง.
