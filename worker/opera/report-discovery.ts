@@ -20,7 +20,9 @@ export async function discoverStatementReport(env:OperaEnv,hotel:string,accountI
    const details=[];
    for(const row of exact){if(!row.moduleId)continue;const module=asObject(row.moduleId);if(typeof module.id!=='string')continue;
     const params=asObject(await reader.reportParameters(module.id,typeof module.idContext==='string'?module.idContext:'OPERA',typeof module.type==='string'?module.type:'ModuleId'));
-    details.push({reportName:row.reportName,hasParameters:row.hasParameters,formToRun:row.formToRun,procedureRequired:row.procedureRequired,parameters:Array.isArray(params.reportParameters)?params.reportParameters.map(asObject).map(p=>({name:p.name,label:p.label,dataType:p.dataType})):[],linkRelations:Array.isArray(params.links)?params.links.map(asObject).map(l=>l.rel):[]});
+    const external=row.externalReportUrl?asObject(row.externalReportUrl):{};let externalOrigin:string|undefined;
+    if(typeof external.externalReportUrl==='string'&&external.externalReportUrl){try{externalOrigin=new URL(external.externalReportUrl).origin;}catch{externalOrigin='invalid_url';}}
+    details.push({reportName:row.reportName,moduleType:row.moduleType,hasParameters:row.hasParameters,formToRun:row.formToRun,procedureRequired:row.procedureRequired,hasCustomizedTemplate:row.customizedRtfAttachId!=null,hasDataSource:typeof row.dataSource==='string'&&!!row.dataSource,dataSourceType:row.dataSourceType,hasExternalUrl:!!externalOrigin,externalOrigin,isUrlDynamic:external.isUrlDynamic===true,parameters:Array.isArray(params.reportParameters)?params.reportParameters.map(asObject).map(p=>({name:p.name,label:p.label,dataType:p.dataType})):[],linkRelations:Array.isArray(params.links)?params.links.map(asObject).map(l=>l.rel):[]});
    }
    reports.push({name,query,returned:rows.length,hasMore:group.hasMore===true,candidateReportNames:rows.map(r=>r.reportName),exactMatches:exact.length,details,linkRelations:Array.isArray(result.links)?result.links.map(asObject).map(l=>l.rel):[]});
   }catch(e){reports.push({name,error:e instanceof OperaError?e.code:'invalid_response',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined});}
