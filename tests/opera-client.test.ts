@@ -1,9 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OperaReader, OperaError } from '../worker/opera/client';
 import { collectPages } from '../worker/opera/pagination';
 
 const config={origin:'https://gateway.example.com',appKey:'synthetic-app-key',hotelId:'SYNTHETIC-KAT'};
 describe('new OPERA read client',()=>{
+  afterEach(()=>vi.unstubAllGlobals());
+  it('does not bind the Worker global fetch function to the client instance',async()=>{
+    vi.stubGlobal('fetch',function(this:unknown){
+      if(this!==undefined&&this!==globalThis)throw new TypeError('Illegal invocation');
+      return Promise.resolve(Response.json({hasMore:false,accountsDetails:[]}));
+    });
+    const reader=new OperaReader(config,async()=> 'synthetic-token');
+    await expect(reader.accounts()).resolves.toMatchObject({hasMore:false});
+  });
   it('builds account discovery with All balances and exact hotel scope',async()=>{
     let received:Request|undefined;
     const reader=new OperaReader(config,async()=> 'synthetic-token',async(request)=>{received=request;return Response.json({accountsDetails:{accountInfo:[]},hasMore:false});});

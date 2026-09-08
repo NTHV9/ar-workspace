@@ -10,7 +10,7 @@ export class OperaReader {
   private readonly origin:string;
   private readonly timeoutMs:number;
   private readonly maxResponseBytes:number;
-  constructor(private readonly config:OperaReadConfig, private readonly getToken:()=>Promise<string>,private readonly transport:FetchPort=fetch) {
+  constructor(private readonly config:OperaReadConfig, private readonly getToken:()=>Promise<string>,private readonly transport:FetchPort=request=>fetch(request)) {
     let url:URL;
     try { url=new URL(config.origin); } catch { throw new OperaError('invalid_configuration'); }
     if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash||!config.appKey.trim()||!config.hotelId.trim())throw new OperaError('invalid_configuration');
