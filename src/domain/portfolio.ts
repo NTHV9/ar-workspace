@@ -6,9 +6,17 @@ export interface Account {
 export interface AgingBucket { label: string; start: number | null; end: number | null; sequence: number; amount: number; debit: number; credit: number }
 export interface HotelRefresh { hotel: string; status: string; last_success_at: string | null; last_attempt_at?: string | null; error_code?: string | null; run_id?: string | null }
 export interface RefreshState { hotels: HotelRefresh[]; running: boolean }
+export function validSourceBucket(value: unknown): value is AgingBucket {
+  if(!value || typeof value!=='object')return false;
+  const bucket=value as Record<string,unknown>;
+  const integer=(n:unknown):n is number=>typeof n==='number'&&Number.isSafeInteger(n)&&n>=0;
+  return typeof bucket.label==='string'&&bucket.label.trim().length>0&&integer(bucket.start)
+    &&(bucket.end===null||(integer(bucket.end)&&bucket.end>=bucket.start))&&integer(bucket.sequence)
+    &&[bucket.amount,bucket.debit,bucket.credit].every(n=>typeof n==='number'&&Number.isFinite(n));
+}
 export function sourceAging(rows: Account[], hotel: string): AgingBucket[] {
   const accounts=rows.filter(a=>a.hotel===hotel);
-  if(!accounts.length || accounts.some(a=>!a.agingBuckets?.length))return [];
+  if(!accounts.length || accounts.some(a=>!Array.isArray(a.agingBuckets)||!a.agingBuckets.length||!a.agingBuckets.every(validSourceBucket)))return [];
   const signature=(b:AgingBucket)=>JSON.stringify([b.label,b.start,b.end,b.sequence]);
   const first=accounts[0].agingBuckets!;
   if(accounts.some(a=>JSON.stringify(a.agingBuckets!.map(signature))!==JSON.stringify(first.map(signature))))return [];

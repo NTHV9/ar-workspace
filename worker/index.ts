@@ -33,7 +33,9 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     try {
       const response = await upstream(`${env.SUPABASE_URL}/rest/v1/rpc/ar_health`, { method: 'POST', headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' }, body: '{}' });
       const healthy = response.ok && await response.json() === 'ar-workspace-v1';
-      return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: 'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
+      let connected=false;
+      if(healthy&&env.SUPABASE_SECRET_KEY){try{const state=await backendRpc<{hotels:{last_success_at:string|null}[]}>(env,'ar_refresh_status',{});connected=state.hotels.length===2&&state.hotels.every(h=>!!h.last_success_at);}catch{/* no false positive */}}
+      return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: connected?'connected':'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
     } catch { return json({ status: 'unavailable', supabase: 'unavailable', opera: 'not_connected' }, 503); }
   }
   if (!operaProbe && !refreshRequest && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);

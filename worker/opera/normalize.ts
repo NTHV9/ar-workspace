@@ -1,6 +1,6 @@
 import { OperaError } from './client';
 
-export interface AgingBucket { label: string; start: number; end: number; sequence: number; amount: number; debit: number; credit: number }
+export interface AgingBucket { label: string; start: number; end: number | null; sequence: number; amount: number; debit: number; credit: number }
 export interface NormalizedInvoice {
   hotel: string; account_id: string; id: string; guest: string | null; invoice_no: string | null; folio_no: string | null;
   transaction_date: string; original: number; open: number; aging: string; age: number | null;
@@ -90,11 +90,17 @@ export function normalizeAccount(current: unknown, hotel: string, businessDate: 
   if (!Array.isArray(aging)) invalid('aging_missing');
   const agingBuckets: AgingBucket[] = aging.map((raw) => {
     const bucket = record(raw), balance = balances(bucket.balanceInfo, 'THB');
-    const start = integer(bucket.agingStartDay), end = integer(bucket.agingEndDay);
-    if (end < start) invalid('aging_range');
+    const start = integer(bucket.agingStartDay), end = bucket.agingEndDay === undefined ? null : integer(bucket.agingEndDay);
+    if (end !== null && end < start) invalid('aging_range');
     return { label: requiredText(bucket.agingBucketRange), start, end, sequence: integer(bucket.sequence),
       amount: balance.total / 100, debit: balance.debit / 100, credit: balance.credit / 100 };
   }).sort((a, b) => a.sequence - b.sequence);
+  // OPERA omits agingEndDay for its final unbounded bucket. An omission before
+  // another bucket would overlap that range and cannot safely classify invoices.
+  for (let index = 1; index < agingBuckets.length; index++) {
+    const previous = agingBuckets[index - 1], bucket = agingBuckets[index];
+    if (previous.end === null || previous.end >= bucket.start || previous.sequence === bucket.sequence) invalid('aging_range');
+  }
   const seen = new Set<string>();
   const invoices = account.invoices.map((raw): NormalizedInvoice => {
     const invoice = record(raw);
@@ -103,7 +109,7 @@ export function normalizeAccount(current: unknown, hotel: string, businessDate: 
     if (seen.has(itemId)) invalid('duplicate_invoice');
     seen.add(itemId);
     const age = invoice.age == null ? null : integer(invoice.age);
-    const bucket = age === null ? undefined : agingBuckets.find((b) => age >= b.start && age <= b.end);
+    const bucket = age === null ? undefined : agingBuckets.find((b) => age >= b.start && (b.end === null || age <= b.end));
     return { hotel, account_id: id, id: itemId, guest: optionalText(invoice.guestName),
       invoice_no: optionalIdentifier(invoice.invoiceNo), folio_no: optionalIdentifier(invoice.folioNo),
       transaction_date: date(invoice.transactionDate), original: amountCents(invoice.originalAmount, 'THB') / 100,

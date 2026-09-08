@@ -14,6 +14,30 @@ function fixture() {
 }
 
 describe('OPERA account normalization', () => {
+  it('preserves an omitted final aging end as an unbounded range without deriving boundaries from labels', () => {
+    const data = fixture();
+    const first = data.accountDetails.agingInfo.aging[0];
+    first.agingEndDay = 150;
+    data.accountDetails.agingInfo.aging.push({ ...first, agingBucketRange: 'Oldest range', agingStartDay: 151, agingEndDay: undefined!, sequence: 2 });
+    data.accountDetails.invoices[0].age = 20000;
+    const result = normalizeAccount(data, 'KAT', '2026-09-08');
+    expect(result.account.agingBuckets[1]).toMatchObject({ start: 151, end: null, label: 'Oldest range' });
+    expect(result.invoices[0].aging).toBe('Oldest range');
+  });
+  it('rejects a missing aging end before a later range', () => {
+    const data = fixture();
+    const first = data.accountDetails.agingInfo.aging[0];
+    first.agingEndDay = undefined!;
+    data.accountDetails.agingInfo.aging.push({ ...first, agingStartDay: 151, agingEndDay: 9999, sequence: 2 });
+    expect(() => normalizeAccount(data, 'KAT', '2026-09-08')).toThrow('invalid_response');
+  });
+  it('rejects overlapping ranges even when the final range is open ended', () => {
+    const data = fixture();
+    const first = data.accountDetails.agingInfo.aging[0];
+    first.agingEndDay = 151;
+    data.accountDetails.agingInfo.aging.push({ ...first, agingStartDay: 151, agingEndDay: undefined!, sequence: 2 });
+    expect(() => normalizeAccount(data, 'KAT', '2026-09-08')).toThrow('invalid_response');
+  });
   it('preserves partial payment balance and contextual missing fields without fabrication', () => {
     const result = normalizeAccount(fixture(), 'KAT', '2026-09-08');
     expect(result.account).toMatchObject({ id: 'account-1', account_no: 'A1', name: 'Synthetic account', open: 60, over90: 60, items: 1, oldest: 130, currency: 'THB' });
