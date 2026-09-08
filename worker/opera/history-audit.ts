@@ -2,6 +2,37 @@ import { OperaError, type OperaReader } from './client';
 import { asObject } from '../refresh/read-snapshot';
 import { verifiedNextCursor } from './pagination';
 
+export async function auditHistoryWindow(reader:OperaReader,hotel:string,accountId:string,offset:number) {
+  if(!Number.isSafeInteger(offset)||offset<0)throw new OperaError('invalid_request');
+  const read=async(start:number,limit:number)=>{
+    const p=asObject(await reader.history(accountId,start,limit));
+    if(!Array.isArray(p.details))throw new OperaError('invalid_response');
+    const rows:{kind:string;row:Record<string,unknown>}[]=[];
+    for(const raw of p.details){const g=asObject(raw);if(g.hotelId!==hotel||asObject(g.accountId).id!==accountId)throw new OperaError('invalid_response');
+      for(const kind of ['invoices','payments'])for(const value of (g[kind]??[]) as unknown[])rows.push({kind,row:asObject(value)});
+    }
+    return {rows,total:Number(p.totalResults)};
+  };
+  const initial=await read(offset,20),repeat=await read(offset,20);
+  const key=(r:{kind:string;row:Record<string,unknown>})=>r.kind+':'+r.row.transactionNo;
+  const original=new Set(initial.rows.map(key));const single=new Set<string>();const expanded=[];
+  for(let pos=offset;pos<Math.min(offset+20,initial.total);pos++){
+    const result=await read(pos,1);for(const row of result.rows)single.add(key(row));
+    if(result.rows.length>1){
+      const parents=result.rows.filter(r=>r.row.compressed===true);
+      expanded.push({position:pos,rows:result.rows.length,compressedParents:parents.length,
+        parentLinkedChildren:result.rows.filter(r=>r.row.parentInvoiceNo!==undefined&&parents.some(p=>p.row.invoiceNo===r.row.parentInvoiceNo)).length,
+        transactionLinkedChildren:result.rows.filter(r=>r.row.parentInvoiceNo!==undefined&&parents.some(p=>p.row.transactionNo===r.row.parentInvoiceNo)).length,
+        parentFieldPresent:result.rows.filter(r=>r.row.parentInvoiceNo!==undefined).length,
+        parentZero:parents.every(p=>asObject(p.row.balance).amount===0),
+        childBalancesNetZero:Math.round(result.rows.filter(r=>r.row.compressed!==true).reduce((s,r)=>s+Number(asObject(r.row.balance).amount),0)*100)===0,
+        fields:[...new Set(result.rows.flatMap(r=>Object.keys(r.row)))].sort()});
+    }
+  }
+  return {reported:initial.total,windowOffset:offset,windowRows:initial.rows.length,repeatIdentical:JSON.stringify(initial)===JSON.stringify(repeat),singleRows:single.size,
+    onlyWindow:[...original].filter(k=>!single.has(k)).length,onlySingle:[...single].filter(k=>!original.has(k)).length,expanded};
+}
+
 /** Connector-only investigation: GETs only; no business publication or raw output. */
 export async function auditHistory(reader:OperaReader,hotel:string,accountId:string) {
   const scan=async(limit:number)=>{
