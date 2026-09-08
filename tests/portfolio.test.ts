@@ -8,7 +8,7 @@ const rows = [
 it('groups only by explicit reporting mapping and keeps property contributions', () => {
   const result = aggregateAccounts([...rows]);
   expect(result.find(x => x.name === 'Example A')).toMatchObject({ kat: 200, tsk: 100, total: 300 });
-  expect(aggregateAccounts(rows.map(({ group: _, ...row }) => row))).toHaveLength(3);
+  expect(aggregateAccounts(rows.map(row => ({ ...row, group: undefined })))).toHaveLength(3);
 });
 it('filters hotel and account type before aggregation', () => {
   expect(filterAccounts([...rows], { hotel: 'TSK', type: 'Agent', search: '' })).toHaveLength(1);
