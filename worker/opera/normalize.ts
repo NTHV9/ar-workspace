@@ -15,6 +15,16 @@ export interface AccountSnapshot {
 }
 type RecordValue = Record<string, unknown>;
 function invalid(stage: string): never { throw new OperaError('invalid_response', undefined, `normalize_${stage}`); }
+/** Contexts are static code labels only, never IDs, values, or upstream messages. */
+function field<T>(context: string, read: () => T): T {
+  try { return read(); }
+  catch (error) {
+    if (error instanceof OperaError && error.code === 'invalid_response' && error.stage?.startsWith('normalize_')) {
+      invalid(`${context}_${error.stage.slice('normalize_'.length)}`);
+    }
+    throw error;
+  }
+}
 function record(value: unknown): RecordValue {
   if (!value || typeof value !== 'object' || Array.isArray(value)) invalid('shape');
   return value as RecordValue;
@@ -67,7 +77,7 @@ function sumCents(values: number[]): number {
 }
 function balances(value: unknown, currency: 'THB') {
   const balance = record(value);
-  const debit = amountCents(balance.debit, currency), credit = amountCents(balance.credit, currency), total = amountCents(balance.total, currency);
+  const debit = field('debit', () => amountCents(balance.debit, currency)), credit = field('credit', () => amountCents(balance.credit, currency)), total = field('total', () => amountCents(balance.total, currency));
   // Oracle aRBalanceType defines total as debit minus credit, including unapplied credits.
   if (sumCents([debit, -credit]) !== total) invalid('balance_reconciliation');
   return { debit, credit, total };
@@ -75,24 +85,25 @@ function balances(value: unknown, currency: 'THB') {
 
 /** Maps only documented, needed fields. Never forwards contact data or payment-card payloads. */
 export function normalizeAccount(current: unknown, hotel: string, businessDate: string): AccountSnapshot {
-  requiredText(hotel); date(businessDate);
-  const account = record(record(current).accountDetails);
+  field('requested_hotel', () => requiredText(hotel)); field('business_date', () => date(businessDate));
+  const root = field('response', () => record(current));
+  const account = field('account', () => record(root.accountDetails));
   if (account.hotelId !== hotel) invalid('hotel');
-  const id = identifier(record(account.accountId).id);
-  const summary = record(account.summary);
+  const id = field('account_id', () => identifier(record(account.accountId).id));
+  const summary = field('summary', () => record(account.summary));
   // Require a positive currency assertion; neither hotel nor a requested currency is evidence.
-  amountCents(summary.total);
-  const totals = balances(summary, 'THB');
-  const open = amountCents(account.balance, 'THB');
+  field('summary_total', () => amountCents(summary.total));
+  const totals = field('summary', () => balances(summary, 'THB'));
+  const open = field('account_balance', () => amountCents(account.balance, 'THB'));
   if (open !== totals.total) invalid('account_reconciliation');
   if (!Array.isArray(account.invoices)) invalid('invoices_missing');
-  const aging = record(account.agingInfo).aging;
+  const aging = field('aging_info', () => record(account.agingInfo)).aging;
   if (!Array.isArray(aging)) invalid('aging_missing');
   const agingBuckets: AgingBucket[] = aging.map((raw) => {
-    const bucket = record(raw), balance = balances(bucket.balanceInfo, 'THB');
-    const start = integer(bucket.agingStartDay), end = bucket.agingEndDay === undefined ? null : integer(bucket.agingEndDay);
+    const bucket = field('aging_bucket', () => record(raw)), balance = field('aging_balance', () => balances(bucket.balanceInfo, 'THB'));
+    const start = field('aging_start', () => integer(bucket.agingStartDay)), end = bucket.agingEndDay === undefined ? null : field('aging_end', () => integer(bucket.agingEndDay));
     if (end !== null && end < start) invalid('aging_range');
-    return { label: requiredText(bucket.agingBucketRange), start, end, sequence: integer(bucket.sequence),
+    return { label: field('aging_label', () => requiredText(bucket.agingBucketRange)), start, end, sequence: field('aging_sequence', () => integer(bucket.sequence)),
       amount: balance.total / 100, debit: balance.debit / 100, credit: balance.credit / 100 };
   }).sort((a, b) => a.sequence - b.sequence);
   // OPERA omits agingEndDay for its final unbounded bucket. An omission before
@@ -103,30 +114,30 @@ export function normalizeAccount(current: unknown, hotel: string, businessDate: 
   }
   const seen = new Set<string>();
   const invoices = account.invoices.map((raw): NormalizedInvoice => {
-    const invoice = record(raw);
+    const invoice = field('invoice', () => record(raw));
     if (invoice.hotelId !== undefined && invoice.hotelId !== hotel) invalid('invoice_hotel');
-    const itemId = identifier(invoice.transactionNo);
+    const itemId = field('invoice_transaction_no', () => identifier(invoice.transactionNo));
     if (seen.has(itemId)) invalid('duplicate_invoice');
     seen.add(itemId);
-    const age = invoice.age == null ? null : integer(invoice.age);
+    const age = invoice.age == null ? null : field('invoice_age', () => integer(invoice.age));
     const bucket = age === null ? undefined : agingBuckets.find((b) => age >= b.start && (b.end === null || age <= b.end));
-    return { hotel, account_id: id, id: itemId, guest: optionalText(invoice.guestName),
-      invoice_no: optionalIdentifier(invoice.invoiceNo), folio_no: optionalIdentifier(invoice.folioNo),
-      transaction_date: date(invoice.transactionDate), original: amountCents(invoice.originalAmount, 'THB') / 100,
-      open: amountCents(invoice.balance, 'THB') / 100,
-      current_amount: amountCents(invoice.amount, 'THB') / 100, applied_amount: amountCents(invoice.payments, 'THB') / 100,
-      age, aging: bucket?.label ?? 'Unknown', reference: optionalText(invoice.reference),
-      reservation_id: invoice.reservationId == null ? null : identifier(record(invoice.reservationId).id),
-      folio_date: invoice.folioDate == null ? null : date(invoice.folioDate),
-      internal_folio_window_id: optionalIdentifier(invoice.internalFolioWindowID),
+    return { hotel, account_id: id, id: itemId, guest: field('invoice_guest', () => optionalText(invoice.guestName)),
+      invoice_no: field('invoice_no', () => optionalIdentifier(invoice.invoiceNo)), folio_no: field('invoice_folio_no', () => optionalIdentifier(invoice.folioNo)),
+      transaction_date: field('invoice_transaction_date', () => date(invoice.transactionDate)), original: field('invoice_original', () => amountCents(invoice.originalAmount, 'THB')) / 100,
+      open: field('invoice_balance', () => amountCents(invoice.balance, 'THB')) / 100,
+      current_amount: field('invoice_amount', () => amountCents(invoice.amount, 'THB')) / 100, applied_amount: field('invoice_payments', () => amountCents(invoice.payments, 'THB')) / 100,
+      age, aging: bucket?.label ?? 'Unknown', reference: field('invoice_reference', () => optionalText(invoice.reference)),
+      reservation_id: invoice.reservationId == null ? null : field('invoice_reservation_id', () => identifier(record(invoice.reservationId).id)),
+      folio_date: invoice.folioDate == null ? null : field('invoice_folio_date', () => date(invoice.folioDate)),
+      internal_folio_window_id: field('invoice_internal_folio_window_id', () => optionalIdentifier(invoice.internalFolioWindowID)),
     };
   });
   const outstanding = invoices.filter((invoice) => invoice.open !== 0);
   const knownAges = outstanding.flatMap((invoice) => invoice.age === null ? [] : [invoice.age]);
-  return { account: { hotel, id, name: requiredText(account.accountName), type: requiredText(account.type),
-    account_no: optionalIdentifier(account.accountNo), open: open / 100, currency: 'THB',
+  return { account: { hotel, id, name: field('account_name', () => requiredText(account.accountName)), type: field('account_type', () => requiredText(account.type)),
+    account_no: field('account_no', () => optionalIdentifier(account.accountNo)), open: open / 100, currency: 'THB',
     over90: sumCents(agingBuckets.filter((b) => b.start > 90).map((b) => Math.round(b.amount * 100))) / 100,
     items: outstanding.length, oldest: knownAges.length === outstanding.length && knownAges.length ? Math.max(...knownAges) : null,
-    creditLimit: account.creditLimit == null ? null : amountCents(account.creditLimit, 'THB') / 100,
+    creditLimit: account.creditLimit == null ? null : field('account_credit_limit', () => amountCents(account.creditLimit, 'THB')) / 100,
     agingBuckets, business_date: businessDate }, invoices };
 }

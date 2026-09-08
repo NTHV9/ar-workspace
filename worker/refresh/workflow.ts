@@ -39,9 +39,9 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
             const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate,previous);
             await backendRpc(this.env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
             // Financial payloads remain only in private Supabase staging, not step output.
-            return {ok:true,invoices:snapshot.invoices.length,code:'',stage:''};
+            return {ok:true,invoices:snapshot.invoices.length,code:'',stage:'',diagnostics:null};
           }catch(error){
-            if(error instanceof OperaError&&['invalid_response','pagination_changed','pagination_incomplete','duplicate_member'].includes(error.code))return {ok:false,invoices:0,code:error.code,stage:error.stage??''};
+            if(error instanceof OperaError&&['invalid_response','pagination_changed','pagination_incomplete','duplicate_member'].includes(error.code))return {ok:false,invoices:0,code:error.code,stage:error.stage??'',diagnostics:error.diagnostics??null};
             throw error;
           }
         });

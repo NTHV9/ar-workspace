@@ -43,7 +43,11 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
   },r=>{const t=r.value.transactionNo;if((typeof t!=='number'&&typeof t!=='string')||String(t)==='')throw new OperaError('invalid_response');return `${r.kind}:${t}`;},20);
   const open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
   const expected=new Map(snapshot.invoices.filter(i=>i.open!==0).map(i=>[i.id,Math.round(i.open*100)]));
-  if(open.length!==expected.size||open.some(r=>expected.get(String(r.value.transactionNo))!==amountCents(r.value.balance,'THB')))throw new OperaError('pagination_changed',undefined,'current_history_membership');
+  if(open.length!==expected.size||open.some(r=>expected.get(String(r.value.transactionNo))!==amountCents(r.value.balance,'THB'))){
+    const actual=new Map(open.map(r=>[String(r.value.transactionNo),amountCents(r.value.balance,'THB')]));
+    const currentOnly=[...expected].filter(([id])=>!actual.has(id)),historyOnly=[...actual].filter(([id])=>!expected.has(id));
+    throw new OperaError('pagination_changed',undefined,'current_history_membership',undefined,{currentCount:expected.size,historyCount:actual.size,currentOnly:currentOnly.length,currentOnlyNegative:currentOnly.filter(([,n])=>n<0).length,historyOnly:historyOnly.length,historyOnlyNegative:historyOnly.filter(([,n])=>n<0).length,sharedBalanceMismatch:[...expected].filter(([id,n])=>actual.has(id)&&actual.get(id)!==n).length});
+  }
   const present=new Set(snapshot.invoices.map(i=>i.id));
   const missing=previous.filter(i=>i.open!==0&&!present.has(i.id));
   if(missing.length){

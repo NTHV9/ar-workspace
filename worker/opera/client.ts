@@ -1,6 +1,6 @@
 export type OperaErrorCode = 'invalid_configuration'|'invalid_request'|'redirect_rejected'|'provider_unavailable'|'provider_unauthorized'|'provider_rejected'|'response_too_large'|'invalid_response'|'timeout'|'duplicate_member'|'pagination_incomplete'|'pagination_changed';
 export class OperaError extends Error {
-  constructor(readonly code: OperaErrorCode,readonly upstreamStatus?:number,readonly stage?:string,readonly providerMessage?:string) { super(stage?`${code}:${stage}`:code); this.name='OperaError'; }
+  constructor(readonly code: OperaErrorCode,readonly upstreamStatus?:number,readonly stage?:string,readonly providerMessage?:string,readonly diagnostics?:Record<string,number|boolean|string>) { super(stage?`${code}:${stage}`:code); this.name='OperaError'; }
 }
 export interface OperaReadConfig { origin:string; appKey:string; hotelId:string; timeoutMs?:number; maxResponseBytes?:number }
 export type FetchPort = (request:Request)=>Promise<Response>;

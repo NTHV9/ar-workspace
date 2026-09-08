@@ -14,6 +14,22 @@ function fixture() {
 }
 
 describe('OPERA account normalization', () => {
+  it.each([
+    { field: 'invoice_original_shape', mutate: (d: ReturnType<typeof fixture>) => { d.accountDetails.invoices[0].originalAmount = undefined!; } },
+    { field: 'invoice_transaction_date_text', mutate: (d: ReturnType<typeof fixture>) => { d.accountDetails.invoices[0].transactionDate = ' '; } },
+    { field: 'invoice_reservation_id_text', mutate: (d: ReturnType<typeof fixture>) => { Object.assign(d.accountDetails.invoices[0], { reservationId: {} }); } },
+    { field: 'invoice_folio_date_text', mutate: (d: ReturnType<typeof fixture>) => { Object.assign(d.accountDetails.invoices[0], { folioDate: '' }); } },
+    { field: 'account_type_text', mutate: (d: ReturnType<typeof fixture>) => { d.accountDetails.type = undefined!; } },
+    { field: 'summary_debit_shape', mutate: (d: ReturnType<typeof fixture>) => { d.accountDetails.summary.debit = undefined!; } },
+  ])('reports only static diagnostic context for $field', ({ field, mutate }) => {
+    const data = fixture(); mutate(data);
+    try { normalizeAccount(data, 'KAT', '2026-09-08'); expect.fail('Expected invalid data to be rejected'); }
+    catch (error) {
+      expect(error).toMatchObject({ code: 'invalid_response', stage: `normalize_${field}` });
+      expect(String(error)).not.toContain('Synthetic');
+      expect(String(error)).not.toContain('account-1');
+    }
+  });
   it('preserves an omitted final aging end as an unbounded range without deriving boundaries from labels', () => {
     const data = fixture();
     const first = data.accountDetails.agingInfo.aging[0];
