@@ -1,6 +1,11 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { RefreshState } from './domain/portfolio';
+import type { Account, RefreshState } from './domain/portfolio';
+export function SourceWarning({accounts}:{accounts:Account[]}) {
+  const affected=accounts.filter(a=>a.sourceWarnings?.some(w=>w.code==='history_total_understated')).length;
+  if(!affected)return null;
+  return <p className="information-note" role="status">Historical counts need review{affected>1?` for ${affected} accounts`:''}. Current invoice balances matched. OPERA returned more history rows than its reported count.</p>;
+}
 export function SortHead({ label, active, direction, onClick }: { label: string; active: boolean; direction: 'asc'|'desc'; onClick: () => void }) {
   return <th aria-sort={active ? direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button className="sort-button" onClick={onClick}>{label}{active ? direction === 'asc' ? <ArrowUp size={10}/> : <ArrowDown size={10}/> : <ArrowUpDown size={10}/>}</button></th>;
 }

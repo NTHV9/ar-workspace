@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 8 กันยายน 2026: OPERA และ Refresh
+
+- เจ้าของยืนยันหน้าตาสองหน้าแรก และอนุมัติขั้นเชื่อม OPERA/Refresh ต่อแล้ว.
+- ปลายทางที่เจ้าของให้: gateway Mumbai `mtcb2pr.hospitality-api.ap-mumbai-1.ocs.oraclecloud.com`, enterprise `TSTLKL`, hotels `KAT`/`TSK`.
+- เจ้าของกรอก OPERA_CLIENT_ID, OPERA_CLIENT_SECRET, OPERA_APP_KEY และ SUPABASE_SECRET_KEY ใน Cloudflare โดยตรง ตรวจพบเป็น secret_text; ไม่อ่านค่ากลับหรือเก็บใน Git.
+- OPERA token, discovery หน้าแรก, Current Account, History และ Business Date ตอบสำเร็จทั้ง KAT/TSK. เป็นหลักฐาน sample read ไม่ใช่ full-import acceptance.
+- Discovery environment จำกัด 20 records/page (HTTP400/OPERAWS-ODE09998 เมื่อขอ50); ปรับ pagination แล้ว. supplied openapi.json รุ่น26.3 ตรงสามGET contract ที่ใช้.
+- Branch `codex/opera-refresh`; source ล่าสุดช่วงนี้ `3658897fd263bed83daa292d7f8faa214f281064` pushed/deployed. Workflow `ar-workspace-refresh` ใช้ Worker เดิมและ Workers plan เดิม ไม่มีแพ็กเกจเพิ่ม.
+- Apply migration `20260908144712_ar_durable_refresh`: private runs/staging, per-hotel lease, full-scope atomic publish, source verification state, public member-only refresh status. Coordination test ใน transaction rollback ผ่าน; ไม่ seed customer/sample business rows.
+- Typecheck/Build และ 54 tests ผ่านก่อน real refresh. กำลังตรวจ full discovery/current-history membership และ publication จริง; cron/on-open refresh ยังไม่ enabled จนกว่ารอบแรกผ่าน.
+- รักษาภาพต้นแบบ/ข้อมูล/บริการเดิมทั้งหมด. ไม่มี OPERA accounting write, Gmail send หรือ Drive operation.
+
 ## Checkpoint ล่าสุด — 8 กันยายน 2026: สองหน้าแรกบน Cloudflare พร้อมตรวจ
 
 ### Implemented / pushed / deployed

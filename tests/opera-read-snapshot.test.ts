@@ -33,6 +33,18 @@ function harness(raw = current(), open = history([invoice()]), closed = history(
 }
 
 describe('verified OPERA snapshot reads', () => {
+  it('retains an understated history warning only after current open membership matches', async () => {
+    const audit = { ...history([invoice(), invoice(124, 0), invoice(125, 0)]), totalResults: 1 };
+    const { reader } = harness(current(), audit);
+    const result = await readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08');
+    expect(result.invoices.map(i => i.id)).toEqual(['123']);
+    expect(result.account.sourceWarnings).toEqual([{ code: 'history_total_understated', reported: 1, observed: 3, includeZero: false }]);
+  });
+  it('does not use understated totals to excuse an extra open invoice', async () => {
+    const audit = { ...history([invoice(), invoice(124, 20)]), totalResults: 1 };
+    const { reader } = harness(current(), audit, audit);
+    await expect(readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08')).rejects.toMatchObject({ stage: 'current_history_membership' });
+  });
   it('accepts explicitly empty final open history without inferring individual invoice zero', async () => {
     const { reader, requests } = harness(current([], 0), history([]));
     const snapshot = await readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08');

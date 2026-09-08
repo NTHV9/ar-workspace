@@ -10,7 +10,7 @@ export interface NormalizedInvoice {
 export interface AccountSnapshot {
   account: { hotel: string; id: string; name: string; type: string; account_no: string | null; open: number;
     over90: number; items: number; currency: 'THB'; creditLimit: number | null; oldest: number | null;
-    agingBuckets: AgingBucket[]; business_date: string };
+    agingBuckets: AgingBucket[]; business_date: string; sourceWarnings?:{code:string;reported:number;observed:number;includeZero:boolean}[] };
   invoices: NormalizedInvoice[];
 }
 type RecordValue = Record<string, unknown>;

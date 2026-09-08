@@ -2,6 +2,7 @@ export interface Account {
   hotel: string; id: string; name: string; type: string; open: number; over90: number; items: number;
   group?: string; aging?: number[]; creditLimit?: number | null; oldest?: number;
   account_no?: string; verification_state?: string; agingBuckets?: AgingBucket[];
+  sourceWarnings?: { code: 'history_total_understated'; reported: number; observed: number; includeZero: boolean }[];
 }
 export interface AgingBucket { label: string; start: number | null; end: number | null; sequence: number; amount: number; debit: number; credit: number }
 export interface HotelRefresh { hotel: string; status: string; last_success_at: string | null; last_attempt_at?: string | null; error_code?: string | null; run_id?: string | null }

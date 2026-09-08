@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AccountDetail } from '../src/AccountDetail';
+import { Portfolio } from '../src/Portfolio';
 import { sourceAging, validSourceBucket, type Account } from '../src/domain/portfolio';
 import { refreshLabel } from '../src/ui';
 const bucket={label:'1 to 45 days',start:1,end:45,sequence:1,amount:100,debit:120,credit:20};
@@ -33,4 +34,18 @@ it('shows never-refreshed, stale and failed states with actual Bangkok success t
   expect(refreshLabel(refresh,'All',Date.parse('2026-09-08T01:00:00Z'))).toContain('KAT · Stale · 08 Sept, 07:00 ICT');
   expect(refreshLabel(refresh,'All')).toContain('TSK · Never refreshed');
   expect(refreshLabel({running:false,hotels:[{...refresh.hotels[0],status:'failed',error_code:'unavailable'}]},'KAT')).toContain('Refresh failed');
+});
+it('shows historical-count uncertainty separately from matched current balances on both live screens',()=>{
+  const affected:Account={...account,sourceWarnings:[{code:'history_total_understated',reported:50,observed:52,includeZero:true}]};
+  const detail=renderToStaticMarkup(<AccountDetail account={affected} invoices={[]} review={false} back={()=>{}}/>);
+  const portfolio=renderToStaticMarkup(<Portfolio accounts={[affected]} hotel="KAT" review={false} params={new URLSearchParams()} update={()=>{}} openAccount={()=>{}}/>);
+  for(const html of [detail,portfolio]){
+    expect(html).toContain('Historical counts need review');
+    expect(html).toContain('Current invoice balances matched');
+    expect(html).not.toContain('History complete');
+  }
+  const review=renderToStaticMarkup(<AccountDetail account={affected} invoices={[]} review={true} back={()=>{}}/>);
+  expect(review).not.toContain('Historical counts need review');
+  const unaffected=renderToStaticMarkup(<AccountDetail account={account} invoices={[]} review={false} back={()=>{}}/>);
+  expect(unaffected).not.toContain('Historical counts need review');
 });

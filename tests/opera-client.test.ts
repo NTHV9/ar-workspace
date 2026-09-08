@@ -65,6 +65,16 @@ describe('new OPERA read client',()=>{
   });
 });
 describe('complete pagination',()=>{
+  it('retains extra unique history rows only with explicit terminal metadata and a warning',async()=>{
+    const data=[{id:'100'},{id:'101'}];let warning:unknown;
+    const policy={allowExtraUniqueRows:true,onExtraRows:(counts:unknown)=>{warning=counts;}};
+    expect(await collectPages(async()=>({rows:data,hasMore:false,totalResults:1}),r=>r.id,20,policy)).toEqual(data);
+    expect(warning).toEqual({reported:1,observed:2});
+    await expect(collectPages(async()=>({rows:data,hasMore:false,totalResults:1}),r=>r.id,20)).rejects.toMatchObject({code:'pagination_incomplete'});
+    await expect(collectPages(async()=>({rows:[data[0],data[0]],hasMore:false,totalResults:1}),r=>r.id,20,policy)).rejects.toMatchObject({code:'duplicate_member'});
+    await expect(collectPages(async()=>({rows:data,totalResults:1}),r=>r.id,20,policy)).rejects.toMatchObject({code:'pagination_incomplete'});
+    await expect(collectPages(async()=>({rows:data,hasMore:false,totalResults:3}),r=>r.id,20,policy)).rejects.toMatchObject({code:'pagination_incomplete'});
+  });
   it('handles the verified next-page cursor including a partial last page',async()=>{
     expect(verifiedNextCursor({offset:120,limit:20},100,20)).toBe(120);
     const offsets:number[]=[];
