@@ -1,5 +1,29 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 8 กันยายน 2026 23:23 ICT: OPERA snapshot จริงและ Refresh
+
+### Implemented / deployed / enabled
+- Branch `codex/opera-refresh`; deployed source `4dfed578b17298aedf5e0c416cc9d0faef44f224` pushed to public `NTHV9/ar-workspace`.
+- Worker `ar-workspace`: https://ar-workspace.ar-c82.workers.dev ; deployment `f82b7befcf7b4e758240a8a6131937b3`. Workflow `ar-workspace-refresh` version `b6b16f42-2e0f-448b-8b23-56ddbcd733c6`.
+- Supabase `ar-workspace` / `jmyvpurzmoiecpydjrci`. Applied phase migrations: `20260908144712_ar_durable_refresh`, `20260908145545_ar_refresh_failure_recovery`, `20260908161054_ar_history_quality`. เพิ่ม private staging/jobs/quality, lease coordination และ atomic account/invoice publication; ไม่ reset/drop ข้อมูลเดิม.
+- Worker secret_text ครบ OPERA_CLIENT_ID / OPERA_CLIENT_SECRET / OPERA_APP_KEY / SUPABASE_SECRET_KEY; ตรวจชื่อและชนิดโดยไม่อ่านค่ากลับ.
+- Enabled on-open เมื่อเก่ากว่า30นาที และ Cron UTC `0 0,12 * * *` (07:00/19:00 ICT). ตรวจตั้งค่า Cron จริงแล้ว แต่ยังไม่มีหลักฐาน event ตามเวลารอบถัดไปเกิดแล้ว. ไม่มี auto-send.
+
+### Tested จริง
+- Full discovery + Current/history identity/balance reconciliation + atomic publish ผ่านทั้งสองโรงแรม: KAT105 accounts/699 Invoice rows, TSK70 accounts/104 Invoice rows. Account verified175; ไม่มี Invoice verification error/missing ในรอบแรก; staging เหลือ0.
+- KAT run `984c2918-5648-4298-ac4e-5af9745d01a3` สำเร็จ23:19:08 ICT; TSK run `70348339-b19e-48d2-aac0-28b7d86f9c82` สำเร็จ23:18:49 ICT. ใช้ source `f7419ee` ซึ่งเป็น logic เดียวกับ release เปิด schedule.
+- Browser ที่ login แสดง OPERA connected และ175 matching accounts จาก Supabase จริง. `/api/health` ตอบ database_verified / opera connected / deployed SHA ถูกต้อง. Unauthenticated/invalid-token Portfolio request ได้401 หลัง publication.
+- Fresh on-open RPC ทั้งสองโรงแรมตอบ fresh/created=false. Repeat successful publish ไม่เพิ่ม quality rows: ยังคง175. Scope join/claim/renew/failure recovery ผ่าน transaction tests ก่อนหน้า; Browser refresh polling/scoped dispatch ใช้ synthetic interception เพื่อแยกจาก real ingestion.
+- Private quality table และ publish RPC ไม่ให้ anon/authenticated อ่านหรือ execute. Frontend อ่านผ่าน user token/RLS; refresh writes ใช้ backend secret เท่านั้น.
+- Typecheck/Build ผ่าน; Vitest89 tests/9files ผ่าน; Playwright5 tests ผ่าน. ตรวจ final deployed public access ซ้ำอีก1 testผ่าน. GitHub CI source4dfed57 ผ่าน: https://github.com/NTHV9/ar-workspace/actions/runs/34250387785 .
+- ภาพ synthetic จาก Cloudflare 1440×900 และ1280×800 ทั้งสองหน้าตรวจเปิดดูแล้ว; test drawer1100×760/filter/sort/selection/back ผ่าน. ภาพจริงไม่เก็บใน Git; reference PNG ไม่เปลี่ยน.
+
+### ข้อจำกัดที่ยังต้องแสดง
+- OPERA history metadata รายงานน้อยกว่าจำนวนแถวที่ส่งจริง2แถวใน8บัญชี (KAT7/TSK1). เก็บ warning ต่อ account/run และแสดงคำเตือนใน UI; ตรวจทุกแถวที่รับและ exact Current nonzero Invoice membership/balance ก่อน publish. ไม่ตัดแถวให้ตรง total; discovery ยัง strict. สิ่งนี้ไม่ใช่การรับรองจำนวนประวัติย้อนหลังหรือการนำเข้าทุก closed Invoice/Payment แบบถาวร.
+- Selected Statement GET เตรียม1รายการตรง scope/balance ผ่านทั้งสองhotel แต่ยังไม่ได้ native PDF bytes. Folio trial KATได้400, TSK sample ไม่มี selector; ยังไม่อ้าง PDF พร้อม. ไม่มี Statement generation POST, accounting write, Gmail send หรือ Drive operation.
+- Billing/due/stage จริงยังไม่เชื่อม workflow; แสดง unavailable ตามจริง. Synthetic review แยกด้วย mode=review ไม่ปนข้อมูลธุรกิจ.
+- รอบนี้พร้อมให้ตรวจข้อมูลจริงบนสองหน้าที่อนุมัติไว้; งาน native PDF และ Collection/Billing เป็นช่วงถัดไป.
+
 ## Checkpoint ระหว่างงาน — 8 กันยายน 2026: OPERA และ Refresh
 
 - เจ้าของยืนยันหน้าตาสองหน้าแรก และอนุมัติขั้นเชื่อม OPERA/Refresh ต่อแล้ว.
