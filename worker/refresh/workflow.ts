@@ -1,6 +1,7 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 import { makeReader,probeOpera } from '../opera/probe';
 import { OperaError } from '../opera/client';
+import {probeSelectedStatement} from '../opera/selected-statement';
 import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
@@ -10,6 +11,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
+    if(payload.statementProbe){if(!accountId)throw new Error('account_required');return step.do('selected-statement',{retries:{limit:0,delay:'5 seconds'}},()=>probeSelectedStatement(makeReader(this.env,hotel),hotel,accountId));}
     if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(this.env,hotel,accountId,async(bytes,expected)=>{
       if(!this.env.SUPABASE_URL||!this.env.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
       for(const [extension,body,type]of [['pdf',new Uint8Array(bytes).buffer,'application/pdf'],['json',JSON.stringify(expected),'application/json']] as const){
