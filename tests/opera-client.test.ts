@@ -39,6 +39,15 @@ describe('new OPERA read client',()=>{
     expect(url!.searchParams.has('unBilled')).toBe(false);
     expect(url!.searchParams.getAll('fetchInstructions')).toEqual(['Invoices','Payments']);
   });
+  it('prepares a statement using only explicitly selected transaction identities',async()=>{
+    let requested:URL|undefined;
+    const reader=new OperaReader(config,async()=> 'synthetic-token',async request=>{requested=new URL(request.url);return Response.json({aRStatements:[]});});
+    await reader.statementSelection('synthetic-account',['100','102']);
+    expect(requested!.pathname).toBe('/ars/v1/statements');
+    expect(requested!.searchParams.getAll('transactionNo')).toEqual(['100','102']);
+    expect(requested!.searchParams.getAll('accountID')).toEqual(['synthetic-account']);
+    expect(requested!.searchParams.get('inclPrinted')).toBe('true');
+  });
   it('never follows redirects or returns provider error bodies',async()=>{
     let requests=0;
     const reader=new OperaReader(config,async()=> 'synthetic-token',async()=>{requests++;return new Response('sensitive upstream message',{status:302,headers:{Location:'https://other.example.com'}});});

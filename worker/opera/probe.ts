@@ -34,11 +34,22 @@ export async function probeOpera(env:OperaEnv,hotel:string) {
   if(typeof accountId!=='string')throw new OperaError('invalid_response');
   const [current,history,businessDate]=await Promise.all([checked('current_account',()=>reader.account(accountId)),checked('invoice_history',()=>reader.history(accountId,0,20)),checked('business_date',()=>reader.businessDate())]);
   const dates=object(businessDate).hotels;const date=Array.isArray(dates)?object(dates[0]).businessDate:null;
+  let statementSelection:unknown={status:'no_eligible_sample'};
+  const currentInvoices=object(object(current).accountDetails).invoices;
+  const selectedInvoice=Array.isArray(currentInvoices)?currentInvoices.map(object).find(i=>i.balance&&Number(object(i.balance).amount)>0):undefined;
+  if(selectedInvoice&&typeof selectedInvoice.transactionNo==='number'){
+    try{
+      const result=object(await reader.statementSelection(accountId,[String(selectedInvoice.transactionNo)]));
+      const statements=Array.isArray(result.aRStatements)?result.aRStatements.map(object):[];
+      const returned=statements.flatMap(s=>Array.isArray(s.invoices)?s.invoices.map(object):[]);
+      statementSelection={status:'prepared',requested:1,returned:returned.length,exactScope:statements.length===1&&statements[0].hotelId===hotel&&object(statements[0].accountId).id===accountId&&returned.length===1&&returned[0].transactionNo===selectedInvoice.transactionNo,balanceMatchesSelection:statements.length===1&&!!statements[0].balance&&Number(object(statements[0].balance).amount)===Number(object(selectedInvoice.balance).amount),reportDescriptorPresent:statements.some(s=>typeof s.reportFileName==='string'||typeof s.statementName==='string'),nativePdfBytesReceived:false};
+    }catch(e){statementSelection={status:'unavailable',code:e instanceof OperaError?e.code:'unavailable',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
+  }
   const normalizationChecks=[];
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){
     const a=object(object(raw).accountDetails);const summary=a.summary?object(a.summary):{};
     let normalized='passed';try{normalizeAccount(raw,hotel,String(date));}catch(e){normalized=e instanceof OperaError?e.stage??e.code:'failed';}
     normalizationChecks.push({sample,normalized,invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:r.agingStartDay,end:r.agingEndDay,sequence:r.sequence};}):null});
   }
-  return {hotel,status:'read_verified',normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
+  return {hotel,status:'read_verified',statementSelection,normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }

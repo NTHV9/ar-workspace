@@ -6,7 +6,9 @@ import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './rea
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
-    const {runId,hotel,accountId}=event.payload;
+    const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
+    const {runId,hotel,accountId}=payload as RefreshParams;
+    if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
     try {
       const reader=makeReader(this.env,hotel);
       let acquired=false;
