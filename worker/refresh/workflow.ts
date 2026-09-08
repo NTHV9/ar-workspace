@@ -13,7 +13,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
     if(payload.historyAudit){
       if(!accountId)throw new Error('audit_account_required');
       if(payload.historyAuditOffset!==undefined){const offset=payload.historyAuditOffset;return step.do('history-window-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistoryWindow(makeReader(this.env,hotel),hotel,accountId,offset));}
-      return step.do('history-count-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistory(makeReader(this.env,hotel),hotel,accountId));
+      return step.do('history-count-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistory(makeReader(this.env,hotel),hotel,accountId,payload.historyAuditLimit));
     }
     try {
       const reader=makeReader(this.env,hotel);

@@ -33,6 +33,15 @@ function harness(raw = current(), open = history([invoice()]), closed = history(
 }
 
 describe('verified OPERA snapshot reads', () => {
+  it('reconciles compressed detail rows without a false history count warning',async()=>{
+    const parent={...invoice(120,0),invoiceNo:'900',compressed:true};
+    const children=[{...invoice(123,60),parentInvoiceNo:'900'},{...invoice(124,-60),parentInvoiceNo:'900'}];
+    const audit={...history([parent,...children]),totalResults:1};
+    const {reader}=harness(current(children,0),history([]),audit);
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08');
+    expect(result.invoices.map(i=>i.id)).toEqual(['123','124']);
+    expect(result.account.sourceWarnings).toBeUndefined();
+  });
   it('retains an understated history warning only after current open membership matches', async () => {
     const audit = { ...history([invoice(), invoice(124, 0), invoice(125, 0)]), totalResults: 1 };
     const { reader } = harness(current(), audit);

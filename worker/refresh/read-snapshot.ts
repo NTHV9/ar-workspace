@@ -1,5 +1,6 @@
 import { OperaError, type OperaReader } from '../opera/client';
 import { collectPages,verifiedNextCursor } from '../opera/pagination';
+import { historyRootCount } from '../opera/history-count';
 import { normalizeAccount, amountCents, type AccountSnapshot } from '../opera/normalize';
 import type { PreviousInvoice } from './backend';
 type Row=Record<string,unknown>;
@@ -42,7 +43,7 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
     for(const raw of page.details){const group=asObject(raw);if(group.hotelId!==hotel||id(group.accountId)!==accountId)throw new OperaError('invalid_response',undefined,'history_scope');
       for(const [field,kind]of [['invoices','invoice'],['payments','payment']] as const){if(group[field]===undefined)continue;if(!Array.isArray(group[field]))throw new OperaError('invalid_response');for(const row of group[field]){const value=asObject(row);const txn=String(value.transactionNo);const kinds=transactionKinds.get(txn)??new Set<string>();kinds.add(kind);transactionKinds.set(txn,kinds);if(kind==='invoice'&&value.invoiceType==='OldBalance'){oldBalanceRows++;const form=JSON.stringify({transactionSign:Number(value.transactionNo)<0?'negative':Number(value.transactionNo)===0?'zero':'positive',invoiceNoPresent:value.invoiceNo!==undefined,invoiceNoZero:value.invoiceNo===0,originalZero:value.originalAmount&&asObject(value.originalAmount).amount===0,amountZero:value.amount&&asObject(value.amount).amount===0,balanceZero:value.balance&&asObject(value.balance).amount===0,paymentsZero:value.payments&&asObject(value.payments).amount===0,datePresent:typeof value.transactionDate==='string'&&value.transactionDate.length>0,inCurrent:snapshot.invoices.some(i=>i.id===String(value.transactionNo)),keys:Object.keys(value).sort().join(',')});oldBalanceForms[form]=(oldBalanceForms[form]??0)+1;}rows.push({kind,value});}}}
     if(offset===0)firstPageRows=rows.length;maxPageRows=Math.max(maxPageRows,rows.length);
-    return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
+    return {rows,logicalCount:historyRootCount(rows),hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
   },r=>{const t=r.value.transactionNo;if((typeof t!=='number'&&typeof t!=='string')||String(t)===''||(typeof t==='number'&&!Number.isSafeInteger(t)))throw new OperaError('invalid_response');return `${r.kind}:${t}`;},20,{allowExtraUniqueRows:true,onExtraRows:counts=>{snapshot.account.sourceWarnings??=[];snapshot.account.sourceWarnings.push({code:'history_total_understated',...counts,includeZero});}});
     }catch(error){if(error instanceof OperaError)throw new OperaError(error.code,error.upstreamStatus,error.stage,error.providerMessage,{...error.diagnostics,oldBalanceRows,includeZero,firstPageRows,oldBalanceForms:JSON.stringify(oldBalanceForms),distinctTransactions:transactionKinds.size,crossKindTransactions:[...transactionKinds.values()].filter(k=>k.size>1).length,maxPageRows});throw error;}
   };

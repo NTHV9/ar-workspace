@@ -34,7 +34,7 @@ export async function auditHistoryWindow(reader:OperaReader,hotel:string,account
 }
 
 /** Connector-only investigation: GETs only; no business publication or raw output. */
-export async function auditHistory(reader:OperaReader,hotel:string,accountId:string) {
+export async function auditHistory(reader:OperaReader,hotel:string,accountId:string,scanLimit?:number) {
   const scan=async(limit:number)=>{
     const members=new Map<string,string>();const categories:Record<string,number>={};
     const pages:{offset:number;rows:number;invoices:number;payments:number;categories:Record<string,number>}[]=[];
@@ -66,6 +66,13 @@ export async function auditHistory(reader:OperaReader,hotel:string,accountId:str
     }
     throw new OperaError('pagination_incomplete');
   };
+  if(scanLimit!==undefined){
+    if(![10,20].includes(scanLimit))throw new OperaError('invalid_request');
+    const result=await scan(scanLimit);
+    const bytes=new TextEncoder().encode(JSON.stringify([...result.members].sort(([a],[b])=>a.localeCompare(b))));
+    const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
+    return {reported:result.total,observed:result.members.size,duplicates:result.duplicates,digest,limit:scanLimit,oversized:result.pages.filter(p=>p.rows>scanLimit).map(p=>p.offset)};
+  }
   const first=await scan(20),second=await scan(10);
   const onlyFirst=[...first.members.keys()].filter(k=>!second.members.has(k));
   const onlySecond=[...second.members.keys()].filter(k=>!first.members.has(k));
