@@ -1,5 +1,18 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: กันบิลย่อยจากการเลือกทวงแยก
+
+- Implemented/pushed/deployed source `2a1c2e720ce5437497e7b75132235904a62a83ed`, branch `codex/opera-refresh`; Worker `ar-workspace` deployment `64d5813c462949ea822cc3247a3eb85a`, Workflow version `727962d3-f055-4c19-abd4-3be45e6eb15a`. Health endpoint ยืนยัน source/Supabase/OPERA ตรง.
+- Applied migrations `20260908170335_ar_compression_context` และ `20260908170529_ar_collection_selection_guard` (timestamp UTC). เพิ่ม compressed/parent context/collection role และ generated collection_selectable; ค่าเก่าเริ่ม unverified. ไม่ reset/drop table หรือแก้ยอดเอง. ข้อมูลสมาชิก read-only; generated flag ตั้งค่าจาก client ไม่ได้.
+- Parent lookup ใช้ Hotel+Account scope ที่ผ่าน audit และ parentInvoiceNo→invoiceNo แบบไม่กำกวม. Child ถูกบล็อกไม่ว่า balance หรือ parent balance เท่าไร; parent ไม่พบ/fieldไม่ยืนยันยัง unverified; conflict ระหว่าง Current/history fail. ยอดลูกยังเก็บตาม OPERA ไม่อนุมานเป็น0.
+- Account Detail แสดง Child of/Parent invoice และแผงเหตุผลพร้อม parent balance; checkbox/Select all/selection total ข้าม child และunverified แม้รายการที่เลือกก่อนหน้ามีสถานะเปลี่ยน. Synthetic reviewยังแยก.
+- Backend `POST /api/collection/validate-selection` ตรวจ allowlisted login/scope/IDs แล้วตรวจฐานข้อมูลด้วย user token/RLS ใหม่ ไม่เชื่อ role/amount/selectable ที่clientส่งมา. SQL guardปฏิเสธ child/unknown/nonpositive/missing/cross-scope ทั้งชุด. เป็น preflight สำหรับ snapshot ยังไม่ใช่การส่งอีเมล.
+- Full real refresh ผ่าน: KAT run `4938a018-cd7f-42fc-b2e7-188b31fccaba`, TSK run `b31b8678-72da-40ef-b14a-cc4d65b41c25`. คง175accounts/803Invoice rows; KAT14child,TSK2child และ selectable0ทั้ง16. Positive child ที่ parentเป็น0มี12ใบ. ไม่มี unverified หลังรอบนี้; history count warnings0.
+- ทดสอบ SQL guardด้วย authenticated role + approved user's claims แบบ transaction rollback: childทั้ง16ถูกปฏิเสธ, positive standalone sampleยอมรับ, wrong hotel/missing IDปฏิเสธ. ไม่ใส่ sample business rows. สิทธิ์ authenticated UPDATE=false, anon RPC EXECUTE=false.
+- Build/Typecheck และ100 unit testsผ่าน; full deployed Browser suite6ข้อผ่าน และ compression/unauthorized targeted2ข้อผ่านหลังเพิ่มเคสใหม่. Browser behaviorใช้synthetic interception; SQL guardใช้ข้อมูลจริง. ทดสอบ HTTP401ของendpointจริงโดยไม่มี/invalid login. ไม่อ้างว่า authenticated HTTP preflightกับข้อมูลจริงถูกทดสอบครบเส้นทางแล้ว.
+- ภาพ `evidence/compression-1440.png` เป็นsyntheticและเปิดตรวจแล้ว; narrow drawer1100×760ผ่าน. ภาพbaseline/referenceไม่เปลี่ยน. CI sourceผ่าน https://github.com/NTHV9/ar-workspace/actions/runs/34255193445 .
+- ข้อจำกัด: Billing/Sendยังไม่เปิด; ขั้นส่งต้องเรียก server guardซ้ำ ณเวลาทำงานและตรวจ due/recipient/document ต่อ ไม่ใช้ผลpreflightเก่าเป็นใบอนุญาตส่ง. ไม่มี Gmail/Drive/OPERA accounting write. รอบนี้เสร็จเฉพาะการป้องกันและแสดงparent-child context.
+
 ## Checkpoint ล่าสุด — 8 กันยายน 2026: ปิดคำเตือนจำนวนประวัติ8บัญชี
 
 - Root cause ยืนยันครบ8บัญชี: `totalResults` นับรายการหลัก ขณะที่ `inclDetails=true` ส่ง compressed parent1แถวพร้อม child2แถวที่เชื่อมด้วย `parentInvoiceNo` → `invoiceNo`. คำอธิบายเดิมว่า OPERA นับน้อยไปถูกแทนด้วยความต่างระหว่าง root count กับ expanded detail count.

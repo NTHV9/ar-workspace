@@ -88,6 +88,7 @@
 ## F. เรื่องธุรกิจที่เหลือให้กำหนดเมื่อถึงงานนั้น
 
 - ผลตรวจ compressed Invoice วันที่8ก.ย.: history อาจส่ง parent ที่ยอดศูนย์พร้อม child ที่ยังแสดงยอดไม่ศูนย์ และ child มี parentInvoiceNo. ก่อนเปิด Billing/Collection ต้องรักษา parent-child context และไม่ถือ child เป็นหนี้ที่ส่งทวงแยกได้จาก balance เพียงช่องเดียว; payment ของ compressed invoice อยู่ที่ parent ตาม Oracle. รอบแก้ history count ไม่เปลี่ยนยอดหรือเคลียร์ child โดยเดา.
+  - 9ก.ย. implemented/tested: เก็บ parent context, generated selection guard และ UIบล็อกchild/unknown; ข้อมูลจริง16childถูกปฏิเสธทั้งหมด. ขั้น Billing/Sendในอนาคตต้องใช้server guardซ้ำและตรวจเงื่อนไขส่งอื่นด้วย ไม่ถือ browser selectionเป็นสิทธิ์ส่ง.
 - ส่งวางบิลเดิมก่อนเริ่มแอปจะ import/บันทึกภายนอกอย่างไร เพื่อไม่ขึ้นว่าทุกบิลเก่ายังไม่เคยวาง
 - เงินรับกี่ใบ/บาท: ยืนยันว่าใช้ received money, allocated money, หรือทั้งสองแสดงแยก และปฏิบัติกับ reversal/unallocated receipt อย่างไร
 - ยอดบิลเข้าประจำวัน: original vs current invoice amount เมื่อเกิด adjustment ภายหลัง ต้องตั้ง label และเก็บหลักฐานให้เหมาะ

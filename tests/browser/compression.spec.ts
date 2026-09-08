@@ -1,4 +1,9 @@
 import {test,expect} from '@playwright/test';
+test('deployed collection selection validation rejects missing or invalid login',async({request})=>{
+ const data={hotel:'KAT',accountId:'fictional',ids:['fictional']};
+ expect((await request.post('/api/collection/validate-selection',{data})).status()).toBe(401);
+ expect((await request.post('/api/collection/validate-selection',{data,headers:{Authorization:'Bearer invalid'}})).status()).toBe(401);
+});
 test('compressed children and unverified rows cannot enter selection or its total',async({page})=>{
  const user={id:'synthetic-compression-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
  await page.addInitScript(user=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-session',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user})),user);
