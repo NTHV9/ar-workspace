@@ -25,8 +25,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
         if(!acquired)await step.sleep(`wait-${attempt}`,'15 seconds');
       }
       if(!acquired)throw new Error('refresh_queue_timeout');
-      const businessDate=await step.do('business-date',()=>readBusinessDate(reader,hotel));
-      const ids=await step.do('discovery',async()=>{
+      const businessDate=await step.do('business-date',{retries:{limit:1,delay:'5 seconds',backoff:'constant'}},()=>readBusinessDate(reader,hotel));
+      const ids=await step.do('discovery',{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
         if(accountId)return [accountId];
         return discoverAccountIds(reader,hotel);
       });
@@ -39,7 +39,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
           return {invoices:snapshot.invoices.length};
         });
       }
-      await step.do('verify-membership-and-publish',async()=>{
+      await step.do('verify-membership-and-publish',{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
         const job=await backendRpc<{status:string}>(this.env,'ar_refresh_job',{p_run_id:runId});
         if(job.status==='succeeded')return {accounts:ids.length};
         if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');

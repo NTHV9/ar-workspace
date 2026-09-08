@@ -1,5 +1,11 @@
 import { OperaError } from './client';
-export interface ReadPage<T> { rows:T[]; hasMore?:boolean; count?:number; totalResults?:number; offset?:number }
+export interface ReadPage<T> { rows:T[]; hasMore?:boolean; count?:number; totalResults?:number; offset?:number; nextOffset?:number }
+/** This environment was verified to return requested offset + requested limit,
+ * including the partial last page. This is an explicit adapter, not a heuristic. */
+export function verifiedNextCursor(page:Record<string,unknown>,requestedOffset:number,limit:number):number {
+  if(page.limit!==limit||page.offset!==requestedOffset+limit)throw new OperaError('pagination_changed');
+  return page.offset as number;
+}
 
 /** Completes one stable query before any caller may publish its collected members. */
 export async function collectPages<T>(read:(offset:number,limit:number)=>Promise<ReadPage<T>>,identity:(row:T)=>string,limit=50):Promise<T[]> {
@@ -20,6 +26,7 @@ export async function collectPages<T>(read:(offset:number,limit:number)=>Promise
     // Oracle's published contract treats absent hasMore as the end; totals are still checked.
     if(!page.hasMore){if(total!==undefined&&rows.length!==total)throw new OperaError('pagination_incomplete');return rows;}
     if(page.rows.length===0)throw new OperaError('pagination_incomplete');
-    offset+=page.rows.length;
+    if(page.nextOffset!==undefined){if(!Number.isSafeInteger(page.nextOffset)||page.nextOffset<=offset)throw new OperaError('pagination_changed');offset=page.nextOffset;}
+    else offset+=page.rows.length;
   }
 }

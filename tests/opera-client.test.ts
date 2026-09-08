@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OperaReader, OperaError } from '../worker/opera/client';
-import { collectPages } from '../worker/opera/pagination';
+import { collectPages,verifiedNextCursor } from '../worker/opera/pagination';
 
 const config={origin:'https://gateway.example.com',appKey:'synthetic-app-key',hotelId:'SYNTHETIC-KAT'};
 describe('new OPERA read client',()=>{
@@ -56,6 +56,13 @@ describe('new OPERA read client',()=>{
   });
 });
 describe('complete pagination',()=>{
+  it('handles the verified next-page cursor including a partial last page',async()=>{
+    expect(verifiedNextCursor({offset:120,limit:20},100,20)).toBe(120);
+    const offsets:number[]=[];
+    const rows=await collectPages(async offset=>{offsets.push(offset);return {rows:[{id:String(offset)}],nextOffset:offset+20,hasMore:offset===0,totalResults:2};},r=>r.id,20);
+    expect(offsets).toEqual([0,20]);expect(rows).toHaveLength(2);
+    expect(()=>verifiedNextCursor({offset:0,limit:20},0,20)).toThrow();
+  });
   it('visits requested offsets and returns every distinct member',async()=>{
     const offsets:number[]=[];
     const rows=await collectPages(async offset=>{offsets.push(offset);return offset===0?{rows:[{id:'a'},{id:'b'}],hasMore:true,count:2,totalResults:3,offset:0}:{rows:[{id:'c'}],hasMore:false,count:1,totalResults:3,offset:2};},row=>row.id,2);
