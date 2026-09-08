@@ -21,4 +21,8 @@ Export PdfWorkspace from src/pdf/PdfWorkspace.tsx. Props: documents: PdfSourceDo
 - Ruling: active document jobs retain original+edited private files for review; retention duration/Drive archive awaits confirmed policy, no invented30/90-day timer.
 - Ruling: implement original text-run replacement and box wrapping with explicit fixed-page limits, plus true flattened removal on edited pages. No paid SDK and no claim of unrestricted Word document reflow.
 - Ruling: user will be asleep; continue independently. Missing Gmail/Drive grants/recipient do not block editor and native PDF work. No sends.
-- Tasks1–6: pending.
+- Task1: native Statement still incomplete. Tenant allReports exactmatches found; no renderer/bytes contract. Owner async question pending. Do not invent transport or markGoalcomplete.
+- Task2: implemented/applied; private jobs/receipts/owner policies and interruptionfence tested81isolatedSQL assertions plus hostedtests. RealKAT/TSK generation passed; Both-modepartialhonest.
+- Task3–4: editor/assembly implemented and tested; fixed-page original-run replacement andflattening limits explicit. NoWordparagraph/page reflowclaim. Draftrecovery/preview/async protections passed.
+- Task5: realKAT browsercreate→native→draft→reopen→reviewedsave passed; TSKnative2pageInvoice preserved; sourceARamountsunchanged.
+- Task6: sourcee34439c pushed/deployed;124unit,full25browser tests passed (including13editor tests). SyntheticCloudflare1440/1280imageschecked; scopedreviewfindingsresolved. GoalpartialuntilnativeStatementtransport isproved.

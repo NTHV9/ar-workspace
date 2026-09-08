@@ -1,6 +1,10 @@
 # Native selected Statement API research — 2026-09-09
 
-Status: **researched, not provider-tested or enabled**. This task performed public documentation reads and local specification inspection only. No credentials, customer payloads, OPERA mutations, email, cloud changes, commits, or push. Native reservation Folio transport already proved by the parent task is outside this investigation.
+Status: **research and tenant metadata reads complete; native Statement PDF transport not verified or enabled**. This task performed public documentation reads and local specification inspection only. No credentials, customer payloads, OPERA mutations, email, cloud changes, commits, or push. Native reservation Folio transport already proved by the parent task is outside this investigation.
+
+## Parent integration update — 2026-09-09
+
+Root subsequently performed authorized tenant reads. Published reports exact-name queries returned0; `/allReports` with includeUnpublished=true returned exact report definitions for kat_statement and tsk_statement,1each,hasMore=false. Both descriptors areIndividualOpenItems; report metadata hasParameters=false,formToRun=O9_GENERIC_FORM,procedureRequired=true. Parameter reads returnedemptylists andno rendererlinks. Follow-up on source e34439c confirmed both reports have moduleType=Cus, customized template present, data source present/typeODT, externalReportUrl absent andisUrlDynamic=false. Read-only runs: KAT152a91d5-14b3-4e1e-912f-3a73a73d4ce4; TSKfdc900ed-e23f-49df-9946-f46c1f2758dd. These fields do not establish report execution or attachment mapping. These are actualmetadata findings, notStatementPDF execution evidence. NativeStatementtransport remainsunverified andanowner questionrequests the specificOracleexecution/downloadcontract. No speculativepostStatements orreportconfigurationmutation.
 
 ## Finding
 

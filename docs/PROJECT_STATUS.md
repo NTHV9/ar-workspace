@@ -1,5 +1,34 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: Goal PDF Workspace — editorพร้อมตรวจ, Native Statementยังไม่ครบ
+
+**Goal ยัง active และยังไม่สำเร็จครบ** เพราะ native Statement PDF transport ยังไม่มีหลักฐานรับไฟล์จริง. เจ้าของอนุมัติให้ทำงานต่อขณะนอนแล้ว; ไม่ต้องรับ Secret เพิ่มสำหรับส่วนที่ทำสำเร็จ.
+
+### Implemented / pushed / deployed
+- Source `e34439c4fc67c11608e8bf45c107ff584a8059f6` บน `codex/opera-refresh` / public `NTHV9/ar-workspace`; Worker `ar-workspace` deployment `40373775cc7d450898675d3607ceef26`; Workflow version `497a0ef1-975f-4be6-aa4c-d034098d74db`. เว็บ https://ar-workspace.ar-c82.workers.dev .
+- Applied `20260908185317_ar_document_jobs` และ `20260908194840_ar_document_interrupted_fence`: jobs, ordered immutable manifest, source files, command aliases, draft revisions, immutable upload receipts; generated-file uncertainty fences. Memberอ่านเฉพาะงาน/ไฟล์ของowner; RPCเขียนเฉพาะservice role; Storage jobs/ผูกownerและvalidation/ยังprivate.
+- Account Detail → Prepare documents → job → native source PDFs → PDF Workspace → Draft/reopen → mandatory final Preview/ack → private reviewed files. แยกสถานะpartial/unavailable/uncertain, retrydispatchไม่ออกคำสั่งrenderซ้ำที่claimไปแล้ว. ไม่แก้ยอดหรือส่งอีเมล.
+- Editor: detected source-text run replacement,ข้อความ/font/style/color/position,whiteout,shape,note,stamp,PNG/JPEG,image resize/move,add/delete/reorderpagesภายในdocument group,undo/redo,บันทึกDraft/ป้องกันปิดงานที่ยังไม่บันทึก/เปิดคืน. แก้บนfixed-pageพร้อมwrapในtextbox ไม่อ้างautomatic Word paragraph/page reflow; scanned/rotated textใช้เครื่องมือวางข้อความ/ปิดข้อมูลและPreviewแทน.
+- Content3แบบและdelivery3แบบ;รักษาหลายหน้าของInvoiceเป็นกลุ่มเดียว. Edited pagesส่งออกเป็นopaque raster pages;ไม่มีsource text streamซ่อนอยู่ในหน้าที่แก้ ส่วนหน้าไม่แก้คงnative. Previewใช้PDF.jsอ่าน **export bytesจริง** ทุกหน้า;ไม่ใช้iframeที่IABแสดงไม่ได้. Same-user token renewal/background reloadไม่ทำให้dirty editorหาย.
+- Runtime budgets: upload20MiB (ปรับค่าได้ภายใต้Storage50MiB), editor source bytes64MiB (ปรับค่าได้). Selection4000ตามpublishedARS capacity ไม่มีsilent truncation. Validate editsก่อนapply/saveเพื่อไม่สร้างDraftที่เปิดคืนไม่ได้;ภาพ≤10MBและโครงprojectมีsafetybounds.
+
+### Tested จริงและหลักฐาน
+- KAT job `c5e1ef0e-370e-4132-9465-ab2d4c6adc40` สร้างผ่านlogged-in browserจริง:1Invoice/1nativePDF → เพิ่มข้อความValidation draftไม่ส่ง → privateDraft revision1 →เปิดกลับข้อความอยู่ →ตรวจPreviewจริง →ack/save revision2,exports1. DigestยอดARก่อน/หลัง **ตรงกัน**.
+- TSK job `b60ded4b-f70b-4a70-91b9-0b4eaf4ba013`:1Invoice/nativePDF **2หน้า**;เปิดWorkspaceและPreviewแสดง2หน้าในไฟล์เดียว ไม่แยกเป็น2Invoice.
+- Both-mode A/C job `0be1a572-932c-4cc3-bd5b-4fe79c208177`:2nativeInvoice filesพร้อม แต่Statement unavailable → jobpartialตามจริง ไม่มีStatementสมมติแทน. ต้องเลือกเปิดavailablefilesอย่างชัดเจน.
+- SQL:81isolatedPGlite assertions (รวม4000selection,ownership,receipts,stale revisions,uncertain race) ผ่าน;hostedcreate/rollback,stale-revision rejection,interruption fenceผ่าน. Nonmemberroleเห็นjobs0/files0.
+- Build/Typecheckผ่าน;124unit tests/17filesผ่าน. Full Playwright suiteล่าสุด25ข้อผ่าน (รวมeditor13ข้อและguardใหม่),production frontend1440×900/1280×800และactualexportPreviewผ่าน. APIทั้งหมดในภาพเปรียบเทียบเป็นsynthetic mocks; nativeintegrationแยกเป็นหลักฐานprivateข้างต้น.
+- ภาพตรวจจริงจากCloudflare: `evidence/pdf-workspace-cloudflare-1440x900.png`, `-1280x800.png` และfinal-previewทั้งสองขนาด. เปิดตรวจแล้ว ไม่มีข้อมูลลูกค้า;referencePNGเดิมไม่เปลี่ยน. ภาพnativePDFที่ตรวจในIABไม่ได้เข้าGit.
+- Independent reviewพบแล้วแก้: stale export/image completion,token refreshทำให้editorหาย,Storageownerbypass และstale snapshotทำให้ambiguous renderดูretryable. Reviewล่าสุดไม่มีactionablecodeblockerในscopeที่ตรวจ.
+
+- CI ของsourceล่าสุดผ่าน: https://github.com/NTHV9/ar-workspace/actions/runs/34275917712 ; healthตรวจSupabaseจริงและSHAตรง.
+
+### สิ่งที่ยังต้องรอ / ไม่กล่าวอ้างว่าครบ
+- Native selectedStatementPDFยัง **ไม่ verified**. ตรวจAPIจริงพบ `kat_statement` / `tsk_statement` ผ่าน allReports รวมunpublished, exactmatch1ต่อhotel; typeIndividualOpenItems,hasParameters=false,formO9_GENERIC_FORM,procedureRequired=true,parameters/rendererlinksว่าง. ตรวจเพิ่มเติมจริงทั้งสองโรงแรม: moduleType=Cus, customized template=true, dataSourceType=ODT, external URLไม่มี; ไม่พบช่องทางdownloadที่ประกาศในmetadata. Publishedcontractsคืนdescriptor/print-processingstatus ไม่ใช่PDF. ไม่เดาrenderer endpoint ไม่เรียกpostStatementsเพียงเพื่อค้นหาไฟล์ และไม่ใช้systemPDFfallback.
+- ฝากคำถามให้เจ้าของส่งoperation/คู่มือ/ข้อมูลจากOracleที่ยืนยันการสร้างและdownloadStatementPDFเมื่อสะดวกแล้ว;ยังไม่ต้องส่งSecret. รายละเอียดอยู่ใน STATEMENT_API_RESEARCH.md. **Goalห้ามmarkcompleteจนส่วนนี้ทดสอบได้จริง**.
+- Native non-reservationหรือหลายhistoricalFoliosในwindowเดียวที่ยังจับคู่ไม่ได้จะแสดงunavailable;ไม่ได้อ้างcoverageทุกชนิดจากตัวอย่างที่ผ่าน.
+- Gmail/Drive/Billing/Collectionการส่งจริง,recipient/credit-term setup,retention/cleanup policyยังอยู่นอกผลสำเร็จของGoalช่วงนี้. ไม่มีauto-send,accountingwrite,paidadd-on,legacyresourcechangeหรือcredentialอ่านกลับ.
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: Native Invoice/Folio PDF trial และ Selected-only data
 
 - ผู้ใช้อนุมัติทำงานต่อขณะไม่อยู่หน้าคอม ใช้ Worker Secrets/sessionเดิม ไม่ขอรหัสหรือ Secret เพิ่ม.
