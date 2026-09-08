@@ -16,7 +16,7 @@ function shape(value:unknown,depth=0):unknown {
   return typeof value;
 }
 /** Categorical private diagnostics only: no customer names, amounts, IDs or raw responses. */
-export async function probeOpera(env:OperaEnv,hotel:string) {
+export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:string) {
   const reader=makeReader(env,hotel);
   const checked=async(stage:string,read:()=>Promise<unknown>)=>{try{return await read();}catch(e){throw e instanceof OperaError?new OperaError(e.code,e.upstreamStatus,e.stage??stage,e.providerMessage):new OperaError('provider_unavailable',undefined,stage);}};
   const discovery=object(await checked('account_discovery',()=>reader.accounts(0,20)));
@@ -28,7 +28,7 @@ export async function probeOpera(env:OperaEnv,hotel:string) {
     const page=object(await reader.accounts(offset,20));
     paging.push({requestedOffset:offset,returnedOffset:page.offset,limit:page.limit,count:Array.isArray(page.accountsDetails)?page.accountsDetails.length:null,hasMore:page.hasMore,totalResults:page.totalResults});
   }
-  const selected=accounts.find(a=>a.hotelId===hotel&&typeof a.accountId==='object'&&a.balance&&Number(object(a.balance).amount)>0)??accounts.find(a=>a.hotelId===hotel);
+  const selected=requestedAccountId?{hotelId:hotel,accountId:{id:requestedAccountId}}:accounts.find(a=>a.hotelId===hotel&&typeof a.accountId==='object'&&a.balance&&Number(object(a.balance).amount)>0)??accounts.find(a=>a.hotelId===hotel);
   if(!selected)return {hotel,status:'read_verified',discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryShape:shape(discovery),sampleAccount:false};
   const accountId=object(selected.accountId).id;
   if(typeof accountId!=='string')throw new OperaError('invalid_response');
@@ -36,7 +36,8 @@ export async function probeOpera(env:OperaEnv,hotel:string) {
   const dates=object(businessDate).hotels;const date=Array.isArray(dates)?object(dates[0]).businessDate:null;
   let statementSelection:unknown={status:'no_eligible_sample'};
   const currentInvoices=object(object(current).accountDetails).invoices;
-  const selectedInvoice=Array.isArray(currentInvoices)?currentInvoices.map(object).find(i=>i.balance&&Number(object(i.balance).amount)>0):undefined;
+  const eligibleInvoices=Array.isArray(currentInvoices)?currentInvoices.map(object).filter(i=>i.balance&&Number(object(i.balance).amount)>0&&!i.parentInvoiceNo):[];
+  const selectedInvoice=eligibleInvoices.find(i=>i.reservationId&&i.folioNo!==undefined)??eligibleInvoices[0];
   if(selectedInvoice&&typeof selectedInvoice.transactionNo==='number'){
     try{
       const result=object(await reader.statementSelection(accountId,[String(selectedInvoice.transactionNo)]));
@@ -58,7 +59,7 @@ export async function probeOpera(env:OperaEnv,hotel:string) {
         const folio=object(report.folio);const bytes=typeof folio.folio==='string'?atob(folio.folio):'';
         nativeFolio={status:bytes.startsWith('%PDF-')?'native_pdf_received':'invalid_pdf',byteCount:bytes.length,hotelMatches:folio.hotelId===hotel,reservationMatches:folio.reservationId&&object(folio.reservationId).id===reservationId,selectorSource:'folio_history',selectedInvoiceTextVerified:false,stored:false};
       }else nativeFolio={status:'selector_ambiguous_or_missing',matching:matching.length,returned:rows.length};
-    }catch(e){nativeFolio={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
+    }catch(e){nativeFolio={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined};}
   }
   const normalizationChecks=[];
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){
