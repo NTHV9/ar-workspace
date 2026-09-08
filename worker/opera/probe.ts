@@ -49,15 +49,16 @@ export async function probeOpera(env:OperaEnv,hotel:string) {
   if(selectedInvoice?.reservationId&&typeof selectedInvoice.folioDate==='string'&&selectedInvoice.folioNo!==undefined){
     try{
       const reservationId=String(object(selectedInvoice.reservationId).id);
-      const history=object(await reader.folioHistory(reservationId,selectedInvoice.folioDate));
+      const history=object(await checked('folio_history',()=>reader.folioHistory(reservationId,selectedInvoice.folioDate as string)));
       const rows=Array.isArray(history.folioHistory)?history.folioHistory.map(object):[];
       const matching=rows.filter(r=>String(r.folioNo)===String(selectedInvoice.folioNo)&&String(r.invoiceNo)===String(selectedInvoice.invoiceNo)&&r.reservationInfo&&String(object(r.reservationInfo).reservationId)===reservationId);
       if(matching.length===1&&history.hasMore!==true&&rows.length===1&&typeof matching[0].folioWindowNo==='number'){
-        const report=object(await reader.folioReport(reservationId,matching[0].folioWindowNo,selectedInvoice.folioDate));
+        const windowNo=matching[0].folioWindowNo;
+        const report=object(await checked('folio_report',()=>reader.folioReport(reservationId,windowNo,selectedInvoice.folioDate as string)));
         const folio=object(report.folio);const bytes=typeof folio.folio==='string'?atob(folio.folio):'';
         nativeFolio={status:bytes.startsWith('%PDF-')?'native_pdf_received':'invalid_pdf',byteCount:bytes.length,hotelMatches:folio.hotelId===hotel,reservationMatches:folio.reservationId&&object(folio.reservationId).id===reservationId,selectorSource:'folio_history',selectedInvoiceTextVerified:false,stored:false};
       }else nativeFolio={status:'selector_ambiguous_or_missing',matching:matching.length,returned:rows.length};
-    }catch(e){nativeFolio={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
+    }catch(e){nativeFolio={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
   }
   const normalizationChecks=[];
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){

@@ -1,6 +1,6 @@
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
-export interface RefreshParams { runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number }
+export interface RefreshParams { runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean }
 export interface RefreshEnv extends OperaEnv {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
