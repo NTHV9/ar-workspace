@@ -15,17 +15,17 @@ export async function collectPages<T>(read:(offset:number,limit:number)=>Promise
     const page=await read(offset,limit);
     if(!Array.isArray(page.rows)||(page.hasMore!==undefined&&typeof page.hasMore!=='boolean'))throw new OperaError('invalid_response');
     if(page.offset!==undefined&&page.offset!==offset)throw new OperaError('pagination_changed');
-    if(page.count!==undefined&&page.count!==page.rows.length)throw new OperaError('pagination_incomplete');
+    if(page.count!==undefined&&page.count!==page.rows.length)throw new OperaError('pagination_incomplete',undefined,'paging_count_mismatch',undefined,{declared:page.count,actual:page.rows.length,offset});
     if(page.totalResults!==undefined){
       if(!Number.isSafeInteger(page.totalResults)||page.totalResults<0)throw new OperaError('invalid_response');
       if(total!==undefined&&total!==page.totalResults)throw new OperaError('pagination_changed');
       total=page.totalResults;
     }
     for(const row of page.rows){const key=identity(row);if(!key)throw new OperaError('invalid_response');if(seen.has(key))throw new OperaError('duplicate_member');seen.add(key);rows.push(row);}
-    if(total!==undefined&&rows.length>total)throw new OperaError('pagination_incomplete');
+    if(total!==undefined&&rows.length>total)throw new OperaError('pagination_incomplete',undefined,'paging_total_exceeded',undefined,{collected:rows.length,total,offset,pageRows:page.rows.length});
     // Oracle's published contract treats absent hasMore as the end; totals are still checked.
-    if(!page.hasMore){if(total!==undefined&&rows.length!==total)throw new OperaError('pagination_incomplete');return rows;}
-    if(page.rows.length===0)throw new OperaError('pagination_incomplete');
+    if(!page.hasMore){if(total!==undefined&&rows.length!==total)throw new OperaError('pagination_incomplete',undefined,'paging_total_missing',undefined,{collected:rows.length,total,offset,pageRows:page.rows.length});return rows;}
+    if(page.rows.length===0)throw new OperaError('pagination_incomplete',undefined,'paging_empty_intermediate',undefined,{collected:rows.length,total:total??-1,offset});
     if(page.nextOffset!==undefined){if(!Number.isSafeInteger(page.nextOffset)||page.nextOffset<=offset)throw new OperaError('pagination_changed');offset=page.nextOffset;}
     else offset+=page.rows.length;
   }
