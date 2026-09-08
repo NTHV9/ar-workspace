@@ -1,5 +1,16 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 8 กันยายน 2026: ปิดคำเตือนจำนวนประวัติ8บัญชี
+
+- Root cause ยืนยันครบ8บัญชี: `totalResults` นับรายการหลัก ขณะที่ `inclDetails=true` ส่ง compressed parent1แถวพร้อม child2แถวที่เชื่อมด้วย `parentInvoiceNo` → `invoiceNo`. คำอธิบายเดิมว่า OPERA นับน้อยไปถูกแทนด้วยความต่างระหว่าง root count กับ expanded detail count.
+- อ่านประวัติครบสองขนาดหน้า20/10 ได้ unique membership และ row content เหมือนกันทุกบัญชี; limit1 ตรงจุดขยายส่ง3แถวที่สัมพันธ์กันจริง. รวม4207รายการหลัก/4223แถวรายละเอียด. KAT7บัญชีตรวจทั้งชุดในแต่ละรอบ; TSK2332แถวตรวจแยกรอบและเทียบ content digestตรงกัน. ไม่มี duplicate; 2 diagnostic attempts เกิด internal Workflow error แล้วตรวจซ้ำสำเร็จ ไม่ใช้ failed attempt เป็นหลักฐานผ่าน.
+- แก้ reader ให้นับ logical roots เฉพาะ parent linkage ที่ยืนยันในหน้าเดียวกัน โดยยังเก็บทุกแถวเพื่อตรวจ identity/balance. Parent หาย/กำกวมยัง fail; discovery strict เดิม; unknown over-return ยัง warning. ไม่ตัดบิลย่อย ไม่แก้ยอด และไม่มี migration รอบนี้.
+- Source pushed/deployed `aa4d840cf19dab5a34128ecb2ceaa0c7b5f2491e`, branch `codex/opera-refresh`; Worker deployment `91937c0f19994e2d8259645c46572f21`, Workflow version `5c209f5f-cf58-4218-a7fd-1a627429edb6`.
+- Full refresh หลังแก้ผ่านทั้ง KAT run `3eba45fa-4f22-41af-a76c-5b9c61339c4d` และ TSK run `a7defcac-b45c-45a1-95af-6e8b77fecd15`. Supabase ล่าสุด: KAT105 accounts/699 Invoice rows, TSK70/104; คำเตือนจำนวนประวัติเหลือ0ทั้งสองโรงแรม. คำเตือนเก่าใน audit history เก็บไว้ ไม่ลบหลักฐาน.
+- Build/Typecheckผ่าน;94 unit testsผ่าน; deployed health/unauthorized browser testผ่าน. CI sourceผ่าน: https://github.com/NTHV9/ar-workspace/actions/runs/34253583358 . ไม่เปลี่ยนUI/referencePNGในรอบนี้.
+- ข้อค้นพบสำหรับขั้น Billing/Collection: child อาจมียอดไม่ศูนย์แม้ parentเป็นศูนย์ จึงต้องรักษา parent-child context ก่อนเปิดการส่ง ไม่ตีความ child เป็นหนี้ที่ทวงแยกได้จาก balance อย่างเดียว. บันทึกใน DECISIONS_AND_OPEN_ITEMS; รอบนี้ปิดเฉพาะ count warning ไม่อ้างว่า Collection/PDF พร้อม.
+- ไม่มี OPERA accounting write, email, Drive operation หรือการอ่านค่า Secret กลับ. Diagnostic workflows คืนเฉพาะ counts/flags ไม่คืนข้อมูลลูกค้าหรือค่าลับ. รายละเอียดหลักฐานและแหล่ง Oracle อยู่ใน OPERA_API_CONTRACT_NOTES.
+
 ## Checkpoint ล่าสุด — 8 กันยายน 2026 23:23 ICT: OPERA snapshot จริงและ Refresh
 
 ### Implemented / deployed / enabled
