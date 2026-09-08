@@ -12,7 +12,7 @@ test('Portfolio and Account Detail preserve navigation, filtering, sorting and s
   await page.goto('/?mode=review');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);
   mkdirSync('evidence',{recursive:true});
-  await page.screenshot({path:'evidence/portfolio-1440.png'});
+  await page.screenshot({path:'evidence/portfolio-1440.png',animations:'disabled'});
   await page.getByRole('button',{name:'Expand Aging',exact:true}).click();
   await expect(page.getByText('Aging by hotel',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Collapse Aging',exact:true}).click();
@@ -26,7 +26,7 @@ test('Portfolio and Account Detail preserve navigation, filtering, sorting and s
   await page.getByLabel('Select INV-10085',{exact:true}).check();
   await page.getByLabel('Select INV-13776',{exact:true}).check();
   await expect(page.locator('.selection-bar')).toContainText('2 items selected');
-  await page.screenshot({path:'evidence/account-1440.png'});
+  await page.screenshot({path:'evidence/account-1440.png',animations:'disabled'});
   await page.getByRole('button',{name:'Clear selection',exact:true}).click();
   await expect(page.locator('.selection-bar')).toContainText('0 items selected');
   await page.getByRole('button',{name:'Back to portfolio',exact:false}).click();
@@ -34,10 +34,11 @@ test('Portfolio and Account Detail preserve navigation, filtering, sorting and s
   await expect(page.getByPlaceholder('Search Account / Account ID')).toHaveValue('Account A');
   await expect(page.locator('.accounts-panel th[aria-sort="ascending"]')).toContainText('Total open');
   await page.getByRole('button',{name:'Clear filters',exact:true}).click();
+  await page.locator('.accounts-panel').getByRole('button',{name:'Total open',exact:true}).click();
   await page.setViewportSize({width:1280,height:800});
-  await page.screenshot({path:'evidence/portfolio-1280.png'});
+  await page.screenshot({path:'evidence/portfolio-1280.png',animations:'disabled'});
   await page.locator('.accounts-panel td.kat button').first().click();
-  await page.screenshot({path:'evidence/account-1280.png'});
+  await page.screenshot({path:'evidence/account-1280.png',animations:'disabled'});
   await page.setViewportSize({width:1100,height:760});
   await page.locator('.ledger .name-link').first().click();
   await expect(page.locator('.invoice-detail.drawer-open')).toBeVisible();
@@ -47,6 +48,6 @@ test('Portfolio and Account Detail preserve navigation, filtering, sorting and s
 });
 test('live entry shows login and never exposes synthetic data implicitly',async({page})=>{
   await page.goto('/');await expect(page.getByRole('heading',{name:'Your AR workspace'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Sign in with Google'})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'Sign in with Google'})).toBeVisible();
   await expect(page.getByText('Account A · Synthetic',{exact:true})).toHaveCount(0);
 });

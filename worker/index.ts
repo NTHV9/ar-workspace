@@ -13,7 +13,16 @@ async function upstream(url: string, options: RequestInit) {
 export async function handleApi(request: Request, env: Env): Promise<Response> {
   const path = new URL(request.url).pathname;
   if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405);
-  if (path === '/api/config') return json({ supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null });
+  if (path === '/api/config') {
+    let googleEnabled = false;
+    if (env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY) {
+      try {
+        const response = await upstream(`${env.SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY } });
+        if (response.ok) googleEnabled = (await response.json() as {external?:{google?:boolean}}).external?.google === true;
+      } catch { /* Configuration stays fail-closed; no provider error details reach the client. */ }
+    }
+    return json({ supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null, googleEnabled });
+  }
   if (path === '/api/health') {
     if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ status: 'unavailable', supabase: 'not_configured', opera: 'not_connected', commit: env.COMMIT_SHA ?? 'development' }, 503);
     try {
