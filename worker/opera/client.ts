@@ -35,6 +35,9 @@ export class OperaReader {
   history(accountId:string,offset=0,limit=20) {
     return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','true'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],['fetchInstructions','Payments'],...this.page(offset,limit)]);
   }
+  openHistory(accountId:string,offset=0,limit=20) {
+    return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','false'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],['fetchInstructions','Payments'],...this.page(offset,limit)]);
+  }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
   private async read(path:string,query:string[][]):Promise<unknown> {
     let token:string;

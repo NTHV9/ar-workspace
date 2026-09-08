@@ -1,6 +1,18 @@
 export interface Account {
   hotel: string; id: string; name: string; type: string; open: number; over90: number; items: number;
-  group?: string; aging?: number[]; creditLimit?: number; oldest?: number;
+  group?: string; aging?: number[]; creditLimit?: number | null; oldest?: number;
+  account_no?: string; verification_state?: string; agingBuckets?: AgingBucket[];
+}
+export interface AgingBucket { label: string; start: number | null; end: number | null; sequence: number; amount: number; debit: number; credit: number }
+export interface HotelRefresh { hotel: string; status: string; last_success_at: string | null; last_attempt_at?: string | null; error_code?: string | null; run_id?: string | null }
+export interface RefreshState { hotels: HotelRefresh[]; running: boolean }
+export function sourceAging(rows: Account[], hotel: string): AgingBucket[] {
+  const accounts=rows.filter(a=>a.hotel===hotel);
+  if(!accounts.length || accounts.some(a=>!a.agingBuckets?.length))return [];
+  const signature=(b:AgingBucket)=>JSON.stringify([b.label,b.start,b.end,b.sequence]);
+  const first=accounts[0].agingBuckets!;
+  if(accounts.some(a=>JSON.stringify(a.agingBuckets!.map(signature))!==JSON.stringify(first.map(signature))))return [];
+  return first.map((bucket,index)=>({...bucket,amount:accounts.reduce((s,a)=>s+a.agingBuckets![index].amount,0),debit:accounts.reduce((s,a)=>s+a.agingBuckets![index].debit,0),credit:accounts.reduce((s,a)=>s+a.agingBuckets![index].credit,0)}));
 }
 export interface Comparison { key: string; name: string; kat: number; tsk: number; total: number; over90: number; share: number; items: number; accounts: number; members: Account[] }
 export interface Invoice { id: string; hotel: string; accountId: string; guest: string; invoiceNo: string; folioNo: string; date: string; due: string | null; original: number; open: number; aging: string; stage: string }
