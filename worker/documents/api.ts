@@ -1,6 +1,6 @@
 import type {RefreshEnv} from '../refresh/backend';
 import {PDFDocument} from 'pdf-lib';
-import {createDocumentJob,documentJob,uploadPrivate,uuidPattern,type DocumentCreateInput} from './jobs';
+import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput} from './jobs';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 async function bodyBytes(request:Request,max:number){
  const declared=Number(request.headers.get('Content-Length'));if(declared>max)throw new Error('document_upload_too_large');
@@ -30,10 +30,11 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    const input=await bodyJson(request,1024*1024);if(typeof input.commandKey!=='string'||!uuidPattern.test(input.commandKey)||!['KAT','TSK'].includes(String(input.hotel))||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>200||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>4000||input.ids.some(id=>typeof id!=='string'||!id||id.length>200)||new Set(input.ids).size!==input.ids.length||!['statement','invoices','both'].includes(String(input.content))||!['combined','statement_bundle','separate'].includes(String(input.layout))||!['billing','collection'].includes(String(input.purpose)))return json({error:'document_request_invalid'},400);
    return json(await createDocumentJob(env,owner,input as unknown as DocumentCreateInput),202);
   }
-  const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
+  const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
   if(!match||!uuidPattern.test(match[1]))return json({error:'not_found'},404);
   const [,id,action,child]=match,job=await documentJob(env,id);if(!job)return json({error:'document_job_missing'},404);if(job.owner!==owner)return json({error:'forbidden'},403);
-  if(!action&&request.method==='GET')return json(job);
+  if(!action&&request.method==='GET')return json(await reconcileDocumentStatus(env,job));
+  if(action==='dispatch'&&request.method==='POST')return json(await dispatchDocumentJob(env,job));
   if(request.method==='GET'&&['project','files','exports'].includes(action)){
    const file=action==='files'?job.files.find(f=>f.id===child&&f.state==='ready'):null;
    const index=Number(child);const exported=action==='exports'&&Number.isSafeInteger(index)&&index>=0?job.exports[index]:null;
