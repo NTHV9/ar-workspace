@@ -25,6 +25,10 @@ describe('protected Worker API', () => {
     const response = await handleApi(new Request('https://app.test/api/portfolio'), {});
     expect(response.status).toBe(401);
   });
+  it('protects real OPERA probes with the same backend authentication',async()=>{
+    const response=await handleApi(new Request('https://app.test/api/opera/probe?hotel=KAT',{method:'POST'}),{});
+    expect(response.status).toBe(401);
+  });
   it('does not substitute demo data for an unconfigured service', async () => {
     const response = await handleApi(new Request('https://app.test/api/portfolio', { headers: { Authorization: 'Bearer invalid' } }), {});
     expect(response.status).toBe(503);
