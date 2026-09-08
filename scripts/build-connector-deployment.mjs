@@ -22,9 +22,8 @@ export default { async fetch(request, env) {
   const url=new URL(req.url); const asset=assets[url.pathname] ?? (url.pathname.startsWith('/assets/') ? null : assets['/index.html']);
   if(!asset)return new Response('Not found',{status:404});
   const bytes=Uint8Array.from(atob(asset.data),x=>x.charCodeAt(0));
-  const compressed=(req.headers.get('Accept-Encoding')??'').includes('gzip');
-  const body=compressed?bytes:new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(req.method==='HEAD'?null:body,{headers:{'Content-Type':asset.type,...(compressed?{'Content-Encoding':'gzip'}:{}),'Vary':'Accept-Encoding','Cache-Control':url.pathname.startsWith('/assets/')?'public,max-age=31536000,immutable':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'}});
+  const body=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Response(req.method==='HEAD'?null:body,{headers:{'Content-Type':asset.type,'Cache-Control':url.pathname.startsWith('/assets/')?'public,max-age=31536000,immutable':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'}});
  }}; return worker.fetch(request,{...env,ASSETS});
 }};`);
 await build({entryPoints:['dist-worker/entry.js'],bundle:true,format:'esm',platform:'browser',outfile:'dist-worker/deploy.js',minify:true});

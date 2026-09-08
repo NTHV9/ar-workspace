@@ -1,0 +1,52 @@
+import { test, expect } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+
+test('Cloudflare public health verifies database and protects live data',async({request})=>{
+  const health=await request.get('/api/health'); expect(health.status()).toBe(200);
+  expect(await health.json()).toMatchObject({supabase:'database_verified',opera:'not_connected'});
+  expect((await request.get('/api/portfolio')).status()).toBe(401);
+  expect((await request.get('/api/portfolio',{headers:{Authorization:'Bearer invalid'}})).status()).toBe(401);
+});
+test('Portfolio and Account Detail preserve navigation, filtering, sorting and selection',async({page})=>{
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/?mode=review');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
+  await page.evaluate(()=>document.fonts.ready);
+  mkdirSync('evidence',{recursive:true});
+  await page.screenshot({path:'evidence/portfolio-1440.png'});
+  await page.getByRole('button',{name:'Expand Aging',exact:true}).click();
+  await expect(page.getByText('Aging by hotel',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Collapse Aging',exact:true}).click();
+  await page.getByLabel('Account Type',{exact:true}).selectOption('OTA / Agent');
+  await page.getByPlaceholder('Search Account / Account ID').fill('Account A');
+  await expect(page.locator('.accounts-panel tbody tr')).toHaveCount(1);
+  await page.locator('.accounts-panel').getByRole('button',{name:'Total open',exact:true}).click();
+  await expect(page.locator('.accounts-panel th[aria-sort="ascending"]')).toContainText('Total open');
+  await page.locator('.accounts-panel td.kat button').click();
+  await expect(page.getByRole('heading',{name:'Account A · Synthetic',exact:true}).first()).toBeVisible();
+  await page.getByLabel('Select INV-10085',{exact:true}).check();
+  await page.getByLabel('Select INV-13776',{exact:true}).check();
+  await expect(page.locator('.selection-bar')).toContainText('2 items selected');
+  await page.screenshot({path:'evidence/account-1440.png'});
+  await page.getByRole('button',{name:'Clear selection',exact:true}).click();
+  await expect(page.locator('.selection-bar')).toContainText('0 items selected');
+  await page.getByRole('button',{name:'Back to portfolio',exact:false}).click();
+  await expect(page.getByLabel('Account Type',{exact:true})).toHaveValue('OTA / Agent');
+  await expect(page.getByPlaceholder('Search Account / Account ID')).toHaveValue('Account A');
+  await expect(page.locator('.accounts-panel th[aria-sort="ascending"]')).toContainText('Total open');
+  await page.getByRole('button',{name:'Clear filters',exact:true}).click();
+  await page.setViewportSize({width:1280,height:800});
+  await page.screenshot({path:'evidence/portfolio-1280.png'});
+  await page.locator('.accounts-panel td.kat button').first().click();
+  await page.screenshot({path:'evidence/account-1280.png'});
+  await page.setViewportSize({width:1100,height:760});
+  await page.locator('.ledger .name-link').first().click();
+  await expect(page.locator('.invoice-detail.drawer-open')).toBeVisible();
+  await page.getByRole('button',{name:'Close invoice details'}).click();
+  await expect(page.locator('.invoice-detail')).not.toBeVisible();
+  expect(errors).toEqual([]);
+});
+test('live entry shows login and never exposes synthetic data implicitly',async({page})=>{
+  await page.goto('/');await expect(page.getByRole('heading',{name:'Your AR workspace'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Sign in with Google'})).toBeEnabled();
+  await expect(page.getByText('Account A · Synthetic',{exact:true})).toHaveCount(0);
+});
