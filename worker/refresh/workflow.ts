@@ -30,16 +30,24 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
         if(accountId)return [accountId];
         return discoverAccountIds(reader,hotel);
       });
+      let invalidAccounts=0;
       for(let index=0;index<ids.length;index++){
-        await step.do(`account-${index}`,{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
+        const outcome=await step.do(`account-${index}`,{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
           if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
-          const previous=await previousInvoices(this.env,hotel,ids[index]);
-          const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate,previous);
-          await backendRpc(this.env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
-          // Financial payloads remain only in private Supabase staging, not step output.
-          return {invoices:snapshot.invoices.length};
+          try {
+            const previous=await previousInvoices(this.env,hotel,ids[index]);
+            const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate,previous);
+            await backendRpc(this.env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
+            // Financial payloads remain only in private Supabase staging, not step output.
+            return {ok:true,invoices:snapshot.invoices.length,code:'',stage:''};
+          }catch(error){
+            if(error instanceof OperaError&&['invalid_response','pagination_changed','pagination_incomplete','duplicate_member'].includes(error.code))return {ok:false,invoices:0,code:error.code,stage:error.stage??''};
+            throw error;
+          }
         });
+        if(!outcome.ok)invalidAccounts++;
       }
+      if(invalidAccounts)throw new OperaError('invalid_response',undefined,'account_validation');
       await step.do('verify-membership-and-publish',{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
         const job=await backendRpc<{status:string}>(this.env,'ar_refresh_job',{p_run_id:runId});
         if(job.status==='succeeded')return {accounts:ids.length};

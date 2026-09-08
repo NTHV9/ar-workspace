@@ -3,6 +3,12 @@ import { collectPages,verifiedNextCursor } from '../opera/pagination';
 import { normalizeAccount, amountCents, type AccountSnapshot } from '../opera/normalize';
 import type { PreviousInvoice } from './backend';
 type Row=Record<string,unknown>;
+function nextCursor(page:Row,offset:number,limit:number,rows:number) {
+  // An explicitly empty final result needs no next cursor; it is not proof of any
+  // individual invoice's zero balance. Missing invoices still use explicit history.
+  if(rows===0&&page.totalResults===0&&page.hasMore===false)return undefined;
+  return verifiedNextCursor(page,offset,limit);
+}
 export function asObject(value:unknown):Row {if(!value||typeof value!=='object'||Array.isArray(value))throw new OperaError('invalid_response');return value as Row;}
 function id(value:unknown):string {const v=asObject(value).id;if(typeof v!=='string'||!v)throw new OperaError('invalid_response');return v;}
 export async function discoverAccountIds(reader:OperaReader,hotel:string):Promise<string[]> {
@@ -11,7 +17,7 @@ export async function discoverAccountIds(reader:OperaReader,hotel:string):Promis
     if(!Array.isArray(page.accountsDetails))throw new OperaError('invalid_response',undefined,'discovery_shape');
     const rows=page.accountsDetails.map(asObject);
     if(rows.some(a=>a.hotelId!==hotel))throw new OperaError('invalid_response',undefined,'discovery_scope');
-    return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:verifiedNextCursor(page,offset,limit)};
+    return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
   },row=>id(row.accountId),20);
   return rows.map(row=>id(row.accountId));
 }
@@ -33,7 +39,7 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
     const rows:{kind:'invoice'|'payment';value:Row}[]=[];
     for(const raw of page.details){const group=asObject(raw);if(group.hotelId!==hotel||id(group.accountId)!==accountId)throw new OperaError('invalid_response',undefined,'history_scope');
       for(const [field,kind]of [['invoices','invoice'],['payments','payment']] as const){if(group[field]===undefined)continue;if(!Array.isArray(group[field]))throw new OperaError('invalid_response');for(const row of group[field])rows.push({kind,value:asObject(row)});}}
-    return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:verifiedNextCursor(page,offset,limit)};
+    return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
   },r=>{const t=r.value.transactionNo;if((typeof t!=='number'&&typeof t!=='string')||String(t)==='')throw new OperaError('invalid_response');return `${r.kind}:${t}`;},20);
   const open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
   const expected=new Map(snapshot.invoices.filter(i=>i.open!==0).map(i=>[i.id,Math.round(i.open*100)]));
@@ -47,7 +53,7 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
       if(!Array.isArray(page.details))throw new OperaError('invalid_response');
       const rows:Row[]=[];
       for(const raw of page.details){const group=asObject(raw);if(group.hotelId!==hotel||id(group.accountId)!==accountId)throw new OperaError('invalid_response');if(group.invoices!==undefined&&!Array.isArray(group.invoices))throw new OperaError('invalid_response');for(const row of (group.invoices??[]) as unknown[])rows.push(asObject(row));}
-      return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:verifiedNextCursor(page,offset,limit)};
+      return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
     },r=>String(r.transactionNo??''),20);
     const wanted=new Set(missing.map(i=>i.id));
     const closed=closedCandidates.filter(row=>wanted.has(String(row.transactionNo))&&amountCents(row.balance,'THB')===0);
