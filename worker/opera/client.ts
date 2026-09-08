@@ -48,7 +48,7 @@ export class OperaReader {
   }
   folioHistory(reservationId:string,folioDate:string,offset=0,limit=20) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
-    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/folioHistory`,[['reservationIdId',reservationId],['folioDate',folioDate],['folioEndDate',folioDate],['aR','true'],['checkOut','true'],...this.page(offset,limit)]);
+    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/folioHistory`,[['id',reservationId],['folioDate',folioDate],['folioEndDate',folioDate],['aR','true'],['checkOut','true'],...this.page(offset,limit)]);
   }
   folioReport(reservationId:string,folioWindowNo:number,folioDate:string) {
     if(!Number.isSafeInteger(folioWindowNo)||folioWindowNo<1||!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
