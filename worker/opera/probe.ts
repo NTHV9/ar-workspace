@@ -21,10 +21,16 @@ export async function probeOpera(env:OperaEnv,hotel:string) {
   const discovery=object(await checked('account_discovery',()=>reader.accounts(0,20)));
   if(!Array.isArray(discovery.accountsDetails))throw new OperaError('invalid_response');
   const accounts=discovery.accountsDetails.map(object);
+  const paging=[];
+  const total=typeof discovery.totalResults==='number'?discovery.totalResults:accounts.length;
+  for(const offset of [...new Set([20,Math.max(0,Math.floor((total-1)/20)*20)])].filter(x=>x<total&&x>0)){
+    const page=object(await reader.accounts(offset,20));
+    paging.push({requestedOffset:offset,returnedOffset:page.offset,limit:page.limit,count:Array.isArray(page.accountsDetails)?page.accountsDetails.length:null,hasMore:page.hasMore,totalResults:page.totalResults});
+  }
   const selected=accounts.find(a=>a.hotelId===hotel&&typeof a.accountId==='object'&&a.balance&&Number(object(a.balance).amount)>0)??accounts.find(a=>a.hotelId===hotel);
   if(!selected)return {hotel,status:'read_verified',discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryShape:shape(discovery),sampleAccount:false};
   const accountId=object(selected.accountId).id;
   if(typeof accountId!=='string')throw new OperaError('invalid_response');
   const [current,history,businessDate]=await Promise.all([checked('current_account',()=>reader.account(accountId)),checked('invoice_history',()=>reader.history(accountId,0,20)),checked('business_date',()=>reader.businessDate())]);
-  return {hotel,status:'read_verified',discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
+  return {hotel,status:'read_verified',discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }

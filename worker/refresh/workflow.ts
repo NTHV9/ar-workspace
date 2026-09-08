@@ -7,8 +7,8 @@ import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './rea
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
     const {runId,hotel,accountId}=event.payload;
-    const reader=makeReader(this.env,hotel);
     try {
+      const reader=makeReader(this.env,hotel);
       let acquired=false;
       for(let attempt=0;attempt<120&&!acquired;attempt++){
         acquired=await step.do(`claim-${attempt}`,async()=>{
@@ -40,6 +40,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
         });
       }
       await step.do('verify-membership-and-publish',async()=>{
+        const job=await backendRpc<{status:string}>(this.env,'ar_refresh_job',{p_run_id:runId});
+        if(job.status==='succeeded')return {accounts:ids.length};
         if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
         if(!accountId){const after=await discoverAccountIds(reader,hotel);const expected=new Set(ids);if(after.length!==ids.length||after.some(id=>!expected.has(id)))throw new OperaError('pagination_changed');}
         await backendRpc(this.env,'ar_publish_refresh',{p_run_id:runId,p_expected_accounts:ids.length});return {accounts:ids.length};
