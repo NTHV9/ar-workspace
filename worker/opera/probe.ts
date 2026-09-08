@@ -16,7 +16,7 @@ function shape(value:unknown,depth=0):unknown {
   return typeof value;
 }
 /** Categorical private diagnostics only: no customer names, amounts, IDs or raw responses. */
-export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:string) {
+export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:string,savePdf?:(bytes:Uint8Array,expected:Record<string,string>)=>Promise<void>) {
   const reader=makeReader(env,hotel);
   const checked=async(stage:string,read:()=>Promise<unknown>)=>{try{return await read();}catch(e){throw e instanceof OperaError?new OperaError(e.code,e.upstreamStatus,e.stage??stage,e.providerMessage):new OperaError('provider_unavailable',undefined,stage);}};
   const discovery=object(await checked('account_discovery',()=>reader.accounts(0,20)));
@@ -64,7 +64,24 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
   const normalizationChecks=[];
   let reservationFolioLookup:unknown={status:'no_selector'};
   if(selectedInvoice?.reservationId&&typeof selectedInvoice.folioDate==='string'){
-    try{const result=await reader.reservationFolios(String(object(selectedInvoice.reservationId).id),selectedInvoice.folioDate);reservationFolioLookup={status:'read',shape:shape(result)};}
+    try{
+      const reservationId=String(object(selectedInvoice.reservationId).id);
+      const result=object(await reader.reservationFolios(reservationId,selectedInvoice.folioDate));
+      const info=object(result.reservationFolioInformation),reservation=object(info.reservationInfo);
+      const identityMatches=reservation.hotelId===hotel&&Array.isArray(reservation.reservationIdList)&&reservation.reservationIdList.map(object).some(r=>r.id===reservationId&&r.type==='Reservation');
+      const windows=Array.isArray(info.folioHistory)?info.folioHistory.map(object):[];
+      const all=windows.flatMap(w=>Array.isArray(w.folios)?w.folios.map(object).map(f=>({window:w.folioWindowNo,folio:f})):[]);
+      const matches=all.filter(r=>String(r.folio.invoiceNo)===String(selectedInvoice.invoiceNo)&&String(r.folio.folioNo)===String(selectedInvoice.folioNo));
+      reservationFolioLookup={status:'read',identityMatches,returned:all.length,matching:matches.length};
+      if(identityMatches&&matches.length===1&&all.length===1&&typeof matches[0].window==='number'){
+        const report=object(await checked('reservation_folio_report',()=>reader.folioReport(reservationId,matches[0].window as number,selectedInvoice.folioDate as string)));
+        const folio=object(report.folio);const bytes=typeof folio.folio==='string'?atob(folio.folio):'';
+        const reportScopeMatches=folio.hotelId===hotel&&!!folio.reservationId&&String(object(folio.reservationId).id)===reservationId;
+        let stored=false;
+        if(bytes.startsWith('%PDF-')&&reportScopeMatches&&savePdf){await savePdf(Uint8Array.from(bytes,c=>c.charCodeAt(0)),{hotel,accountId,reservationId,invoiceNo:String(selectedInvoice.invoiceNo),folioNo:String(selectedInvoice.folioNo)});stored=true;}
+        reservationFolioLookup={status:bytes.startsWith('%PDF-')?'native_pdf_received':'invalid_pdf',byteCount:bytes.length,identityMatches,reportScopeMatches,returned:all.length,matching:matches.length,selectedInvoiceTextVerified:false,stored};
+      }
+    }
     catch(e){reservationFolioLookup={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
   }
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){

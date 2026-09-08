@@ -10,7 +10,14 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
-    if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(this.env,hotel,accountId)));
+    if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(this.env,hotel,accountId,async(bytes,expected)=>{
+      if(!this.env.SUPABASE_URL||!this.env.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
+      for(const [extension,body,type]of [['pdf',new Uint8Array(bytes).buffer,'application/pdf'],['json',JSON.stringify(expected),'application/json']] as const){
+        const response=await fetch(`${this.env.SUPABASE_URL}/storage/v1/object/ar-working-files/validation/${runId}/${hotel}.${extension}`,{method:'POST',headers:{apikey:this.env.SUPABASE_SECRET_KEY,'Content-Type':type,'x-upsert':'false'},body,redirect:'manual',signal:AbortSignal.timeout(30000)});
+        if(!response.ok){await response.body?.cancel();throw new Error('private_storage_write_failed');}
+        await response.body?.cancel();
+      }
+    })));
     if(payload.historyAudit){
       if(!accountId)throw new Error('audit_account_required');
       if(payload.historyAuditOffset!==undefined){const offset=payload.historyAuditOffset;return step.do('history-window-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistoryWindow(makeReader(this.env,hotel),hotel,accountId,offset));}
