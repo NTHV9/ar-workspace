@@ -18,13 +18,13 @@ function shape(value:unknown,depth=0):unknown {
 export async function probeOpera(env:OperaEnv,hotel:string) {
   const reader=makeReader(env,hotel);
   const checked=async(stage:string,read:()=>Promise<unknown>)=>{try{return await read();}catch(e){throw e instanceof OperaError?new OperaError(e.code,e.upstreamStatus,e.stage??stage,e.providerMessage):new OperaError('provider_unavailable',undefined,stage);}};
-  const discovery=object(await checked('account_discovery',()=>reader.accounts(0,50)));
+  const discovery=object(await checked('account_discovery',()=>reader.accounts(0,20)));
   if(!Array.isArray(discovery.accountsDetails))throw new OperaError('invalid_response');
   const accounts=discovery.accountsDetails.map(object);
   const selected=accounts.find(a=>a.hotelId===hotel&&typeof a.accountId==='object'&&a.balance&&Number(object(a.balance).amount)>0)??accounts.find(a=>a.hotelId===hotel);
   if(!selected)return {hotel,status:'read_verified',discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryShape:shape(discovery),sampleAccount:false};
   const accountId=object(selected.accountId).id;
   if(typeof accountId!=='string')throw new OperaError('invalid_response');
-  const [current,history,businessDate]=await Promise.all([checked('current_account',()=>reader.account(accountId)),checked('invoice_history',()=>reader.history(accountId,0,50)),checked('business_date',()=>reader.businessDate())]);
+  const [current,history,businessDate]=await Promise.all([checked('current_account',()=>reader.account(accountId)),checked('invoice_history',()=>reader.history(accountId,0,20)),checked('business_date',()=>reader.businessDate())]);
   return {hotel,status:'read_verified',discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }

@@ -17,3 +17,7 @@ The ARS contract describes accountsDetails as an array, accountDetails as one ac
 Pagination metadata describes offset as the requested initial index and absent hasMore as all rows fetched. The new collector rejects contradictory totals, duplicate members, changed offsets, and empty hasMore pages. These checks do not prove that the source did not change without affecting counts; real membership comparison remains required before publication.
 
 No invoice or folio selector is inferred from a similarly named field. Current membership, historical zero coverage and selected-only native PDFs still require actual environment evidence.
+
+Live probe confirmed token authentication and reached discovery. The environment rejected limit=50 with HTTP 400 / OPERAWS-ODE09998 and explicitly required a maximum of 20 for Account Discovery. Reader defaults now use pages of 20; this is pagination size, not an account-count cap. History is initially requested in pages of 20 and must be verified independently.
+
+Owner-supplied Downloads/openapi.json: ARS version 26.3.0.0, SHA-256 04c6379b6ef8a2b92f0d7f40689e723464d295001f86c2c90a8b42e3cf5402cf. The three primary GET contracts match the public Oracle specification read above. The supplied file itself has not been copied into Git.

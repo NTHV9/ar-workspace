@@ -26,13 +26,13 @@ export class OperaReader {
     if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1)throw new OperaError('invalid_request');
     return [['offset',String(offset)],['limit',String(limit)]];
   }
-  accounts(offset=0,limit=50) {
+  accounts(offset=0,limit=20) {
     return this.read('/ars/v1/accounts',[['balance','All'],['hotelIds',this.config.hotelId],...this.page(offset,limit)]);
   }
   account(accountId:string) {
     return this.read(`/ars/v1/hotels/${this.id(this.config.hotelId)}/accounts/${this.id(accountId)}`,['Account','Summary','Invoices','Aging','Payments'].map(section=>['fetchInstructions',section]));
   }
-  history(accountId:string,offset=0,limit=50) {
+  history(accountId:string,offset=0,limit=20) {
     return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','true'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],['fetchInstructions','Payments'],...this.page(offset,limit)]);
   }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
