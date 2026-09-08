@@ -1,0 +1,51 @@
+import type {WorkflowStep} from 'cloudflare:workers';
+import {backendRpc,type RefreshEnv} from '../refresh/backend';
+import {makeReader} from '../opera/probe';
+import {OperaError} from '../opera/client';
+import {getNativeInvoicePdf,type DocumentInvoice} from './native-invoice';
+export interface DocumentFile {id:string;kind:'statement'|'invoice';invoice_id:string|null;ordinal:number;state:string;storage_key:string|null;error_code:string|null;byte_count:number|null;sha256:string|null}
+export interface DocumentExport {name:string;storage_key:string;byte_count:number;sha256:string}
+export interface DocumentJob {id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
+export interface DocumentCreateInput {commandKey:string;hotel:string;accountId:string;ids:string[];content:string;layout:string;purpose:string}
+export const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export async function documentJob(env:RefreshEnv,id:string){return backendRpc<DocumentJob|null>(env,'ar_document_get',{p_job_id:id});}
+export async function createDocumentJob(env:RefreshEnv,owner:string,input:DocumentCreateInput){
+ const job=await backendRpc<DocumentJob>(env,'ar_document_create',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose});
+ if(!env.AR_REFRESH)throw new Error('document_dispatch_unavailable');
+ if(['queued','running'].includes(job.state)){
+  try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:job.hotel,documentJob:true}});}
+  catch{try{await(await env.AR_REFRESH.get(job.id)).status();}catch{throw new Error('document_dispatch_unavailable');}}
+ }
+ return job;
+}
+export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,type:string){
+ if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
+ if(!/^jobs\/[0-9a-f-]{36}\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(path)||/(^|\/)\.\.?($|\/)/.test(path))throw new Error('invalid_storage_path');
+ const r=await fetch(`${env.SUPABASE_URL}/storage/v1/object/ar-working-files/${path}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':type,'x-upsert':'false'},body:new Uint8Array(bytes).buffer,redirect:'manual',signal:AbortSignal.timeout(30000)});
+ if(!r.ok){await r.body?.cancel();throw new Error('private_storage_write_failed');}await r.body?.cancel();
+}
+export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowStep){
+ const job=await documentJob(env,jobId);if(!job)throw new Error('document_job_missing');
+ for(const file of job.files){
+  if(!['pending','generating'].includes(file.state))continue;
+  await step.do(`document-${file.id}`,{retries:{limit:0,delay:'5 seconds'},timeout:'8 minutes'},async()=>{
+   const claim=await backendRpc<{claimed:boolean;file:DocumentFile}>(env,'ar_document_claim_file',{p_job_id:job.id,p_file_id:file.id});
+   if(!claim.claimed)return {state:claim.file.state};
+   let renderStarted=false;
+   try{
+    if(file.kind==='statement')throw new OperaError('invalid_configuration',undefined,'native_statement_transport_unverified');
+    const invoice=job.manifest.find(i=>i.id===file.invoice_id);if(!invoice||invoice.hotel!==job.hotel||invoice.account_id!==job.account_id)throw new Error('document_manifest_invalid');
+    const pdf=await getNativeInvoicePdf(makeReader(env,job.hotel),invoice,()=>{renderStarted=true;});
+    const key=`jobs/${job.id}/originals/${file.id}.pdf`;
+    await uploadPrivate(env,key,pdf.bytes,'application/pdf');
+    await backendRpc(env,'ar_document_finish_file',{p_job_id:job.id,p_file_id:file.id,p_storage_key:key,p_bytes:pdf.bytes.length,p_sha256:pdf.sha256});
+    return {state:'ready',pages:pdf.pages};
+   }catch(error){
+    const code=error instanceof OperaError?error.stage??error.code:error instanceof Error&&['document_manifest_invalid','private_storage_write_failed','private_storage_unavailable'].includes(error.message)?error.message:'document_generation_failed';
+    await backendRpc(env,'ar_document_fail_file',{p_job_id:job.id,p_file_id:file.id,p_code:code,p_uncertain:renderStarted});
+    return {state:renderStarted?'uncertain':'unavailable',code};
+   }
+  });
+ }
+ const result=await documentJob(env,job.id);return {state:result?.state??'unavailable',files:result?.files.length??0};
+}

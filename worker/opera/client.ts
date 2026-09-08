@@ -58,6 +58,8 @@ export class OperaReader {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/reservations/${this.id(reservationId)}/folios`,[['includeFolioHistory','true'],['fetchInstructions','Reservation'],['fetchInstructions','Foliohistory'],['start',folioDate],['end',folioDate]]);
   }
+  reports(name:string){if(!name||name.length>2000)throw new OperaError('invalid_request');return this.read('/rep/config/v1/reports',[['hotel',this.config.hotelId],['name',name],['includeInternalReports','true'],['includeUnpublished','false'],['includeWatermarkDetails','false']]);}
+  reportParameters(id:string,context:string,type:string){if(!id||!context||!type)throw new OperaError('invalid_request');return this.read('/rep/config/v1/reportParameters',[['id',id],['idContext',context],['type',type]]);}
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
   private async read(path:string,query:string[][]):Promise<unknown> {
     let token:string;

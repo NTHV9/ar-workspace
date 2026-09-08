@@ -16,3 +16,4 @@ private/
 *.log
 *.pem
 *.key
+supabase/.temp/

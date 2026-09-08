@@ -1,11 +1,13 @@
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
-export interface RefreshParams { runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean }
+export interface RefreshParams { runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean }
 export interface RefreshEnv extends OperaEnv {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
   OPERA_REFRESH_ENABLED?:string;
   REFRESH_STALE_MINUTES?:string;
+  DOC_UPLOAD_MAX_BYTES?:string;
+  DOC_EDITOR_MAX_BYTES?:string;
 }
 /** Admin key is server-only. No response body is propagated on failures. */
 export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<string,unknown>):Promise<T> {
