@@ -1,7 +1,7 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 import { makeReader } from '../opera/probe';
 import { OperaError } from '../opera/client';
-import { backendRpc, type RefreshEnv, type RefreshParams } from './backend';
+import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshParams> {
@@ -33,7 +33,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
       for(let index=0;index<ids.length;index++){
         await step.do(`account-${index}`,{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
           if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
-          const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate);
+          const previous=await previousInvoices(this.env,hotel,ids[index]);
+          const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate,previous);
           await backendRpc(this.env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
           // Financial payloads remain only in private Supabase staging, not step output.
           return {invoices:snapshot.invoices.length};
@@ -48,7 +49,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshPara
       });
       return {hotel,status:'succeeded',accounts:ids.length};
     }catch(error){
-      const code=error instanceof OperaError?`${error.code}${error.stage?'_'+error.stage:''}`:'refresh_failed';
+      const serialized=error instanceof Error?error.message.match(/^OperaError: ([a-z_]+)(?::([a-z_]+))?$/):null;
+      const code=error instanceof OperaError?`${error.code}${error.stage?'_'+error.stage:''}`:serialized?`${serialized[1]}${serialized[2]?'_'+serialized[2]:''}`:'refresh_failed';
       await step.do('record-failure',async()=>{await backendRpc(this.env,'ar_fail_refresh',{p_run_id:runId,p_error_code:code});return {status:'failed'};});
       throw new Error(code);
     }

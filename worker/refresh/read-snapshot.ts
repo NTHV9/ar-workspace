@@ -1,6 +1,7 @@
 import { OperaError, type OperaReader } from '../opera/client';
 import { collectPages,verifiedNextCursor } from '../opera/pagination';
 import { normalizeAccount, amountCents, type AccountSnapshot } from '../opera/normalize';
+import type { PreviousInvoice } from './backend';
 type Row=Record<string,unknown>;
 export function asObject(value:unknown):Row {if(!value||typeof value!=='object'||Array.isArray(value))throw new OperaError('invalid_response');return value as Row;}
 function id(value:unknown):string {const v=asObject(value).id;if(typeof v!=='string'||!v)throw new OperaError('invalid_response');return v;}
@@ -22,7 +23,7 @@ export async function readBusinessDate(reader:OperaReader,hotel:string):Promise<
   return row.businessDate;
 }
 /** Open-history audit is additional to the retained inclZeroBalance=true history API. */
-export async function readVerifiedAccount(reader:OperaReader,hotel:string,accountId:string,businessDate:string):Promise<AccountSnapshot> {
+export async function readVerifiedAccount(reader:OperaReader,hotel:string,accountId:string,businessDate:string,previous:PreviousInvoice[]=[]):Promise<AccountSnapshot> {
   const current=await reader.account(accountId);
   const snapshot=normalizeAccount(current,hotel,businessDate);
   if(snapshot.account.id!==accountId)throw new OperaError('invalid_response',undefined,'account_identity');
@@ -37,5 +38,25 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
   const open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
   const expected=new Map(snapshot.invoices.filter(i=>i.open!==0).map(i=>[i.id,Math.round(i.open*100)]));
   if(open.length!==expected.size||open.some(r=>expected.get(String(r.value.transactionNo))!==amountCents(r.value.balance,'THB')))throw new OperaError('pagination_changed',undefined,'current_history_membership');
+  const present=new Set(snapshot.invoices.map(i=>i.id));
+  const missing=previous.filter(i=>i.open!==0&&!present.has(i.id));
+  if(missing.length){
+    const numbers=missing.every(i=>i.invoice_no&&/^\d+$/.test(i.invoice_no))?[...new Set(missing.map(i=>i.invoice_no!))]:[];
+    const closedCandidates=await collectPages(async(offset,limit)=>{
+      const page=asObject(await reader.invoiceHistory(accountId,numbers,offset,limit));
+      if(!Array.isArray(page.details))throw new OperaError('invalid_response');
+      const rows:Row[]=[];
+      for(const raw of page.details){const group=asObject(raw);if(group.hotelId!==hotel||id(group.accountId)!==accountId)throw new OperaError('invalid_response');if(group.invoices!==undefined&&!Array.isArray(group.invoices))throw new OperaError('invalid_response');for(const row of (group.invoices??[]) as unknown[])rows.push(asObject(row));}
+      return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:verifiedNextCursor(page,offset,limit)};
+    },r=>String(r.transactionNo??''),20);
+    const wanted=new Set(missing.map(i=>i.id));
+    const closed=closedCandidates.filter(row=>wanted.has(String(row.transactionNo))&&amountCents(row.balance,'THB')===0);
+    if(closed.length){
+      const currentAccount=asObject(asObject(current).accountDetails);
+      const normalized=normalizeAccount({accountDetails:{...currentAccount,invoices:closed}},hotel,businessDate);
+      snapshot.invoices.push(...normalized.invoices);
+    }
+    // No match/error is never zero. Unmatched old rows remain missing with their old balance.
+  }
   return snapshot;
 }

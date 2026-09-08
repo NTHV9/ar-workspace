@@ -1,6 +1,6 @@
 export type OperaErrorCode = 'invalid_configuration'|'invalid_request'|'redirect_rejected'|'provider_unavailable'|'provider_unauthorized'|'provider_rejected'|'response_too_large'|'invalid_response'|'timeout'|'duplicate_member'|'pagination_incomplete'|'pagination_changed';
 export class OperaError extends Error {
-  constructor(readonly code: OperaErrorCode,readonly upstreamStatus?:number,readonly stage?:string,readonly providerMessage?:string) { super(code); this.name='OperaError'; }
+  constructor(readonly code: OperaErrorCode,readonly upstreamStatus?:number,readonly stage?:string,readonly providerMessage?:string) { super(stage?`${code}:${stage}`:code); this.name='OperaError'; }
 }
 export interface OperaReadConfig { origin:string; appKey:string; hotelId:string; timeoutMs?:number; maxResponseBytes?:number }
 export type FetchPort = (request:Request)=>Promise<Response>;
@@ -37,6 +37,10 @@ export class OperaReader {
   }
   openHistory(accountId:string,offset=0,limit=20) {
     return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','false'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],['fetchInstructions','Payments'],...this.page(offset,limit)]);
+  }
+  invoiceHistory(accountId:string,invoiceNumbers:string[],offset=0,limit=20) {
+    if(invoiceNumbers.some(n=>!/^\d+$/.test(n)))throw new OperaError('invalid_request');
+    return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','true'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],...invoiceNumbers.map(n=>['invoiceNo',n]),...this.page(offset,limit)]);
   }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
   private async read(path:string,query:string[][]):Promise<unknown> {

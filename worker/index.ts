@@ -84,7 +84,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     }
     const [, , , hotel, id] = path.split('/');
     const query = `hotel=eq.${encodeURIComponent(decodeURIComponent(hotel))}&account_id=eq.${encodeURIComponent(decodeURIComponent(id))}`;
-    return json({ invoices: await allRows('ar_invoices', `select=*&${query}&order=id`), source: 'opera', status: 'not_connected' });
+    return json({ invoices: await allRows('ar_invoices', `select=*&${query}&open=neq.0&order=id`), source: 'opera', status: 'connected' });
   } catch { return json({ error: 'supabase_unavailable' }, 503); }
 }
 export default {

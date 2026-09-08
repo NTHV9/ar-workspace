@@ -17,5 +17,5 @@ it('supports password grant without treating enterprise scope as a username',asy
 });
 it('does not expose the upstream authentication body in an error',async()=>{
   const getToken=createTokenProvider('https://gateway.example.com','SYNTHETIC',auth,async()=>new Response('private failure detail',{status:401}));
-  await expect(getToken()).rejects.toMatchObject({code:'provider_unauthorized',message:'provider_unauthorized'});
+  await expect(getToken()).rejects.toMatchObject({code:'provider_unauthorized',message:'provider_unauthorized:authentication'});
 });

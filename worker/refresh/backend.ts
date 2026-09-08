@@ -16,6 +16,17 @@ export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<strin
   const text=await response.text();return (text?JSON.parse(text):null) as T;
 }
 export interface RefreshJob {id?:string;status:string;created:boolean}
+export interface PreviousInvoice {id:string;invoice_no:string|null;open:number}
+export async function previousInvoices(env:RefreshEnv,hotel:string,accountId:string):Promise<PreviousInvoice[]> {
+  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw new OperaError('invalid_configuration');
+  const results:PreviousInvoice[]=[];
+  for(let offset=0;;offset+=500){
+    const query=new URLSearchParams({select:'id,invoice_no,open',hotel:`eq.${hotel}`,account_id:`eq.${accountId}`,open:'neq.0',order:'id',limit:'500',offset:String(offset)});
+    const response=await fetch(`${env.SUPABASE_URL}/rest/v1/ar_invoices?${query}`,{headers:{apikey:env.SUPABASE_SECRET_KEY},redirect:'manual',signal:AbortSignal.timeout(20000)});
+    if(!response.ok){await response.body?.cancel();throw new OperaError('provider_unavailable',response.status,'database_previous_invoices');}
+    const rows=await response.json() as PreviousInvoice[];if(!Array.isArray(rows))throw new OperaError('invalid_response');results.push(...rows);if(rows.length<500)return results;
+  }
+}
 export async function requestRefresh(env:RefreshEnv,hotel:string,accountId:string|null,reason:string,recovery=0):Promise<RefreshJob> {
   if(!env.AR_REFRESH||!env.OPERA_CLIENT_ID||!env.OPERA_CLIENT_SECRET||!env.OPERA_APP_KEY)throw new OperaError('invalid_configuration');
   const job=await backendRpc<RefreshJob>(env,'ar_request_refresh',{p_hotel:hotel,p_account_id:accountId,p_reason:reason,p_stale_minutes:30});
