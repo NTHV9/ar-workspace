@@ -8,7 +8,7 @@ export function AccountDetail({account, invoices, review, refresh, back, loading
   const [selected,setSelected]=useState<Set<string>>(new Set());
   const [focusedId,setFocusedId]=useState<string|null>(null);
   const focused=invoices.find(i=>i.id===focusedId)??invoices[0]??null;
-  const validSelected=new Set(invoices.filter(i=>selected.has(i.id)&&selectableInvoice(i,review)).map(i=>i.id));
+  const validSelected=new Set([...selected].filter(id=>invoices.some(i=>i.id===id&&selectableInvoice(i,review))));
   const [drawer,setDrawer]=useState(false), [aging,setAging]=useState(true);
   const [search,setSearch]=useState(''), [sort,setSort]=useState<keyof Invoice>('guest'), [direction,setDirection]=useState<'asc'|'desc'>('asc');
   const [tab,setTab]=useState('Invoice / Folio');

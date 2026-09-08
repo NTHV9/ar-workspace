@@ -13,14 +13,16 @@ export async function discoverStatementReport(env:OperaEnv,hotel:string,accountI
  const names=[...new Set([statement.statementName,statement.reportFileName].filter((v):v is string=>typeof v==='string'&&!!v))];
  const reports=[];
  for(const name of names){
-  try{const result=asObject(await reader.reports(name)),group=result.reports?asObject(result.reports):{},rows=Array.isArray(group.reports)?group.reports.map(asObject):[];
-   const exact=rows.filter(r=>typeof r.reportName==='string'&&r.reportName.replace(/\.rtf$/i,'').toLowerCase()===name.replace(/\.rtf$/i,'').toLowerCase()&&(r.hotel==null||r.hotel===hotel));
+  try{let result=asObject(await reader.reports(name)),group=result.reports?asObject(result.reports):{},rows=Array.isArray(group.reports)?group.reports.map(asObject):[];let query='published_exact_name';
+   if(!rows.length){result=asObject(await reader.allReports(name));group=result.reports?asObject(result.reports):{};rows=Array.isArray(group.reports)?group.reports.map(asObject):[];query='all_exact_name';}
+   if(!rows.length){result=asObject(await reader.allReports('statement'));group=result.reports?asObject(result.reports):{};rows=Array.isArray(group.reports)?group.reports.map(asObject):[];query='all_statement_names';}
+   const exact=rows.filter(r=>typeof r.reportName==='string'&&r.reportName.replace(/\.rtf$/i,'').toLowerCase()===name.replace(/\.rtf$/i,'').toLowerCase()&&(r.hotel==null||r.hotel===''||r.hotel===hotel));
    const details=[];
    for(const row of exact){if(!row.moduleId)continue;const module=asObject(row.moduleId);if(typeof module.id!=='string')continue;
     const params=asObject(await reader.reportParameters(module.id,typeof module.idContext==='string'?module.idContext:'OPERA',typeof module.type==='string'?module.type:'ModuleId'));
     details.push({reportName:row.reportName,hasParameters:row.hasParameters,formToRun:row.formToRun,procedureRequired:row.procedureRequired,parameters:Array.isArray(params.reportParameters)?params.reportParameters.map(asObject).map(p=>({name:p.name,label:p.label,dataType:p.dataType})):[],linkRelations:Array.isArray(params.links)?params.links.map(asObject).map(l=>l.rel):[]});
    }
-   reports.push({name,returned:rows.length,exactMatches:exact.length,details,linkRelations:Array.isArray(result.links)?result.links.map(asObject).map(l=>l.rel):[]});
+   reports.push({name,query,returned:rows.length,hasMore:group.hasMore===true,candidateReportNames:rows.map(r=>r.reportName),exactMatches:exact.length,details,linkRelations:Array.isArray(result.links)?result.links.map(asObject).map(l=>l.rel):[]});
   }catch(e){reports.push({name,error:e instanceof OperaError?e.code:'invalid_response',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined});}
  }
  return {status:'metadata_read',hotel,statementType:statement.type,descriptorNames:names,reports,nativePdfTransportVerified:false};
