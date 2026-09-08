@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+test('oversized geometry cannot create an unreopenable saved draft',async({page})=>{
+ await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Note',exact:true}).click();const before=await page.getByRole('spinbutton',{name:'Layer x',exact:true}).inputValue();
+ await page.getByRole('spinbutton',{name:'Layer x',exact:true}).fill('999999');await expect(page.getByRole('alert')).toContainText('was not applied');await expect(page.getByRole('spinbutton',{name:'Layer x',exact:true})).toHaveValue(before);
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');expect(await page.evaluate(()=>(window as any).pdfTest.draft.pages[0].layers[0].x)).toBe(Number(before));
+});
 test('source replacement exports opaque pages and preserves untouched multi-page invoices',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');
  await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();

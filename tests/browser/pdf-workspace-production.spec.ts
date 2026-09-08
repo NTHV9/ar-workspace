@@ -77,4 +77,3 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     expect(scripts.length).toBeGreaterThan(0); expect(unexpectedApis).toEqual([]); expect(pageErrors).toEqual([]);
   });
 }
-

@@ -5,8 +5,9 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
   const fail = (): never => { throw new Error('Saved PDF edits are invalid or do not match these source documents. Reopen the originals without saved edits.'); };
   if (!input || typeof input !== 'object') return fail();
   const saved = input as Record<string, unknown>;
-  if (saved.version !== 1 || !['statement', 'invoices', 'both'].includes(String(saved.content)) || !['combined', 'split', 'separate'].includes(String(saved.delivery)) || !Array.isArray(saved.pages) || saved.pages.length > 1000) return fail();
+  if (saved.version !== 1 || !['statement', 'invoices', 'both'].includes(String(saved.content)) || !['combined', 'split', 'separate'].includes(String(saved.delivery)) || !Array.isArray(saved.pages) || saved.pages.length > original.pages.length + 1000) return fail();
   const sourceIds = new Set(original.pages.map(p => p.sourceId));
+  const originalPages = new Map(original.pages.filter(p=>p.sourcePage!==null).map(p=>[JSON.stringify([p.sourceId,p.sourcePage]),p]));
   const ids = new Set<string>();
   const number = (v: unknown, min = -14400, max = 14400): number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : fail();
   const string = (v: unknown, max = 100000): string => typeof v === 'string' && v.length <= max ? v : fail();
@@ -17,9 +18,9 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
     const id = string(p.id, 200), sourceId = string(p.sourceId, 200);
     if (!id || ids.has(id) || !sourceIds.has(sourceId)) return fail(); ids.add(id);
     const width = number(p.width, 1), height = number(p.height, 1);
-    const sourcePage = p.sourcePage === null ? null : number(p.sourcePage, 1, 10000);
+    const sourcePage = p.sourcePage === null ? null : number(p.sourcePage, 1, Number.MAX_SAFE_INTEGER);
     if (sourcePage !== null) {
-      const actual = original.pages.find(page => page.sourceId === sourceId && page.sourcePage === sourcePage);
+      const actual = originalPages.get(JSON.stringify([sourceId,sourcePage]));
       if (!Number.isInteger(sourcePage) || !actual || Math.abs(actual.width - width) > .01 || Math.abs(actual.height - height) > .01) return fail();
     }
     if (!Array.isArray(p.layers) || p.layers.length > 500) return fail();

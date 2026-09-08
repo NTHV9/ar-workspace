@@ -71,6 +71,7 @@ export function PdfWorkspace({ documents: sources, initialProject, accountName, 
   const sourceSession = useRef(sources); sourceSession.current = sources;
   const activePage = useRef('');
   const reviewedProject = useRef<PdfProject | null>(null);
+  const sourceModel = useRef<PdfProject | null>(null);
   const drag = useRef<{ id: string; x: number; y: number; layer: PdfLayer; resize: boolean; before: PdfProject } | null>(null);
   useEffect(() => { const previous = document.activeElement as HTMLElement | null; workspace.current?.querySelector<HTMLButtonElement>('.pdf-close')?.focus(); return () => previous?.focus(); }, []);
   useEffect(() => { if (!preview) return; const previous = document.activeElement as HTMLElement | null; workspace.current?.querySelector<HTMLButtonElement>('.pdf-preview-dialog button')?.focus(); return () => previous?.focus(); }, [preview]);
@@ -80,7 +81,7 @@ export function PdfWorkspace({ documents: sources, initialProject, accountName, 
     let current = true; let dispose: (() => void) | undefined;
     revision.current++; reviewedProject.current = null;
     setProject(null); setPersistedProject(null); setDraftSaved(false); setCloseConfirm(false); setError(''); setPreview(null); setAck(false); setViewed([]); setSaved(false); setSelected('');
-    loadSources(sources).then(result => { dispose = result.dispose; if (current) { const restored = initialProject ? restoreProject(initialProject, result.project) : result.project; setLoaded(result.documents); setProject(restored); setPersistedProject(restored); setActiveId(restored.pages[0]?.id || ''); setPast([]); setFuture([]); } else dispose(); }).catch(e => { dispose?.(); if (current) setError(e instanceof Error ? e.message : 'Unable to open PDF.'); });
+    loadSources(sources).then(result => { dispose = result.dispose; if (current) { sourceModel.current=result.project; const restored = initialProject ? restoreProject(initialProject, result.project) : result.project; setLoaded(result.documents); setProject(restored); setPersistedProject(restored); setActiveId(restored.pages[0]?.id || ''); setPast([]); setFuture([]); } else dispose(); }).catch(e => { dispose?.(); if (current) setError(e instanceof Error ? e.message : 'Unable to open PDF.'); });
     return () => { current = false; revision.current++; dispose?.(); };
   }, [sources, initialProject]);
   const visiblePages = project ? deliveryGroups(project, sources).flatMap(g => g.pages) : [];
@@ -95,6 +96,7 @@ export function PdfWorkspace({ documents: sources, initialProject, accountName, 
     const startedAt = revision.current, session = sources, snapshot = project;
     setBusy(true); setError('');
     try {
+      if(!sourceModel.current)throw new Error('Original document model unavailable');restoreProject(snapshot,sourceModel.current);
       await onSaveDraft(snapshot);
       if (startedAt !== revision.current || session !== sourceSession.current) return;
       setPersistedProject(snapshot); setDraftSaved(true);
@@ -102,7 +104,7 @@ export function PdfWorkspace({ documents: sources, initialProject, accountName, 
     } catch (e) { if (startedAt === revision.current && session === sourceSession.current) setError(e instanceof Error ? e.message : 'Draft save failed. Your edits are still open.'); }
     finally { setBusy(false); }
   }
-  function commit(next: PdfProject) { if (!project) return; setPast(p => [...p.slice(-49), project]); setFuture([]); setProject(next); invalidate(); }
+  function commit(next: PdfProject) { if (!project||!sourceModel.current) return; try{restoreProject(next,sourceModel.current);}catch{setError('This change exceeds safe page, layer, text or image limits and was not applied.');return;} setError('');setPast(p => [...p.slice(-49), project]); setFuture([]); setProject(next); invalidate(); }
   function updateLayer(change: Partial<PdfLayer>) { if (page && layer && project) commit({ ...project, pages: project.pages.map(p => p.id === page.id ? { ...p, layers: p.layers.map(l => l.id === layer.id ? { ...l, ...change } : l) } : p) }); }
   function addLayer(kind: PdfLayer['kind'], original?: DetectedText, image?: string) {
     if (!page || !project) return;
