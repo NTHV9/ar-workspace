@@ -5,7 +5,7 @@ export class OperaError extends Error {
 export interface OperaReadConfig { origin:string; appKey:string; hotelId:string; timeoutMs?:number; maxResponseBytes?:number }
 export type FetchPort = (request:Request)=>Promise<Response>;
 
-/** Read-only property API surface. No caller-supplied URL or accounting mutation method. */
+/** Property reads plus explicit Statement document processing. No caller-supplied URL or accounting mutations. */
 export class OperaReader {
   private readonly origin:string;
   private readonly timeoutMs:number;
@@ -61,6 +61,22 @@ export class OperaReader {
   reports(name:string){if(!name||name.length>2000)throw new OperaError('invalid_request');return this.read('/rep/config/v1/reports',[['hotel',this.config.hotelId],['name',name],['includeInternalReports','true'],['includeUnpublished','false'],['includeWatermarkDetails','false']]);}
   allReports(name:string){if(!name||name.length>2000)throw new OperaError('invalid_request');return this.read('/rep/config/v1/allReports',[['hotel',this.config.hotelId],['name',name],['includeInternalReports','true'],['includeUnpublished','true'],['includeWatermarkDetails','false']]);}
   reportParameters(id:string,context:string,type:string){if(!id||!context||!type)throw new OperaError('invalid_request');return this.read('/rep/config/v1/reportParameters',[['id',id],['idContext',context],['type',type]]);}
+  /** Explicit document processing only. Caller must hold a durable claim. Never retries. */
+  async processStatement(accountId:string,descriptor:Record<string,unknown>,requestId:string) {
+    if(descriptor.hotelId!==this.config.hotelId||!descriptor.accountId||typeof descriptor.accountId!=='object'||('id' in descriptor.accountId?descriptor.accountId.id:null)!==accountId||!Array.isArray(descriptor.invoices)||!descriptor.invoices.length||!/^[0-9a-f-]{36}$/.test(requestId))throw new OperaError('invalid_request');
+    const token=await this.getToken();if(!token)throw new OperaError('provider_unauthorized');
+    const url=new URL(`/ars/v1/hotels/${this.id(this.config.hotelId)}/accounts/${this.id(accountId)}/statements`,this.origin);
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),this.timeoutMs);
+    try{
+      const r=await this.transport(new Request(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'x-app-key':this.config.appKey,'x-hotelid':this.config.hotelId,'x-request-id':requestId,Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({criteria:{statements:[descriptor],statementCriteria:{inclZero:false,inclPrinted:true,inclFolios:false}}}),redirect:'manual',signal:controller.signal}));
+      const chunks:Uint8Array[]=[];let size=0;
+      if(r.body){const reader=r.body.getReader();try{while(true){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>this.maxResponseBytes){await reader.cancel();throw new OperaError('response_too_large');}chunks.push(part.value);}}finally{reader.releaseLock();}}
+      const bytes=new Uint8Array(size);let cursor=0;for(const c of chunks){bytes.set(c,cursor);cursor+=c.length;}
+      // Location is evidence only; never follow it with credentials automatically.
+      return {status:r.status,type:r.headers.get('Content-Type'),location:r.headers.get('Location'),bytes};
+    }catch(e){if(e instanceof OperaError)throw e;throw new OperaError(controller.signal.aborted?'timeout':'provider_unavailable');}
+    finally{clearTimeout(timer);}
+  }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
   private async read(path:string,query:string[][]):Promise<unknown> {
     let token:string;
