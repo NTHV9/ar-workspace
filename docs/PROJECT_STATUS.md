@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026: Collection Queue และรอบตรวจ Gmail ตามเวลา
+
+- เพิ่ม Collections: คิวตาม Hotel/Account Type/Account, Next action, Latest sent stage, Ready/Upcoming และค้นหา แยกบิลจริงในแผงขวาและเตรียมเอกสารตาม purpose โดยไม่ส่งอีเมลอัตโนมัติ ใช้ชื่อเต็ม Follow-up 1/2/3 ตามคำยืนยันล่าสุด
+- กติกา Friendly due-7 / Follow-up 1 due+1 / รอบหลังจาก actual previous send+7 / Urgent หลัง Final มียอด ผ่าน tests; งานไม่มีกฎ/ข้อมูลไม่ยืนยันยังเห็น Setup needed/Needs review ไม่ซ่อนหนี้ และไม่ทวง child แยกจาก parent
+- Live Browser → Worker → Supabase โหลด 836 บิล / 69 กลุ่ม ตรงฐานข้อมูล แยก child 12 แถว; TSK filter 107 บิล / 23 กลุ่ม ทุกบิลปัจจุบันยังไม่มีกฎบัญชีจึงอยู่ Setup needed ไม่ seed ค่ากฎเพื่อให้ดูมีงาน
+- Applied ar_mail_reconcile_schedule, ar_collection_queue, ar_mail_reconcile_fence; read view ใช้ security_invoker/RLS; manual+scheduled ใช้ lease เดียวและตรวจ lease ก่อนแต่ละฉบับ ไม่มี path create draft/send ใน scheduler
+- เปิด cron Gmail ทุก 5 นาที โดยคง OPERA 07:00/19:00 ICT; actual scheduled runs 01:25:50 และ 01:30:50 ICT complete ทั้งคู่ ไม่มี eligible business deliveries จึง checked 0 ไม่อ้างว่าตรวจส่งงานจริงผ่าน scheduled แล้ว
+- Build/Typecheck/200 unit tests และ 6 browser tests desktop/laptop/mobile ผ่าน; SQL rollback lease/fence และ unapproved authenticated RLS ผ่าน; anonymous queue/reconcile 401
+- Deployed bcb78228eacf0c6bec60f952013fbb7f18dbb146 บน ar-workspace deployment f3f8a32e1f404234813de4b04160063d, workflow df6dbba1-e5b6-4ff1-a6bd-fd1900fb3c53; health SHA ตรง Push branch codex/opera-refresh
+- ไม่มีอีเมล/Draft เพิ่มรอบนี้ business sent events 0/ประวัติบิลเปลี่ยน 0/ตั้งกฎบัญชี 0 รายละเอียด COLLECTION_QUEUE_VERIFICATION.md และ COLLECTION_QUEUE_DESIGN.md
+
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026: ส่งตรงจาก Worker และตรวจ Sent ผ่านจริง
 
 - เพิ่ม Review & send now → ตรวจผู้รับ/ข้อความ/Invoice/Folio/ไฟล์ → checkbox ยืนยัน → ส่งโดยคนเท่านั้น ไม่มี auto-send; Collection เลือก stage ชัดเจน, normal Billing ต้องมีกฎบัญชีที่กำหนดแล้ว
