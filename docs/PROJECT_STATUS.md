@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: อ่าน Template และ Sample XML ของ Statement แล้ว
+
+- อ่านค่าจริงManage Reports/kat_statement:ชนิดCustomized Report,ไฟล์kat_statement.rtf,Sample ReportและDatasource=sample_statement. ไม่ใช่ชนิดURL/Reporting And Analytics;ไม่พบPublisherhost/catalogpathในหน้านี้.
+- ดาวน์โหลดTemplateและSample XMLเก็บนอกGitในDownloads. อ่านโครงสร้างพบXMLPublisher-style xdoxslt,รายการG_INVOICESและAgingคนละส่วน;parameterชื่อP_REPORT_SEQ/P_ACCT_NO/P_ARRAY/P_RESORTเป็นข้อมูลประกอบใหม่ แต่ยังไม่พิสูจน์mappingกับOHIPหรือexternalrenderer.
+- ไม่มีการแก้fields/Save/upload/Generateหรือcredentials. Browsercontrolหลุดหลังดาวน์โหลด จึงไม่ได้ยืนยันCancel;ไม่อ้างว่าออกจากหน้าแล้ว. ไม่มีsource/deployment/migrationใหม่.
+- NativeStatementBackendยังไม่สำเร็จ;ผลรายละเอียดและhashไฟล์อ้างอิงอยู่STATEMENT_EXTERNAL_CONTRACT_FOLLOWUP.md. ไม่ใช้Templateสร้างPDFเองแล้วอ้างOPERAoriginal.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ Publisher route ตามคำขอ
 
 - ตรวจแบบไม่ส่งCredential: GET /xmlpserver/ บนUIhostได้401;บนOHIPgatewayได้404. OPTIONS /xmlpserver/services/rest/v1/reports/kat_statement/run บนUIhostได้401 ไม่มีAllow/WWW-Authenticate.

@@ -1,5 +1,18 @@
 # Statement PDF external contract follow-up — 2026-09-09
 
+## Authenticated OPERA report configuration inspection — 2026-09-09
+
+Read Manage Reports → kat_statement → Edit to inspect existing values only. Did not change fields, upload, save or generate a report. Current Report Type is Customized Report, not URL or Reporting And Analytics. Sample Report and Datasource File both read sample_statement; uploaded template filename is kat_statement.rtf. Report group is Accounts Receivable Statements; one copy and language E. No Publisher host or catalog reportPath was exposed on this configuration screen.
+
+Downloaded Customized Report to Downloads/kat_statement (1).rtf (3,730,603bytes; SHA2562184761ab0a6f7c1a5744f8f319264dac807cef5541b6b42fc3b6a57195f4905). Sample Data completed as Downloads/sample_statement.xml (34,621bytes; SHA2561d97b4fc6aae9fd32b6fd40562a28f72b61db938ec63e8382ea9394f6fc631cc). Both remain outside Git. An intermediate unconfirmed download was inspected read-only as parseable XML; it was not renamed, executed or unblocked by the agent. Browser subsequently completed its normal filename.
+
+RTF contains XML Publisher-style xdoxslt functions and G_INVOICES iteration. Its Balance Due expression sums OPEN_BALANCE, while Aging reads /DATA/LIST_G_RANGES/G_RANGES/SUM_AGING_AMOUNT separately. This explains the independent data structures observed in the native PDF; do not relabel Account-wide Aging as selected Aging.
+
+Sample XML root DATA contains LIST_REPORT, LIST_G_HEADER, LIST_G_RANGES, LIST_G_RESORT_DETAILS and LIST_PARAMETERS. Parameter names include P_ACCT_NO, P_ARRAY, P_REPORT_SEQ, P_RESORT, P_ORDER, P_PAYMENTS_YN, P_SHOW_DETAILS_YN and P_ZERO_YN, plus generic report-delivery parameters. Secret-like parameter VALUES were not printed or reused. P_REPORT_SEQ is a new binding clue; its exact correspondence to OHIP reportSeqNo must still be tested against a confirmed execution interface. The sample is structural reference, not evidence for current selected customer data.
+
+This verifies the actual custom RTF/template data family, but does not establish an externally exposed Publisher REST endpoint or the catalog reportPath required by /run. The R&A menu attempt did not establish a separate destination. Browser control later detached while the report configuration was open; no Save occurred and Cancel could not be verified. No new credentials or permission changes were made.
+
+
 ## Direct Publisher-context checks — 2026-09-09
 
 Owner requested continuing without contacting Oracle and explicitly asked to investigate the Publisher run operation. Used the documented BI Publisher /xmlpserver context as a bounded candidate on the two already-confirmed Oracle origins. No credentials, cookies, account identifiers or customer payloads were sent; redirects were not followed.
