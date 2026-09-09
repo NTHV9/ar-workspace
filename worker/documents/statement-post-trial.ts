@@ -56,7 +56,12 @@ async function inspectStatementPostTrial(env:RefreshEnv,job:DocumentJob){
  const account=asObject(asObject(await reader.account(job.account_id)).accountDetails),before=asObject(prepared.descriptor);
  const previous=Array.isArray(before.invoices)?before.invoices.map(asObject):[],current=Array.isArray(account.invoices)?account.invoices.map(asObject):[];
  const selectedBalancesUnchanged=account.hotelId===job.hotel&&asObject(account.accountId).id===job.account_id&&previous.length===job.invoice_ids.length&&previous.every(i=>{const r=current.filter(c=>String(c.transactionNo)===String(i.transactionNo));return r.length===1&&amountCents(r[0].balance,'THB')===amountCents(i.balance,'THB');});
- const result:Record<string,unknown>={postHttpStatus:metadata.status,postType:metadata.type,selectedBalancesUnchanged,postRepeated:false};
+ const history=asObject(await reader.invoiceHistory(job.account_id,job.manifest.map(i=>i.invoice_no!).filter(Boolean),0,20));
+ const historyRows=(Array.isArray(history.details)?history.details.map(asObject):[]).filter(g=>g.hotelId===job.hotel&&asObject(g.accountId).id===job.account_id).flatMap(g=>Array.isArray(g.invoices)?g.invoices.map(asObject):[]);
+ const comparisons=previous.map(i=>{const now=current.filter(c=>String(c.transactionNo)===String(i.transactionNo)),h=historyRows.filter(c=>String(c.transactionNo)===String(i.transactionNo));return {currentMatches:now.length,historyMatches:h.length,currentBalanceMatches:now.length===1&&amountCents(now[0].balance,'THB')===amountCents(i.balance,'THB'),historyBalanceMatches:h.length===1&&amountCents(h[0].balance,'THB')===amountCents(i.balance,'THB'),currentZero:now.length===1&&amountCents(now[0].balance,'THB')===0,historyZero:h.length===1&&amountCents(h[0].balance,'THB')===0};});
+ const result:Record<string,unknown>={postHttpStatus:metadata.status,postType:metadata.type,selectedBalancesUnchanged,postRepeated:false,currentInvoiceCount:current.length,preparedInvoiceCount:previous.length,comparisons,historyHasMore:history.hasMore};
+ await uploadPrivate(env,prefix+`audit-${crypto.randomUUID()}.json`,new TextEncoder().encode(JSON.stringify({result,current:account,history})),'application/json');
+
  if(typeof metadata.location!=='string')return {...result,hasLocation:false};
  const url=new URL(metadata.location,env.OPERA_BASE_URL);const origin=new URL(env.OPERA_BASE_URL!).origin;
  result.locationSameOrigin=url.origin===origin;result.locationPathSegments=url.pathname.split('/').filter(Boolean).map(p=>['ars','v1','med','config','hotels','accounts','statements','attachments','reports'].includes(p)?p:'{id}');result.locationQueryKeys=[...url.searchParams.keys()].filter(k=>/^[a-zA-Z_]{1,50}$/.test(k));
