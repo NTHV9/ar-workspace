@@ -5,7 +5,7 @@
   "main": "worker/entry.ts",
   "compatibility_date": "2026-09-08",
   "workers_dev": true,
-  "triggers": { "crons": ["0 0,12 * * *"] },
+  "triggers": { "crons": ["0 0,12 * * *", "*/5 * * * *"] },
   "workflows": [{ "name": "ar-workspace-refresh", "binding": "AR_REFRESH", "class_name": "ArRefreshWorkflow" }],
   "assets": { "directory": "dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "vars": {
@@ -14,6 +14,8 @@
     "OPERA_ENTERPRISE_ID": "TSTLKL",
     "OPERA_HOTEL_IDS": "KAT,TSK",
     "REFRESH_STALE_MINUTES": "30",
+    "GMAIL_RECONCILE_ENABLED": "true",
+    "GMAIL_RECONCILE_BATCH": "3",
     "OPERA_REFRESH_ENABLED": "true",
     "DOC_UPLOAD_MAX_BYTES": "20971520",
     "DOC_EDITOR_MAX_BYTES": "67108864",

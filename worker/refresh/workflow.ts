@@ -1,3 +1,5 @@
+import {runMailReconcile} from '../email/reconcile';
+import type {ReconcileEnv} from '../email/reconcile';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 import { makeReader,probeOpera } from '../opera/probe';
 import { OperaError } from '../opera/client';
@@ -12,10 +14,11 @@ import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
 
-export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv,RefreshParams> {
+export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
+    if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(this.env,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
     if(payload.combinedStatementAudit)return step.do('combined-statement-get',{retries:{limit:0,delay:'5 seconds'},timeout:'4 minutes'},()=>auditCombinedStatement(this.env,runId));
     if(payload.statementHistoryAudit)return step.do('statement-history-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'4 minutes'},()=>auditStatementHistory(this.env,runId,payload.observedBatch));
