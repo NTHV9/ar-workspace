@@ -29,8 +29,8 @@ export class OperaReader {
   accounts(offset=0,limit=20) {
     return this.read('/ars/v1/accounts',[['balance','All'],['hotelIds',this.config.hotelId],...this.page(offset,limit)]);
   }
-  account(accountId:string) {
-    return this.read(`/ars/v1/hotels/${this.id(this.config.hotelId)}/accounts/${this.id(accountId)}`,['Account','Summary','Invoices','Aging','Payments'].map(section=>['fetchInstructions',section]));
+  account(accountId:string,includeStatement=false) {
+    return this.read(`/ars/v1/hotels/${this.id(this.config.hotelId)}/accounts/${this.id(accountId)}`,['Account','Summary','Invoices','Aging','Payments',...(includeStatement?['Statement']:[])].map(section=>['fetchInstructions',section]));
   }
   history(accountId:string,offset=0,limit=20) {
     return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','true'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],['fetchInstructions','Payments'],...this.page(offset,limit)]);

@@ -98,3 +98,12 @@ describe('complete pagination',()=>{
     await expect(collectPages(async offset=>{if(offset)throw new OperaError('provider_unavailable');return {rows:[{id:'a'}],hasMore:true};},r=>r.id,1)).rejects.toMatchObject({code:'provider_unavailable'});
   });
 });
+
+
+it('adds the documented Statement fetch instruction only for explicit visibility audit',async()=>{
+ const urls:URL[]=[];
+ const reader=new OperaReader(config,async()=> 'synthetic-token',async request=>{urls.push(new URL(request.url));return Response.json({});});
+ await reader.account('synthetic-account');await reader.account('synthetic-account',true);
+ expect(urls[0].searchParams.getAll('fetchInstructions')).not.toContain('Statement');
+ expect(urls[1].searchParams.getAll('fetchInstructions')).toEqual(['Account','Summary','Invoices','Aging','Payments','Statement']);
+});
