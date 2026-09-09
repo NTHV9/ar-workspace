@@ -2,6 +2,8 @@
 
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: พบ Statement PDF จากหน้า OPERA จริง
 
+- HAR1/2/3ล่าสุดเชื่อมครบถึงPDFrequestแล้ว:จำนวน7/106/1requests;2.har entry98เปิดreportviewerด้วยbatchIDที่ตรง3.har GET,HTTP200,application/pdf,inline,no redirect. ไม่ต้องเก็บHARซ้ำ. เนื้อbody348bytesใน3.harเป็นHTML embedของviewer ไม่ใช่PDFbinary;ใช้ภาพPDFจริงที่ตรวจในรอบเดียวกันเป็นหลักฐานrender. ยังไม่พิสูจน์OHIP authหรือAPIสร้างbatchภายนอก;ไม่มีการcopycookies/JSFstateเข้าBackend. รายละเอียดSTATEMENT_API_RESEARCH.md.
+
 - แก้คำแนะนำการเก็บHAR:ภาพล่าสุดของเจ้าของยืนยันreportviewer Refreshแล้วได้Report not found แม้HTTP200. จึงไม่ให้Refreshซ้ำเพื่อจับPDF;ต้องเตรียมcaptureก่อนpopupเปิดครั้งแรก. ยังไม่พิสูจน์ว่าเป็นsingle-use/หมดอายุ/ปัญหาconfiguration. ไฟล์HARชื่อเดิมยังเป็น104entriesก่อนหน้า ไม่ใช่captureของerrorล่าสุด.
 
 - HARที่สองชื่อopera-statement-pdf.harมี104entriesจากBatch Reports/LaunchPage. Entry97ตอบFinished Successfullyพร้อมคำสั่งเปิดreportviewerและrep=BATCH_{id}. ยังไม่มีคำขอPDFโดยตรงหรือPublisherRESTในtrace. ยืนยันขั้นต่อจากHARแรกแล้ว แต่ไม่ใช่หลักฐานOHIPเรียกrenderer/viewerได้. ไม่ต้องCreate Statementซ้ำเพื่อเก็บหลักฐานนี้;rawHARคงPrivate.

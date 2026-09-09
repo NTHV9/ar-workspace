@@ -1,5 +1,19 @@
 # Native selected Statement API research — 2026-09-09
 
+## Complete three-window HAR capture — 2026-09-09
+
+Owner provided Downloads/1.har,2.har,3.har in UI order after enabling automatic DevTools for popups. All were read locally; no raw capture, customer content or state/credential values were copied into Git.
+
+- 1.har:7requests. Entry0 returns Batch Statements Options, entry1 Batch Report Destination/kat_statement, entry5 launches the batch window.
+- 2.har:106requests. Entry98 at05:04:35.350Z returns Finished Successfully and the reportviewer URL with a concrete batch reference.
+- 3.har:1request at05:04:37.375Z. GET on the observed UI host /OPERA9/opera/operacloud/reportviewer with ex/rep query parameters returnsHTTP200, Content-Type application/pdf and Content-Disposition inline, without redirect. The batch reference EXACTLY matches that in 2.har entry98. This establishes the browser-side chain through the PDF retrieval request.
+- No Cookie/Authorization/x-api-key request headers are present in these sanitized captures. Their absence is not proof of anonymous access or that UI session authentication is unnecessary. No external-authentication experiment was performed.
+
+PDF-body caveat: 3.har content reports348bytes/base64. Decoding yields HTML containing an embed type=application/pdf with src=about:blank/internalid, not %PDF- binary; pypdf rejects those captured bytes. This is evidence of a viewer representation in the export, not a usable PDF file. Combined with the live rendered Statement screenshot from the same UI run, the request headers and matched batch establish successful browser viewing. Do not treat the348-byte body as the original PDF or ask the owner to repeat the same capture merely to obtain it.
+
+Browser trace collection is sufficient for the current question. Remaining integration gap: a supported external operation to create the native batch/output and retrieve it using authorized backend credentials. The captured generation steps are ADF/JSF UI posts, not exposed Publisher run or OHIP renderer requests; internal server operations are not visible in browser HAR. reportSeqNo from getARStatements must not be assumed equivalent to BATCH ID. Never transplant JSF ViewState or browser cookies into the Worker. No new Create Statement or UI refresh is needed for this analysis.
+
+
 ## Viewer reload failure — owner screenshot, 2026-09-09
 
 Owner screenshot shows the correct reportviewer tab returning Report Execution Error / Report not found after refresh. Network displays HTTP200 for the document; this is an HTML error page, not a successful PDF. The prior advice to reload an already-viewed report is not reliable for this flow and must not be repeated.
