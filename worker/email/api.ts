@@ -39,6 +39,8 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
   }
   if(!result)return emailJson({error:'email_missing'},404);
   if(typeof result==='object'&&'error' in result){const code=String(result.error);return emailJson({error:code},/conflict|package/.test(code)?409:/forbidden/.test(code)?403:/missing/.test(code)?404:400);}
-  return emailJson(result);
+  const draft=result as EmailDraft;
+  const attempt=await emailRpc<{state:string}|null>(env,'ar_gmail_attempt_get',{p_owner:actor,p_draft:draft.id,p_revision:draft.revision});
+  return emailJson({...draft,gmail_handoff:attempt?.state??null});
  }catch(e){const code=e instanceof Error?e.message:'';const safe=['email_invalid','email_too_large','gmail_not_configured','gmail_not_connected','gmail_reconnect_required','email_forbidden','email_source_changed','email_package_changed','email_revision_conflict','email_handoff_pending','email_attachment_changed','email_attachment_unavailable'].includes(code)?code:'email_unavailable';return emailJson({error:safe},safe==='email_invalid'?400:safe==='email_too_large'?413:safe==='email_forbidden'?403:/changed|conflict|pending/.test(safe)?409:503);}
 }

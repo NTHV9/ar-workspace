@@ -42,7 +42,7 @@ These observations describe this increment. Small muted support text is not a un
 
 ## Layout
 
-The workspace is a fixed application surface inset 18px from the viewport, with a nonshrinking header and progress strip. Desktop content uses a 230px context column, flexible editor of at least 360px, and 310px attachments column. Each desktop column can scroll without losing the workflow header.
+The workspace is a native modal dialog styled as a fixed application surface inset 18px from the viewport, with a nonshrinking header and progress strip. Native modal behavior confines focus to the preparation task. Desktop content uses a 230px context column, flexible editor of at least 360px, and 310px attachments column. Each desktop column can scroll without losing the workflow header.
 
 At 1200px and below, the columns reduce to 190px, at least 320px, and 265px. At 960px and below, attachments move beneath the context/editor pair and the content region scrolls. At 640px and below, the three areas stack in their existing reading order, the outer inset becomes 8px, and progress labels stack beneath their numbered or checked markers.
 
@@ -61,10 +61,10 @@ The enclosing workspace has rounded corners, reduced on mobile. Compact controls
 - **Progress strip:** five ordered stages, with the first three checked and Email current. Gmail handoff is explicitly labeled Draft only. These indicators describe sequence rather than clickable navigation.
 - **Context:** Billing/Collection toggle, recipient-profile explanation, plain-text format, and a selected new-email treatment. The current message can be edited without changing account recipient defaults.
 - **Message fields:** labeled To, CC, BCC, Subject, and Message fields. A single editable plain-text body occupies the central space. Loading, service errors, changed-package errors, and unsaved state have explicit copy.
-- **Workspace save:** a named button in the editor footer. It is disabled when unchanged or blocked. Successful save feedback explicitly distinguishes a workspace draft from a Gmail draft.
+- **Workspace save:** a named button in the editor footer. It is disabled when unchanged or blocked. Successful save feedback says, “Workspace draft saved. This save did not create or send a Gmail message.” This describes the current save without claiming that no previous Gmail draft exists.
 - **Attachments:** exact reviewed-package filenames are private download controls with document icons and file sizes. Supplemental attachments have an explanatory unavailable state.
 - **Gmail handoff:** connection status, authorization when needed, and a separately named Create Gmail draft action. Unsaved edits and unavailable readiness disable handoff. A confirmed or uncertain outcome has explicit feedback, with a Gmail drafts link after handoff.
-- **Interaction states:** disabled controls reduce opacity; keyboard focus has a visible blue outline. Leaving with unsaved edits requires confirmation.
+- **Interaction states:** disabled controls reduce opacity; keyboard focus has a visible blue outline and remains within the open native dialog. Leaving with unsaved edits requires confirmation. Escape follows that same close protection and does not close while an operation is busy.
 
 ## Do's and Don'ts
 
