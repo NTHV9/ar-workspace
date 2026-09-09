@@ -49,12 +49,36 @@ export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipie
 export async function checkDelivery(env:EmailEnv,actor:string,id:string){
  const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d)throw Error('email_missing');if(d.state==='sent')return deliveryView(d);
  if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor),headers={Authorization:'Bearer '+token};
- const search=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+new URLSearchParams({q:'in:sent rfc822msgid:'+d.message_id,maxResults:'2'}),{headers});
- const hits=search.messages as {id:string}[]|undefined;if(!hits?.length)return {...deliveryView(d),reason:'no_sent_evidence'};
- if(hits.length!==1||search.nextPageToken){await record(env,actor,d,'review_required',null,null,'ambiguous_sent_match');return {...deliveryView(d),state:'review_required',reason:'ambiguous_sent_match'};}
+ let hits:{id:string}[]=[];
+ const trustedId=d.mode!=='draft'?d.gmail_id:null;
+ if(trustedId)hits=[{id:trustedId}];
+ else{
+  const search=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+new URLSearchParams({q:'in:sent rfc822msgid:'+d.message_id,maxResults:'2'}),{headers});
+  hits=(search.messages as {id:string}[]|undefined)??[];
+  if(search.nextPageToken)throw Error('gmail_search_ambiguous');
+  if(!hits.length){
+   // Gmail can replace RFC Message-ID when sending. Match a preserved private
+   // correlation header instead; subject/date only narrow the candidate set.
+   let pageToken='';let pages=0;
+   do{
+    if(++pages>10)throw Error('gmail_search_budget_exceeded');
+    const q='in:sent after:'+Math.floor((Date.parse(d.created_at)-300000)/1000)+' subject:"'+d.snapshot.expected.subject.replace(/["\\]/g,' ')+'"';
+    const page=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+new URLSearchParams({q,maxResults:'50',...(pageToken?{pageToken}:{})}),{headers});
+    for(const candidate of (page.messages as {id:string}[]|undefined)??[]){
+     if(!/^[A-Za-z0-9_-]+$/.test(candidate.id))throw Error('gmail_unavailable');
+     const meta=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${candidate.id}?format=metadata&metadataHeaders=X-AR-Delivery-ID`,{headers});
+     const values=(meta.payload as {headers?:{name:string;value:string}[]}|undefined)?.headers?.filter(h=>h.name.toLowerCase()==='x-ar-delivery-id')??[];
+     if(values.length===1&&values[0].value===d.id)hits.push(candidate);
+    }
+    pageToken=typeof page.nextPageToken==='string'?page.nextPageToken:'';
+   }while(pageToken);
+  }
+ }
+ if(!hits.length)return {...deliveryView(d),reason:'no_sent_evidence'};
+ if(hits.length!==1){await record(env,actor,d,'review_required',null,null,'ambiguous_sent_match');return {...deliveryView(d),state:'review_required',reason:'ambiguous_sent_match'};}
  const messageId=hits[0].id;if(typeof messageId!=='string'||!/^[A-Za-z0-9_-]+$/.test(messageId))throw Error('gmail_unavailable');
  const message=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,{headers});
- let expected=d.snapshot.expected;
+ let expected={...d.snapshot.expected,...(trustedId?{gmailId:trustedId}:{})};
  if(d.mode==='test'){
   const payload=message.payload as {headers?:{name:string;value:string}[]}|undefined;const to=payload?.headers?.filter(h=>h.name.toLowerCase()==='to');const cc=payload?.headers?.find(h=>h.name.toLowerCase()==='cc')?.value;const bcc=payload?.headers?.find(h=>h.name.toLowerCase()==='bcc')?.value;
   const recipient=to?.length===1?to[0].value.trim().toLowerCase():'';

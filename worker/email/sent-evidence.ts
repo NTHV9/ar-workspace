@@ -1,6 +1,6 @@
 import {hash,unbase64} from './crypto';
 import type {Recipients} from '../settings/validation';
-export interface ExpectedMail {messageId:string;recipients:Recipients;subject:string;body:string;files:{name:string;sha256:string;byte_count:number}[]}
+export interface ExpectedMail {messageId:string;gmailId?:string;recipients:Recipients;subject:string;body:string;files:{name:string;sha256:string;byte_count:number}[]}
 interface Part {mimeType?:string;filename?:string;headers?:{name:string;value:string}[];parts?:Part[];body?:{data?:string;size?:number;attachmentId?:string}}
 interface Message {id?:string;labelIds?:string[];internalDate?:string;payload?:Part}
 export const decodeUrl64=(s:string)=>unbase64(s.replaceAll('-','+').replaceAll('_','/'));
@@ -16,7 +16,9 @@ export async function verifySentEvidence(message:Message,expected:ExpectedMail,a
   if(message.labelIds.includes('TRASH'))throw Error();
   const date=Number(message.internalDate);if(!Number.isSafeInteger(date)||date<1||date>Date.now()+300000||!message.id||!message.payload)throw Error();
   const header=(name:string)=>{const values=message.payload!.headers?.filter(h=>h.name.toLowerCase()===name.toLowerCase()).map(h=>h.value)??[];if(values.length>1)throw Error();return values[0]??'';};
-  if(header('Message-ID').trim()!==expected.messageId||JSON.stringify(addresses(header('From')))!==JSON.stringify(['ar@katathani.com']))throw Error();
+  const correlation=expected.messageId.slice(1).split('@')[0];
+  const identity=header('Message-ID').trim()===expected.messageId||(expected.gmailId!==undefined&&message.id===expected.gmailId)||(/^[0-9a-f-]{36}$/.test(correlation)&&header('X-AR-Delivery-ID').trim()===correlation);
+  if(!identity||JSON.stringify(addresses(header('From')))!==JSON.stringify(['ar@katathani.com']))throw Error();
   for(const field of ['to','cc','bcc'] as const)if(JSON.stringify(addresses(header(field)))!==JSON.stringify(expected.recipients[field].map(s=>s.toLowerCase()).sort()))throw Error();
   if(decodedHeader(header('Subject'))!==expected.subject)throw Error();
   const leaves:Part[]=[];function visit(p:Part,depth=0){if(depth>12||leaves.length>100)throw Error();if(p.parts?.length){for(const child of p.parts)visit(child,depth+1);}else leaves.push(p);}visit(message.payload);

@@ -10,3 +10,5 @@ it('does not accept another Message-ID or a future timestamp',async()=>{const {e
 
 
 it('rejects an extra recipient-visible representation and contradictory draft label',async()=>{const {expected,message}=await fixture();message.payload.parts.push({mimeType:'text/html',body:{data:url64(new TextEncoder().encode('<p>Changed content</p>'))}});expect(await verifySentEvidence(message,expected,async()=>bytes)).toMatchObject({status:'review_required'});message.payload.parts.pop();message.labelIds=['SENT','DRAFT'];expect(await verifySentEvidence(message,expected,async()=>bytes)).toMatchObject({status:'not_sent'});});
+
+it('accepts Gmail-rewritten RFC ID only with exact backend receipt ID or preserved correlation',async()=>{const {expected,message}=await fixture();message.payload.headers[0].value='<rewritten@mail.gmail.com>';expect(await verifySentEvidence(message,{...expected,gmailId:'abc123'},async()=>bytes)).toMatchObject({status:'verified'});expect(await verifySentEvidence(message,{...expected,gmailId:'other'},async()=>bytes)).toMatchObject({status:'review_required'});});
