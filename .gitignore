@@ -21,4 +21,5 @@ __pycache__/
 *.pyc
 
 .tmp/
-test-results-reports/
+test-results-*/
+
