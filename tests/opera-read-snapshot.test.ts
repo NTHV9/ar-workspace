@@ -33,10 +33,44 @@ function harness(raw = current(), open = history([invoice()]), closed = history(
 }
 
 describe('verified OPERA snapshot reads', () => {
-  it('does not publish disappearance of a printed invoice that remains open in history',async()=>{
-    const printed={...invoice(),printed:true};
+  it('uses verified history parent links so an existing child is not counted again when restoring a printed root',async()=>{
+    const parent={...invoice(120,0),invoiceNo:'900',compressed:true};
+    const child={...invoice(121,30),parentInvoiceNo:'900',compressed:false};
+    const printed={...invoice(123,60),printed:true,compressed:false};
+    const rows={...history([parent,child,printed]),totalResults:2};
+    const reader=new OperaReader({origin:'https://synthetic.example.invalid',appKey:'synthetic',hotelId:'KAT'},async()=> 'synthetic',async request=>{
+      const u=new URL(request.url);if(!u.pathname.includes('invoicePayments'))return Response.json(current([invoice(121,30)],60));
+      return Response.json(u.searchParams.has('invoiceNo')?history([printed]):rows);
+    });
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-09');
+    expect(result.invoices.find(i=>i.id==='121')).toMatchObject({collection_role:'child',parent_open:0,open:30});
+    expect(result.invoices.find(i=>i.id==='123')).toMatchObject({collection_role:'standalone',open:60});
+  });
+  it.each([
+    {label:'unknown printed state',extra:{}},
+    {label:'explicitly unprinted',extra:{printed:false,compressed:false}},
+    {label:'unknown parent role',extra:{printed:true}},
+  ])('rejects missing history rows with $label',async({extra})=>{
+    const row={...invoice(),...extra};const {reader}=harness(current([],60),history([row]),history([row]));
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09')).rejects.toMatchObject({stage:'current_history_membership'});
+  });
+  it('does not restore printed history when the complete ledger total disagrees with Account',async()=>{
+    const row={...invoice(),printed:true,compressed:false};const {reader}=harness(current([],61),history([row]),history([row]));
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09')).rejects.toMatchObject({stage:'current_history_membership'});
+  });
+  it('rejects a printed invoice whose amount changes at final history confirmation',async()=>{
+    const row={...invoice(),printed:true,compressed:false};
+    const reader=new OperaReader({origin:'https://synthetic.example.invalid',appKey:'synthetic',hotelId:'KAT'},async()=> 'synthetic',async request=>{
+      const u=new URL(request.url);if(u.pathname.endsWith('/accounts/account-1')&&!u.pathname.includes('invoicePayments'))return Response.json(current([],60));
+      return Response.json(history([u.searchParams.has('invoiceNo')?{...row,balance:money(59)}:row]));
+    });
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09')).rejects.toMatchObject({stage:'printed_history_changed'});
+  });
+  it('restores a printed open invoice only after complete history and stable confirmation',async()=>{
+    const printed={...invoice(),printed:true,compressed:false};
     const {reader}=harness(current([],60),history([printed]),history([printed]));
-    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09',[{id:'123',invoice_no:'456',open:60}])).rejects.toMatchObject({code:'pagination_changed',stage:'current_history_membership'});
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-09',[{id:'123',invoice_no:'456',open:60}]);
+    expect(result.invoices).toHaveLength(1);expect(result.invoices[0]).toMatchObject({id:'123',open:60,collection_role:'standalone'});
   });
   it('reconciles compressed detail rows without a false history count warning',async()=>{
     const parent={...invoice(120,0),invoiceNo:'900',compressed:true};

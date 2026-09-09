@@ -1,3 +1,4 @@
+import {printedCandidates,currentFingerprint,invoiceFingerprint,readScopedInvoiceHistory,transactionId} from '../opera/printed-invoices';
 import { OperaError, type OperaReader } from '../opera/client';
 import { collectPages,verifiedNextCursor } from '../opera/pagination';
 import { historyRootCount } from '../opera/history-count';
@@ -32,8 +33,8 @@ export async function readBusinessDate(reader:OperaReader,hotel:string):Promise<
 }
 /** Open-history audit is additional to the retained inclZeroBalance=true history API. */
 export async function readVerifiedAccount(reader:OperaReader,hotel:string,accountId:string,businessDate:string,previous:PreviousInvoice[]=[]):Promise<AccountSnapshot> {
-  const current=await reader.account(accountId);
-  const snapshot=normalizeAccount(current,hotel,businessDate);
+  let current=await reader.account(accountId);
+  let snapshot=normalizeAccount(current,hotel,businessDate);
   if(snapshot.account.id!==accountId)throw new OperaError('invalid_response',undefined,'account_identity');
   const readAuditHistory=async(includeZero:boolean)=>{
     let oldBalanceRows=0;const oldBalanceForms:Record<string,number>={};let firstPageRows=0;const transactionKinds=new Map<string,Set<string>>();let maxPageRows=0;
@@ -57,6 +58,20 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
     // Verify against all zero-inclusive pages rather than dropping current items.
     history=await readAuditHistory(true);
     open=history.filter(r=>r.kind==='invoice'&&amountCents(r.value.balance,'THB')!==0);
+  }
+  if(!matches()){
+    const account=asObject(asObject(current).accountDetails);
+    const candidates=printedCandidates(account,history.filter(r=>r.kind==='invoice').map(r=>r.value));
+    if(candidates.length){
+      const after=await reader.account(accountId),afterAccount=asObject(asObject(after).accountDetails);
+      if(currentFingerprint(account)!==currentFingerprint(afterAccount))throw new OperaError('pagination_changed',undefined,'printed_current_changed');
+      const confirmed=await readScopedInvoiceHistory(reader,hotel,accountId,[...new Set(candidates.map(r=>String(r.invoiceNo)))]);
+      if(candidates.some(r=>{const rows=confirmed.filter(v=>transactionId(v)===transactionId(r));return rows.length!==1||invoiceFingerprint(rows[0])!==invoiceFingerprint(r);}))throw new OperaError('pagination_changed',undefined,'printed_history_changed');
+      const warnings=snapshot.account.sourceWarnings;
+      current={accountDetails:{...afterAccount,invoices:[...(afterAccount.invoices as unknown[]),...candidates]}};
+      snapshot=normalizeAccount(current,hotel,businessDate);if(warnings)snapshot.account.sourceWarnings=warnings;
+      expected.clear();for(const i of snapshot.invoices.filter(i=>i.open!==0))expected.set(i.id,Math.round(i.open*100));
+    }
   }
   if(open.length!==expected.size||open.some(r=>expected.get(String(r.value.transactionNo))!==amountCents(r.value.balance,'THB'))){
     const actual=new Map(open.map(r=>[String(r.value.transactionNo),amountCents(r.value.balance,'THB')]));
