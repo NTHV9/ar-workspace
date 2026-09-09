@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจทุก operation ในสองแท็บ OHIP แล้ว
+
+- ตรวจReportทั้ง7modules/33operations และStatementทั้ง3modules/17operations รวม50distinctoperationsตามfiltersที่เจ้าของเปิดไว้. เปิดครบทุกmoduleและอ่านmethod/URI/operationID/Infoที่มีจากDOMจริง;5ReportMasterrowsไม่มีInfodescriptionจึงตรวจofficialschemaแทน.
+- ตรวจrequest/responseเต็มจากOracleprimaryspecsประกอบทุกรายการ. getFolioReportเป็นตัวที่มีPDFbytefieldชัด แต่เป็นReservationFolioที่ระบบใช้แล้ว. getARStatements/postStatements/getStatementsHistory/getReports/getAllReports/getReportParametersมีประโยชน์ตามขอบเขตที่บันทึก ไม่ได้เพิ่มnativeStatementPDFtransport.
+- generateChannelBillingStatementsเป็นChannelcontractbilling(deprecated);postGenericReportsเป็นconfigcreate;cashierClosureReportsListคืนประเภทreportenum ไม่ใช่files. ตรวจprintReportmetadataและRTFattachmentidentityแล้ว ไม่ถือเป็นPDFoutput.
+- ตารางรายตัวครบ33และ17อยู่OHIP_REPORT_OPERATION_REVIEW.mdและOHIP_STATEMENT_OPERATION_REVIEW.md;สรุปOHIP_REPORT_STATEMENT_REVIEW_SUMMARY.md. ตรวจลำดับแถวครบ50แล้ว.
+- รอบนี้ไม่มีExecute/TryIt,reportgeneration,email,configuration/subscription/keychange,migrationหรือdeploy. คืนสองแท็บสู่ผลค้นหาเดิม. ผลคือinspection/schema reviewไม่ใช่liveintegrationtestใหม่.
+- ยังไม่พบoperationเพิ่มเติมใน50ผลค้นหานี้ที่พิสูจน์การรับInternalARStatementPDFจากBackend. ไม่ขยายเป็นคำกล่าวว่าOracleไม่มีAPIอื่น.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ไล่ Internal Statement และตรวจ History API แล้ว
 
 - ยึดInternal/Customized ReportของOPERAตามเจ้าของยืนยัน;พักR&Aเป็นเส้นทางของStatementนี้.
