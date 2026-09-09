@@ -24,9 +24,11 @@ spacing:
 
 This document records the implemented Email Composer within the incumbent [Luminous AR interface](../DESIGN.md). It is a surface supplement, not a replacement for other pages or their design authority. Source evidence is [EmailComposer.tsx](../src/EmailComposer.tsx), [email-composer.css](../src/email-composer.css), and inherited [styles.css](../src/styles.css).
 
-The [approved email reference](../references/design/email-composer-v1.png) supplies the white workspace, cool blue surround, context/editor/attachments composition, and five-step progress strip. This increment provides an editable plain-text message, a new email thread, workspace saving, and human-triggered Gmail draft creation. Existing-thread selection, supplemental uploads, rich-text formatting, and Send Now are not enabled. These are scoped capability differences, not replacements for the approved visual world.
+The [approved email reference](../references/design/email-composer-v1.png) supplies the white workspace, cool blue surround, context/editor/attachments composition, and five-step progress strip. The current surface provides an editable plain-text message, a new email thread, workspace saving, human-triggered Gmail draft creation, and direct sending after explicit review. Existing-thread selection, supplemental uploads, and rich-text formatting remain unavailable. These are scoped capability differences, not replacements for the approved visual world. This update records source `c2ea651`.
 
 Reviewed synthetic captures: [1440 desktop](../evidence/email-composer-1440.png), [1280 laptop](../evidence/email-composer-1280.png), [390 mobile top](../evidence/email-composer-390.png), and [390 mobile handoff](../evidence/email-composer-390-handoff.png). These show UI rendering, not proof of live Gmail delivery or production enablement.
+
+The send confirmation is captured at [1440](../evidence/email-send-confirmation-1440.png), [1280](../evidence/email-send-confirmation-1280.png), and [390](../evidence/email-send-confirmation-390.png). The latest desktop composer captures visibly label Gmail handoff as Draft or send.
 
 ## Colors
 
@@ -46,7 +48,9 @@ The workspace is a native modal dialog styled as a fixed application surface ins
 
 At 1200px and below, the columns reduce to 190px, at least 320px, and 265px. At 960px and below, attachments move beneath the context/editor pair and the content region scrolls. At 640px and below, the three areas stack in their existing reading order, the outer inset becomes 8px, and progress labels stack beneath their numbered or checked markers.
 
-**The Reachable Feedback Rule.** The editor footer and feedback do not shrink away when space is constrained. Keep the save action and its result reachable on narrow screens. Capture after the browser has painted scrolled content; the reviewed mobile handoff capture includes the visible save label.
+**The Reachable Feedback Rule.** The editor footer and feedback do not shrink away when space is constrained. Keep the save action and its result reachable on narrow screens. Capture after the browser has painted scrolled content; use the appropriate scroll position to verify each action rather than expecting the whole stacked workspace in one mobile capture.
+
+Send review occupies the dialog's white working area as a single readable column. Recipient rows, subject, a pale message block, invoice scope, attachment names, acknowledgment, and actions retain that reading order on desktop and mobile. The underlying header, progress strip, and editor controls are inert during confirmation.
 
 ## Elevation & Depth
 
@@ -58,12 +62,15 @@ The enclosing workspace has rounded corners, reduced on mobile. Compact controls
 
 ## Components
 
-- **Progress strip:** five ordered stages, with the first three checked and Email current. Gmail handoff is explicitly labeled Draft only. These indicators describe sequence rather than clickable navigation.
-- **Context:** Billing/Collection toggle, recipient-profile explanation, plain-text format, and a selected new-email treatment. The current message can be edited without changing account recipient defaults.
+- **Progress strip:** five ordered stages, with the first three checked and Email current. Gmail handoff is explicitly labeled Draft or send. These indicators describe sequence rather than clickable navigation.
+- **Context:** Billing/Collection toggle, recipient-profile explanation, plain-text format, and a selected new-email treatment. Collection exposes a stage picker with Friendly, Follow 1, Follow 2, Follow 3, and Final; a stage is required before its handoff actions become available. The current message can be edited without changing account recipient defaults.
 - **Message fields:** labeled To, CC, BCC, Subject, and Message fields. A single editable plain-text body occupies the central space. Loading, service errors, changed-package errors, and unsaved state have explicit copy.
 - **Workspace save:** a named button in the editor footer. It is disabled when unchanged or blocked. Successful save feedback says, “Workspace draft saved. This save did not create or send a Gmail message.” This describes the current save without claiming that no previous Gmail draft exists.
 - **Attachments:** exact reviewed-package filenames are private download controls with document icons and file sizes. Supplemental attachments have an explanatory unavailable state.
-- **Gmail handoff:** connection status, authorization when needed, and a separately named Create Gmail draft action. Unsaved edits and unavailable readiness disable handoff. A confirmed or uncertain outcome has explicit feedback, with a Gmail drafts link after handoff.
+- **Gmail handoff:** connection status, authorization when needed, a primary Create Gmail draft action, and a separate Review & send now action. Unsaved edits and unavailable readiness disable handoff. A confirmed or uncertain outcome has explicit feedback, with a Gmail drafts link after handoff.
+- **Send confirmation:** Review before sending displays recipients, subject, plain-text message, selected invoice scope, and attachment filenames. An initially unchecked acknowledgment enables Confirm send now. Back to editing remains a separate secondary action. During the request the action indicates sending and verification, and repeated clicks are disabled.
+- **Sent verification:** delivery status and Check sent status distinguish verified sending from pending or uncertain outcomes. Draft saving does not record billing or collection activity; only verified Sent evidence does. A missing draft is not presented as proof of sending, and uncertain send feedback directs the user to verification rather than another send.
+- **Connection test:** an expandable section requests a one-time recipient and clearly names Send one test email. Its explanation identifies one generic message with a synthetic PDF and no business-history or KPI changes. The recipient is not saved as an account default. Result copy and Check test status make unresolved outcomes visible; documentation and captured examples must not persist the real one-time recipient.
 - **Interaction states:** disabled controls reduce opacity; keyboard focus has a visible blue outline and remains within the open native dialog. Leaving with unsaved edits requires confirmation. Escape follows that same close protection and does not close while an operation is busy.
 
 ## Do's and Don'ts
@@ -71,7 +78,8 @@ The enclosing workspace has rounded corners, reduced on mobile. Compact controls
 - Do retain the context/editor/attachments hierarchy and the original reference file.
 - Do distinguish saved message state, reviewed PDF state, Gmail draft creation, and actual sending in visible language.
 - Do verify both desktop composition and scrolled mobile actions with synthetic evidence.
-- Don't add controls that imply supplemental upload, existing-thread selection, rich text, or sending already works.
+- Don't add controls that imply supplemental upload, existing-thread selection, or rich text already works.
+- Don't describe Gmail handoff as draft-only now that explicit send confirmation is implemented, or present uncertain outcomes as verified sends.
 - Don't promote increment-specific omissions or screenshot timing artifacts into global design rules.
 
 This surface-only documentation pass does not regenerate the global design file or its sidecar.

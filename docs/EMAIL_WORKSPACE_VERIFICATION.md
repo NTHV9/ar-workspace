@@ -1,5 +1,7 @@
 # Email workspace verification — 10 September 2026
 
+Historical first increment. Direct send and sent-evidence follow-up are recorded in [GMAIL_SEND_VERIFICATION.md](GMAIL_SEND_VERIFICATION.md) and the latest PROJECT_STATUS checkpoint.
+
 ## Implemented
 
 - Protected email workspace opened from an acknowledged, ready PDF job. Draft identity binds owner, document job and exact reviewed revision. Export receipts are copied into the draft; changed packages cannot be handed off silently.

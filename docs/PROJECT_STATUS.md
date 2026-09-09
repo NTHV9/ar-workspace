@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026: ส่งตรงจาก Worker และตรวจ Sent ผ่านจริง
+
+- เพิ่ม Review & send now → ตรวจผู้รับ/ข้อความ/Invoice/Folio/ไฟล์ → checkbox ยืนยัน → ส่งโดยคนเท่านั้น ไม่มี auto-send; Collection เลือก stage ชัดเจน, normal Billing ต้องมีกฎบัญชีที่กำหนดแล้ว
+- ใช้ durable claim/revision และ immutable snapshot กันส่งซ้ำหรือบันทึกทับ ผลไม่แน่นอนใช้ Check sent status ไม่ยิงส่งใหม่; บันทึก Billing/Collection แบบ atomic หลังตรวจ SENT/เวลา/ตัวตน/ผู้รับ/เนื้อหา/PDF hash ครบเท่านั้น
+- เพิ่ม Gmail readonly บน client ของแอปใหม่และ consent ผ่านจริง ทดสอบส่งตรงจาก Worker 1 ฉบับพร้อม PDF สมมติ เวลา 00:39:54 ICT; ผู้ใช้ยืนยันเผลอย้ายเข้า Trash ตรวจฉบับเดิมผ่านโดยไม่ส่งซ้ำ
+- พบ Gmail เปลี่ยน RFC Message-ID จึงใช้ immutable provider receipt ที่แยกจาก observed candidate สำหรับ direct send; SENT+Trash ยังพิสูจน์การส่งได้เมื่อหลักฐานครบ แต่ draft หายไม่ใช่ sent
+- Applied migrations ar_mail_delivery, ar_mail_revision_guard, ar_mail_receipt_provenance ใน Supabase ใหม่ ไม่แก้ยอด/legacy; final postcheck delivery 1/test sent 1/business events 0/ประวัติบิลเปลี่ยน 0/ผู้รับใน app records 0
+- Build/Typecheck/189 unit tests และ 7 browser tests desktop/laptop/mobile ผ่าน; SQL rollback tests first billing/due/Final/duplicate/concurrent edits/test exclusion ผ่าน ไม่ทำ business event สมมติถาวร
+- Deployed source c2ea6516fa3e668a401c7cdad42c9b4f249aa5d7 บน ar-workspace, deployment be002e58e51c491e9100a29e06a126f0, workflow 61528f8c-7353-4140-9a86-3cb23042dd00; health SHA ตรงและ anonymous send/check ได้ 401
+- ยังต้องทำ: Collection Queue, scheduled read-only reconciliation, existing threads, rich-text/templates, supplemental inspection/upload และ live proof ของ Gmail-side draft-send correlation รุ่นใหม่; normal customer send ยังไม่ทดลองเพราะไม่มีคำสั่งส่งลูกค้าจริง รายละเอียด GMAIL_SEND_VERIFICATION.md
+
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026: Email Workspace และ Gmail Draft ทดสอบจริงแล้ว
 
 - เปิด Email preparation จากชุด PDF ที่ review/save แล้วได้ แก้ผู้รับ/Subject/ข้อความ บันทึก workspace draft แยกจาก Gmail draft; ตรวจ owner/revision/ไฟล์แนบและ OPERA ปัจจุบันก่อน handoff มี single claim ป้องกันคำขอซ้ำ/ผลไม่แน่นอน
