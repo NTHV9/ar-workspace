@@ -7,7 +7,7 @@ import type { DetectedText, PdfExportFile, PdfLayer, PdfProject, PdfProjectPage,
 import './pdf-workspace.css';
 export type { PdfExportFile, PdfProject, PdfSourceDocument } from './types';
 
-type Props = { documents: PdfSourceDocument[]; initialProject?: PdfProject; accountName: string; hotel: string; selectedCount: number; onClose: () => void; onSave?: (files: PdfExportFile[], project: PdfProject) => Promise<void>; onSaveDraft?: (project: PdfProject) => Promise<void> };
+type Props = { documents: PdfSourceDocument[]; initialProject?: PdfProject; initialDelivery?: PdfProject['delivery']; accountName: string; hotel: string; selectedCount: number; onClose: () => void; onSave?: (files: PdfExportFile[], project: PdfProject) => Promise<void>; onSaveDraft?: (project: PdfProject) => Promise<void> };
 const fonts = ['Arial', 'Georgia', 'Courier New', 'Tahoma', 'Plus Jakarta Sans'];
 const uid = () => crypto.randomUUID();
 
@@ -52,7 +52,7 @@ function FinalPdfPreview({ file, onRendered, onRendering }: { file: PdfExportFil
   return <div className="pdf-final-scroll"><p role="status">{status}</p>{error && <p role="alert" className="pdf-error">{error}</p>}<div className="pdf-final-pages" ref={container}/></div>;
 }
 
-export function PdfWorkspace({ documents: sources, initialProject, accountName, hotel, selectedCount, onClose, onSave, onSaveDraft }: Props) {
+export function PdfWorkspace({ documents: sources, initialProject, initialDelivery='combined', accountName, hotel, selectedCount, onClose, onSave, onSaveDraft }: Props) {
   const [loaded, setLoaded] = useState<Map<string, PDFDocumentProxy>>(new Map());
   const [project, setProject] = useState<PdfProject | null>(null);
   const [persistedProject, setPersistedProject] = useState<PdfProject | null>(null);
@@ -81,9 +81,9 @@ export function PdfWorkspace({ documents: sources, initialProject, accountName, 
     let current = true; let dispose: (() => void) | undefined;
     revision.current++; reviewedProject.current = null;
     setProject(null); setPersistedProject(null); setDraftSaved(false); setCloseConfirm(false); setError(''); setPreview(null); setAck(false); setViewed([]); setSaved(false); setSelected('');
-    loadSources(sources).then(result => { dispose = result.dispose; if (current) { sourceModel.current=result.project; const restored = initialProject ? restoreProject(initialProject, result.project) : result.project; setLoaded(result.documents); setProject(restored); setPersistedProject(restored); setActiveId(restored.pages[0]?.id || ''); setPast([]); setFuture([]); } else dispose(); }).catch(e => { dispose?.(); if (current) setError(e instanceof Error ? e.message : 'Unable to open PDF.'); });
+    loadSources(sources).then(result => { dispose = result.dispose; if (current) { sourceModel.current=result.project; const restored = initialProject ? restoreProject(initialProject, result.project) : {...result.project,delivery:initialDelivery}; setLoaded(result.documents); setProject(restored); setPersistedProject(restored); setActiveId(restored.pages[0]?.id || ''); setPast([]); setFuture([]); } else dispose(); }).catch(e => { dispose?.(); if (current) setError(e instanceof Error ? e.message : 'Unable to open PDF.'); });
     return () => { current = false; revision.current++; dispose?.(); };
-  }, [sources, initialProject]);
+  }, [sources, initialProject, initialDelivery]);
   const visiblePages = project ? deliveryGroups(project, sources).flatMap(g => g.pages) : [];
   const page = visiblePages.find(p => p.id === activeId) || visiblePages[0];
   activePage.current = page?.id || '';

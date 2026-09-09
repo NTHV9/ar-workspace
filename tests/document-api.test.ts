@@ -17,3 +17,9 @@ it('rejects forged cross-job file identity without storage access',async()=>{
  const calls:string[]=[];vi.stubGlobal('fetch',async(url:string)=>{calls.push(url);return Response.json({id:jobId,owner,files:[],exports:[]});});
  const r=await documentApi(new Request(`https://app.test/api/documents/${jobId}/files/00000000-0000-4000-8000-000000000004`),env,owner,{Authorization:'Bearer synthetic'});expect(r.status).toBe(404);expect(calls).toHaveLength(1);
 });
+it('does not show a substitute PDF when private storage fails',async()=>{
+ const key=`jobs/${jobId}/originals/00000000-0000-4000-8000-000000000003.pdf`;
+ vi.stubGlobal('fetch',async(url:string)=>url.endsWith('/rpc/ar_document_get')?Response.json({id:jobId,owner,files:[{id:'00000000-0000-4000-8000-000000000003',state:'ready',storage_key:key}],exports:[]}):new Response('synthetic failure',{status:503}));
+ const response=await documentApi(new Request(`https://app.test/api/documents/${jobId}/files/00000000-0000-4000-8000-000000000003`),env,owner,{Authorization:'Bearer synthetic'});
+ expect(response.status).toBe(503);expect(await response.json()).toEqual({error:'document_file_unavailable'});
+});

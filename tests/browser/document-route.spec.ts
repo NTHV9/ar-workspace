@@ -6,12 +6,12 @@ const fileId = 'b0000000-0000-4000-8000-000000000001';
 const user = { id: 'synthetic-document-user', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
 function session(token: string) { return { access_token: token, refresh_token: 'synthetic-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user }; }
 
-async function mockApplication(page: Page) {
+async function mockApplication(page: Page, requestedLayout='combined') {
   const source = await PDFDocument.create();
   const font = await source.embedFont(StandardFonts.Helvetica);
   source.addPage([595, 842]).drawText('SYNTHETIC INVOICE A', { x: 45, y: 740, font, size: 18 });
   const bytes = Buffer.from(await source.save());
-  const job = { id: jobId, owner: user.id, hotel: 'KAT', account_id: 'synthetic-account', account_name: 'Synthetic Document Account', content: 'invoices', layout: 'combined', purpose: 'billing', invoice_ids: ['A'], manifest: [{ id: 'A', invoice_no: 'INVOICE-A' }], state: 'ready', revision: 0, project_key: null as string | null, exports: [], acknowledged: false, files: [{ id: fileId, kind: 'invoice', invoice_id: 'A', ordinal: 0, state: 'ready', storage_key: `jobs/${jobId}/originals/${fileId}.pdf`, error_code: null, byte_count: bytes.length, sha256: 'synthetic' }], created_at: '2026-09-09T00:00:00Z' };
+  const job = { id: jobId, owner: user.id, hotel: 'KAT', account_id: 'synthetic-account', account_name: 'Synthetic Document Account', content: 'invoices', layout: requestedLayout, purpose: 'billing', invoice_ids: ['A'], manifest: [{ id: 'A', invoice_no: 'INVOICE-A' }], state: 'ready', revision: 0, project_key: null as string | null, exports: [], acknowledged: false, files: [{ id: fileId, kind: 'invoice', invoice_id: 'A', ordinal: 0, state: 'ready', storage_key: `jobs/${jobId}/originals/${fileId}.pdf`, error_code: null, byte_count: bytes.length, sha256: 'synthetic' }], created_at: '2026-09-09T00:00:00Z' };
   const controls = {
     portfolioRequests: [] as string[], documentReads: 0, sourceReads: 0,
     saveRequests: [] as { token: string; body: Record<string, unknown> }[],
@@ -99,3 +99,11 @@ test('document creation preserves click selection order C then A', async ({ page
   await expect.poll(() => controls.createRequests.length).toBe(1);
   expect(controls.createRequests[0]).toMatchObject({ hotel: 'KAT', accountId: 'synthetic-account', ids: ['C', 'A'] });
 });
+
+for(const [layout,label] of [['statement_bundle','Statement + combined Invoices'],['separate','Statement + each Invoice']]){
+ test(`requested delivery ${layout} is selected when first opening the job`,async({page})=>{
+  await mockApplication(page,layout);await page.goto(`/?documentJob=${jobId}`);
+  await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+  await expect(page.getByRole('button',{name:label,exact:true})).toHaveClass(/chosen/);
+ });
+}
