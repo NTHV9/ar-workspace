@@ -1,5 +1,23 @@
 # Statement PDF external contract follow-up — 2026-09-09
 
+## Confirmed tenant Analytics Publisher — 2026-09-09
+
+Successfully followed OPERA Reports → Reporting And Analytics → actual Hospitality Reporting and Analytics portal → Reports and Dashboards. Existing user SSO opened Oracle Analytics Home on hgbu.gbua.ap-mumbai-1.oci.oraclecloud.com under the tenant prefix. This is a distinct confirmed host from the OPERA UI and OHIP gateway used in earlier candidate checks.
+
+The tenant /xmlpserver/ context opened Oracle Analytics Publisher : Home (redirected to /xmlpserver/servlet/home). Its UI exposed real catalog report links such as /Templates/Financial/finjrnlbytrans.xdo. No report was run or edited. This verifies accessible Publisher UI, not REST client-credentials authentication.
+
+Two scoped searches:
+- Analytics Catalog: keyword statement, Location All, subfolders enabled, Type All →0items found.
+- Publisher's own Search: keyword statement, all exposed object categories →Result not found.
+These prove no matching accessible search result, not that a hidden or separately provisioned native OPERA stationery template cannot exist. kat_statement remains confirmed only as the OPERA Customized Report already inspected.
+
+Read-only REST definition experiment on this confirmed host used the observed catalog path:
+- GET /xmlpserver/services/rest/v1/reports/Templates%2FFinancial%2Ffinjrnlbytrans.xdo → rendered404Not Found.
+- Oracle's documented double-encoded-slash alternative was attempted once; Microsoft Edge displayed ERR_BLOCKED_BY_CLIENT. Do not interpret this client block as a Publisher HTTP response or bypass browser protection. No successful metadata JSON, parameter POST or run POST was obtained.
+
+No OHIP Developer Portal tab was present. Its account-specific URL has not been supplied, so a focused user question requests the URL or an opened tab, without secrets. This is the remaining input for application/API entitlement inspection; no message to Oracle is required or sent. No credential values were copied, no application permissions changed, and no existing report/legacy resource was modified.
+
+
 ## Authenticated OPERA report configuration inspection — 2026-09-09
 
 Read Manage Reports → kat_statement → Edit to inspect existing values only. Did not change fields, upload, save or generate a report. Current Report Type is Customized Report, not URL or Reporting And Analytics. Sample Report and Datasource File both read sample_statement; uploaded template filename is kat_statement.rtf. Report group is Accounts Receivable Statements; one copy and language E. No Publisher host or catalog reportPath was exposed on this configuration screen.

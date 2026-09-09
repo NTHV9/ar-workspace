@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: พบ Publisher host จริงผ่าน SSO
+
+- เปิดจากOPERA → Reporting And Analytics → Reports and Dashboards ได้OracleAnalyticsบนhgbu.gbua.ap-mumbai-1.oci.oraclecloud.com และยืนยันtenant /xmlpserver/ เปิดPublisherHomeได้จริง.
+- ค้นหาstatementจากAnalyticsCatalogแบบAll/subfoldersและPublisherSearchได้0resultsทั้งสอง;ไม่สรุปว่าไม่มีhiddenreport แต่ยังไม่พบcatalogpathของkat_statement.
+- ทดลองGETmetadataของcatalogreportที่เห็นจริง:single-encodedpathได้404;double-encodedตามคู่มือถูกEdgeบล็อกERR_BLOCKED_BY_CLIENT. ยังไม่พิสูจน์PublisherRESTหรือOHIPcredentialใช้ได้ และไม่ได้POSTrun.
+- ไม่มีแท็บOHIPDeveloperPortalและไม่มีURLบัญชีที่ยืนยัน จึงฝากคำถามขอURL/เปิดแท็บโดยไม่ขอSecret. ไม่มีการส่งOracleinquiry/แก้รายงาน/สร้างรายงาน/เปลี่ยนสิทธิ์/Deployในรอบนี้.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: อ่าน Template และ Sample XML ของ Statement แล้ว
 
 - อ่านค่าจริงManage Reports/kat_statement:ชนิดCustomized Report,ไฟล์kat_statement.rtf,Sample ReportและDatasource=sample_statement. ไม่ใช่ชนิดURL/Reporting And Analytics;ไม่พบPublisherhost/catalogpathในหน้านี้.
