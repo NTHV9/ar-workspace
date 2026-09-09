@@ -1,5 +1,16 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดลอง getARStatements → postStatements จริง
+
+- เจ้าของขอทดลองลำดับนี้โดยตรง: KATหนึ่งงาน/สองInvoice; ตรวจCurrentและdescriptorตรงรายการ/ยอดก่อนPOST. ใช้durableclaimและprivate immutable marker; POSTหนึ่งครั้ง ไม่มีauto-retry.
+- ผลจริง HTTP201, JSON {}, Location=/ars/v1 ไม่มีquery/ลิงก์ไฟล์/PDF bytes. Locationเป็นAPIbaseจึงถูกguardหยุดก่อนGET;ไม่ได้POSTซ้ำ.
+- หลังPOST selected2รายการไม่อยู่ในCurrent Account invoicesแบบเดิม แต่HistoryพบตรงtransactionIDครบ2/2 ยอดค้างเท่าเดิมและไม่ศูนย์. **ไม่ใช่หลักฐานชำระเงินหรือCLEARED**;ยังไม่สรุปสาเหตุการเปลี่ยนrepresentation. ต้องตรวจStatement fetch/contextก่อนปรับrefresh;คงexact-membership guardและsnapshotเดิมเมื่อข้อมูลไม่ตรง.
+- ไม่มีการส่งอีเมลหรือบันทึกactual billing. ไม่เรียกAPIจ่ายเงิน/ปรับยอด/ลบ/ย้อนStatement. ไฟล์ทดลองทั้งหมดอยู่Private Storage;ไม่มีcustomerPDF/JSONเข้าGit.
+- Source4c3dddb8f722346f7ba86e604fb2134d53210c88 pushed branchcodex/opera-refresh, Worker ar-workspace deployment4a2954881270432c84b250042c0b636f; healthSHAตรงและSupabasedatabase_verified. ไม่มีmigrationหรือfrontendchange.
+- InitialtrialBuildผ่าน; backendfollow-upTypecheck/connectorbundleผ่าน;128unit testsผ่านก่อนเพิ่มread-onlycomparisonรายละเอียดท้ายรอบ. รายละเอียดและrunIDsอยู่STATEMENT_API_RESEARCH.md.
+- NativeStatementPDFยังไม่สำเร็จ: ได้หลักฐานใหม่ว่าPOSTทำงานจริง แต่responseที่ทดสอบไม่ให้ไฟล์ดาวน์โหลด. PDFWorkspace/Invoiceเส้นทางเดิมยังคงอยู่;ไม่เปิดStatementtrialจากUIทั่วไป.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: Goal PDF Workspace — editorพร้อมตรวจ, Native Statementยังไม่ครบ
 
 **Goal เป็น blocked และยังไม่สำเร็จครบ** หลังตรวจสาม goal turns ต่อเนื่อง: native Statement PDF transport ยังไม่มีหลักฐานรับไฟล์จริง และต้องรอ operation/คู่มือจาก Oracle หรือข้อมูลใหม่ที่ยืนยันช่องทางสร้างและดาวน์โหลดไฟล์. เจ้าของอนุมัติให้ทำงานต่อขณะนอนแล้ว; ไม่ต้องรับ Secret เพิ่มสำหรับส่วนที่ทำสำเร็จ.
