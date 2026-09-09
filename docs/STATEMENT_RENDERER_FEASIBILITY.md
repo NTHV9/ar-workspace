@@ -1,5 +1,17 @@
 # Statement renderer feasibility — 2026-09-09
 
+## Follow-up: actual Cloudflare Unicode rendering verified
+
+Source 207c130647a473933289bd2dfc5849455d81fbbe deployed to existing Worker ar-workspace through the connected Cloudflare API; deployment abbd43995b6344049f46f794b38c2182. Existing secret bindings were inherited without reading their values. Wrangler whoami still reports unauthenticated, while the connector settings read returned HTTP 200. The earlier workerd access violation is a local startup failure, not evidence of Cloudflare logout after a reboot; its root cause is not diagnosed.
+
+Added @pdf-lib/fontkit 1.1.1 and Noto Sans Thai from Google's official fonts repository, with its SIL OFL 1.1 license. Font binary and generated base64 module are public font assets, not credentials or customer data. Font source: https://github.com/google/fonts/tree/main/ofl/notosansthai. The provider license is preserved, including original whitespace.
+
+GET /api/statement-renderer-proof produces one fixed synthetic font-test PDF only after the existing verified-user/allowlist check. It accepts no custom report data and does not call OPERA, write business records or save a document job. The opt-in UI at /?rendererCheck=1 fetched actual PDF bytes from the deployed Worker and rendered them with PDF.js. Inspected visible Thai vowels/tone marks, Thai/English text and fixed example amounts; console errors were empty. This verifies the tested strings, not every Unicode character, typography equivalence or a production Statement layout.
+
+Live /api/health returned database_verified and the exact source SHA; unauthenticated proof request returned 401. The signed-in browser displayed "Cloudflare PDF response rendered · 1 page · synthetic text only". Unit tests cover 401 before provider calls, verified non-allowlisted identity rejection (mocked, not a live second user) and PDF output after authentication. All 149 tests, typecheck, Vite build and connector bundle passed. An intermediate build failed because the new fallback text was written with Windows encoding; corrected to UTF-8-compatible text and rebuilt successfully.
+
+Production template composition, isolated private assets, authoritative selected-only model, account Aging, multipage Unicode layout and PDF Workspace persistence remain unfinished. The new route is a diagnostic, not an enabled customer Statement generator. No paid service, new Worker, database migration or OPERA accounting mutation was introduced. Opening the app retained its existing on-open refresh behavior.
+
 ## Scope and result
 
 Owner approved investigating the production rendering route before integrating PDF Workspace. This is a throwaway spike, not production implementation. No extra service was provisioned, no customer input was processed, and no application deployment occurred.

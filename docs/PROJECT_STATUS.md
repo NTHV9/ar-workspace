@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: สร้าง PDF ภาษาไทยบน Cloudflare จริงผ่านแล้ว
+
+- Cloudflare connector ยังเข้าถึง ar-workspace ได้ HTTP 200; Wrangler CLI ไม่ได้ล็อกอิน แต่ใช้ connector deploy ได้ ข้อผิดพลาด workerd เดิมอยู่ฝั่ง local startup ยังไม่ได้ระบุ root cause และไม่ใช่หลักฐานว่ารีเครื่องแล้ว Cloudflare หลุด
+- Source 207c130647a473933289bd2dfc5849455d81fbbe pushed/deployed ผ่าน deployment abbd43995b6344049f46f794b38c2182 เพิ่ม fontkit/Noto Sans Thai พร้อม OFL และ endpoint วินิจฉัยที่ใช้ข้อความสมมติคงที่หลังตรวจ Auth/allowlist
+- เปิด /?rendererCheck=1 ด้วย session จริงแล้วได้รับ PDF จาก Worker และ PDF.js แสดงภาษาไทย/อังกฤษได้ ตรวจภาพและไม่มี console error; unauthenticated API ได้ 401; health ยืนยัน Supabase และ source SHA ตรง
+- Typecheck, 149 tests, Vite build และ connector bundle ผ่าน การปฏิเสธบัญชีอื่นทดสอบด้วย mock; ไม่อ้าง live second-user test
+- ยังไม่ใช่ Statement ลูกค้าหรือการผูก template เข้ากับ document job ไม่มี migration/บริการเสียเงินเพิ่ม/แก้บัญชี OPERA รายละเอียดใน STATEMENT_RENDERER_FEASIBILITY.md
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดลองแนวทาง JavaScript สำหรับสร้าง Statement
 
 - ทดสอบใช้ pdf-lib เติมข้อมูลสมมติบนส่วนคงที่จากแม่แบบ PDF เปล่าที่สร้างจาก RTF โดยไม่ต้องรัน LibreOffice ต่อเอกสาร สร้าง 4 PDF และตรวจครบ 8 หน้า; Voucher/ยอด/หัวซ้ำ/ขนาดหน้าผ่าน
