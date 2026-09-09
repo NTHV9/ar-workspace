@@ -14,9 +14,9 @@ export function statementModel(raw:unknown,manifest:DocumentInvoice[],printDate:
   if(seen.has(item.id)||item.hotel!==scope.hotel||item.account_id!==scope.account_id||!['standalone','parent'].includes(item.collection_role))throw Error('document_statement_selection_invalid');seen.add(item.id);
   const hits=(a.invoices as unknown[]).map(obj).filter(i=>text(i.transactionNo)===item.id);if(hits.length!==1)throw Error('document_source_changed');const i=hits[0];
   const balance=amountCents(i.balance,'THB'),debit=amountCents(i.amount,'THB'),payments=amountCents(i.payments,'THB');
-  if(i.parentInvoiceNo!=null||balance<=0||balance!==Math.round(item.open*100)||text(i.invoiceNo)!==item.invoice_no||text(i.folioNo)!==item.folio_no||debit-payments!==balance)throw Error('document_source_changed');
+  if(i.parentInvoiceNo!=null||balance<=0||balance!==Math.round(item.open*100)||text(i.invoiceNo)!==item.invoice_no||text(i.folioNo)!==item.folio_no||debit+payments!==balance)throw Error('document_source_changed');
   const stay=obj(obj(i.reservationInfo).roomStay);
-  return {id:item.id,date:date(i.transactionDate),folio:text(i.folioNo),guest:text(i.guestName),arrival:date(stay.arrivalDate),departure:date(stay.departureDate),voucher:text(i.reference),debit,credit:-payments,balance};
+  return {id:item.id,date:date(i.transactionDate),folio:text(i.folioNo),guest:text(i.guestName),arrival:date(stay.arrivalDate),departure:date(stay.departureDate),voucher:text(i.reference),debit,credit:payments,balance};
  });
  const agingRaw=obj(a.agingInfo).aging;if(!Array.isArray(agingRaw)||agingRaw.length!==6)throw Error('document_statement_aging_invalid');
  const seq=new Set<number>();const aging=agingRaw.map(obj).sort((x,y)=>Number(x.sequence)-Number(y.sequence)).map(b=>{if(!Number.isSafeInteger(b.sequence)||seq.has(Number(b.sequence)))throw Error('document_statement_aging_invalid');seq.add(Number(b.sequence));const label=text(b.agingBucketRange);if(!label)throw Error('document_statement_aging_invalid');return {label,cents:amountCents(obj(b.balanceInfo).total,'THB')};});
