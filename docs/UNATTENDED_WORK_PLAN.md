@@ -13,11 +13,11 @@ Approved scope: the owner approved email templates/editing, verified activity hi
 
 ## Tasks and ownership
 
-- [ ] Email templates + rich editing: shared bounded document model, revisioned template storage/RPCs, composer template picker/version editor, MIME + sent-evidence checks, unit/browser/SQL verification. Root owns worker/email, src/EmailComposer, new email components and email migration.
-- [ ] Activity/report surface: own worker/reports, src/reports, report migrations/tests. Export handler for root to connect under /api/reports and a Reports component for root to route. Current metrics and verified send rows each have complete filters/drilldown and source explanations.
-- [ ] Laptop/mobile regression: inspect original mobile and supporting references and existing page CSS; add focused responsive fixes/tests without changing root's email files or reports files. No prototype replacement.
-- [ ] Integration: wire routes/navigation, inspect migration collisions/data before apply, verify RLS/anonymous denial, run build/typecheck/unit/browser/SQL checks, inspect desktop/laptop/mobile screenshots.
-- [ ] Release: independent security/spec review, scan explicit Git staging for private content, check public remote, commit/push, deploy Worker and Workflow preserving all bindings/cron, verify deployed SHA + live routes, update PROJECT_STATUS and detailed evidence report.
+- [x] Email templates + rich editing: shared bounded document model, revisioned template storage/RPCs, composer template picker/version editor, MIME + sent-evidence checks, unit/browser/SQL verification. Root owns worker/email, src/EmailComposer, new email components and email migration.
+- [x] Activity/report surface: own worker/reports, src/reports, report migrations/tests. Export handler for root to connect under /api/reports and a Reports component for root to route. Current metrics and verified send rows each have complete filters/drilldown and source explanations.
+- [x] Laptop/mobile regression: inspect original mobile and supporting references and existing page CSS; add focused responsive fixes/tests without changing root's email files or reports files. No prototype replacement.
+- [x] Integration: wire routes/navigation, inspect migration collisions/data before apply, verify RLS/anonymous denial, run build/typecheck/unit/browser/SQL checks, inspect desktop/laptop/mobile screenshots.
+- [x] Release: independent security/spec review, scan explicit Git staging for private content, check public remote, commit/push, deploy Worker and Workflow preserving all bindings/cron, verify deployed SHA + live routes, update PROJECT_STATUS and detailed evidence report.
 
 ## Initial interface review
 
@@ -37,3 +37,8 @@ Approved scope: the owner approved email templates/editing, verified activity hi
 - Build/typecheck and 259 unit tests passed before the final size regression was added (new focused tests passing); report browser 5, responsive browser 9 and rich editor browser 9 passed. Initial concurrent browser test server termination caused connection-refused failures; one persistent Vite server now serves all tests. Final suites will run against Cloudflare after release.
 - Owner explicitly renewed authorization for a one-time diagnostic recipient in chat. The recipient remains outside source, documents and stored defaults. New rich diagnostic has exact retry-intent binding and uses only a synthetic PDF.
 - Final keyboard integration test exposed a selectionchange timing race; rich editor agent is fixing and adding a deterministic regression before release. Root retains responsibility for staged-content scan, push/deployment and live verification.
+
+- Source released as39ae325; all56 Cloudflare browser checks passed, six template v1 entries saved/read through live UI, rich diagnostic verified SENT04:19:49ICT with one synthetic PDF. No business events, history dates/stages or recipient defaults were introduced.
+- Final navigation review found report context lost after Account/back. Reproduced failure, added user-scoped metadata-only ReportContext, and passed all6 related browser tests. Followup source125e366 deployed, public health SHA matches; final Cloudflare suite now80 total browser cases (57 deployed +23 editor harness). Detailed result in UNATTENDED_COMPLETION.md.
+
+- Final evidence: source125e366, Worker08d9cbb89be6446f9ed8384b88d353e3, Workflow0e5acf8c-d5ee-4ad7-85ad-a02a32b590dc. All57 deployed browser cases verified; last broad run55pass/2timeout, targeted trace rechecks4/4pass. No assertions/timeouts disabled. Remaining provider/business-input work listed explicitly in completion report.

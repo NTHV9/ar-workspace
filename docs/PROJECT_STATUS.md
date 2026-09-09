@@ -1,5 +1,21 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026: Templates, Rich text, Reports และจอเล็กพร้อมตรวจ
+
+- ทำครบชุดงานที่เจ้าของอนุมัติให้ทำขณะไม่อยู่หน้าคอม: versioned email templates, rich message editor, verified activity/current reports, laptop/mobile และ regression/security checks
+- เมนู Templates มีแม่แบบ Billing/Friendly/Follow-up 1–3/Final; บันทึกและอ่านกลับทั้งหกผ่าน UI → Worker → Supabase จริงเป็น version 1 มี history/archive/copy-earlier-version โดยไม่แก้ข้อความหรือ Due Date ย้อนหลัง
+- Rich text รองรับ bold/italic/underline/list/quote/links/undo/redo; MIME มี plain+HTML และตรวจทั้งสองส่วน แก้ selection timing และ multilingual payload limits จาก independent review แล้ว
+- Reports แยก Current receivables กับ Verified sent activity, วันที่ไทย, First billing/Rebilling/รอบทวง, filters/pagination/Invoice history; เปิด Account แล้วย้อนกลับรักษาตัวกรอง ช่วงวัน และหน้าเดิม
+- ไม่มีสร้าง cash/arrivals/remittance ยอดสมมติ; ข้อมูลธุรกิจจริงยังไม่มี actual sent events จึงแสดงประวัติว่างตามจริง ส่วน current เปิดอ่านจาก Supabase ได้จริง
+- ทดสอบส่ง Rich text ผ่าน Cloudflare/Gmail ไปยังผู้รับครั้งเดียวที่เจ้าของอนุญาต verified SENT **04:19:49 ICT** พร้อม PDF สมมติหนึ่งไฟล์; ไม่รวมเอกสารลูกค้า ไม่เก็บผู้รับใน Git/defaults
+- หลังงาน: templates 6/version rows 6, business events 0, assigned history dates/stages 0, recipient defaults 0, active supplementals 0; diagnostic sent ทั้งหมด 3 (รอบนี้เพิ่ม 1)
+- Applied migrations: `20260909205357_ar_email_templates_rich`, `20260909205630_ar_activity_reports`, `20260909210914_ar_sent_evidence_immutability`; SQL rollback/owner/revision/no-op/immutable history checks ผ่าน ไม่มี reset/drop/เปลี่ยน legacy หรือ paid add-on
+- Typecheck/Build/260 unit tests ผ่าน; 57 Cloudflare browser cases +23 editor harness cases ผ่านตามหลักฐาน รอบสุดท้ายมี timeout2กรณี แล้วตรวจซ้ำด้วย trace ผ่าน4/4โดยไม่แก้ timeout/assertions รายละเอียดและข้อจำกัดใน UNATTENDED_COMPLETION.md
+- ภาพ synthetic จาก Cloudflare ตรวจ viewport 1440×900,1280×800,390×844; Portfolio/Account/Email1440เป็นภาพ1440×900จริง Referencesทั้งเจ็ดไม่เปลี่ยน
+- Sourceที่ Push/Deploy: **125e366d46ef84ea61427c51694e524a0a6f5060**, branch `codex/opera-refresh`; Worker `ar-workspace` deployment **08d9cbb89be6446f9ed8384b88d353e3**, Workflow **0e5acf8c-d5ee-4ad7-85ad-a02a32b590dc**; health SHA ตรง Supabase verified; cron OPERA07:00/19:00และGmail15นาทีคงเดิม
+- ยังรอค่ากฎและผู้รับรายบัญชีจริง/Drive folder/retention/นิยามเงินรับ; existing threads, reply-remittance และ native OPERA Statement transport ยังไม่ใช่ส่วนที่พร้อมครบ ดู **[รายงานละเอียด](UNATTENDED_COMPLETION.md)**
+
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026: ไฟล์แนบเพิ่มเติมและส่งทดสอบครบสามชนิด
 
 - Email Composer อัปโหลด/preview/นำไฟล์เพิ่มเติมออกได้ รองรับ static PDF, PNG, JPEG แยกจาก generated PDFs และรวมจำนวน/ขนาดทั้งสองกลุ่มในหน้าตรวจทานก่อนส่ง

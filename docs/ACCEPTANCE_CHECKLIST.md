@@ -1,16 +1,18 @@
-# Checklist ตรวจรับ — ยังไม่มีข้อใดถูกทำเครื่องหมายผ่าน
+# Checklist ตรวจรับตามสเปก
 
-นี่คือ test scenarios จากข้อกำหนดและการตีความที่ระบุ ไม่ใช่ผลทดสอบจริง ใช้ข้อมูลสมมติใน code tests และใช้ของจริงเฉพาะ integration ที่อนุญาต
+ผลล่าสุด 10 กันยายน 2026 อยู่ใน [UNATTENDED_COMPLETION.md](UNATTENDED_COMPLETION.md) และ PROJECT_STATUS.md ช่องที่ยังไม่ทำเครื่องหมายเป็นเงื่อนไขรับระบบฉบับเต็ม ไม่ได้หมายความว่าแต่ละส่วนไม่มีโค้ดหรือไม่เคยทดสอบ ใช้ข้อมูลสมมติใน code/browser tests และตรวจบริการจริงเฉพาะขอบเขตที่อนุญาต
+
+รอบล่าสุดผ่าน versioned templates/rich text, reports จาก verified sends, responsive desktop/laptop/mobile และ SQL/Worker/private-access checks โดยยังไม่เปิด cash/arrivals/remittance statistics ที่แหล่งข้อมูลไม่ครบ
 
 ## A. โครงการและดีไซน์
 
 - [ ] Root ใหม่ ไม่ใช้ source/schema/workflows/gates ของ app เก่าเป็นฐาน และไม่ลบของเก่า
 - [ ] อ่านภาพ PNG ต้นฉบับครบ 7 หน้าและคำอธิบาย Codex ที่เข้าถึงจริง; รายงาน missing ไม่เดา
 - [ ] เปรียบเทียบภาพเว็บบน Cloudflare กับ reference ที่ viewport เดียวกัน โดยไม่ overwrite baseline
-- [ ] Portfolio แสดง KAT/TSK/Total และทุก Account Type; Account ใช้ Guest/Invoice/Folio columns แยก
+- [x] Portfolio แสดง KAT/TSK/Total และทุก Account Type; Account ใช้ Guest/Invoice/Folio columns แยก
 - [ ] Queue แยก Billing/Collection, next action/latest sent, urgent หลัง Final และ filters ที่ครบ
 - [ ] Mobile companion ตามแบบ ไม่ยัด desktop PDF editor โดยไม่ยืนยัน
-- [ ] loading/empty/stale/API failure ชัด ไม่แสดง error เป็น 0
+- [x] loading/empty/stale/API failure ชัด ไม่แสดง error เป็น 0
 
 ## B. Identity และความปลอดภัย
 
@@ -40,7 +42,7 @@
 - [ ] Resend/corrected copy ไม่เปลี่ยน first billing date และไม่เพิ่ม first-billing count
 - [ ] ส่งเพียง A/C ใน Account มี A/B/C เปลี่ยนวันที่เฉพาะ A/C
 - [ ] External billing ที่ยืนยันเป็นเหตุการณ์จริง ไม่บังคับว่าต้อง Gmail เท่านั้น
-- [ ] Term/template เปลี่ยนภายหลังไม่เขียนประวัติวันครบกำหนด/ข้อความเก่าใหม่
+- [x] Term/template เปลี่ยนภายหลังไม่เขียนประวัติวันครบกำหนด/ข้อความเก่าใหม่
 
 ## E. รอบทวง
 
