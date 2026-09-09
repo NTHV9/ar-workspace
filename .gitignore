@@ -17,3 +17,5 @@ private/
 *.pem
 *.key
 supabase/.temp/
+__pycache__/
+*.pyc
