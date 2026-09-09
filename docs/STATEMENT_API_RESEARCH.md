@@ -1,5 +1,16 @@
 # Native selected Statement API research — 2026-09-09
 
+## Printed coverage correction implemented and verified — 2026-09-09
+
+Supersedes the earlier diagnostic-only state below. Source1bddeaebd6504eed82e25a8274546f0187a65e90 implements conservative restoration of missing printed open Invoices after complete scoped history, shared-balance checks, root-level Account total verification, unchanged Current reread and exact targeted history recheck. Unknown discrepancies still reject publication. Root membership uses verified History links; child amounts are not counted again.
+
+The native Invoice PDF preflight now accepts an exact printed historical row when absent from Current, after scoped pagination and Hotel/transaction/Invoice/Folio/Reservation/date/balance checks. Conflicting row Hotel and child links are rejected before rendering. UI behavior and original PDF templates remain unchanged.
+
+Real KAT scoped refresh7b8f3494-ed38-4e6f-90f8-4dc2cb82ac4f succeeded with43Invoices, the2previously omitted trial rows still open/collectible, and Invoice sum matching Account. Native PDF jobbff5e71c-c4d6-452c-aab6-89c652626a18 produced one validated private116672-byte file from a printed Invoice absent in Current. Tests:144unit and6targeteddeployedbrowser regressions passed. No Statement POST, mail, accounting write or schema migration in this correction.
+
+This addresses the printed-invoice projection gap without establishing an external native Statement renderer. The original Statement integration objective remains incomplete.
+
+
 ## Printed Invoice visibility: complete read-only audit — 2026-09-09
 
 Workflow a9e0c809-d238-467f-ac53-b1f84c42a3bb compared the same KAT Account through normal getAccount, getAccount with the documented Statement fetch instruction added, and zero-inclusive invoicePayments history with complete pagination and duplicate/root-count checks.

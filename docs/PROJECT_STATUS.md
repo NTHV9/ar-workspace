@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: คืนความครบถ้วนของ Printed Invoice แล้ว
+
+- Implemented/pushed/deployed source1bddeaebd6504eed82e25a8274546f0187a65e90 บนcodex/opera-refresh. Worker ar-workspace deploymente7ed46ccc43448ad9b288295f0d90aa2; Workflow version832bf057-48b5-4a9e-927f-3684eb8dc619. HealthยืนยันSHAและSupabaseจริง.
+- RefreshตรวจHistoryครบเมื่อCurrentไม่ตรง เพิ่มเฉพาะopenInvoiceที่Printed=trueและมีcompressionmetadataชัดเจน. Shared Current/history balancesต้องตรง,root totalsต้องตรงAccount,อ่านCurrentซ้ำและยืนยันHistoryเฉพาะใบซ้ำก่อนpublish. ไม่แทนCurrentทั้งชุดด้วยHistoryหรือยอมรับunknown mismatch.
+- Root membershipใช้Historyที่ยืนยันแล้วเพื่อไม่บวกยอดบิลย่อยซ้ำ. Parent conflicts/duplicate/changed data/cross-Hotelยังถูกปฏิเสธ. Native InvoicePDFอ่านHistoryแบบscopedได้เมื่อCurrentไม่มีใบที่Printedแล้ว แต่ยังตรวจtransaction/invoice/folio/reservation/date/balanceและกันchildก่อนrender.
+- ทดสอบRefreshจริงเฉพาะKATAccountที่มีปัญหา run7b8f3494-ed38-4e6f-90f8-4dc2cb82ac4f succeeded. หลังatomicpublishมี43Invoiceครบ;2ใบของtrialเดิมอยู่ครบ ยังopenและcollection_selectable=true;sumตรงAccount. ไม่อ้างว่าเป็นfull175-account auditรอบใหม่.
+- ทดสอบnativeInvoicePDFของใบPrintedที่หายจากCurrent: jobbff5e71c-c4d6-452c-aab6-89c652626a18 ready,1file116672bytes,PDFparsed/hashedและเก็บPrivateStorage. ไม่สร้างStatementหรือส่งอีเมลในรอบนี้.
+- Buildผ่าน;หลังreviewfixTypecheck/connectorbundleผ่าน;144unit testsผ่าน;6deployedbrowserregressionsผ่าน (auth/privatePDF/childselection/navigation). CIของsourceผ่าน https://github.com/NTHV9/ar-workspace/actions/runs/34315250244 . Independent reviewสองข้อได้รับการแก้และยืนยันแล้ว.
+- ไม่มีmigrationหรือUI/design change. ภาพregressionใช้syntheticเท่านั้น;ไม่มีลูกค้าPDF/JSON/credentialsเข้าGit. OriginalledgerในOPERAไม่แก้.
+- NativeStatementPDFผ่านBackendยังรอsupported external execution/auth contract;ร่างOracleinquiryยังไม่ส่ง. ผลแก้PrintedInvoiceนี้ไม่ใช่การปิดGoalStatementทั้งหมด.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจต่อขณะเจ้าของไม่อยู่คอม
 
 - Deployed source576529126d875f248999d7a11959bf26ee6c71a6, branchcodex/opera-refresh, Worker ar-workspace deployment34894f052b7745c3beb8e34c2e846a4d, Workflow version19edc5d4-3491-4d9e-bc65-c4a2bdf2175a. HealthยืนยันSHA/Supabaseจริง. เพิ่มadmin read-only diagnostic;ไม่เปลี่ยนUIหรือnormalrefresh.
