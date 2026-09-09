@@ -1,5 +1,18 @@
 # Statement PDF external contract follow-up — 2026-09-09
 
+## OHIP tenant portal inspected — 2026-09-09
+
+Owner opened the actual OHIP Developer Portal at customer.hospitality-dev-portal.us-ashburn-1.ocs.oraclecloud.com/tstlklprd/ui/. Read-only inspection; no key reveal/copy, secret values, subscription edit or credential change.
+
+- API listing exposes62modules and37workflows. Report search returns9items. Report Master Data Management lists12configuration operations: getReports, getAllReports, getAllReportGroups, getReportParameters, pingReportsConfigServiceStatus, postGenericReports and configuration updates/deletion/copy. These are not evidence of a renderer.
+- Statement search returns3items. Accounts Receivables matches getStatementsHistory, unlinkInvoiceFromStatement, getProfileAging, getStatements, getARStatements, postStatements, getReminders and postReminders. Other results concern deprecated Channel billing and membership statement batch LOV, not the selected AR stationery PDF. No additional Statement PDF operation was found in this bounded search.
+- Content Service report matches are emailFolioReport and getFolioReport. The latter is already proved for native Invoice PDFs; the former was not invoked.
+- My Applications shows one visible Production application, TLK-Test. Its Subscriptions view shows API Catalog for OIC. The application key remained masked and was not compared to Worker secret material. Therefore do not assert this listing proves the Worker uses this exact application or proves Publisher REST entitlement.
+- One Environment is visible: The Little Shore Khao Lak (mtcb2pr) KCTLK, Production, Mumbai, Streaming Enabled. Its Details confirm EnterpriseTSTLKL, Client Credentials, scope urn:opc:hgbu:ws:__myscopes__ and gateway mtcb2pr.hospitality-api.ap-mumbai-1.ocs.oraclecloud.com. No IP allowlist or client application settings changed.
+
+Combined finding: tenant Publisher UI is accessible through SSO, but both visible catalog searches found no Statement, and native OPERA stationery remains a separate Customized Report. OHIP portal inspection did not expose a new native Statement PDF operation or resolve Publisher backend auth. This is not proof that no private/other-entitlement API exists, nor a reason to call unrelated report APIs or modify existing reports. Native Statement backend acceptance remains unverified.
+
+
 ## Confirmed tenant Analytics Publisher — 2026-09-09
 
 Successfully followed OPERA Reports → Reporting And Analytics → actual Hospitality Reporting and Analytics portal → Reports and Dashboards. Existing user SSO opened Oracle Analytics Home on hgbu.gbua.ap-mumbai-1.oci.oraclecloud.com under the tenant prefix. This is a distinct confirmed host from the OPERA UI and OHIP gateway used in earlier candidate checks.

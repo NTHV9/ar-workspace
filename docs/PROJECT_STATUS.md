@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ OHIP Portal จริงแล้ว
+
+- อ่านAPI/Applications/Subscriptions/EnvironmentจากOHIPที่เจ้าของเปิดให้. Report search9items,Statement search3items;ไม่พบnativeARStatementPDFoperationเพิ่มเติมจากชุดเตรียม/ประมวลผล/ประวัติที่ทดสอบแล้ว.
+- ReportMasterData12operationsเป็นconfiguration;ContentServiceพบgetFolioReport/emailFolioReport. ไม่เรียกemailและไม่แก้subscription.
+- พบMyApplication TLK-Test(Production),subscriptionAPI Catalog for OIC;ไม่เปิดKey/ไม่เทียบกับWorkersecretจึงไม่อ้างexactApplicationbindingหรือPublisherRESTentitlement.
+- EnvironmentยืนยันTSTLKL/client_credentials/scopeและGatewayตรงระบบที่ใช้. ไม่แก้IPallowlist/clientsettings/credentials.
+- PublisherUIเข้าได้จริงแต่Catalogที่ค้นstatementไม่มีผลลัพธ์ และRESTmetadataยังไม่ผ่าน. ยังไม่ได้POSTPublisherrunหรือสร้างรายงานใหม่. รายละเอียดในSTATEMENT_EXTERNAL_CONTRACT_FOLLOWUP.md.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: พบ Publisher host จริงผ่าน SSO
 
 - เปิดจากOPERA → Reporting And Analytics → Reports and Dashboards ได้OracleAnalyticsบนhgbu.gbua.ap-mumbai-1.oci.oraclecloud.com และยืนยันtenant /xmlpserver/ เปิดPublisherHomeได้จริง.
