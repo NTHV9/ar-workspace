@@ -6,7 +6,7 @@ import {buildMime} from './mime';
 import {prepareMail} from './gmail-draft';
 import {verifySentEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
-export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;message_id:string;gmail_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string}};claimed?:boolean;error?:string}
+export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string}};claimed?:boolean;error?:string}
 export const deliveryView=(d:Delivery)=>({id:d.id,state:d.state,mode:d.mode,sentAt:d.sent_at,reason:d.reason,recorded:d.state==='sent'&&d.mode!=='test'});
 async function record(env:EmailEnv,actor:string,d:Delivery,state:string,gmailId:string|null=null,draftId:string|null=null,reason:string|null=null){
  await emailRpc(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:state,p_gmail_id:gmailId,p_gmail_draft_id:draftId,p_reason:reason});
@@ -50,7 +50,7 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
  const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d)throw Error('email_missing');if(d.state==='sent')return deliveryView(d);
  if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor),headers={Authorization:'Bearer '+token};
  let hits:{id:string}[]=[];
- const trustedId=d.mode!=='draft'?d.gmail_id:null;
+ const trustedId=d.mode!=='draft'?d.provider_receipt_id:null;
  if(trustedId)hits=[{id:trustedId}];
  else{
   const search=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+new URLSearchParams({q:'in:sent rfc822msgid:'+d.message_id,maxResults:'2'}),{headers});
@@ -91,6 +91,6 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
   const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${encodeURIComponent(attachmentId)}`,{headers,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok){await r.body?.cancel();throw Error('gmail_unavailable');}
   const data=JSON.parse(new TextDecoder().decode(await boundedBody(r,18*1024*1024))) as {data?:string};if(typeof data.data!=='string')throw Error();return decodeUrl64(data.data);
  });
- if(result.status!=='verified'){if(result.status==='review_required')await record(env,actor,d,'review_required',messageId,null,'message_content_changed');return {...deliveryView(d),state:result.status==='not_sent'?d.state:'review_required',reason:result.status};}
+ if(result.status!=='verified'){if(result.status==='review_required')await record(env,actor,d,'review_required',messageId,null,result.reason??'message_content_unverified');return {...deliveryView(d),state:result.status==='not_sent'?d.state:'review_required',reason:result.status};}
  return {id:d.id,mode:d.mode,...await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt})};
 }
