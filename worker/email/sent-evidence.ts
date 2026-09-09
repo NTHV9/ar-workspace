@@ -14,7 +14,6 @@ export async function verifySentEvidence(message:Message,expected:ExpectedMail,a
  if(!message.labelIds?.includes('SENT')||message.labelIds.includes('DRAFT'))return {status:'not_sent'};
  let check='message_labels';
  try{
-  if(message.labelIds.includes('TRASH'))throw Error();
   check='message_time';const date=Number(message.internalDate);if(!Number.isSafeInteger(date)||date<1||date>Date.now()+300000||!message.id||!message.payload)throw Error();
   const header=(name:string)=>{const values=message.payload!.headers?.filter(h=>h.name.toLowerCase()===name.toLowerCase()).map(h=>h.value)??[];if(values.length>1)throw Error();return values[0]??'';};
   check='message_identity';const correlation=expected.messageId.slice(1).split('@')[0];
