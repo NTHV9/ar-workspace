@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: Generate in AR Workspace เชื่อมข้อมูลจริงและ PDF Workspace
+
+- เพิ่มตัวเลือกภาษาอังกฤษตามเจ้าของ: Statement source → Generate in AR Workspace; ค่าเริ่มต้นยัง Original from OPERA ไม่มี fallback อัตโนมัติหรือป้ายสร้างโดยระบบบน PDF
+- Apply migration ar_workspace_statement ใน Supabase โครงการใหม่ เพิ่ม provenance ของ job และ private template assets พร้อม service-only RPC; ไม่แก้ ledger/ข้อมูลเดิม ตรวจสิทธิ์และคำสั่งซ้ำผ่าน
+- สร้าง Statement จริงผ่าน Worker จาก selected manifest และตรวจ OPERA สด: KAT 2 ใบที่ไม่ติดกัน, TSK 1 ใบ; เก็บ PDF Private และเปิดใน PDF Workspace/Preview ได้ทั้งคู่ เติม Arrival/Departure จาก Folio History ที่ยืนยัน identity แล้ว
+- แก้เครื่องหมาย Payments จากผลจริงให้ Debit + signed Credit = Balance; trial แรกถูกบล็อกก่อนสร้างและคงหลักฐานไว้ รวมยอดเฉพาะที่เลือก แต่ Aging เป็นทั้ง Account
+- Source 0305d9b91889b374657d0632ec84b04e124c9709 pushed/deployed; deployment eaeed98ff8c846be8f7ded41c095a140; 155 tests/Typecheck/Build ผ่าน รายละเอียด job IDs และขอบเขตทดสอบใน WORKSPACE_STATEMENT_INTEGRATION.md
+- ส่วนคงที่จาก RTF เป็นภาพ 288 dpi ในเอกสาร ส่วนรายการเป็นข้อความ; ไม่รับรองเหมือน OPERA 100% ยังไม่ได้ทดสอบ live multipage/รวม native Invoice รอบใหม่ ไม่มี email/actual billing/เปลี่ยนยอดบัญชี ภาพและข้อมูลจริงอยู่นอก Git
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: สร้าง PDF ภาษาไทยบน Cloudflare จริงผ่านแล้ว
 
 - Cloudflare connector ยังเข้าถึง ar-workspace ได้ HTTP 200; Wrangler CLI ไม่ได้ล็อกอิน แต่ใช้ connector deploy ได้ ข้อผิดพลาด workerd เดิมอยู่ฝั่ง local startup ยังไม่ได้ระบุ root cause และไม่ใช่หลักฐานว่ารีเครื่องแล้ว Cloudflare หลุด
