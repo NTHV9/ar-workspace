@@ -8,7 +8,7 @@ async function setup(page:Page,mode:'normal'|'rejected'|'lost'='normal'){
  const user={id:'synthetic-supplemental-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-10T00:00:00Z'};
  const exports=[{name:'Reviewed-package.pdf',storage_key:`jobs/${jobId}/exports/test.pdf`,byte_count:120000,sha256:'a'.repeat(64)}];
  let draft:any={id:draftId,document_job_id:jobId,document_revision:2,revision:0,hotel:'KAT',account_id:'example',account_name:'Synthetic attachment account',invoice_ids:['1'],purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic billing message',body:'Please review the attached synthetic documents.',exports,attachments:[],package_changed:false};
- const bodies=new Map<string,Buffer>(),uploadIds:string[]=[],requests:string[]=[];let lost=false;
+ const bodies=new Map<string,Buffer>(),uploadIds:string[]=[],requests:string[]=[],testBodies:any[]=[];let lost=false;
  await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',async r=>{const req=r.request(),url=new URL(req.url()),path=url.pathname;requests.push(req.method()+' '+path);
@@ -17,6 +17,7 @@ async function setup(page:Page,mode:'normal'|'rejected'|'lost'='normal'){
   if(path==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(path===`/api/documents/${jobId}`)return r.fulfill({json:{id:jobId,hotel:'KAT',account_id:'example',account_name:draft.account_name,invoice_ids:['1'],state:'ready',revision:2,acknowledged:true,files:[],exports}});
   if(path==='/api/gmail/status')return r.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com',maxAttachmentBytes:10485760}});
+  if(path==='/api/email/test-send'){testBodies.push(req.postDataJSON());return r.fulfill({json:{id:'synthetic-test',mode:'test',state:'sent',recorded:false}});}
   if(path==='/api/email/open')return r.fulfill({json:draft});
   if(path===`/api/email/${draftId}`){draft={...draft,...req.postDataJSON(),revision:draft.revision+1};return r.fulfill({json:draft});}
   const match=new RegExp(`^/api/email/${draftId}/attachments/([a-f0-9-]+)$`).exec(path);
@@ -27,7 +28,7 @@ async function setup(page:Page,mode:'normal'|'rejected'|'lost'='normal'){
   }if(req.method()==='GET')return r.fulfill({contentType:draft.attachments.find((a:any)=>a.id===id).mime,body:bodies.get(id)!});
   if(req.method()==='DELETE'){draft={...draft,revision:draft.revision+1,attachments:draft.attachments.filter((a:any)=>a.id!==id)};return r.fulfill({json:draft});}}
   return r.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});
- });return {pdfBytes,uploadIds,requests};
+ });return {pdfBytes,uploadIds,requests,testBodies};
 }
 for(const width of [1440,1280,390])test(`supplemental ${width}: add, preview all pages, review membership and remove`,async({page})=>{
  const fixture=await setup(page);await page.setViewportSize({width,height:width===1440?900:width===1280?800:844});await page.goto(`/?documentJob=${jobId}&compose=1`);
@@ -39,3 +40,5 @@ test('a rejected supplemental file blocks handoff until explicitly removed',asyn
 test('lost upload response retries the same command and never adds twice',async({page})=>{const fixture=await setup(page,'lost');await page.goto(`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Receipt.png',mimeType:'image/png',buffer:png});await expect(page.getByRole('button',{name:'Retry this upload',exact:true})).toBeEnabled();await page.getByRole('button',{name:'Retry this upload',exact:true}).click();await expect(page.getByRole('button',{name:'Receipt.png',exact:true})).toHaveCount(1);expect(fixture.uploadIds).toHaveLength(2);expect(fixture.uploadIds[0]).toBe(fixture.uploadIds[1]);});
 
 test('PNG preview renders the uploaded bytes',async({page})=>{await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Receipt.png',mimeType:'image/png',buffer:png});await page.getByRole('button',{name:'Receipt.png',exact:true}).click();await expect(page.locator('.email-attachment-preview').getByRole('status')).toHaveText('Image loaded');expect(await page.getByRole('img',{name:'Preview of Receipt.png',exact:true}).evaluate(e=>(e as HTMLImageElement).naturalWidth)).toBe(1);});
+
+test('test email includes supplemental files only after explicit selection',async({page})=>{const f=await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Supporting-document.pdf',mimeType:'application/pdf',buffer:f.pdfBytes});await page.getByRole('button',{name:'Connection test',exact:true}).click();await expect(page.getByLabel('Include supplemental files in test email',{exact:true})).not.toBeChecked();await page.getByLabel('One-time test recipient',{exact:true}).fill('recipient@example.test');await page.getByLabel('Include supplemental files in test email',{exact:true}).check();await page.getByRole('button',{name:'Send one test email',exact:true}).click();await expect(page.locator('.email-test').getByRole('status')).toContainText('Test email sent and verified');expect(f.testBodies[0].supplemental).toMatchObject({draftId,revision:1,ids:[f.uploadIds[0]]});expect(JSON.stringify(f.testBodies[0])).not.toContain('Reviewed-package.pdf');await expect(page.getByLabel('One-time test recipient',{exact:true})).toHaveValue('');});

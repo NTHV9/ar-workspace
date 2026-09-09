@@ -3,10 +3,11 @@ import {emailRpc,googleJson,boundedBody,type EmailEnv,type EmailDraft} from './s
 import {gmailToken,gmailCanRead} from './oauth';
 import {hash,url64} from './crypto';
 import {buildMime} from './mime';
-import {prepareMail} from './gmail-draft';
+import {prepareMail,readMailFile,draftBudget} from './gmail-draft';
+import type {MailFile} from './mime';
 import {verifySentEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
-export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string}};claimed?:boolean;error?:string}
+export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals}};claimed?:boolean;error?:string}
 export const deliveryView=(d:Delivery)=>({id:d.id,state:d.state,mode:d.mode,sentAt:d.sent_at,reason:d.reason,recorded:d.state==='sent'&&d.mode!=='test'});
 async function record(env:EmailEnv,actor:string,d:Delivery,state:string,gmailId:string|null=null,draftId:string|null=null,reason:string|null=null){
  await emailRpc(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:state,p_gmail_id:gmailId,p_gmail_draft_id:draftId,p_reason:reason});
@@ -35,14 +36,19 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:draftId,p_revision:revision,p_mode:mode,p_stage:stage,p_message_id:messageId,p_expected:expected});
  return submit(env,actor,claim,raw,token);
 }
-export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string){
+export interface TestSupplementals {draftId:string;revision:number;ids:string[]}
+const testSourceKey=(s?:TestSupplementals)=>JSON.stringify(s?[s.draftId,s.revision,s.ids]:null);
+export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals){
  const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
- const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing)return deliveryView(existing);
- const messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,subject='Katathani AR Workspace — direct send verification';
- const body='This is an authorized one-time integration test sent directly by AR Workspace on Cloudflare. The attached PDF contains synthetic test content only. This test does not change billing, collection stages or financial balances.';
+ const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));
+ const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals))throw Error('email_test_command_conflict');return deliveryView(existing);}
+ const extraFiles:MailFile[]=[];if(supplementals){const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:supplementals.draftId});if(!draft)throw Error('email_missing');if(draft.revision!==supplementals.revision)throw Error('email_revision_conflict');const selected=supplementals.ids.map(fileId=>{const file=draft.attachments.find(a=>a.id===fileId);if(!file)throw Error('email_attachment_missing');return file;});if(selected.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');for(const file of selected)extraFiles.push(await readMailFile(env,draft,file));}
+ const messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,subject=supplementals?'Katathani AR Workspace — attachment verification':'Katathani AR Workspace — direct send verification';
+ const body='This is an authorized one-time integration test sent directly by AR Workspace on Cloudflare. Includes a system-generated synthetic PDF and any supplemental files explicitly selected for this test. This test does not change billing, collection stages or financial balances.';
  const pdf=await PDFDocument.create(),page=pdf.addPage([595,842]),font=await pdf.embedFont(StandardFonts.Helvetica);page.drawText('AR Workspace - Email integration test',{x:45,y:775,size:18,font});page.drawText('Synthetic document only. No customer or invoice data.',{x:45,y:735,size:11,font});page.drawText('No billing or collection activity will be recorded.',{x:45,y:710,size:11,font});const bytes=await pdf.save();
- const expected={messageId,subject,body,files:[{name:'AR-Workspace-Test.pdf',byte_count:bytes.length,sha256:await hash(bytes)}],recipientHash:await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})))};
- const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body},[{name:'AR-Workspace-Test.pdf',mime:'application/pdf',bytes}],messageId)),token=await gmailToken(env,actor);
+ const files:MailFile[]=[{name:'AR-Workspace-Test.pdf',mime:'application/pdf',bytes},...extraFiles];if(files.length>50||files.reduce((n,f)=>n+f.bytes.length,0)>draftBudget(env))throw Error('email_too_large');
+ const expected={messageId,subject,body,files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
+ const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body},files,messageId)),token=await gmailToken(env,actor);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:null,p_revision:null,p_mode:'test',p_stage:null,p_message_id:messageId,p_expected:expected});
  return submit(env,actor,claim,raw,token);
 }
