@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดลอง getARStatements inclFolios=true จริง
+
+- เจ้าของอนุมัติGETtrial:KATselected2Invoiceเดิม หลังยืนยันHistoryสดแบบscoped. Workflowab607d47-8d2b-405e-bc66-5ac7c3940e92complete.
+- ผลrequested2/returned2,exactScope=true,balancesMatch=true,serverคืนinclFolios=true. ยังเป็นJSONdescriptor มีreportSeqNoและInvoice/Folioข้อมูล;pdfStrings=0,links=0. ไม่ได้postStatements.
+- PrivateJSONเก็บในjobtrialเดิมนอกGit. Normaldefaultfalseไม่เปลี่ยน;เปิดtrueเฉพาะadmintrial. ไม่มีaccounting/email/reportconfigurationmutationหรือmigration.
+- Sourcee754c26e01ec09344e4599f58d4d03d40ef03231 pushed/deployed;deploymentd8412470f3b248ea8b6305821a88767c. Typecheck146unit/connectorbuildผ่าน;healthSHA/Supabaseจริงตรง.
+- NativeStatementPDFBackendยังไม่สำเร็จจากflagนี้;ผลละเอียดในINTERNAL_STATEMENT_TRACE.md.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ HAR รอบเปิด Print Invoices
 
 - อ่าน1.1/2.1/3.1.harแล้วจำนวน14/125/2requests. ยืนยันcheckboxPrintInvoicesส่งค่าtจริง.

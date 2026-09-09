@@ -1,5 +1,14 @@
 # Internal OPERA Statement trace — 2026-09-09
 
+## Actual inclFolios=true GET trial — 2026-09-09
+
+After owner approval, administrative Workflow ab607d47-8d2b-405e-bc66-5ac7c3940e92 read the exact two Invoice identities from the prior KAT Statement job. It first verified fresh scoped Invoice history, then called getARStatements with inclFolios=true, inclPrinted=true, inclZero=false and only those transactionNo values. No postStatements was called.
+
+Observed response: requested2/returned2, exactScope=true, balancesMatch=true, returned inclFolios=true. Top-level keys aRStatements/links; Statement keys hotelId,balance,accountId,invoices,reportSeqNo,inclFolios,statementName,type. Invoices contain accounting and reservation/Folio identifiers. No PDF strings and zero links; no output-file identifier was observed. The flag is accepted, but this GET still returns a prepared JSON descriptor, not a combined PDF.
+
+Raw response retained only in private jobs/{existing-job}/trial/combined-selection UUID JSON. The normal application's default remains inclFolios=false; true was explicitly opted into by this administrative trial. Typecheck146unit tests and connector build passed; deployed sourcee754c26e01ec09344e4599f58d4d03d40ef03231, deploymentd8412470f3b248ea8b6305821a88767c, Workflow versioncf212878-1c67-4e77-8175-81e2b6386169. Hosted health confirmed source SHA and database connectivity. This does not prove native combined Statement acquisition or its PDF page contents.
+
+
 ## Print Invoices enabled HAR comparison — 2026-09-09
 
 Owner supplied1.1.har,2.1.har,3.1.har after selecting Print Invoices. Read locally only; no new API/report execution.
