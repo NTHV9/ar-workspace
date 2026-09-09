@@ -1,5 +1,22 @@
 # Statement PDF external contract follow-up — 2026-09-09
 
+## Direct Publisher-context checks — 2026-09-09
+
+Owner requested continuing without contacting Oracle and explicitly asked to investigate the Publisher run operation. Used the documented BI Publisher /xmlpserver context as a bounded candidate on the two already-confirmed Oracle origins. No credentials, cookies, account identifiers or customer payloads were sent; redirects were not followed.
+
+| Request | Observed result | Limit |
+|---|---|---|
+| GET OPERA UI host /xmlpserver/ | HTTP401, application/octet-stream, no WWW-Authenticate or Location | Does not establish that Publisher exists behind this path; may be a gateway-level denial |
+| GET OHIP gateway /xmlpserver/ | HTTP404, text/plain | Candidate context not exposed through this request |
+| OPTIONS OPERA UI host /xmlpserver/services/rest/v1/reports/kat_statement/run | HTTP401, no Allow or authentication challenge | kat_statement is an observed template name but still NOT a confirmed Publisher catalog path; this did not execute run |
+
+No POST run was sent: the correct Publisher host/context, reportPath and selected Invoice parameter binding remain unverified. Do not claim a failed actual report execution from these reachability checks. Official BI Publisher example uses its own host/xmlpserver context and a catalog report path, with multipart ReportRequest and optional ReportData: https://docs.oracle.com/middleware/bi12214/bip/BIPAP/op-v1-reports-reportpath-run-post.html .
+
+Local 1.har/2.har/3.har were checked for Publisher-specific strings. The runReport match in 2.har was Oracle Guided Learning tooltip metadata for RunReportsListing, not a renderer request. Browser inventory at the time of follow-up exposed only an empty in-app browser, with no connected Edge session. Therefore no authenticated UI discovery was performed or claimed. Older named HAR files may have been removed by the owner; they were not recreated or searched elsewhere.
+
+Continue self-service discovery when an existing reporting/Developer Portal session or confirmed reporting URL is available. Draft Oracle inquiry remains unsent; asking Oracle is not a prerequisite imposed by this application. No broad host/path scan, secret forwarding, reporting entitlement change or report-generation retry was made.
+
+
 Status: **public-source research complete for this bounded question; external transport still unverified**. No tenant requests, report generation, credential reads, configuration changes, or messages to Oracle were performed in this follow-up. Questions below are a draft, not a sent support request.
 
 ## What the evidence establishes

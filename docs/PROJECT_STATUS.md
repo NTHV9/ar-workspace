@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ Publisher route ตามคำขอ
+
+- ตรวจแบบไม่ส่งCredential: GET /xmlpserver/ บนUIhostได้401;บนOHIPgatewayได้404. OPTIONS /xmlpserver/services/rest/v1/reports/kat_statement/run บนUIhostได้401 ไม่มีAllow/WWW-Authenticate.
+- ยังไม่ได้POST run เพราะPublisherURL/catalogreportPathและselectionparametersยังไม่ยืนยัน. 401ไม่พิสูจน์ว่ามีPublisherหรือว่ารหัสOHIPใช้ได้;ไม่เอาClientSecret/Cookieไปทดลองสุ่ม.
+- ตอนตรวจต่อไม่พบEdgesessionที่เชื่อมอยู่ จึงยังสำรวจผ่านloginหน้าเว็บไม่ได้. HARrunReportmatchเป็นGuidedLearningtooltip ไม่ใช่API.
+- ไม่มีsource/deploy/migration/รายงานใหม่/อีเมลในรอบนี้. ร่างOracleinquiryยังไม่ส่งตามคำสั่งเจ้าของ;ผลละเอียดอยู่STATEMENT_EXTERNAL_CONTRACT_FOLLOWUP.md.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: คืนความครบถ้วนของ Printed Invoice แล้ว
 
 - Implemented/pushed/deployed source1bddeaebd6504eed82e25a8274546f0187a65e90 บนcodex/opera-refresh. Worker ar-workspace deploymente7ed46ccc43448ad9b288295f0d90aa2; Workflow version832bf057-48b5-4a9e-927f-3684eb8dc619. HealthยืนยันSHAและSupabaseจริง.
