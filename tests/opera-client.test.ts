@@ -3,6 +3,15 @@ import { OperaReader, OperaError } from '../worker/opera/client';
 import { collectPages,verifiedNextCursor } from '../worker/opera/pagination';
 
 const config={origin:'https://gateway.example.com',appKey:'synthetic-app-key',hotelId:'SYNTHETIC-KAT'};
+it('opts into inclFolios only on an explicit GET while preserving selected transaction scope',async()=>{
+ const requests:Request[]=[];
+ const reader=new OperaReader(config,async()=> 'synthetic',async request=>{requests.push(request);return Response.json({aRStatements:[]});});
+ await reader.statementSelection('synthetic-account',['1','3']);await reader.statementSelection('synthetic-account',['1','3'],true);
+ expect(requests.map(r=>r.method)).toEqual(['GET','GET']);
+ expect(requests.map(r=>new URL(r.url).searchParams.get('inclFolios'))).toEqual(['false','true']);
+ expect(new URL(requests[1].url).searchParams.getAll('transactionNo')).toEqual(['1','3']);
+ expect(new URL(requests[1].url).searchParams.get('inclPrinted')).toBe('true');
+});
 it('reads Statement history with explicitly supplied profile/account IDs in separate path segments',async()=>{
  let target:Request|undefined;
  const reader=new OperaReader(config,async()=> 'synthetic',async request=>{target=request;return Response.json({aRStatementHistory:[]});});

@@ -42,9 +42,9 @@ export class OperaReader {
     if(invoiceNumbers.some(n=>!/^\d+$/.test(n)))throw new OperaError('invalid_request');
     return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','true'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],...invoiceNumbers.map(n=>['invoiceNo',n]),...this.page(offset,limit)]);
   }
-  statementSelection(accountId:string,transactionIds:string[]) {
-    if(!transactionIds.length||transactionIds.some(id=>!/^\d+$/.test(id)))throw new OperaError('invalid_request');
-    return this.read('/ars/v1/statements',[['hotelId',this.config.hotelId],['accountID',accountId],...transactionIds.map(id=>['transactionNo',id]),['inclFolios','false'],['inclPrinted','true'],['inclZero','false']]);
+  statementSelection(accountId:string,transactionIds:string[],includeFolios=false) {
+    if(typeof includeFolios!=='boolean'||!transactionIds.length||transactionIds.some(id=>!/^\d+$/.test(id)))throw new OperaError('invalid_request');
+    return this.read('/ars/v1/statements',[['hotelId',this.config.hotelId],['accountID',accountId],...transactionIds.map(id=>['transactionNo',id]),['inclFolios',String(includeFolios)],['inclPrinted','true'],['inclZero','false']]);
   }
   folioHistory(reservationId:string,folioDate:string,offset=0,limit=20) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
