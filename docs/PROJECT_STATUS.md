@@ -1,5 +1,18 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026: ไฟล์แนบเพิ่มเติมและส่งทดสอบครบสามชนิด
+
+- Email Composer อัปโหลด/preview/นำไฟล์เพิ่มเติมออกได้ รองรับ static PDF, PNG, JPEG แยกจาก generated PDFs และรวมจำนวน/ขนาดทั้งสองกลุ่มในหน้าตรวจทานก่อนส่ง
+- ตรวจ owner/revision/package/handoff และ UUID+SHA กันซ้ำ รวมงบทั้งชุดแบบ atomic; ไฟล์ล้มเหลวต้อง retry หรือเอาออกอย่างชัดเจนก่อน handoff การนำออกเป็น soft removal ไม่ลบไฟล์ต้นฉบับหรือหลักฐานส่ง
+- Applied ar_supplemental_attachments, ar_test_supplemental_snapshot, ar_test_command_guard ใน Supabase ใหม่; ไม่มีเปลี่ยนบัญชี/ยอด/legacy/แผนเสียเงิน
+- Live upload PDF 2 หน้า, PNG, JPEG ผ่าน Worker ไป Private Storage พร้อม hash ตรงและเปิด preview ได้; PDF สมมติที่มี OpenAction ถูกปฏิเสธและปุ่มส่งถูกกั้น
+- เจ้าของยืนยันผู้รับทดสอบครั้งเดียวเพิ่มเติม จึงส่งผ่าน diagnostic แบบ explicit supplemental selection โดยไม่รวม customer-generated PDFs; Gmail verified SENT เวลา 03:04:07 ICT พร้อม 4 ไฟล์ (test PDF ของระบบ + ไฟล์สมมติ 3 ชนิด) ไม่บันทึกผู้รับเป็น defaults/source/docs
+- หลังทดสอบนำไฟล์สมมติ 3 รายการออกจาก working draft แล้ว: active supplementals 0/soft removed 3/business events 0/ประวัติบิลเปลี่ยน 0/recipient profiles ที่มี To 0; private originals/sent evidence คงอยู่
+- Build/Typecheck/212 unit tests และ 14 browser tests ผ่าน รวม Desktop/Laptop/Mobile; SQL rollback owner/retry/budget/handoff/tombstone/test-source guards ผ่าน; anonymous attachment methods 401
+- Deployed source 171f84c5be987327f21eba5115cfd1eb3ec3073d บน ar-workspace deployment ea16fc1e477a499c81326c35487d1f60, workflow 337c0f1a-c9b3-4675-8676-43276b2a1242; health SHA ตรง Push codex/opera-refresh
+- ยังไม่รองรับ XLSX/DOCX/archives/interactive หรือ encrypted PDF; ยังไม่ใช่ antivirus guarantee และยังมีงาน templates/threads/real account rules/reply-remittance/reports ต่อ รายละเอียด SUPPLEMENTAL_ATTACHMENTS_VERIFICATION.md
+
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026: ลดรอบตรวจ Gmail เป็นทุก 15 นาที
 
 - เจ้าของเห็นชอบให้ลดจากทุก 5 เป็นทุก 15 นาที เพื่อลดรอบฐานข้อมูลที่ไม่มีงาน เหลือ 96 รอบ/วัน (2,880 รอบใน 30 วัน) จาก 288 รอบ/วัน ลดประมาณ 67%
