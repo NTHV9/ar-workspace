@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ไล่ Internal Statement และตรวจ History API แล้ว
+
+- ยึดInternal/Customized ReportของOPERAตามเจ้าของยืนยัน;พักR&Aเป็นเส้นทางของStatementนี้.
+- HARพบnumericBATCHครั้งแรกในresponseของpollReport(entry98ใน2.har);รหัสตรงGETreportviewerใน3.har. ไม่พบruntimebinding reportSeqNo/P_REPORT_SEQ/P_ARRAYในcapturedOPERArequest/response. SampleXMLไม่ใช้ยืนยันruntime.
+- GETstatementsHistoryจริงผ่านWorkerโดยprofileIDจากfreshAccount:1history,ไม่มีชื่อไฟล์/เลขStatement/links และไม่พบcapturedBATCH. lastStatementInfoไม่มีfile/number. ไม่ได้สร้างStatement/พิมพ์/ส่งอีเมลเพิ่ม.
+- Deployed sourceb122d209ce521a65c1a18ff061f2b18bccbdc3bd;deployment13f35d623d1a4d8da5dadc22c0baa916;Workflowc467daf0-dfcc-4bc0-86df-871f877f16e7complete. Typecheck145unit/connectorbundleผ่าน;healthSHAตรง. ไม่มีmigration/UIchange.
+- BackendnativeStatementยังไม่verified;ไม่เดาBATCH=reportSeqNoและไม่copyUIstate. ผลและขอบเขตที่พิสูจน์ได้อยู่INTERNAL_STATEMENT_TRACE.md.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ OHIP Portal จริงแล้ว
 
 - อ่านAPI/Applications/Subscriptions/EnvironmentจากOHIPที่เจ้าของเปิดให้. Report search9items,Statement search3items;ไม่พบnativeARStatementPDFoperationเพิ่มเติมจากชุดเตรียม/ประมวลผล/ประวัติที่ทดสอบแล้ว.
