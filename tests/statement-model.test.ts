@@ -1,0 +1,9 @@
+import {expect,it} from 'vitest';
+import {statementModel} from '../worker/statement/model';
+const money=(amount:number)=>({amount,currencyCode:'THB'});
+const invoice=(id:number,open=80)=>({transactionNo:id,invoiceNo:id+100,folioNo:id+200,guestName:'Example',transactionDate:'2026-09-01',amount:money(100),payments:money(100-open),balance:money(open),reference:'VCH-'+id,compressed:false});
+const raw={accountDetails:{hotelId:'KAT',accountId:{id:'sample'},accountName:'Example Account',accountNo:'KAT001',address:{address:{addressLine:['Example road']}},summary:{total:money(240)},agingInfo:{aging:Array.from({length:6},(_,i)=>({sequence:i+1,agingBucketRange:i?'Older '+i:'Up to 30',balanceInfo:{total:money(i?0:240)}}))},invoices:[invoice(1),invoice(2),invoice(3)]}};
+const manifest=[1,3].map(id=>({id:String(id),hotel:'KAT',account_id:'sample',invoice_no:String(id+100),folio_no:String(id+200),reservation_id:null,folio_date:null,open:80,collection_role:'standalone'}));
+it('keeps selected rows/order and account-wide aging separate',()=>{const m=statementModel(raw,manifest,'2026-09-09');expect(m.rows.map(r=>r.id)).toEqual(['1','3']);expect(m.total).toBe(16000);expect(m.aging[0].cents).toBe(24000);expect(m.rows[0].credit).toBe(-2000);expect(m.rows[0].arrival).toBe('');});
+it('rejects changed balances and child invoices',()=>{expect(()=>statementModel(raw,[{...manifest[0],open:79}],'2026-09-09')).toThrow();expect(()=>statementModel(raw,[{...manifest[0],collection_role:'child'}],'2026-09-09')).toThrow();});
+it('rejects unrelated hotel, missing rows and unsupported money precision',()=>{expect(()=>statementModel(raw,[{...manifest[0],hotel:'TSK'}],'2026-09-09')).toThrow();expect(()=>statementModel(raw,[{...manifest[0],id:'404'}],'2026-09-09')).toThrow();const bad=structuredClone(raw);bad.accountDetails.invoices[0].amount=money(100.001);expect(()=>statementModel(bad,manifest,'2026-09-09')).toThrow();});
