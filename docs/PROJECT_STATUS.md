@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดลองแนวทาง JavaScript สำหรับสร้าง Statement
+
+- ทดสอบใช้ pdf-lib เติมข้อมูลสมมติบนส่วนคงที่จากแม่แบบ PDF เปล่าที่สร้างจาก RTF โดยไม่ต้องรัน LibreOffice ต่อเอกสาร สร้าง 4 PDF และตรวจครบ 8 หน้า; Voucher/ยอด/หัวซ้ำ/ขนาดหน้าผ่าน
+- ESM bundle สำหรับ browser platform ผ่าน แต่ Wrangler local workerd เริ่มไม่ได้ (Windows access violation) จึงยังไม่ได้พิสูจน์ Worker runtime หรือ deploy จริง
+- ข้อจำกัดสำคัญ: ฟอนต์ข้อมูลชั่วคราวยังไม่รองรับไทย, ต้องแยกและลด PDF resources ใน blank assets, ทำ validation/decimal/pagination production และต่อ Auth/private job ก่อนใช้จริง ยังไม่เหมือน OPERA 100%
+- ตัวทดลองและแม่แบบอยู่ private/statement-worker-spike นอก Git; Commit เฉพาะผลวิจัย ไม่มีบริการใหม่/ค่าใช้จ่ายบริการใหม่/OPERA mutation/migration/deploy รายละเอียดและทางเลือกใน STATEMENT_RENDERER_FEASIBILITY.md
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: เทียบ Statement เพิ่มเติมและปรับตัวทดลองรุ่น 2
 
 - เจ้าของรับทิศทางหน้าตาตัวทดลอง และให้ตัวอย่าง KAT/TSK ใน Downloads/Batch พร้อม Batch 1681351.PDF เพิ่มเติม เปิดภาพทุกหน้าของตัวอย่างใหม่ทั้ง 5 ไฟล์แล้ว (รวม 8 หน้า)
