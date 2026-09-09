@@ -2,6 +2,7 @@ import {makeReader} from '../opera/probe';
 import {readVerifiedAccount,readBusinessDate,asObject} from '../refresh/read-snapshot';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
+import {nativeFolioSelector} from '../documents/native-invoice';
 import type {DocumentJob} from '../documents/jobs';
 import {statementModel} from './model';
 import {renderStatement,type StatementAssets} from './render';
@@ -15,6 +16,17 @@ export async function workspaceStatement(env:RefreshEnv,job:DocumentJob){
  if(!Array.isArray(account.invoices))throw Error('document_statement_data_invalid');
  const missing=job.manifest.filter(m=>!(account.invoices as unknown[]).some(i=>String(asObject(i).transactionNo)===m.id));
  if(missing.length){const history=await readScopedInvoiceHistory(reader,job.hotel,job.account_id,missing.map(m=>m.invoice_no??''));account.invoices.push(...history.filter(i=>missing.some(m=>m.id===String(i.transactionNo))&&i.printed===true));}
+ // Account invoices may omit stay dates. Read the existing verified folio-history
+ // selector, without printing, and attach metadata only for the same document.
+ for(const selected of job.manifest){
+  const item=(account.invoices as unknown[]).map(asObject).find(i=>String(i.transactionNo)===selected.id)!;
+  const existing=item.reservationInfo&&asObject(item.reservationInfo).roomStay;
+  if((!existing||!asObject(existing).arrivalDate||!asObject(existing).departureDate)&&selected.reservation_id&&selected.folio_date&&selected.folio_no&&selected.invoice_no){
+   const folios=await reader.reservationFolios(selected.reservation_id,selected.folio_date);
+   nativeFolioSelector(folios,selected);
+   item.reservationInfo=asObject(asObject(folios).reservationFolioInformation).reservationInfo;
+  }
+ }
  const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'}),model=statementModel(raw,job.manifest,date);
  if(model.aging.some((b,i)=>b.cents!==Math.round(verified.account.agingBuckets[i]?.amount*100)))throw Error('document_source_changed');
  const assets=await backendRpc<StatementAssets>(env,'ar_statement_template',{p_hotel:job.hotel,p_version:job.template_version});
