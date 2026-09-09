@@ -51,4 +51,3 @@ begin
  end if;
  select * into m from ar_private.mail_deliveries where id=p_id;return to_jsonb(m)||jsonb_build_object('claimed',true);
 end $$;
-
