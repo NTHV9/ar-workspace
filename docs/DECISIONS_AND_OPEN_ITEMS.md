@@ -102,3 +102,8 @@
 การขาด production PDF selector เป็น blocker เฉพาะเส้นทาง official documents ไม่กันการทำ auth/portfolio ตามสเปก การขาด Credit Term ไม่กันอ่าน Account การยังไม่มีคำอธิบาย Codex เก่าเป็น blocker การยืนยันหน้าตาสุดท้าย ไม่ใช่เหตุให้เดาภาพขึ้นมาแทน
 
 อย่ายก legacy failed CI/Google Cloud release receipt มาเป็น gate ของ app ใหม่ แต่ถ้ามี failure ใน tests ที่เขียนเพื่อกฎใหม่ ต้องแก้ตามจริงไม่ข้ามเพื่อให้รายงานผ่าน
+
+
+## ยืนยันล่าสุด — ทดลอง System-rendered Statement จาก RTF (9 กันยายน 2026)
+
+เจ้าของอนุมัติทดลองสร้างStatementจากkat_statement.rtf/tsk_statement.rtf ด้วยระบบเราและไม่เพิ่มป้ายสร้างโดยระบบARบนPDF. เป็นtrialที่อนุมัติแยก ไม่เปิดautomaticfallbackและไม่อ้างnativeOPERAหรือ100%ก่อนพิสูจน์. ผลทดลองยังมีความต่างlayout/pagination;TSKRTFแสดงTheShoreและรอคำยืนยันตราโรงแรม. รายละเอียดSTATEMENT_RTF_RENDER_TRIAL.md.

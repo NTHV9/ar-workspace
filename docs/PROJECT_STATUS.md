@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดลองสร้าง PDF จาก RTF เดิมแล้ว
+
+- เจ้าของอนุมัติsystem-renderedtrialและไม่เพิ่มgenerated-by-ARlabelบนPDF. ใช้ข้อมูลสมมติเท่านั้น;ไม่มีส่งemail/แก้ledgerหรือdefaultnativeworkflow.
+- สร้างprivatePDF4ไฟล์จากRTFcopiesด้วยscripts/statement-template-trial.pyและLibreOfficeheadlessที่แยกcache:KAT/TSKsingle1หน้า;45InvoiceKAT2หน้า,TSK3หน้า. ตรวจครบVoucher/ยอด/Letterpages/no unresolvedfields/noเพิ่มlabelและrenderดูภาพจริง.
+- ยังไม่100%:KATมีanchor/spacing/fontmetricsต่างจากnativebaseline;TSKมีPreparedlineแยกหน้าและยังไม่มีnativeTSKbaseline. ไฟล์TSKที่เจ้าของให้แสดงTheShore;คงตามต้นฉบับและฝากคำถามไว้.
+- SourceRTFhashไม่เปลี่ยน. ผลPDF/RTF/ภาพและbank/letterheadจริงคงอยู่private/statement-trialนอกGit. Commitเฉพาะgeneratorที่ไม่มีข้อมูลจริงและเอกสารผล.
+- เป็นofflineprototype ไม่ได้deployหรือเชื่อมWorker/Supabase. ไม่มีpaidSDKหรือการแก้OPERA. ดูรายละเอียดSTATEMENT_RTF_RENDER_TRIAL.md.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดลอง getARStatements inclFolios=true จริง
 
 - เจ้าของอนุมัติGETtrial:KATselected2Invoiceเดิม หลังยืนยันHistoryสดแบบscoped. Workflowab607d47-8d2b-405e-bc66-5ac7c3940e92complete.
