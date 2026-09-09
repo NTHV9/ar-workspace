@@ -1,5 +1,16 @@
 # Native selected Statement API research — 2026-09-09
 
+## Viewer reload failure — owner screenshot, 2026-09-09
+
+Owner screenshot shows the correct reportviewer tab returning Report Execution Error / Report not found after refresh. Network displays HTTP200 for the document; this is an HTML error page, not a successful PDF. The prior advice to reload an already-viewed report is not reliable for this flow and must not be repeated.
+
+This is consistent with transient or context-dependent report output, but the screenshot does not prove single-use consumption, a timeout duration, expired session, or a configuration defect. Do not change OPERA configuration based on this generic error message.
+
+Re-read the named local opera-statement-pdf.har after this report: it still contains104entries and zero reportviewer requests, matching the earlier Batch Reports capture. Therefore the latest failure is established by the screenshot, not by a newly exported HAR. No need to request another copy merely to confirm the visible failure.
+
+Any future successful-download capture must be armed for new report popups before their first navigation, then observe one explicitly initiated preview. Do not keep refreshing failed report IDs, repeat creation blindly, or treatHTTP200 alone as PDF evidence.
+
+
 ## Second HAR: batch report window — 2026-09-09
 
 Read Downloads/opera-statement-pdf.har locally. Despite its filename, its104entries capture the LaunchReader / Batch Reports LaunchPage window, not a direct PDF-tab reload. No reportviewer request, application/pdf response, or /services/rest/ request is included. No Cookie/Authorization/x-api-key request headers were present by header-name inspection; preserve all HAR content privately.
@@ -27,7 +38,7 @@ Request sequence aligns with the observed UI:
 
 There are zero captured reportviewer requests, zero PDF MIME responses, and zero /services/rest/ Publisher requests. The HAR covers the parent tab; the report-window and PDF-tab network requests are absent. This does not prove the server cannot use Publisher internally.
 
-Next evidence: capture the existing reportviewer PDF tab's Network on a single reload and export a separate sanitized HAR outside Git. No further Create Statement is needed merely to capture that GET. This may establish PDF retrieval method, headers, redirects and browser authentication dependencies; it will not by itself establish a supported external OHIP rendering API or the missing server-side batch creation contract.
+Earlier proposed evidence step (superseded by the reload failure below): capture the existing reportviewer PDF tab's Network on a single reload and export a separate sanitized HAR outside Git. No further Create Statement is needed merely to capture that GET. This may establish PDF retrieval method, headers, redirects and browser authentication dependencies; it will not by itself establish a supported external OHIP rendering API or the missing server-side batch creation contract.
 
 
 ## Owner-prepared Edge UI trial — 2026-09-09
