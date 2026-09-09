@@ -89,6 +89,7 @@ export class OperaReader {
       const bytes=new Uint8Array(size);let cursor=0;for(const c of chunks){bytes.set(c,cursor);cursor+=c.length;}return {status:r.status,type:r.headers.get('Content-Type'),bytes};
     }catch(e){if(e instanceof OperaError)throw e;throw new OperaError(controller.signal.aborted?'timeout':'provider_unavailable');}finally{clearTimeout(timer);}
   }
+  statementHistory(accountId:string,profileId:string) { return this.read(`/ars/v1/hotels/${this.id(this.config.hotelId)}/profiles/${this.id(profileId)}/accounts/${this.id(accountId)}/statementsHistory`,[]); }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
   private async read(path:string,query:string[][]):Promise<unknown> {
     let token:string;

@@ -3,6 +3,12 @@ import { OperaReader, OperaError } from '../worker/opera/client';
 import { collectPages,verifiedNextCursor } from '../worker/opera/pagination';
 
 const config={origin:'https://gateway.example.com',appKey:'synthetic-app-key',hotelId:'SYNTHETIC-KAT'};
+it('reads Statement history with explicitly supplied profile/account IDs in separate path segments',async()=>{
+ let target:Request|undefined;
+ const reader=new OperaReader(config,async()=> 'synthetic',async request=>{target=request;return Response.json({aRStatementHistory:[]});});
+ await reader.statementHistory('account/id','profile/id');
+ expect(target?.method).toBe('GET');expect(new URL(target!.url).pathname).toBe('/ars/v1/hotels/SYNTHETIC-KAT/profiles/profile%2Fid/accounts/account%2Fid/statementsHistory');expect(target?.redirect).toBe('manual');
+});
 describe('new OPERA read client',()=>{
   afterEach(()=>vi.unstubAllGlobals());
   it('does not bind the Worker global fetch function to the client instance',async()=>{
