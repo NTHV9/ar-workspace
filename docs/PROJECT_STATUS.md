@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: แก้แนวหัวคอลัมน์จำนวนเงินใน Statement
+
+- ตรวจข้อสงสัยยอด Selected-only เทียบ Aging: ข้อมูลตัวอย่างยืนยันว่ามีบิลนอก selection อีกหนึ่งใบ จึงทำให้ยอดทั้งบัญชีมากกว่ายอดเลือก ไม่ได้เปลี่ยนยอดหรือ scope หลังเจ้าของยืนยันให้คง Aging ทั้งบัญชีและหัวข้อเดิมตาม OPERA
+- แก้ Debit/Credit/Balance header ให้ชิดขวาเดียวกับข้อมูลในทุกหน้าที่มีตาราง ทั้ง KAT/TSK ไม่เปลี่ยนตัวเลขหรือ baseline RTF
+- scripts/check-statement-alignment.py ตรวจ PDF ที่เรนเดอร์จริง: ก่อนแก้ล้มเหลว หลังแก้ผ่าน KAT/TSK หลายหน้า ตรวจภาพตัวอย่างแล้ว; 155 tests/Typecheck/Build ผ่าน
+- Source 376bd2c68d8c6ad240240df9a71bc0c6340be5e0 pushed/deployed; deployment 7c75a52eb2bf48a7b195cd0b4e0a45bf; workflow version 5e08ea9b-bc08-44fd-ad34-529fc38b57b3; health SHA ตรง ไม่มี migration หรือแก้ไฟล์ PDF ที่บันทึกเดิม
+- สร้างฉบับแก้ไขจากข้อมูลจริงพร้อมตรวจ: KAT job 771b3f90-1a35-498f-b343-00f0e0ff0a82 และ TSK job 75323183-f623-46d5-b406-82f0c0194547 ทั้งคู่ ready ไม่มี error เอกสารเก่ายังคงอยู่
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: Generate in AR Workspace เชื่อมข้อมูลจริงและ PDF Workspace
 
 - เพิ่มตัวเลือกภาษาอังกฤษตามเจ้าของ: Statement source → Generate in AR Workspace; ค่าเริ่มต้นยัง Original from OPERA ไม่มี fallback อัตโนมัติหรือป้ายสร้างโดยระบบบน PDF

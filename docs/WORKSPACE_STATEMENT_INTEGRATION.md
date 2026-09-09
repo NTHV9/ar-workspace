@@ -1,5 +1,13 @@
 # AR Workspace Statement integration — 9 September 2026
 
+## Follow-up: numeric-column alignment
+
+Owner reported a selected-total versus Aging difference and header/data alignment in both hotels. Read-only verification showed one additional open invoice outside the displayed selection, explaining the account-wide Aging difference. Owner explicitly retained account-wide Aging and, in the latest correction, retained the original OPERA headings (no Entire Account/Selected Invoices suffixes).
+
+Aligned Debit/Credit/Balance headers to the same right edges as their values (460/515/576 pt). A PDF-extraction regression failed on the old output and passed on regenerated KAT/TSK multipage output; both single-page layouts were visually inspected. Source 376bd2c68d8c6ad240240df9a71bc0c6340be5e0, deployment 7c75a52eb2bf48a7b195cd0b4e0a45bf, workflow version 5e08ea9b-bc08-44fd-ad34-529fc38b57b3. Original stored PDFs remain unchanged; new jobs are used for review rather than rewriting saved documents.
+
+Corrected live jobs: KAT `771b3f90-1a35-498f-b343-00f0e0ff0a82` (220,963 bytes), TSK `75323183-f623-46d5-b406-82f0c0194547` (252,378 bytes). Both reached ready without an error. These are new source PDFs for review; previous reviewed exports are not retroactively changed.
+
 ## Implemented and deployed
 
 The owner approved integration and specified English wording. The document dialog now offers **Statement source → Generate in AR Workspace** alongside **Original from OPERA**. Original from OPERA remains the default; an unsupported native request is not automatically replaced. No generated-by-AR label is placed on the PDF.

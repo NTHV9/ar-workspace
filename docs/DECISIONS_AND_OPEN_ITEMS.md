@@ -2,6 +2,8 @@
 
 ## วิธีอ่าน
 
+ยืนยันเพิ่มเติม 9 กันยายน 2026: Statement แบบ Selected-only คง Aging ทั้งบัญชีตาม OPERA เจ้าของยืนยันล่าสุดให้คงหัวข้อ **Aging Summary** และ **Balance Due** เดิม ไม่เติม Entire Account/Selected Invoices ลงหัวข้อ แก้เฉพาะแนวหัวคอลัมน์ Debit/Credit/Balance ให้ตรงขอบขวาของตัวเลข
+
 ยืนยันล่าสุด 9 กันยายน 2026: เจ้าของอนุมัติต่อ Statement จากระบบเข้า PDF Workspace และกำหนดข้อความภาษาอังกฤษ **Generate in AR Workspace** ไม่ใช้คำว่า “สร้างจากแม่แบบ” บนตัวเลือก ยังไม่เพิ่มป้ายสร้างโดยระบบ AR ลง PDF และไม่เปิด automatic fallback ดูผลจริงใน WORKSPACE_STATEMENT_INTEGRATION.md
 
 อัปเดต 9 กันยายน 2026: เจ้าของรับทิศทางหน้าตา Statement trial และให้ PDF ตัวอย่างเพิ่มเติมสำหรับเทียบ หลักฐาน TSK ที่เปิดดูใช้ The Shore ตรงกับ RTF เดิม จึงไม่ต้องเปลี่ยนโลโก้จากการคาดเดา การรับหน้าตายังไม่ใช่การรับรองความเหมือน 100% หรือการเปิดใช้ renderer บน Cloudflare
