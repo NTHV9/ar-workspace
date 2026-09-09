@@ -10,6 +10,8 @@ interface Count {kind:string;invoices:number;amount:number|null}
 interface Daily {sent_date:string;invoices:number;messages:number;amount:number|null}
 interface Hotel {hotel:string;accounts:number;open:number;over90:number;oldest_sync:string;unverified_accounts:number}
 interface Result {rows:Row[];total:number;summary:{invoices:number;amount:number|null;uniqueInvoices?:number;messages?:number;missingAmounts?:number;unverified?:number;unbilled?:number;urgent?:number;stages?:Count[];kinds?:Count[];daily?:Daily[];hotels?:Hotel[]}}
+/** Navigation choices only. The app retains this in memory, scoped to the signed-in user. */
+export interface ReportContext {hotel:string;mode:'current'|'activity';type:string;account:string;kind:string;from:string;to:string;page:number}
 const dateLabel=(value?:string|null)=>value?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'short',year:'numeric'}).format(new Date(value.length===10?value+'T00:00:00+07:00':value)):'Not recorded';
 const timeLabel=(value?:string|null)=>value?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value))+' ICT':'';
 const amountLabel=(value?:number|null,compact=true)=>typeof value==='number'&&Number.isFinite(value)?money(value,compact):'Unavailable';
@@ -30,11 +32,13 @@ function InvoiceHistory({row,token,accounts,onOpen,onClose}:{row:Row;token:strin
 }
 
 /** Operate surface: extend the approved supporting-surfaces reference with source-backed invoice drilldown. */
-export default function Reports({token,hotel,accounts,onOpen}:{token:string;hotel:string;accounts:Account[];onOpen:(account:Account)=>void}){
- const [mode,setMode]=useState<'current'|'activity'>('current'),[type,setType]=useState(''),[account,setAccount]=useState(''),[kind,setKind]=useState(''),[from,setFrom]=useState(calendarAdd(thaiToday(),-29)),[to,setTo]=useState(thaiToday()),[page,setPage]=useState(0),[retry,setRetry]=useState(0);
+export default function Reports({token,hotel,accounts,onOpen,initialContext,onContextChange}:{token:string;hotel:string;accounts:Account[];onOpen:(account:Account)=>void;initialContext?:ReportContext;onContextChange?:(context:ReportContext)=>void}){
+ const [mode,setMode]=useState<ReportContext['mode']>(initialContext?.mode??'current'),[type,setType]=useState(initialContext?.type??''),[account,setAccount]=useState(initialContext?.hotel===hotel?initialContext.account:''),[kind,setKind]=useState(initialContext?.hotel===hotel?initialContext.kind:''),[from,setFrom]=useState(initialContext?.from??calendarAdd(thaiToday(),-29)),[to,setTo]=useState(initialContext?.to??thaiToday()),[page,setPage]=useState(initialContext?.hotel===hotel?initialContext.page:0),[retry,setRetry]=useState(0);
+ const previousHotel=useRef(hotel),hotelChanged=previousHotel.current!==hotel;
  const [options,setOptions]=useState<Option[]>([]),[optionsError,setOptionsError]=useState(false),[data,setData]=useState<Result|null>(null),[error,setError]=useState(false),[selected,setSelected]=useState<Row|null>(null);
  useEffect(()=>{const controller=new AbortController();setOptions([]);setOptionsError(false);(async()=>{const all:Option[]=[];for(let p=0;;p++){const q=new URLSearchParams({page:String(p),limit:'200'});if(hotel!=='All')q.set('hotel',hotel);const result=await get<{rows:Option[];total:number}>('/api/reports/options?'+q,token,controller.signal);if(!Array.isArray(result.rows)||!Number.isSafeInteger(result.total)||!result.rows.length&&all.length<result.total)throw Error('reports_invalid');all.push(...result.rows);if(all.length>=result.total)break;}if(!controller.signal.aborted)setOptions(all);})().catch(()=>{if(!controller.signal.aborted)setOptionsError(true);});return()=>controller.abort();},[token,hotel,retry]);
- useEffect(()=>{setAccount('');setKind('');setPage(0);setSelected(null);},[hotel]);
+ useEffect(()=>{if(previousHotel.current===hotel)return;previousHotel.current=hotel;setAccount('');setKind('');setPage(0);setSelected(null);},[hotel]);
+ useEffect(()=>{onContextChange?.({hotel,mode,type,account:hotelChanged?'':account,kind:hotelChanged?'':kind,from,to,page:hotelChanged?0:page});},[hotel,mode,type,account,kind,from,to,page,hotelChanged,onContextChange]);
  const invalidDates=mode==='activity'&&!!from&&!!to&&from>to;
  useEffect(()=>{
   const controller=new AbortController();setData(null);setError(false);if(invalidDates)return()=>controller.abort();
