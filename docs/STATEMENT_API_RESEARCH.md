@@ -1,5 +1,18 @@
 # Native selected Statement API research — 2026-09-09
 
+## Printed Invoice visibility: complete read-only audit — 2026-09-09
+
+Workflow a9e0c809-d238-467f-ac53-b1f84c42a3bb compared the same KAT Account through normal getAccount, getAccount with the documented Statement fetch instruction added, and zero-inclusive invoicePayments history with complete pagination and duplicate/root-count checks.
+
+Actual result: normal Invoices41; with Statement41; history452invoice/payment rows, of which43Invoices have nonzero balances. Exactly2open history Invoices are absent from both Current variants, both printed=true. Both are the earlier selected POST-trial identities. The Statement instruction adds zeroInvoice rows. Account header balance is stable between Current reads; Current Invoice sum does not match Account, while full open-history sum does match Account. Private raw results stored only under the existing job's trial/visibility UUID object.
+
+This confirms a printed-item coverage gap in the getAccount projection for this sample; it does not prove all environments or Account Types behave the same. Do not classify missing Current rows as zero. A focused regression now proves the current pipeline rejects publication of a missing printed-but-open Invoice. Normalization was not relaxed, no invoice was removed or changed, and this audit did not publish a financial snapshot or issue report POSTs.
+
+Prospective correction requires a scoped reconciliation that retains exact shared identities/balances, restores only positively verified open printed rows from complete history, checks parent/child context and Account totals, and validates stability before atomic publication. Native document validation must use the same confirmed identity source so restored rows are not wrongly rejected by Current-only checks. Unknown discrepancies remain fail-closed. This design is not implemented/enabled by this diagnostic patch.
+
+External rendering/authentication follow-up and a draft Oracle inquiry are in STATEMENT_EXTERNAL_CONTRACT_FOLLOWUP.md. No message was sent. Generic OAC Publisher authentication must not be assumed equivalent to OHIP client credentials; actual tenant reporting product/entitlement remains unknown.
+
+
 ## Complete three-window HAR capture — 2026-09-09
 
 Owner provided Downloads/1.har,2.har,3.har in UI order after enabling automatic DevTools for popups. All were read locally; no raw capture, customer content or state/credential values were copied into Git.

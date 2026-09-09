@@ -33,6 +33,11 @@ function harness(raw = current(), open = history([invoice()]), closed = history(
 }
 
 describe('verified OPERA snapshot reads', () => {
+  it('does not publish disappearance of a printed invoice that remains open in history',async()=>{
+    const printed={...invoice(),printed:true};
+    const {reader}=harness(current([],60),history([printed]),history([printed]));
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09',[{id:'123',invoice_no:'456',open:60}])).rejects.toMatchObject({code:'pagination_changed',stage:'current_history_membership'});
+  });
   it('reconciles compressed detail rows without a false history count warning',async()=>{
     const parent={...invoice(120,0),invoiceNo:'900',compressed:true};
     const children=[{...invoice(123,60),parentInvoiceNo:'900'},{...invoice(124,-60),parentInvoiceNo:'900'}];

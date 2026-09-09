@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจต่อขณะเจ้าของไม่อยู่คอม
+
+- Deployed source576529126d875f248999d7a11959bf26ee6c71a6, branchcodex/opera-refresh, Worker ar-workspace deployment34894f052b7745c3beb8e34c2e846a4d, Workflow version19edc5d4-3491-4d9e-bc65-c4a2bdf2175a. HealthยืนยันSHA/Supabaseจริง. เพิ่มadmin read-only diagnostic;ไม่เปลี่ยนUIหรือnormalrefresh.
+- Auditจริง a9e0c809-d238-467f-ac53-b1f84c42a3bb: Current41Invoice,เพิ่มfetchInstructions=Statementก็41;Historyครบ452rowsมี43openInvoice. History-only2ใบเป็นPrintedทั้งคู่และตรงPOSTtrialเดิม. Accountbalanceคงเดิม;HistoryopenรวมตรงAccountแต่Currentรวมไม่ตรง.
+- คงmembershipguardเดิมเพื่อไม่publishชุดขาดและไม่ตีความmissingเป็นzero. เพิ่มregressionกรณีprinted-but-openหายจากCurrentแล้วต้องreject. ยังไม่ได้เปิดการเติมแถวจากHistoryในnormalizer/documentvalidation;ข้อกำหนดก่อนแก้อยู่STATEMENT_API_RESEARCH.md.
+- Typecheckและconnectorbundleผ่าน;129unit testsผ่านก่อนเพิ่มregressionล่าสุด จากนั้นtargeted snapshot16testsผ่าน. รอบนี้ไม่มีmigration,accountingwrite,email,newStatementหรือcredentialcopy.
+- Researchตรวจexternalcontractเพิ่มแล้ว ยังไม่พิสูจน์OHIPใช้UIreportviewerหรือสร้างBatchได้. เตรียมร่างคำถามOracleในSTATEMENT_EXTERNAL_CONTRACT_FOLLOWUP.md โดยยังไม่ส่ง. ไม่ซื้อreportingproduct/add-on และไม่ใช้UIcookiesเป็นBackendcredentials.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: พบ Statement PDF จากหน้า OPERA จริง
 
 - HAR1/2/3ล่าสุดเชื่อมครบถึงPDFrequestแล้ว:จำนวน7/106/1requests;2.har entry98เปิดreportviewerด้วยbatchIDที่ตรง3.har GET,HTTP200,application/pdf,inline,no redirect. ไม่ต้องเก็บHARซ้ำ. เนื้อbody348bytesใน3.harเป็นHTML embedของviewer ไม่ใช่PDFbinary;ใช้ภาพPDFจริงที่ตรวจในรอบเดียวกันเป็นหลักฐานrender. ยังไม่พิสูจน์OHIP authหรือAPIสร้างbatchภายนอก;ไม่มีการcopycookies/JSFstateเข้าBackend. รายละเอียดSTATEMENT_API_RESEARCH.md.
