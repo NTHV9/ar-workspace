@@ -1,0 +1,11 @@
+import {backendRpc,type RefreshEnv} from '../refresh/backend';
+import type {Recipients} from '../settings/validation';
+import type {DocumentExport} from '../documents/jobs';
+export interface EmailEnv extends RefreshEnv {GMAIL_CLIENT_ID?:string;GMAIL_CLIENT_SECRET?:string;GMAIL_TOKEN_KEY?:string;GMAIL_DRAFT_MAX_BYTES?:string}
+export interface EmailAttachment {id:string;name:string;storage_key:string;mime:string;byte_count:number;sha256:string}
+export interface EmailDraft {id:string;owner:string;document_job_id:string;document_revision:number;hotel:string;account_id:string;account_name:string;invoice_ids:string[];purpose:'billing'|'collection';recipients:Recipients;subject:string;body:string;exports:DocumentExport[];attachments:EmailAttachment[];revision:number;package_changed:boolean}
+export const emailRpc=<T>(env:EmailEnv,name:string,args:Record<string,unknown>)=>backendRpc<T>(env,name,args);
+export const emailJson=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+export async function boundedBody(r:Request|Response,max:number):Promise<Uint8Array>{if(Number(r.headers.get('Content-Length'))>max)throw Error('email_too_large');const reader=r.body?.getReader();if(!reader)throw Error('email_invalid');let size=0;const chunks:Uint8Array[]=[];try{while(true){const p=await reader.read();if(p.done)break;size+=p.value.length;if(size>max){await reader.cancel();throw Error('email_too_large');}chunks.push(p.value);}}finally{reader.releaseLock();}const out=new Uint8Array(size);let i=0;for(const c of chunks){out.set(c,i);i+=c.length;}return out;}
+export async function jsonBody(r:Request){if(!r.headers.get('Content-Type')?.includes('application/json'))throw Error('email_invalid');const v:unknown=JSON.parse(new TextDecoder().decode(await boundedBody(r,512000)));if(!v||typeof v!=='object'||Array.isArray(v))throw Error('email_invalid');return v as Record<string,unknown>;}
+export async function googleJson(url:string,init:RequestInit={}){const r=await fetch(url,{...init,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok){await r.body?.cancel();throw Error(r.status===401||r.status===403?'gmail_reconnect_required':'gmail_unavailable');}return JSON.parse(new TextDecoder().decode(await boundedBody(r,2*1024*1024))) as Record<string,unknown>;}
