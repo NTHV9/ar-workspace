@@ -1,5 +1,16 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดสอบชุดเอกสารจริงครบสามรูปแบบ
+
+- ทดสอบ KAT/TSK ทั้ง combined, Statement + Invoice bundle และแยกแต่ละ Invoice; ดาวน์โหลด 12 ไฟล์ เปิดตรวจหน้า/ลำดับ/Folio และ hash/ขนาดตรงกับ private receipts ทั้งหมด TSK Invoice สองหน้ายังคงอยู่ไฟล์เดียว
+- Statement รุ่นสุดท้าย KAT 40 บิล 2 หน้า (34/6 แถว), TSK 27 บิล 2 หน้า (27 แถว/ส่วนท้าย) ตรวจ manifest ไม่ขาด/เกิน ยอดตรง และแนวคอลัมน์/Voucher ผ่าน เพิ่มดาวน์โหลดสองไฟล์นี้รวม 14 ไฟล์ที่ตรวจ hash ตรง
+- KAT ทดลองเพิ่มหมายเหตุ → Save Draft → ปิด/เปิดกลับแล้วข้อความครบ จากนั้นลบหมายเหตุและบันทึก final ไม่มีข้อความทดสอบเหลือในไฟล์แยก ทั้งสองโรงแรมรักษารูปแบบที่บันทึกไว้เมื่อเปิดกลับ
+- พบและแก้ initial delivery preference ที่ถูกละเลยตอนเปิด Editor ครั้งแรก และช่องว่างท้าย Voucher ที่ทำให้แนวตัวเลขคลาดเคลื่อนเล็กน้อย ข้อมูล OPERA/ยอด/หัวข้อ Aging เดิมไม่เปลี่ยน
+- ทดสอบ replay command ไม่สร้างงานเพิ่ม, stale revision ถูกปฏิเสธ และ API/storage failure แบบจำลองไม่แสดง PDF ทดแทน ไม่มี deliberate outage/ปิดสิทธิ์/ส่งอีเมล
+- Source 51226191d0cb412e39786eeb2ce6b27d8d940126 deployed ผ่าน deployment 6ce77294f884449fada551f15b405797; 156 unit tests/Typecheck/Build ผ่าน Browser 7 เคสบน deployed assets และ 13 เคส local ผ่านเมื่อรันแยกเซิร์ฟเวอร์; cold-start mixed run ยังมี localhost timeout บางเคส จึงไม่อ้างว่า cold-start runner ปกติครบ
+- รายละเอียด หลักฐาน และลิงก์งานใน DOCUMENT_PACKAGE_VALIDATION.md ข้อมูลจริงอยู่ private/document-validation-20260909 นอก Git ไม่มี migration/paid service/แก้ legacy เพิ่มในรอบนี้
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: จัด Voucher กึ่งกลางตามภาพ OPERA
 
 - เทียบภาพที่เจ้าของให้: OPERA จัดหัวและค่า Voucher กึ่งกลาง ส่วนของเราชิดซ้าย แก้ทั้งหัวและทุกบรรทัดของค่าโดยคงความกว้างคอลัมน์/ข้อมูลครบ รวมกรณี Voucher ยาวสองบรรทัด
