@@ -10,7 +10,7 @@ async function setup(page:Page,fail=false){const data=rows(),calls:string[]=[];c
  if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
  if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:data.map(d=>({id:d.account_id,hotel:d.hotel,name:d.account_name,type:d.account_type,open:d.open,items:1,over90:0})),refresh:{running:false,hotels:[]}}});
  if(p==='/api/collection-queue')return r.fulfill({status:fail?503:200,json:fail?{error:'unavailable'}:{rows:data,asOf:'2026-09-10'}});
- if(p==='/api/mail-reconciliation')return r.fulfill({json:{enabled:true,intervalMinutes:5,waiting:0,needsReview:0,last:{trigger:'scheduled',state:'complete',created_at:'2026-09-10T05:00:00Z',finished_at:'2026-09-10T05:00:02Z',checked:0,verified:0,needs_review:0,unavailable:0}}});
+ if(p==='/api/mail-reconciliation')return r.fulfill({json:{enabled:true,intervalMinutes:15,waiting:0,needsReview:0,last:{trigger:'scheduled',state:'complete',created_at:'2026-09-10T05:00:00Z',finished_at:'2026-09-10T05:00:02Z',checked:0,verified:0,needs_review:0,unavailable:0}}});
  if(p.startsWith('/api/accounts/'))return r.fulfill({json:{invoices:[]}});
  return r.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});
  });return calls;

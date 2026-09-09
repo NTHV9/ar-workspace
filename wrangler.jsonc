@@ -5,7 +5,7 @@
   "main": "worker/entry.ts",
   "compatibility_date": "2026-09-08",
   "workers_dev": true,
-  "triggers": { "crons": ["0 0,12 * * *", "*/5 * * * *"] },
+  "triggers": { "crons": ["0 0,12 * * *", "*/15 * * * *"] },
   "workflows": [{ "name": "ar-workspace-refresh", "binding": "AR_REFRESH", "class_name": "ArRefreshWorkflow" }],
   "assets": { "directory": "dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "vars": {

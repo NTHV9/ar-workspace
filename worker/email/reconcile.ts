@@ -3,7 +3,7 @@ import {backendRpc} from '../refresh/backend';
 import type {EmailEnv} from './shared';
 import {checkDelivery} from './delivery';
 export interface ReconcileEnv extends EmailEnv {GMAIL_RECONCILE_ENABLED?:string;GMAIL_RECONCILE_BATCH?:string}
-export const gmailReconcileCron='*/5 * * * *';
+export const gmailReconcileCron='*/15 * * * *';
 export async function requestMailReconcile(env:ReconcileEnv,trigger:'manual'|'scheduled'){
  const value=Number(env.GMAIL_RECONCILE_BATCH??3),limit=Number.isSafeInteger(value)&&value>=1&&value<=20?value:3;
  const run=await backendRpc<{id:string;created:boolean;state:string}>(env,'ar_mail_reconcile_request',{p_trigger:trigger,p_limit:limit});
