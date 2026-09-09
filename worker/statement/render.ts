@@ -26,7 +26,7 @@ export async function renderStatement(model:StatementModel,assets:StatementAsset
  const address=model.address.flatMap(s=>wrap(s,300,9));if(address.length>12)fail();
  const rectangle=(x:number,top:number,width:number,height:number,gray?:number)=>page.drawRectangle({x,y:792-top-height,width,height,borderColor:rgb(0,0,0),borderWidth:.5,...(gray===undefined?{}:{color:rgb(gray,gray,gray)})});
  const add=(table:boolean)=>{if(pages.length>=50)fail();page=doc.addPage([612,792]);pages.push(page);page.drawImage(images[0],{x:0,y:672,width:612,height:120});page.drawImage(images[2],{x:0,y:0,width:612,height:77});address.forEach((s,i)=>write(s,36,130+i*10,9,true));write('A/R Account No.',408,130,9);write(model.accountNo,531,130,9);write('Print Date',434,143,9);write(model.printDate,531,143,9);write('Page No.',437,156,9);y=Math.max(188,133+address.length*10);
-  if(table){rectangle(32,y,548,26,.85);['Date','Folio','Description','Arrival','Departure','Voucher','Debit','Credit','Balance'].forEach((s,i)=>write(s,edges[i]+4,y+8,8,true));y+=30;}
+  if(table){rectangle(32,y,548,26,.85);['Date','Folio','Description','Arrival','Departure','Voucher','Debit','Credit','Balance'].forEach((s,i)=>write(s,i>=6?edges[i+1]-4-bold.widthOfTextAtSize(s,8):edges[i]+4,y+8,8,true));y+=30;}
  };
  add(true);
  for(const r of model.rows){const values=[r.date,r.folio,r.guest,r.arrival,r.departure,r.voucher,money(r.debit),r.credit?money(r.credit):'',money(r.balance)];const cells=values.map((s,i)=>wrap(s,edges[i+1]-edges[i]-8));if(cells.slice(6).some(c=>c.length!==1))fail();const h=Math.max(...cells.map(c=>c.length))*10+4;if(y+h>705)add(true);if(y+h>705)fail();cells.forEach((lines,i)=>lines.forEach((s,j)=>write(s,i>=6?edges[i+1]-4-font(s).widthOfTextAtSize(s,8):edges[i]+4,y+j*10)));y+=h;}
