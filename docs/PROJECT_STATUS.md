@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ HAR รอบเปิด Print Invoices
+
+- อ่าน1.1/2.1/3.1.harแล้วจำนวน14/125/2requests. ยืนยันcheckboxPrintInvoicesส่งค่าtจริง.
+- BatchReportsมี4งาน:Statement1และInvoiceTemplate3 ทุกงานFinishedSuccessfully;มีreportviewerGETPDFหนึ่งคำขอและBATCHตรงกัน. รอบก่อนมี1งาน.
+- ยังไม่มีdirectOHIPrequest/reportSeqNo/ช่องทางไฟล์ใหม่ในtrace. HARไม่เก็บPDFbinary จึงไม่อ้างpagecountหรือmergedmembershipที่ยังไม่ได้เปิดตรวจ;ตอนนี้ไม่มีEdgesessionสำหรับดูPDF.
+- พบflaginclFoliosในpublishedARSตรงแนวคิดincludeInvoice/Folioเป็นcandidateสำหรับread-onlytrialถัดไป ยังไม่อ้างทดสอบtrueผ่านBackendแล้ว. ไม่มีnewPOST/reportgeneration/source/deploy/migrationรอบนี้.
+- รายละเอียดเทียบอยู่INTERNAL_STATEMENT_TRACE.md;rawHARอยู่นอกGit.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ repository Oracle ทั้งชุดเพิ่มเติม
 
 - ยืนยันmainยังเป็นdd631fbd5d0fce74a7dbdf96b43f07ce587211f2. อ่านtreeครบ163filesและดาวน์โหลดsnapshotไว้ignoredcache;ไม่cloneทับprojectหรือใช้workflow/sourceเป็นฐาน.
