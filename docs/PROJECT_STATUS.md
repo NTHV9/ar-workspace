@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: Account Settings และประวัติตั้งต้นพร้อมใช้
+
+- เจ้าของยืนยันให้ทั้ง Billing Required/Not Required และ Credit Term ใช้กับบิลเก่า และให้ Default เป็น Not billed / No reminders sent โดยแก้ประวัติย้อนหลังได้ ไม่ใส่วันที่ส่ง/วางบิลเอง
+- เพิ่ม Account Detail → Overview สำหรับกฎบัญชีและ Billing/Collection To/CC/BCC และฟอร์ม Billing & reminder history ในรายละเอียด Invoice; ใช้ revision กันบันทึกทับและเก็บ audit ข้อกำหนดที่ผูกกับบิลแล้วไม่เปลี่ยนตาม default ใหม่เงียบ ๆ
+- Applied migration ar_account_workflow ใน Supabase โครงการใหม่; Required รอ actual first billing date ส่วน Not Required ใช้ OPERA base date + term เมื่อกำหนดครบ ไม่แก้ข้อมูลการเงิน OPERA
+- SQL rollback tests ตรวจ due/term pinning/history/สิทธิ์/การแยก Hotel ผ่าน; 162 unit tests/Typecheck/Build ผ่าน Browser settings 3 เคสผ่าน desktop/laptop; document regression มี timeout หนึ่งครั้งและ targeted rerun ผ่าน รายละเอียดใน ACCOUNT_SETTINGS_VERIFICATION.md
+- Source c2252400d0188cb6f73bbed5ace384d5e3a16874 deployed ผ่าน d8be2ee9a6484402a06308050a73eba6; health SHA ตรงและ unauthenticated settings ได้ 401 เปิดตรวจข้อมูลจริงว่าบิลเก่าแสดง default ถูกต้องแล้ว
+- ยังไม่มีการกรอก Credit Term/ผู้รับ/ประวัติจริงแทนเจ้าของ และไม่ได้ส่งอีเมล Email Composer/Gmail handoff ยังเป็นขั้นถัดไป ไม่อ้างว่าเชื่อม Gmail ผ่าน Worker แล้ว
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดสอบชุดเอกสารจริงครบสามรูปแบบ
 
 - ทดสอบ KAT/TSK ทั้ง combined, Statement + Invoice bundle และแยกแต่ละ Invoice; ดาวน์โหลด 12 ไฟล์ เปิดตรวจหน้า/ลำดับ/Folio และ hash/ขนาดตรงกับ private receipts ทั้งหมด TSK Invoice สองหน้ายังคงอยู่ไฟล์เดียว

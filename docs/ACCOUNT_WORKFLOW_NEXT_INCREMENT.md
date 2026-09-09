@@ -1,6 +1,6 @@
 # Account configuration and workflow — proposed next increment
 
-Status: proposed after the owner's request to continue on 2026-09-09. The PDF Goal remains blocked on the native Statement transport contract; this plan does not redefine its completion.
+Status: Account Settings and historical workflow editing implemented/deployed on 2026-09-09. See ACCOUNT_SETTINGS_VERIFICATION.md. Email Composer/Gmail handoff and queue UI remain subsequent work. This increment does not redefine the earlier native-Statement API Goal.
 
 ## First deliverable
 
