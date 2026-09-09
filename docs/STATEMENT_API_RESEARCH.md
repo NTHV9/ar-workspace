@@ -1,5 +1,19 @@
 # Native selected Statement API research — 2026-09-09
 
+## Second HAR: batch report window — 2026-09-09
+
+Read Downloads/opera-statement-pdf.har locally. Despite its filename, its104entries capture the LaunchReader / Batch Reports LaunchPage window, not a direct PDF-tab reload. No reportviewer request, application/pdf response, or /services/rest/ request is included. No Cookie/Authorization/x-api-key request headers were present by header-name inspection; preserve all HAR content privately.
+
+Evidence progression:
+- Task-flow navigation uses307/302 redirects between OPERA9 and tenant UI routes.
+- Entry22 is LaunchReader POST; entries56,91,94,97,100 are LaunchPage POSTs returning ADF text/xml.
+- Entry97 contains Finished Successfully and invokes ODEUtils.WindowManager.launch / OperaUtils.launchUsingCustomScheme with /OPERA9/opera/operacloud/reportviewer, ex=PREVIEW and an observed rep=BATCH_{id}.
+- Thus the parent-tab HAR proves launching the batch window, and this second HAR proves the batch window returning a concrete viewer URL after completion. Neither exposes the server-side renderer API or proves external OHIP authorization for that URL.
+- The existing UI PDF was already visually verified. Repeating Create Statement is unnecessary. If direct retrieval headers/body are needed, capture specifically the tab whose address contains /reportviewer, not the Batch Reports status tab.
+
+A focused official documentation search did not establish reportviewer as a supported external Property API. Oracle documents Property API client credentials and application-key authentication separately: https://docs.oracle.com/en/industries/hospitality/integration-platform/ohipu/c_authenticating_to_oracle_hospitality_property_apis_ocim.htm . Do not replay JSF ViewState or transplant UI cookies into the Worker as an undocumented substitute.
+
+
 ## Local HAR inspection — 2026-09-09
 
 Read the owner-provided Downloads/opera-statement.har locally without copying it into the repository. It contains12entries:6form POST requests to the OPERA UI faces/opera-cloud-index/OperaCloud route and6image GET requests. All captured requests returnedHTTP200. Form responses are text/xml ADF partial UI responses, not JSON OHIP results or PDF. No Cookie/Authorization/x-api-key request headers were present by header-name inspection; the file still contains customer UI content and JSF ViewState and must remain private.

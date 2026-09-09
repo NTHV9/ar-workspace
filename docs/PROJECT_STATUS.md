@@ -2,6 +2,8 @@
 
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: พบ Statement PDF จากหน้า OPERA จริง
 
+- HARที่สองชื่อopera-statement-pdf.harมี104entriesจากBatch Reports/LaunchPage. Entry97ตอบFinished Successfullyพร้อมคำสั่งเปิดreportviewerและrep=BATCH_{id}. ยังไม่มีคำขอPDFโดยตรงหรือPublisherRESTในtrace. ยืนยันขั้นต่อจากHARแรกแล้ว แต่ไม่ใช่หลักฐานOHIPเรียกrenderer/viewerได้. ไม่ต้องCreate Statementซ้ำเพื่อเก็บหลักฐานนี้;rawHARคงPrivate.
+
 - HARจากแท็บหลักอ่านแล้ว12requests:6ADFformPOST/textXML +6imageGET. เห็นเปิดreportwindowผ่านUI /launch แต่ไม่มีreportviewer/PDF/PublisherRESTrequestในไฟล์นี้. ต้องเก็บHARจากแท็บPDFที่เปิดอยู่เพิ่ม;ไม่ต้องCreate Statementซ้ำ. HARและViewState/customercontentคงอยู่นอกGit. รายละเอียดในSTATEMENT_API_RESEARCH.md.
 
 - เจ้าของเปิดEdgeและเลือก3Invoiceไว้ พร้อมอนุญาตCreate Statement. ดำเนินการหนึ่งชุดผ่านBatch Statements Options → Process Statements → Batch Report Destination (kat_statement / Preview) → Process. Batch ReportsแสดงComplete/Finished Successfully.
