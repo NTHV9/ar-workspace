@@ -77,6 +77,18 @@ export class OperaReader {
     }catch(e){if(e instanceof OperaError)throw e;throw new OperaError(controller.signal.aborted?'timeout':'provider_unavailable');}
     finally{clearTimeout(timer);}
   }
+  async statementLocation(location:string) {
+    const url=new URL(location,this.origin);
+    if(url.origin!==this.origin||url.username||url.password||url.hash||!['/ars/v1/','/med/config/v1/'].some(p=>url.pathname.startsWith(p)))throw new OperaError('redirect_rejected');
+    const token=await this.getToken();if(!token)throw new OperaError('provider_unauthorized');
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),this.timeoutMs);
+    try{
+      const r=await this.transport(new Request(url,{method:'GET',headers:{Authorization:`Bearer ${token}`,'x-app-key':this.config.appKey,'x-hotelid':this.config.hotelId,Accept:'application/json, application/pdf'},redirect:'manual',signal:controller.signal}));
+      const chunks:Uint8Array[]=[];let size=0;
+      if(r.body){const stream=r.body.getReader();try{while(true){const p=await stream.read();if(p.done)break;size+=p.value.length;if(size>this.maxResponseBytes){await stream.cancel();throw new OperaError('response_too_large');}chunks.push(p.value);}}finally{stream.releaseLock();}}
+      const bytes=new Uint8Array(size);let cursor=0;for(const c of chunks){bytes.set(c,cursor);cursor+=c.length;}return {status:r.status,type:r.headers.get('Content-Type'),bytes};
+    }catch(e){if(e instanceof OperaError)throw e;throw new OperaError(controller.signal.aborted?'timeout':'provider_unavailable');}finally{clearTimeout(timer);}
+  }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
   private async read(path:string,query:string[][]):Promise<unknown> {
     let token:string;

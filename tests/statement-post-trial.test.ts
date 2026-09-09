@@ -25,3 +25,9 @@ it('does not retry a failed POST and rejects scope mismatch before transport',as
  await expect(reader.processStatement('a',{...descriptor,hotelId:'TSK'},job.id)).rejects.toMatchObject({code:'invalid_request'});expect(transport).not.toHaveBeenCalled();
  await expect(reader.processStatement('a',descriptor,job.id)).rejects.toMatchObject({code:'provider_unavailable'});expect(transport).toHaveBeenCalledTimes(1);
 });
+it('rejects cross-host Location before obtaining a token and does not follow redirects',async()=>{
+ const token=vi.fn(async()=> 'synthetic');const transport=vi.fn(async()=>new Response(null,{status:302,headers:{Location:'https://other.example'}}));
+ const reader=new OperaReader({origin:'https://gateway.example',appKey:'synthetic',hotelId:'KAT'},token,transport);
+ await expect(reader.statementLocation('https://other.example/ars/v1/statements')).rejects.toMatchObject({code:'redirect_rejected'});expect(token).not.toHaveBeenCalled();
+ const r=await reader.statementLocation('/ars/v1/hotels/KAT/accounts/a/statements');expect(r.status).toBe(302);expect(transport).toHaveBeenCalledTimes(1);
+});
