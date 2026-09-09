@@ -1,0 +1,38 @@
+begin;
+do $$
+declare j public.ar_document_jobs;d jsonb;m jsonb;r jsonb;expected jsonb;events_before bigint;v_count bigint;test_id uuid:=gen_random_uuid();
+begin
+ select * into j from public.ar_document_jobs where acknowledged and state='ready' and jsonb_array_length(exports)>0 and id not in(select document_job_id from public.ar_email_drafts) limit 1;
+ if j.id is null then raise exception 'A separate reviewed job is required for rollback verification';end if;
+ select count(*) into events_before from public.ar_sent_events;
+ d:=public.ar_email_open(j.owner,j.id,j.revision);if d?'error' then raise exception 'draft open failed';end if;
+ update public.ar_invoice_workflow set billing_required=true,credit_term=30 where hotel=j.hotel and account_id=j.account_id and invoice_id=any(j.invoice_ids);
+ d:=public.ar_email_save(j.owner,(d->>'id')::uuid,(d->>'revision')::int,'billing','{"to":["synthetic@example.test"],"cc":[],"bcc":[]}', 'Synthetic rollback test','Synthetic rollback body');
+ expected:=jsonb_build_object('recipients',d->'recipients','subject',d->>'subject','body',d->>'body');
+ m:=public.ar_mail_claim(j.owner,gen_random_uuid(),(d->>'id')::uuid,(d->>'revision')::int,'send',null,'<'||gen_random_uuid()||'@ar-workspace.ar-c82.workers.dev>',expected);
+ if not coalesce((m->>'claimed')::boolean,false) then raise exception 'send claim failed: %',m->>'error';end if;
+ r:=public.ar_mail_claim(j.owner,gen_random_uuid(),(d->>'id')::uuid,(d->>'revision')::int,'send',null,'<'||gen_random_uuid()||'@ar-workspace.ar-c82.workers.dev>',expected);
+ if (r->>'claimed')::boolean then raise exception 'duplicate claimed';end if;
+ if public.ar_mail_get(gen_random_uuid(),(m->>'id')::uuid) is not null then raise exception 'cross owner leak';end if;
+ r:=public.ar_mail_confirm_sent(j.owner,(m->>'id')::uuid,'synthetic-'||gen_random_uuid(),now());
+ if r->>'state'<>'sent' or not (r->>'recorded')::boolean then raise exception 'billing event missing';end if;
+ if exists(select 1 from public.ar_invoice_workflow where hotel=j.hotel and account_id=j.account_id and invoice_id=any(j.invoice_ids) and (first_billing_date is null or due_date<>first_billing_date+30)) then raise exception 'billing due incorrect';end if;
+ r:=public.ar_mail_confirm_sent(j.owner,(m->>'id')::uuid,'same-event',now());
+ select count(*) into v_count from public.ar_sent_events;if v_count<>events_before+1 then raise exception 'duplicate event';end if;
+ d:=public.ar_email_save(j.owner,(d->>'id')::uuid,(d->>'revision')::int,'collection',d->'recipients','Synthetic final','Synthetic final body');
+ expected:=jsonb_build_object('recipients',d->'recipients','subject',d->>'subject','body',d->>'body');
+ m:=public.ar_mail_claim(j.owner,gen_random_uuid(),(d->>'id')::uuid,(d->>'revision')::int,'send','Final','<'||gen_random_uuid()||'@ar-workspace.ar-c82.workers.dev>',expected);
+ r:=public.ar_mail_confirm_sent(j.owner,(m->>'id')::uuid,'synthetic-'||gen_random_uuid(),now());
+ if r->>'state'<>'sent' then raise exception 'collection confirmation failed';end if;
+ if exists(select 1 from public.ar_invoice_workflow where hotel=j.hotel and account_id=j.account_id and invoice_id=any(j.invoice_ids) and last_reminder_stage<>'Final') then raise exception 'Final stage not applied';end if;
+ d:=public.ar_email_save(j.owner,(d->>'id')::uuid,(d->>'revision')::int,'collection',d->'recipients','Synthetic conflict','Synthetic conflict body');
+ expected:=jsonb_build_object('recipients',d->'recipients','subject',d->>'subject','body',d->>'body');
+ m:=public.ar_mail_claim(j.owner,gen_random_uuid(),(d->>'id')::uuid,(d->>'revision')::int,'send','Final','<'||gen_random_uuid()||'@ar-workspace.ar-c82.workers.dev>',expected);
+ update public.ar_invoice_workflow set revision=revision+1 where hotel=j.hotel and account_id=j.account_id and invoice_id=j.invoice_ids[1];
+ r:=public.ar_mail_confirm_sent(j.owner,(m->>'id')::uuid,'synthetic-'||gen_random_uuid(),now());if r->>'state'<>'review_required' then raise exception 'workflow edit overwritten';end if;
+ m:=public.ar_mail_claim(j.owner,test_id,null,null,'test',null,'<'||test_id||'@ar-workspace.ar-c82.workers.dev>',jsonb_build_object('recipientHash',repeat('a',64)));
+ r:=public.ar_mail_confirm_sent(j.owner,test_id,'synthetic-test-'||gen_random_uuid(),now());if (r->>'recorded')::boolean then raise exception 'test changed business';end if;
+ select count(*) into v_count from public.ar_sent_events;if v_count<>events_before+2 then raise exception 'unexpected business event';end if;
+end $$;
+rollback;
+select 'mail rollback tests passed' as result;

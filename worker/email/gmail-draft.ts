@@ -20,15 +20,7 @@ export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revis
  if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  const existing=await emailRpc<Attempt|null>(env,'ar_gmail_attempt_get',{p_owner:owner,p_draft:id,p_revision:revision});
  if(existing)return {state:existing.state,created:existing.state==='created',alreadyRequested:true};
- const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');
- const token=await gmailToken(env,owner);
- const job=await documentJob(env,draft.document_job_id);if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
- const reader=makeReader(env,job.hotel),businessDate=await readBusinessDate(reader,job.hotel);
- const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
- for(const invoice of job.manifest){const current=snapshot.invoices.find(i=>i.id===invoice.id);if(!current||current.open<=0||!['standalone','parent'].includes(current.collection_role)||current.open!==invoice.open||current.invoice_no!==invoice.invoice_no||current.folio_no!==invoice.folio_no)throw Error('email_source_changed');}
- const loaded:MailFile[]=[];for(const file of files)loaded.push(await readMailFile(env,draft,file));
- const messageId=`<${crypto.randomUUID()}@ar-workspace.ar-c82.workers.dev>`;
- const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body},loaded,messageId));
+ const token=await gmailToken(env,owner);const messageId=`<${crypto.randomUUID()}@ar-workspace.ar-c82.workers.dev>`;const {raw}=await prepareMail(env,owner,draft,messageId);
  const attempt=await emailRpc<Attempt>(env,'ar_gmail_attempt_claim',{p_owner:owner,p_draft:id,p_revision:revision,p_message_id:messageId});
  if(attempt.error)throw Error(attempt.error);if(!attempt.claimed)return {state:attempt.state,created:attempt.state==='created',alreadyRequested:true};
  try{
@@ -42,4 +34,15 @@ export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revis
   try{await emailRpc(env,'ar_gmail_attempt_finish',{p_owner:owner,p_id:attempt.id,p_draft_id:null,p_message_id:null});}catch{/* A pending claim still prevents a duplicate. */}
   return {state:'uncertain',created:false,alreadyRequested:true};
  }
+}
+
+export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,messageId:string){
+ const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');
+ const job=await documentJob(env,draft.document_job_id);if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
+ const reader=makeReader(env,job.hotel),businessDate=await readBusinessDate(reader,job.hotel);
+ const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
+ for(const invoice of job.manifest){const current=snapshot.invoices.find(i=>i.id===invoice.id);if(!current||current.open<=0||!['standalone','parent'].includes(current.collection_role)||current.open!==invoice.open||current.invoice_no!==invoice.invoice_no||current.folio_no!==invoice.folio_no)throw Error('email_source_changed');}
+ const loaded:MailFile[]=[];for(const file of files)loaded.push(await readMailFile(env,draft,file));
+ const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body},loaded,messageId));
+ return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,files:files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256}))}};
 }
