@@ -2,6 +2,8 @@
 
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: พบ Statement PDF จากหน้า OPERA จริง
 
+- HARจากแท็บหลักอ่านแล้ว12requests:6ADFformPOST/textXML +6imageGET. เห็นเปิดreportwindowผ่านUI /launch แต่ไม่มีreportviewer/PDF/PublisherRESTrequestในไฟล์นี้. ต้องเก็บHARจากแท็บPDFที่เปิดอยู่เพิ่ม;ไม่ต้องCreate Statementซ้ำ. HARและViewState/customercontentคงอยู่นอกGit. รายละเอียดในSTATEMENT_API_RESEARCH.md.
+
 - เจ้าของเปิดEdgeและเลือก3Invoiceไว้ พร้อมอนุญาตCreate Statement. ดำเนินการหนึ่งชุดผ่านBatch Statements Options → Process Statements → Batch Report Destination (kat_statement / Preview) → Process. Batch ReportsแสดงComplete/Finished Successfully.
 - เปิดnativeStatement1หน้าใน /OPERA9/opera/operacloud/reportviewer?ex=PREVIEW&rep=BATCH_{id} บนOPERA UI host. ตรวจภาพPDFจริง:3FolioและBalance Dueตรงselection;มีVoucherอ้างอิงในแบบพิมพ์.
 - Aging Summaryเป็นยอดทั้งAccount ไม่ใช่เฉพาะรายการที่เลือก จึงยังไม่ผ่านการอ้างselected-onlyทั้งtotal/aging. ไม่แก้PDF/แบบพิมพ์เพื่อให้ทดสอบผ่าน.

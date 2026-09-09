@@ -1,5 +1,21 @@
 # Native selected Statement API research — 2026-09-09
 
+## Local HAR inspection — 2026-09-09
+
+Read the owner-provided Downloads/opera-statement.har locally without copying it into the repository. It contains12entries:6form POST requests to the OPERA UI faces/opera-cloud-index/OperaCloud route and6image GET requests. All captured requests returnedHTTP200. Form responses are text/xml ADF partial UI responses, not JSON OHIP results or PDF. No Cookie/Authorization/x-api-key request headers were present by header-name inspection; the file still contains customer UI content and JSF ViewState and must remain private.
+
+Request sequence aligns with the observed UI:
+- Entry0 returns Batch Statements Options.
+- Entry1 returns Batch Report Destination and kat_statement.
+- Entries8/9 are UI destination/printer initialization events.
+- Entry10 returns ODEUtils.WindowManager.launch / OperaUtils.launchUsingCustomScheme and a UI /launch URL with TPLNG/TPFLSCRN keys. Parameter values and state tokens were not printed.
+- Entry11 completes popup handling.
+
+There are zero captured reportviewer requests, zero PDF MIME responses, and zero /services/rest/ Publisher requests. The HAR covers the parent tab; the report-window and PDF-tab network requests are absent. This does not prove the server cannot use Publisher internally.
+
+Next evidence: capture the existing reportviewer PDF tab's Network on a single reload and export a separate sanitized HAR outside Git. No further Create Statement is needed merely to capture that GET. This may establish PDF retrieval method, headers, redirects and browser authentication dependencies; it will not by itself establish a supported external OHIP rendering API or the missing server-side batch creation contract.
+
+
 ## Owner-prepared Edge UI trial — 2026-09-09
 
 Owner explicitly authorized using the already-selected three Invoice rows in Edge. Operated the existing OPERA tab without changing selection: Create Statement → Batch Statements Options → Process Statements → Batch Report Destination (kat_statement, Destination set to preview) → Process. Exactly one UI sequence; no Email/Print destination selected.
