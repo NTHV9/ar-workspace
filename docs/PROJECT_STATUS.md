@@ -1,5 +1,18 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026: Email Workspace และ Gmail Draft ทดสอบจริงแล้ว
+
+- เปิด Email preparation จากชุด PDF ที่ review/save แล้วได้ แก้ผู้รับ/Subject/ข้อความ บันทึก workspace draft แยกจาก Gmail draft; ตรวจ owner/revision/ไฟล์แนบและ OPERA ปัจจุบันก่อน handoff มี single claim ป้องกันคำขอซ้ำ/ผลไม่แน่นอน
+- สร้าง OAuth client ใหม่ ar-workspace-gmail ใน Google Project ar-project-506410 ซึ่งยืนยันผ่าน callback ของแอปใหม่แล้ว ไม่แก้ legacy clients เก็บ secrets ใน Worker และ provider tokens เข้ารหัส private schema
+- Google consent → Worker callback → Gmail getProfile ผ่านจริงด้วยบัญชีที่อนุญาต; สร้าง Gmail Draft จริงพร้อม Statement 1 + Invoice 2 ไฟล์ ตรวจใน Gmail ว่าไฟล์ครบ
+- เจ้าของอนุญาตผู้รับทดสอบแบบครั้งเดียวภายหลัง: นำไฟล์ลูกค้าทั้งหมดออกจาก Draft ใน Gmail เปลี่ยนเป็นข้อความทดสอบทั่วไปแล้วส่ง 1 ครั้ง Gmail แสดง Message sent ไม่บันทึกผู้รับใน app defaults/source/tests/docs และไม่บันทึก AR billing/reminder event ไม่อ้างว่าเป็นการส่งตรงผ่าน Worker หรือยืนยันถึงกล่องผู้รับ
+- Applied migrations: ar_email_workspace, ar_gmail_connection, ar_email_save_guard, ar_gmail_claim_guard ใน Supabase ar-workspace (jmyvpurzmoiecpydjrci) ไม่มี reset/drop/เปลี่ยนยอดหรือข้อมูลระบบเดิม
+- Build/Typecheck และ 179 unit tests ผ่าน; SQL rollback guards ผ่าน; browser 4 เคส desktop 1440×900, laptop 1280×800, mobile 390×844 ผ่าน ภาพสังเคราะห์ใน evidence/email-composer-*.png ผ่าน visual review เทียบแบบ ไม่แก้ baseline
+- Source b1ac3c0965c43db160d599533cf9d86959a98071 Push branch codex/opera-refresh และ Deploy Worker ar-workspace: c59cf3e40fed4c59ad2bbc4460c7ecc7; Workflow version 62198213-a253-413d-abee-82c1cbcfc293; health SHA ตรง, anonymous Gmail 401, เปิดกลับแล้ว Gmail connected และ Create Draft ซ้ำถูกปิด
+- Postcheck: Gmail attempt 1 (created), workspace drafts ที่มีผู้รับ 0, account settings 0, invoice workflow ที่กำหนด billing/reminder history 0
+- ยังไม่ครบ: Send Now จากแอป, reconcile sent กลับเป็น billing/reminder events, เลือก thread เดิม, rich-text/versioned templates และ supplemental uploads; หน้าแสดงข้อจำกัดตามจริง อ่าน EMAIL_WORKSPACE_VERIFICATION.md และ EMAIL_COMPOSER_DESIGN.md
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: Account Settings และประวัติตั้งต้นพร้อมใช้
 
 - เจ้าของยืนยันให้ทั้ง Billing Required/Not Required และ Credit Term ใช้กับบิลเก่า และให้ Default เป็น Not billed / No reminders sent โดยแก้ประวัติย้อนหลังได้ ไม่ใส่วันที่ส่ง/วางบิลเอง
