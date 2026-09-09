@@ -7,7 +7,7 @@
 - KAT ทดลองเพิ่มหมายเหตุ → Save Draft → ปิด/เปิดกลับแล้วข้อความครบ จากนั้นลบหมายเหตุและบันทึก final ไม่มีข้อความทดสอบเหลือในไฟล์แยก ทั้งสองโรงแรมรักษารูปแบบที่บันทึกไว้เมื่อเปิดกลับ
 - พบและแก้ initial delivery preference ที่ถูกละเลยตอนเปิด Editor ครั้งแรก และช่องว่างท้าย Voucher ที่ทำให้แนวตัวเลขคลาดเคลื่อนเล็กน้อย ข้อมูล OPERA/ยอด/หัวข้อ Aging เดิมไม่เปลี่ยน
 - ทดสอบ replay command ไม่สร้างงานเพิ่ม, stale revision ถูกปฏิเสธ และ API/storage failure แบบจำลองไม่แสดง PDF ทดแทน ไม่มี deliberate outage/ปิดสิทธิ์/ส่งอีเมล
-- Source 51226191d0cb412e39786eeb2ce6b27d8d940126 deployed ผ่าน deployment 6ce77294f884449fada551f15b405797; 156 unit tests/Typecheck/Build ผ่าน Browser 7 เคสบน deployed assets และ 13 เคส local ผ่านเมื่อรันแยกเซิร์ฟเวอร์; cold-start mixed run ยังมี localhost timeout บางเคส จึงไม่อ้างว่า cold-start runner ปกติครบ
+- Source 51226191d0cb412e39786eeb2ce6b27d8d940126 deployed ผ่าน deployment 6ce77294f884449fada551f15b405797; 156 unit tests/Typecheck/Build ผ่าน พบภายหลังว่า Vite watcher ล้ม EBUSY บน private PDF จึงตั้งให้ข้าม private/.cache; รอบ Browser tests สุดท้ายผ่านพร้อมกันครบ 20 เคสใน 50.3 วินาที ไม่เพิ่ม timeout/ลด assertions การตั้ง watcher เป็น dev-only ไม่เปลี่ยน runtime บน Cloudflare
 - รายละเอียด หลักฐาน และลิงก์งานใน DOCUMENT_PACKAGE_VALIDATION.md ข้อมูลจริงอยู่ private/document-validation-20260909 นอก Git ไม่มี migration/paid service/แก้ legacy เพิ่มในรอบนี้
 
 
