@@ -24,7 +24,8 @@ export function sourceAging(rows: Account[], hotel: string): AgingBucket[] {
   return first.map((bucket,index)=>({...bucket,amount:accounts.reduce((s,a)=>s+a.agingBuckets![index].amount,0),debit:accounts.reduce((s,a)=>s+a.agingBuckets![index].debit,0),credit:accounts.reduce((s,a)=>s+a.agingBuckets![index].credit,0)}));
 }
 export interface Comparison { key: string; name: string; kat: number; tsk: number; total: number; over90: number; share: number; items: number; accounts: number; members: Account[] }
-export interface Invoice { id: string; hotel: string; accountId: string; guest: string; invoiceNo: string; folioNo: string; date: string; due: string | null; original: number; open: number; aging: string; stage: string;
+export interface InvoiceWorkflow {revision:number;credit_term:number|null;billing_required:boolean|null;first_billing_date:string|null;last_reminder_stage:string|null;last_reminder_date:string|null;due_date:string|null}
+export interface Invoice {workflow?:InvoiceWorkflow|null; id: string; hotel: string; accountId: string; guest: string; invoiceNo: string; folioNo: string; date: string; due: string | null; original: number; open: number; aging: string; stage: string;
  collection_role?:'unverified'|'standalone'|'parent'|'child'; collection_selectable?:boolean; parent_invoice_no?:string|null; parent_invoice_id?:string|null; parent_open?:number|null; verification_state?:string;
 }
 export function selectableInvoice(invoice:Invoice,review=false){return review||invoice.collection_selectable===true&&['standalone','parent'].includes(invoice.collection_role??'')&&invoice.verification_state==='verified'&&invoice.open>0;}
