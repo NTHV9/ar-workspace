@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจ repository Oracle ทั้งชุดเพิ่มเติม
+
+- ยืนยันmainยังเป็นdd631fbd5d0fce74a7dbdf96b43f07ce587211f2. อ่านtreeครบ163filesและดาวน์โหลดsnapshotไว้ignoredcache;ไม่cloneทับprojectหรือใช้workflow/sourceเป็นฐาน.
+- ตรวจแบบstructuredscan61RESTspecs/3641operations,successbinaryschemas32operations,Postman6collections/2923requests และGraphQLarea79files;อ่านcandidateเกี่ยวกับเอกสารละเอียด.
+- พบgetFileAttachment/getEmailFile/CustomizedLetter/RegistrationCardและR&AObjectStorageเป็นfile-capable routesเพิ่มเติมนอกkeyword50รายการ แต่ยังไม่มีmappingจากInternalStatement BATCH/reportSeqNo. ไม่ยิงIDเดา/ไม่ส่งemail/ไม่สร้างPARหรือsubscription.
+- ตรวจIssues/PR126recordsพร้อมcommentsที่ระบุในORACLE_STATEMENT_ISSUES_REVIEW.md;PR82เป็นR&AstorageของscheduledPublisher ไม่ใช่InternalStatementrenderer.
+- ผลสรุปและขอบเขตอยู่ORACLE_REPOSITORY_WIDE_REVIEW.md. ยังไม่พบnativeStatementBackendtransportที่พิสูจน์ได้จากrepo;ไม่มีappcode/migration/deploy/บริการจริงเปลี่ยนในรอบนี้.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ตรวจทุก operation ในสองแท็บ OHIP แล้ว
 
 - ตรวจReportทั้ง7modules/33operations และStatementทั้ง3modules/17operations รวม50distinctoperationsตามfiltersที่เจ้าของเปิดไว้. เปิดครบทุกmoduleและอ่านmethod/URI/operationID/Infoที่มีจากDOMจริง;5ReportMasterrowsไม่มีInfodescriptionจึงตรวจofficialschemaแทน.
