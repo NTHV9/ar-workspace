@@ -1,0 +1,9 @@
+import {afterEach,it,expect,vi} from 'vitest';
+import {handleApi} from '../worker/index';
+import {emailApi} from '../worker/email/api';
+import {starterTemplates} from '../src/email/templates';
+const id='00000000-0000-4000-8000-000000000111';
+afterEach(()=>vi.unstubAllGlobals());
+it('protects template reads/writes and report reads before provider access',async()=>{const f=vi.fn();vi.stubGlobal('fetch',f);for(const [path,method] of [['/api/email/templates','GET'],[`/api/email/templates/${id}`,'PUT'],['/api/reports/activity','GET'],['/api/reports/current','GET']])expect((await handleApi(new Request('https://app.test'+path,{method}),{})).status).toBe(401);expect(f).not.toHaveBeenCalled();});
+it('rejects cross-origin template mutation and unknown content before database calls',async()=>{const f=vi.fn();vi.stubGlobal('fetch',f);const req=(origin:string,content:unknown)=>new Request('https://app.test/api/email/templates/'+id,{method:'PUT',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({revision:0,content})});expect((await emailApi(req('https://other.test',starterTemplates[0]),{},id)).status).toBe(403);expect((await emailApi(req('https://app.test',{...starterTemplates[0],secret:'bad'}),{},id)).status).toBe(400);expect(f).not.toHaveBeenCalled();});
+it('retains atomic revision conflict and forwards the authenticated owner',async()=>{const f=vi.fn().mockResolvedValue(Response.json({error:'template_revision_conflict'}));vi.stubGlobal('fetch',f);const r=await emailApi(new Request('https://app.test/api/email/templates/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:2,content:starterTemplates[0]})}),{SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic'},id);expect(r.status).toBe(409);expect(JSON.parse(f.mock.calls[0][1].body)).toMatchObject({p_actor:id,p_revision:2});});

@@ -1,0 +1,35 @@
+.rich-message-editor{display:flex;flex-direction:column;flex:1;min-width:0;min-height:220px;color:#21405f;font:inherit;background:#fff}
+.rich-message-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 8px}
+.rich-message-heading>label{font-size:12px;font-weight:600;color:#21405f}
+.rich-message-modes{display:flex;gap:2px;background:#f2f6fa;border-radius:8px;padding:3px}
+.rich-message-editor .rich-message-modes button{min-height:30px;padding:5px 9px;border:0;border-radius:6px;background:transparent;color:#536b85;font:inherit;font-size:11px;cursor:pointer}
+.rich-message-editor .rich-message-modes button[aria-pressed=true]{background:#fff;color:#214b84;box-shadow:0 2px 4px #17395414}
+.rich-message-toolbar{display:flex;flex-wrap:wrap;gap:8px;padding:4px 12px 10px;border-bottom:1px solid #e1e8f0}
+.rich-message-tool-group{display:flex;gap:4px}
+.rich-message-editor .rich-message-toolbar button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:#315778;cursor:pointer}
+.rich-message-editor .rich-message-toolbar button:hover{background:#f0f4ff}
+.rich-message-editor .rich-message-toolbar button[aria-pressed=true]{color:#234cbb;background:#eaf0ff;border-color:#cedcfb}
+.rich-message-content,.rich-message-editor .rich-message-plain{box-sizing:border-box;flex:1;min-height:180px;padding:18px 20px;color:#21405f;background:#fff;font-family:inherit;font-size:13px;line-height:1.85;overflow:auto;overflow-wrap:anywhere;white-space:pre-wrap;caret-color:#3966f5;scrollbar-color:#b6c8da #f7fafc;scrollbar-width:thin}
+.rich-message-content{outline:none}
+.rich-message-content:focus{outline:2px solid #8faef5;outline-offset:-2px}
+.rich-message-content p,.rich-message-content blockquote,.rich-message-content ul{margin:0 0 12px}
+.rich-message-content p:last-child,.rich-message-content blockquote:last-child,.rich-message-content ul:last-child{margin-bottom:0}
+.rich-message-content ul{padding-left:24px}
+.rich-message-content li{padding-left:2px}
+.rich-message-content blockquote{margin-left:0;padding-left:16px;border-left:1px solid #aec2d7;color:#536b85}
+.rich-message-content a{color:#2456b8;text-decoration:underline;text-underline-offset:3px}
+.rich-message-content::selection,.rich-message-content *::selection,.rich-message-plain::selection{color:#102c4b;background:#dbe7ff}
+.rich-message-editor .rich-message-plain{width:100%;border:0;border-radius:0;resize:vertical;margin:0;box-shadow:none}
+.rich-message-editor .rich-message-help{margin:0;padding:10px 16px;background:#f7fafc;font-size:11px;line-height:1.6;color:#526b86}
+.rich-message-link{display:grid;gap:8px;padding:12px 16px;background:#f2f6ff;border-bottom:1px solid #dce6ef}
+.rich-message-link label{font-size:12px;color:#21405f;font-weight:600}
+.rich-message-editor .rich-message-link input{width:100%;box-sizing:border-box;min-width:0;border:1px solid #b9cbe0;border-radius:7px;padding:10px;font:inherit;font-size:12px;background:white;color:#21405f}
+.rich-message-link input::placeholder{color:#596d85}
+.rich-message-link>div{display:flex;gap:8px}
+.rich-message-editor .rich-message-link button{border:1px solid #b9cbe0;border-radius:7px;padding:8px 12px;font:inherit;font-size:12px;background:white;color:#214b84;cursor:pointer}
+.rich-message-editor .rich-message-link button:first-child{background:#3966f5;color:white;border-color:#3966f5}
+.rich-message-editor .rich-message-issue{margin:0;padding:10px 16px;background:#fff4df;color:#78511c;font-size:12px;line-height:1.6}
+.rich-message-editor button:disabled{opacity:.5;cursor:not-allowed}
+.rich-message-editor[data-disabled] .rich-message-content,.rich-message-editor .rich-message-plain:disabled{background:#f7fafc;color:#586e87;cursor:default}
+.rich-message-editor :focus-visible{outline:2px solid #3966f5;outline-offset:2px}
+@media(max-width:640px){.rich-message-heading{padding:12px 12px 8px}.rich-message-toolbar{padding:4px 8px 9px}.rich-message-tool-group{gap:3px}.rich-message-editor .rich-message-toolbar button{width:38px;height:40px}.rich-message-content,.rich-message-editor .rich-message-plain{font-size:16px;padding:16px;min-height:240px}.rich-message-editor .rich-message-modes button{min-height:38px}.rich-message-editor .rich-message-link input{font-size:16px}.rich-message-link>div button{min-height:40px}}

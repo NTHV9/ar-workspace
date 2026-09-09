@@ -43,6 +43,6 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
  const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
  for(const invoice of job.manifest){const current=snapshot.invoices.find(i=>i.id===invoice.id);if(!current||current.open<=0||!['standalone','parent'].includes(current.collection_role)||current.open!==invoice.open||current.invoice_no!==invoice.invoice_no||current.folio_no!==invoice.folio_no)throw Error('email_source_changed');}
  const loaded:MailFile[]=[];for(const file of files)loaded.push(await readMailFile(env,draft,file));
- const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body},loaded,messageId));
- return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,files:files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256}))}};
+ const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null},loaded,messageId));
+ return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,files:files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256}))}};
 }

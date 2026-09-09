@@ -19,3 +19,6 @@ private/
 supabase/.temp/
 __pycache__/
 *.pyc
+
+.tmp/
+test-results-reports/

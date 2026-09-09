@@ -1,3 +1,4 @@
+import {plainMessage} from '../../src/email/rich-message';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
 import {emailRpc,googleJson,boundedBody,type EmailEnv,type EmailDraft} from './shared';
 import {gmailToken,gmailCanRead} from './oauth';
@@ -38,17 +39,18 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
 }
 export interface TestSupplementals {draftId:string;revision:number;ids:string[]}
 const testSourceKey=(s?:TestSupplementals)=>JSON.stringify(s?[s.draftId,s.revision,s.ids]:null);
-export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals){
+export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false){
  const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));
- const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals))throw Error('email_test_command_conflict');return deliveryView(existing);}
+ const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals)||!!existing.snapshot.expected.richBody!==rich)throw Error('email_test_command_conflict');return deliveryView(existing);}
  const extraFiles:MailFile[]=[];if(supplementals){const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:supplementals.draftId});if(!draft)throw Error('email_missing');if(draft.revision!==supplementals.revision)throw Error('email_revision_conflict');const selected=supplementals.ids.map(fileId=>{const file=draft.attachments.find(a=>a.id===fileId);if(!file)throw Error('email_attachment_missing');return file;});if(selected.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');for(const file of selected)extraFiles.push(await readMailFile(env,draft,file));}
  const messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,subject=supplementals?'Katathani AR Workspace — attachment verification':'Katathani AR Workspace — direct send verification';
  const body='This is an authorized one-time integration test sent directly by AR Workspace on Cloudflare. Includes a system-generated synthetic PDF and any supplemental files explicitly selected for this test. This test does not change billing, collection stages or financial balances.';
+ const richBody=rich?plainMessage(body):null;if(richBody)richBody.blocks[0].runs[0].bold=true;
  const pdf=await PDFDocument.create(),page=pdf.addPage([595,842]),font=await pdf.embedFont(StandardFonts.Helvetica);page.drawText('AR Workspace - Email integration test',{x:45,y:775,size:18,font});page.drawText('Synthetic document only. No customer or invoice data.',{x:45,y:735,size:11,font});page.drawText('No billing or collection activity will be recorded.',{x:45,y:710,size:11,font});const bytes=await pdf.save();
  const files:MailFile[]=[{name:'AR-Workspace-Test.pdf',mime:'application/pdf',bytes},...extraFiles];if(files.length>50||files.reduce((n,f)=>n+f.bytes.length,0)>draftBudget(env))throw Error('email_too_large');
- const expected={messageId,subject,body,files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
- const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body},files,messageId)),token=await gmailToken(env,actor);
+ const expected={messageId,subject,body,...(richBody?{richBody}:{}),files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
+ const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},files,messageId)),token=await gmailToken(env,actor);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:null,p_revision:null,p_mode:'test',p_stage:null,p_message_id:messageId,p_expected:expected});
  return submit(env,actor,claim,raw,token);
 }
