@@ -1,5 +1,21 @@
 # Native selected Statement API research — 2026-09-09
 
+## Owner-prepared Edge UI trial — 2026-09-09
+
+Owner explicitly authorized using the already-selected three Invoice rows in Edge. Operated the existing OPERA tab without changing selection: Create Statement → Batch Statements Options → Process Statements → Batch Report Destination (kat_statement, Destination set to preview) → Process. Exactly one UI sequence; no Email/Print destination selected.
+
+Batch Reports showed Complete / Finished Successfully. A new tab displayed a one-page native Statement of Account PDF at the observed UI route:
+https://{OPERA-UI-host}/OPERA9/opera/operacloud/reportviewer?ex=PREVIEW&rep=BATCH_{observed-id}
+
+The real batch ID and customer screenshot remain private to the browser; no raw screenshot/customer PDF/HAR enters Git. The PDF visibly contained exactly the three selected Folios, with their row amounts and Balance Due matching the selected total. It also printed Voucher references.
+
+Scope finding: Aging Summary represented the whole Account and did not sum to the selected Balance Due. Do not describe this native template's Aging as selected-only, or silently alter the template/PDF to imply otherwise. This proves selected line membership and selected Balance Due for this UI sample, not selected Aging.
+
+The observed reportviewer is an OPERA UI route on the UI host, not a proved OHIP/Publisher external API. We have not established its request method/response headers, how the batch ID is obtained, its supported external authentication, or the server-side rendering sequence. No browser cookies were copied to the Worker or used to make external API calls.
+
+Tool limitation: the connected Edge extension exposes page controls and rendered PDF screenshots, but no Network capture/DevTools control API. The owner opened DevTools; a Network HAR export is still needed to inspect the captured request sequence. Request a sanitized HAR saved outside Git, inspect locally while suppressing credentials/customer content from output, and retain only structural findings. Do not claim Network was captured by the agent.
+
+
 Status: **research and tenant metadata reads complete; native Statement PDF transport not verified or enabled**. This task performed public documentation reads and local specification inspection only. No credentials, customer payloads, OPERA mutations, email, cloud changes, commits, or push. Native reservation Folio transport already proved by the parent task is outside this investigation.
 
 ## Owner-authorized POST trial — 2026-09-09

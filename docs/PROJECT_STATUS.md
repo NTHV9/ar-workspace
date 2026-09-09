@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 9 กันยายน 2026: พบ Statement PDF จากหน้า OPERA จริง
+
+- เจ้าของเปิดEdgeและเลือก3Invoiceไว้ พร้อมอนุญาตCreate Statement. ดำเนินการหนึ่งชุดผ่านBatch Statements Options → Process Statements → Batch Report Destination (kat_statement / Preview) → Process. Batch ReportsแสดงComplete/Finished Successfully.
+- เปิดnativeStatement1หน้าใน /OPERA9/opera/operacloud/reportviewer?ex=PREVIEW&rep=BATCH_{id} บนOPERA UI host. ตรวจภาพPDFจริง:3FolioและBalance Dueตรงselection;มีVoucherอ้างอิงในแบบพิมพ์.
+- Aging Summaryเป็นยอดทั้งAccount ไม่ใช่เฉพาะรายการที่เลือก จึงยังไม่ผ่านการอ้างselected-onlyทั้งtotal/aging. ไม่แก้PDF/แบบพิมพ์เพื่อให้ทดสอบผ่าน.
+- พบUI download/view routeแล้ว แต่ยังไม่พิสูจน์OHIP authentication,ขั้นตอนสร้างbatch IDหรือAPIสำหรับBackend. ไม่ใช้browsercookiesแทนprovidercredentials.
+- Edgeconnectorควบคุมหน้าเว็บได้แต่ไม่มีNetwork/DevTools API;ขอsanitizedHARที่เก็บนอกGitเพื่อวิเคราะห์ต่อ. ไม่อ้างว่าจับNetworkแล้ว. ภาพลูกค้าอยู่ในprivatebrowserเท่านั้น;ไม่ส่งอีเมล ไม่กดชำระเงิน/ปรับยอด.
+- รายละเอียดอยู่STATEMENT_API_RESEARCH.md. รอบนี้ไม่มีsourcecode/migration/deploymentใหม่.
+
+
 ## Checkpoint ล่าสุด — 9 กันยายน 2026: ทดลอง getARStatements → postStatements จริง
 
 - เจ้าของขอทดลองลำดับนี้โดยตรง: KATหนึ่งงาน/สองInvoice; ตรวจCurrentและdescriptorตรงรายการ/ยอดก่อนPOST. ใช้durableclaimและprivate immutable marker; POSTหนึ่งครั้ง ไม่มีauto-retry.
