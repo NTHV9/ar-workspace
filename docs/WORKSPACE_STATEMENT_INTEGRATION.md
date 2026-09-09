@@ -1,5 +1,13 @@
 # AR Workspace Statement integration — 9 September 2026
 
+## Follow-up: Voucher centering
+
+Compared the owner's OPERA and generated-PDF screenshots. OPERA centers the Voucher heading and values; the renderer previously left-aligned both. Centered the heading and each wrapped value line at the column midpoint (369 pt), retaining column width, complete content and existing numeric alignment. Longer Voucher strings can still wrap; the screenshots contained different lengths, so wrapping alone is not evidence that data should be shortened.
+
+Extended PDF-extraction verification to catch the old placement and verify both header/value centers across KAT/TSK multipage fixtures, including a synthetic two-line Voucher. Measured StandardFont glyph advances to avoid a heading offset from pair-kerning width metrics. Checks and visual review passed; 155 unit tests, Typecheck and build passed. Deployed source 238fdb5c37bc67c53b180fbf2440b56125c7449c, deployment 28c2e4c622864d76bae242db9fe2cd05, workflow version 592ca928-d438-4775-adba-ce5afcf5bca4. Existing PDFs are preserved.
+
+New live review jobs are ready without errors: KAT `43115ebe-51c0-45d5-a7fe-b68be6eb448c` (220,971 bytes) and TSK `233aea6c-f845-4130-bdf0-12fa67b71213` (252,393 bytes). The TSK example retains its complete two-line Voucher.
+
 ## Follow-up: numeric-column alignment
 
 Owner reported a selected-total versus Aging difference and header/data alignment in both hotels. Read-only verification showed one additional open invoice outside the displayed selection, explaining the account-wide Aging difference. Owner explicitly retained account-wide Aging and, in the latest correction, retained the original OPERA headings (no Entire Account/Selected Invoices suffixes).
