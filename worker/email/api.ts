@@ -3,12 +3,15 @@ import {parseEmailDraft} from './validation';
 import {gmailConnect,gmailStatus} from './oauth';
 import {uuidPattern} from '../documents/jobs';
 import {draftBudget,readMailFile} from './gmail-draft';
+import {supplementalRequest} from './supplemental';
 import {deliverMessage,sendDiagnostic,checkDelivery,deliveryView,type Delivery} from './delivery';
 
 export async function emailApi(request:Request,env:EmailEnv,actor:string):Promise<Response>{
  try {
   const url=new URL(request.url), path=url.pathname;
   if(request.method!=='GET'&&request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin)return emailJson({error:'forbidden'},403);
+  const supplemental=/^\/api\/email\/([0-9a-f-]{36})\/attachments\/([0-9a-f-]{36})$/.exec(path);
+  if(supplemental){if(!uuidPattern.test(supplemental[1])||!uuidPattern.test(supplemental[2]))throw Error('email_invalid');const r=await supplementalRequest(request,env,actor,supplemental[1],supplemental[2]);return r instanceof Response?r:await draftResponse(r,env,actor);}
   if(path==='/api/gmail/status'&&request.method==='GET')return emailJson({...await gmailStatus(env,actor),maxAttachmentBytes:draftBudget(env)});
   if(path==='/api/email/test-send'&&request.method==='POST'){
    const v=await jsonBody(request);if(v.confirmed!==true||typeof v.commandId!=='string'||!uuidPattern.test(v.commandId)||typeof v.recipient!=='string')return emailJson({error:'email_invalid'},400);
@@ -50,11 +53,15 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
     result=await emailRpc(env,'ar_email_save',{p_actor:actor,p_id:match[1],p_revision:v.revision,p_purpose:v.purpose,p_recipients:v.recipients,p_subject:v.subject,p_body:v.body});
    }else return emailJson({error:'method_not_allowed'},405);
   }
-  if(!result)return emailJson({error:'email_missing'},404);
+  return await draftResponse(result,env,actor);
+ }catch(e){const code=e instanceof Error?e.message:'';const safe=['attachment_invalid','attachment_name_invalid','attachment_unsupported','attachment_type_mismatch','attachment_active_pdf','attachment_invalid_pdf','attachment_pdf_complexity','attachment_invalid_image','attachment_image_too_large','attachment_animated_image','attachment_command_conflict','email_attachment_missing','email_missing','email_invalid','email_too_large','gmail_not_configured','gmail_not_connected','gmail_reconnect_required','gmail_read_permission_required','email_incomplete','email_stage_required','email_rules_missing','email_forbidden','email_source_changed','email_package_changed','email_revision_conflict','email_handoff_pending','email_attachment_changed','email_attachment_unavailable'].includes(code)?code:'email_unavailable';return emailJson({error:safe},safe.startsWith('attachment_')&&!safe.endsWith('_conflict')?400:/missing$/.test(safe)?404:safe==='email_invalid'?400:safe==='email_too_large'?413:safe==='email_forbidden'?403:/changed|conflict|pending|incomplete|stage_required|rules_missing/.test(safe)?409:503);}
+}
+
+async function draftResponse(result:unknown,env:EmailEnv,actor:string){
+ if(!result)return emailJson({error:'email_missing'},404);
   if(typeof result==='object'&&'error' in result){const code=String(result.error);return emailJson({error:code},/conflict|package/.test(code)?409:/forbidden/.test(code)?403:/missing/.test(code)?404:400);}
   const draft=result as EmailDraft;
   const attempt=await emailRpc<{state:string}|null>(env,'ar_gmail_attempt_get',{p_owner:actor,p_draft:draft.id,p_revision:draft.revision});
   const delivery=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draft.id,p_revision:draft.revision});
   return emailJson({...draft,gmail_handoff:delivery?.state??attempt?.state??null,delivery:delivery?deliveryView(delivery):null});
- }catch(e){const code=e instanceof Error?e.message:'';const safe=['email_invalid','email_too_large','gmail_not_configured','gmail_not_connected','gmail_reconnect_required','gmail_read_permission_required','email_incomplete','email_stage_required','email_rules_missing','email_forbidden','email_source_changed','email_package_changed','email_revision_conflict','email_handoff_pending','email_attachment_changed','email_attachment_unavailable'].includes(code)?code:'email_unavailable';return emailJson({error:safe},safe==='email_invalid'?400:safe==='email_too_large'?413:safe==='email_forbidden'?403:/changed|conflict|pending|incomplete|stage_required|rules_missing/.test(safe)?409:503);}
 }
