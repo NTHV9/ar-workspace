@@ -11,6 +11,8 @@
 
 ## Scheduled checks
 
+Update approved by owner on 10 September 2026: the active interval is now **15 minutes**, reduced from the five-minute interval used in the initial validation below. Immediate post-send and manual verification remain available. Latest deployment evidence is in PROJECT_STATUS.
+
 Cloudflare runs the read-only Gmail reconciliation cron every five minutes. Existing OPERA refresh at 07:00 and 19:00 ICT remains unchanged. The scheduler can inspect sent evidence and apply the already-authorized, verified history transition; it has no call path that creates drafts or sends emails.
 
 Manual and scheduled checks share one database lease. Each actual delivery step checks/renews the current live lease under the same advisory lock immediately before verification. Expired leases cannot revive. A two-minute delivery step budget fits within the renewed 15-minute lease. Default batch is three eligible unresolved business deliveries, configurable from one to twenty. Diagnostic tests and review-required items are excluded from automatic processing.

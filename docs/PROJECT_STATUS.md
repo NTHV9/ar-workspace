@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026: ลดรอบตรวจ Gmail เป็นทุก 15 นาที
+
+- เจ้าของเห็นชอบให้ลดจากทุก 5 เป็นทุก 15 นาที เพื่อลดรอบฐานข้อมูลที่ไม่มีงาน เหลือ 96 รอบ/วัน (2,880 รอบใน 30 วัน) จาก 288 รอบ/วัน ลดประมาณ 67%
+- แก้ Worker cron handler, Cloudflare cron configuration และค่า interval ที่หน้าคิวอ่านเป็น 15 นาที คง OPERA 07:00/19:00 ICT, manual Check sent status, immediate post-send verification และ batch 3 ตามเดิม ไม่มี migration/ล้างประวัติ/ส่งอีเมล
+- Scheduler tests 5 เคสผ่าน รวมไม่ส่งอีเมล/ไม่เปิด OPERA refresh จาก Gmail cron และไม่ทำงานซ้ำเมื่อ lease หมด; Typecheck/Build ผ่าน
+- Push source c442e956f17b377cefdb81a001a0c129feae74fb บน codex/opera-refresh; deployed Worker ar-workspace: 3ee1632d41914f3aa478e4a40fc23377, workflow 3e3e3bed-c1e6-418e-a9d1-5527030d0399
+- Cloudflare read-back ยืนยัน cron ใหม่ทุก 15 นาทีและ OPERA cron เดิม; health SHA ตรง เป็นการตรวจ configuration/deployment ยังไม่ได้รอรอบ scheduled 15 นาทีรอบแรก
+
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026: Collection Queue และรอบตรวจ Gmail ตามเวลา
 
 - เพิ่ม Collections: คิวตาม Hotel/Account Type/Account, Next action, Latest sent stage, Ready/Upcoming และค้นหา แยกบิลจริงในแผงขวาและเตรียมเอกสารตาม purpose โดยไม่ส่งอีเมลอัตโนมัติ ใช้ชื่อเต็ม Follow-up 1/2/3 ตามคำยืนยันล่าสุด
