@@ -6,6 +6,16 @@ Owner explicitly approved experimenting with system-generated Statement PDFs usi
 
 ## Implemented experiment
 
+### Revision 2 — additional native references, 2026-09-09
+
+Owner accepted the initial visual direction and supplied the private Downloads/Batch examples plus Batch 1681351.PDF. Inspected rendered pages from Batch 1681278 (KAT, 2 pages), 1681279 (TSK, 1), 1681308 (KAT, 1), 1681312 (TSK, 2), and 1681351 (KAT, 2). The TSK references show The Shore branding, matching the supplied RTF; this resolves the earlier missing-baseline/branding question for these examples.
+
+Native multipage examples repeat the full Statement title/account/address/page header. The newest 1681351 example also demonstrates invoice-table continuation with repeated column headings, followed by the closing section on page 2. Other supplied examples move the closing section to a separate page. These observations do not establish identical pagination for different input data.
+
+Revision 2 moves the generated preamble into the repeating RTF header and keeps Aging/bank/terms/signature paragraphs together. Four outputs in ignored private/statement-trial-v2 passed extracted unique Voucher/total checks, repeated-header checks on every page, and signature-with-closing-section checks. Both single fixtures are 1 page; both 45-row fixtures are 3 pages. All output pages were rendered and visually inspected. No isolated signature page remains; closing-section grouping can leave whitespace and has not been proven to match OPERA pagination exactly.
+
+The sections below record revision 1 evidence. Their pending TSK baseline and orphan-signature limitations are superseded by this revision; font metrics, spacing, same-data comparison and production integration remain unfinished. No production code, deployment or cloud resource changed in revision 2. Originals and private reference PDFs remain outside Git.
+
 scripts/statement-template-trial.py preserves the source RTF tables, static text, embedded pictures, headers and footers; expands the known Invoice table row and materializes the supported XDO form-field expressions from synthetic fixture data. It is not a general XDO/XSLT engine: unknown expressions fail. It retains PAGE/NUMPAGES fields for the converter, consumes directive-only paragraph breaks and normalizes placeholder small-caps styling to match the observed OPERA captions. All changes are to generated copies.
 
 LibreOffice26.2.6.3 was downloaded from The Document Foundation's official distribution and its MSI Authenticode signer verified. Administrative extraction resides only under ignored .cache/statement-renderer; bundled runtime DLLs were placed app-locally. Conversion runs headless with an isolated cache user profile. No paid SDK, cloud deployment or OPERA setting change.

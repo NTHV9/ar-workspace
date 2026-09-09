@@ -11,7 +11,7 @@ import json
 import re
 
 
-def fields(text):
+def fields(text, group_pattern=r"\{\s*\\field\b"):
     stack, result = [], []
     i = 0
     while i < len(text):
@@ -31,7 +31,7 @@ def fields(text):
             if not stack:
                 raise ValueError("Unbalanced RTF")
             start = stack.pop()
-            if re.match(r"\{\s*\\field\b", text[start:start + 30]):
+            if re.match(group_pattern, text[start:start + 35]):
                 result.append((start, i + 1))
         i += 1
     if stack:
@@ -132,6 +132,18 @@ def generate(template, output, hotel, count):
         breaks.add((marker_at + paragraph.start(), marker_at + paragraph.end()))
     for a, b in sorted(breaks, reverse=True):
         source = source[:a] + source[b:]
+    # OPERA's XDO start:body region leaves the title/account preamble repeating
+    # on every page. Ordinary RTF does not interpret that boundary, so materialize
+    # the preamble into the existing repeating header alongside the original logo.
+    preamble_start = source.rfind('\\pard', 0, source.index('<?param@begin:IMAGES_PATH'))
+    preamble_end = source.index('\\trowd', source.index('<?start'))
+    preamble = source[preamble_start:preamble_end]
+    fields(preamble)
+    headers = fields(source, r'\{\s*\\headerr\b')
+    if len(headers) != 1 or headers[0][1] > preamble_start:
+        raise ValueError('Unsupported repeating-header structure')
+    header_end = headers[0][1] - 1
+    source = source[:header_end] + preamble + source[header_end:preamble_start] + source[preamble_end:]
     start_marker = source.index('<?for-each:G_INVOICES?>')
     start = source.rfind('\\trowd', 0, start_marker)
     row_end_match = re.search(r'\\row\b', source[start_marker:])
@@ -151,6 +163,14 @@ def generate(template, output, hotel, count):
     # The reference OPERA PDF prints these captions in normal mixed case, while
     # LibreOffice honors Word's placeholder small-caps attribute literally.
     rendered = re.sub(r'\\scaps(?![A-Za-z0-9])', r'\\scaps0', rendered)
+    # Keep the closing summary, banking details, terms and signature together.
+    # If insufficient space remains, move this section instead of leaving a lone
+    # signature on another page. This affects only the generated trial copy.
+    closing_heading = rendered.index('Aging')
+    closing_start = rendered.rfind('\\pard', 0, closing_heading)
+    if closing_start < 0:
+        raise ValueError('Closing section missing')
+    rendered = rendered[:closing_start] + re.sub(r'\\pard\b', r'\\pard\\keepn\\keep', rendered[closing_start:])
     fields(rendered)
     if '<?' in rendered:
         raise ValueError('Unresolved XDO expression remains')
