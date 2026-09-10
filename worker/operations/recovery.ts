@@ -22,7 +22,7 @@ export function recoveryMarker(raw:unknown):{deliveryId:string|null;gmailId:stri
 export async function recoverySentPage(env:EmailEnv,actor:string,u:URL){
  const window=recoveryWindow(u),token=await gmailToken(env,actor),headers={Authorization:'Bearer '+token};
  const profile=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers});if(typeof profile.emailAddress!=='string'||profile.emailAddress.toLowerCase()!=='ar@katathani.com')throw Error('recovery_identity_mismatch');
- const query=new URLSearchParams({q:`in:sent after:${Math.floor(Date.parse(window.from)/1000)-1} before:${Math.ceil(Date.parse(window.to)/1000)}`,maxResults:'25',...(window.page?{pageToken:window.page}:{})});
+ const query=new URLSearchParams({includeSpamTrash:'true',labelIds:'SENT',q:`after:${Math.floor(Date.parse(window.from)/1000)-1} before:${Math.ceil(Date.parse(window.to)/1000)}`,maxResults:'25',...(window.page?{pageToken:window.page}:{})});
  const list=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+query,{headers});
  if(list.messages!==undefined&&!Array.isArray(list.messages)||list.nextPageToken!==undefined&&typeof list.nextPageToken!=='string')throw Error('recovery_unavailable');
  if(list.nextPageToken===window.page&&window.page||typeof list.nextPageToken==='string'&&list.nextPageToken.length>2000)throw Error('recovery_unavailable');
@@ -31,9 +31,10 @@ export async function recoverySentPage(env:EmailEnv,actor:string,u:URL){
  for(let i=0;i<ids.length;i+=4){
   const batch=await Promise.all(ids.slice(i,i+4).map(async m=>{
    const q=new URLSearchParams({format:'metadata',fields:'id,internalDate,labelIds,payload(headers)'});q.append('metadataHeaders','X-AR-Delivery-ID');q.append('metadataHeaders','Message-ID');
-   return recoveryMarker(await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?${q}`,{headers}));
+   const raw=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?${q}`,{headers});
+   return recoveryMarker(raw)??{deliveryId:null,gmailId:String(raw.id),sentAt:new Date(Number(raw.internalDate)).toISOString(),conflict:false};
   }));for(const value of batch)if(value&&Date.parse(value.sentAt)>=Date.parse(window.from)&&Date.parse(value.sentAt)<Date.parse(window.to))matches.push(value);
  }
- const correlated=matches.filter(m=>m.deliveryId!==null),known=await backendRpc<unknown>(env,'ar_recovery_sent_match',{p_actor:actor,p_rows:correlated});if(!Array.isArray(known))throw Error('recovery_unavailable');
- return {from:window.from,to:window.to,scanned:ids.length,rows:[...known,...matches.filter(m=>m.conflict).map(m=>({...m,state:'marker_conflict'}))],nextPageToken:list.nextPageToken??null,complete:!list.nextPageToken,scope:'sent_messages_with_ar_marker',writesPerformed:0};
+ const correlated=matches.filter(m=>!m.conflict),known=await backendRpc<unknown>(env,'ar_recovery_sent_match',{p_actor:actor,p_rows:correlated});if(!Array.isArray(known))throw Error('recovery_unavailable');
+ return {from:window.from,to:window.to,scanned:ids.length,rows:[...known,...matches.filter(m=>m.conflict).map(m=>({...m,state:'marker_conflict'}))],nextPageToken:list.nextPageToken??null,complete:!list.nextPageToken,scope:'ar_markers_and_saved_provider_receipts',writesPerformed:0};
 }

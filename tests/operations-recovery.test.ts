@@ -31,3 +31,14 @@ it('write hold still allows exact existing SENT verification without dispatching
  const result=await handleApi(new Request(`https://app.test/api/email/deliveries/${actor}/check`,{method:'POST',headers:{Authorization:'Bearer synthetic'}}),{...env,OPERATIONS_WRITE_HOLD:'true'});
  expect(await result.json()).not.toMatchObject({error:'operations_write_hold'});expect(calls.some(path=>path.startsWith('/rest/v1/rpc/'))).toBe(true);expect(calls.some(path=>path.includes('/messages/send'))).toBe(false);
 });
+it('also matches a saved provider ID when Gmail metadata has no AR header',async()=>{
+ vi.spyOn(Date,'now').mockReturnValue(Date.parse('2026-09-11T12:00:00Z'));
+ vi.stubGlobal('fetch',async(input:RequestInfo|URL,init:RequestInit={})=>{const u=new URL(String(input));
+  if(u.pathname.endsWith('/profile'))return Response.json({emailAddress:'ar@katathani.com'});
+  if(u.pathname.endsWith('/messages'))return Response.json({messages:[{id:'syntheticMessage1'}]});
+  if(u.pathname.endsWith('/syntheticMessage1'))return Response.json(sent([{name:'Message-ID',value:'<provider-rewritten@google.test>'}]));
+  const args=JSON.parse(String(init.body));expect(args.p_rows).toMatchObject([{deliveryId:null,gmailId:'syntheticMessage1'}]);
+  return Response.json([{deliveryId:actor,gmailId:'syntheticMessage1',sentAt:'2026-09-10T10:00:00Z',state:'recorded',matchedBy:'saved_provider_id'}]);
+ });
+ const result=await recoverySentPage(env,actor,new URL('https://app.test?from=2026-09-09T00:00:00Z&to=2026-09-11T00:00:00Z'));expect(result.rows[0]).toMatchObject({state:'recorded',matchedBy:'saved_provider_id'});expect(result.complete).toBe(true);
+});
