@@ -28,7 +28,6 @@ export async function readCorroboratedApplications(reader:OperaReader,query:Appl
  const before=await invoiceDetail(reader,query,options);
  if(before.currentAmount===null)return bad('financial_mapping_missing_current');
  if(before.openAmount===null)return bad('financial_mapping_missing_open');
- if(before.cumulativePayments===null)return bad('financial_mapping_missing_payments');
  const envelope=record(responseAlreadyRead??await reader.appliedInvoicePayments(query));
  if(!Array.isArray(envelope.details)||envelope.details.length>(options.maxRows??5000))return bad('financial_mapping_shape');
  for(const key of ['errors','warnings'])if(envelope[key]!==undefined&&(!Array.isArray(envelope[key])||envelope[key].length))return bad('financial_mapping_upstream_notice');
@@ -55,7 +54,9 @@ export async function readCorroboratedApplications(reader:OperaReader,query:Appl
   links.push({hotel:query.hotel,accountId:query.accountId,invoiceTransactionId:query.invoiceTransactionId,paymentTransactionId:paymentId,invoiceNo:before.invoiceNo,appliedAmount:decimal(allocated),currency:'THB',invoiceTransactionDate:before.transactionDate,invoicePostingDate:before.postingDate,invoiceCloseDate:before.closeDate,applicationDate:null,applicationEventId:null});payments.push(payment);
  }
  const total=links.reduce((sum,link)=>sum+cents(link.appliedAmount!),0n),invoiceApplied=cents(before.currentAmount)-cents(before.openAmount);
- if(total!==invoiceApplied||magnitude(total)!==magnitude(cents(before.cumulativePayments)))return bad('financial_mapping_total');
+ // Invoice amount and open are independently reported both before and after.
+ // The optional cumulative field is an extra cross-check, never a default zero.
+ if(total!==invoiceApplied||before.cumulativePayments!==null&&magnitude(total)!==magnitude(cents(before.cumulativePayments)))return bad('financial_mapping_total');
  const after=await invoiceDetail(reader,query,options);if(invoiceFacts(before)!==invoiceFacts(after))return bad('financial_mapping_changed');
  return {links,payments,coverage:{contract:expanded?'expanded_invoice_rows_correlated_v1':'scoped_payment_rows_correlated_v1',invoiceTotalsReconciled:true,applicationEventHistory:false,observedAt:options.observedAt??new Date().toISOString(),completeness:'invoice_totals_reconciled',dateSemantics:'no_application_event_date'}};
 }
