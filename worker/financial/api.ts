@@ -1,17 +1,17 @@
 import {backendRpc} from '../refresh/backend';
 import {boundedBody} from '../email/shared';
-import {requestFinancialHistory,type FinancialIngestionEnv,type FinancialHistoryRequest} from './refresh';
+import {financialWorkflow,requestFinancialHistory,type FinancialIngestionEnv,type FinancialHistoryRequest} from './refresh';
 import type {FinancialReport,FinancialView} from './model';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const views:FinancialView[]=['invoice_entries','payments','applications','coverage','options'];
-type Status={running:boolean;runs:{id:string;status:string}[]};
+type Status={running:boolean;runs:{id:string;status:string;stepsVersion?:number}[]};
 async function currentStatus(env:FinancialIngestionEnv,actor:string){
  let result=await backendRpc<Status>(env,'ar_financial_status',{p_actor:actor});
  if(!result||!Array.isArray(result.runs))throw Error('financial_unavailable');
  let changed=false;
- if(env.AR_REFRESH)for(const run of result.runs.filter(r=>['queued','running'].includes(r.status))){
+ for(const run of result.runs.filter(r=>['queued','running'].includes(r.status))){
   // A missing/temporarily unreachable instance is not proof that its work stopped.
-  let state:string|undefined;try{state=(await(await env.AR_REFRESH.get(run.id)).status()).status;}catch{continue;}
+  let state:string|undefined;try{const workflow=financialWorkflow(env,run.stepsVersion);if(!workflow)continue;state=(await(await workflow.get(run.id)).status()).status;}catch{continue;}
   if(['complete','errored','terminated'].includes(state??'')){
    changed=await backendRpc<boolean>(env,'ar_financial_fail',{p_actor:actor,p_run_id:run.id,p_code:'financial_workflow_terminated'})||changed;
   }
@@ -42,8 +42,8 @@ export async function financialApi(request:Request,env:FinancialIngestionEnv,act
    const receipt=await requestFinancialHistory(env,actor,input as unknown as FinancialHistoryRequest);
    if(receipt.status==='not_enabled')return json({...receipt,error:'financial_not_enabled'},503);
    if(receipt.id&&['queued','running'].includes(receipt.status)){
-    if(!env.AR_REFRESH)throw Error('financial_dispatch_unavailable');
-    try{await env.AR_REFRESH.create({id:receipt.id,params:{runId:receipt.id,hotel:receipt.hotel??String(input.hotel),financialHistory:true,actorId:actor}});}catch{try{await(await env.AR_REFRESH.get(receipt.id)).status();}catch{throw Error('financial_dispatch_unavailable');}}
+    const workflow=financialWorkflow(env,receipt.stepsVersion);if(!workflow)throw Error('financial_dispatch_unavailable');
+    try{await workflow.create({id:receipt.id,params:{runId:receipt.id,hotel:receipt.hotel??String(input.hotel),financialHistory:true,actorId:actor}});}catch{try{await(await workflow.get(receipt.id)).status();}catch{throw Error('financial_dispatch_unavailable');}}
    }
    return json(receipt,receipt.status==='succeeded'?200:202);
   }

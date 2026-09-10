@@ -6,8 +6,9 @@
   "compatibility_date": "2026-09-08",
   "workers_dev": true,
   "preview_urls": false,
+  "limits": {"subrequests":50000},
   "triggers": { "crons": ["0 0,12 * * *", "*/15 * * * *"] },
-  "workflows": [{ "name": "ar-workspace-refresh", "binding": "AR_REFRESH", "class_name": "ArRefreshWorkflow", "concurrency": { "limit": 2 } }],
+  "workflows": [{ "name": "ar-workspace-refresh", "binding": "AR_REFRESH", "class_name": "ArRefreshWorkflow", "concurrency": { "limit": 2 } }, {"name":"ar-workspace-financial","binding":"AR_FINANCIAL","class_name":"ArFinancialWorkflow","concurrency":{"limit":1}}],
   "assets": { "directory": "dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "vars": {
     "SUPABASE_URL": "https://jmyvpurzmoiecpydjrci.supabase.co",

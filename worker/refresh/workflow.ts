@@ -1,4 +1,4 @@
-import {runFinancialHistory,requestFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
+import {financialWorkflow,runFinancialHistory,requestFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
 import {runFinancialDiagnostic} from '../opera/financial-diagnostic';
 import {runMailReconcile} from '../email/reconcile';
 import type {ReconcileEnv} from '../email/reconcile';
@@ -89,7 +89,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
       if(payload.refreshReason==='scheduled'&&!accountId&&this.env.FINANCIAL_HISTORY_ENABLED==='true')await step.do('enqueue-financial-history',{retries:{limit:1,delay:'5 seconds'},timeout:'2 minutes'},async()=>{
         try{const actor=await backendRpc<string|null>(this.env,'ar_financial_service_actor',{});if(!actor)return {status:'actor_unavailable'};
           const next=await requestFinancialHistory(this.env,actor,{commandId:runId,hotel:hotel as 'KAT'|'TSK',reason:'scheduled'});
-          if(next.id&&['queued','running'].includes(next.status)&&this.env.AR_REFRESH){try{await this.env.AR_REFRESH.create({id:next.id,params:{runId:next.id,hotel,actorId:actor,financialHistory:true}});}catch{await(await this.env.AR_REFRESH.get(next.id)).status();}}
+          const workflow=financialWorkflow(this.env,next.stepsVersion);
+          if(next.id&&['queued','running'].includes(next.status)&&workflow){try{await workflow.create({id:next.id,params:{runId:next.id,hotel,actorId:actor,financialHistory:true}});}catch{await(await workflow.get(next.id)).status();}}
           return {status:next.status};
         }catch{return {status:'financial_queue_unavailable'};}
       });

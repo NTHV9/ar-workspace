@@ -16,3 +16,16 @@ it('reconciles only a confirmed terminal Workflow, preserving unknown or active 
  status.mockRejectedValueOnce(Error('unavailable'));await financialApi(new Request('https://app.test/api/financial/status'),configured,actor);expect(calls).not.toContain('ar_financial_fail');
  status.mockResolvedValue({status:'errored'});const result=await financialApi(new Request('https://app.test/api/financial/status'),configured,actor);expect(await result.json()).toMatchObject({running:false,enabled:true,runs:[{status:'failed'}]});expect(calls.filter(n=>n==='ar_financial_fail')).toHaveLength(1);
 });
+
+it('version2 financial imports use the background queue instead of interactive document capacity',async()=>{
+ const interactive={create:vi.fn(),get:vi.fn()},background={create:vi.fn().mockResolvedValue({}),get:vi.fn()};
+ vi.stubGlobal('fetch',async()=>Response.json({id:actor,stepsVersion:2,status:'queued',created:false,hotel:'KAT'}));
+ const request=new Request('https://app.test/api/financial/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commandId:actor,hotel:'KAT',reason:'manual'})});
+ const response=await financialApi(request,{...env,FINANCIAL_HISTORY_ENABLED:'true',FINANCIAL_HISTORY_DATE_FILTER_PROOF:'synthetic',AR_REFRESH:interactive,AR_FINANCIAL:background},actor);
+ expect(response.status).toBe(202);expect(background.create).toHaveBeenCalledOnce();expect(interactive.create).not.toHaveBeenCalled();
+});
+it('a missing background binding does not silently consume document capacity for a version2 job',async()=>{
+ const create=vi.fn();vi.stubGlobal('fetch',async()=>Response.json({id:actor,stepsVersion:2,status:'queued',created:false,hotel:'KAT'}));
+ const response=await financialApi(new Request('https://app.test/api/financial/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commandId:actor,hotel:'KAT',reason:'manual'})}),{...env,FINANCIAL_HISTORY_ENABLED:'true',FINANCIAL_HISTORY_DATE_FILTER_PROOF:'synthetic',AR_REFRESH:{create,get:vi.fn()}},actor);
+ expect(response.status).toBe(503);expect(create).not.toHaveBeenCalled();
+});
