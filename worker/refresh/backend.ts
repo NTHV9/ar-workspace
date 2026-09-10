@@ -1,6 +1,6 @@
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
-export interface RefreshParams { financialProbe?:boolean; mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
+export interface RefreshParams { financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean; mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
@@ -36,8 +36,8 @@ export async function requestRefresh(env:RefreshEnv,hotel:string,accountId:strin
   if(!Number.isSafeInteger(staleMinutes)||staleMinutes<1||staleMinutes>2147483647)throw new OperaError('invalid_configuration');
   const job=await backendRpc<RefreshJob>(env,'ar_request_refresh',{p_hotel:hotel,p_account_id:accountId,p_reason:reason,p_stale_minutes:staleMinutes});
   if(job.id&&['queued','running'].includes(job.status)) {
-    const canonical=await backendRpc<{hotel:string;account_id:string|null}>(env,'ar_refresh_job',{p_run_id:job.id});
-    try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:canonical.hotel,accountId:canonical.account_id??undefined}});}
+    const canonical=await backendRpc<{hotel:string;account_id:string|null;reason:string}>(env,'ar_refresh_job',{p_run_id:job.id});
+    try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:canonical.hotel,accountId:canonical.account_id??undefined,refreshReason:canonical.reason}});}
     catch{
       // A retry joins the durable instance with this exact database run ID.
       try{

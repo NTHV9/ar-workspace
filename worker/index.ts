@@ -1,3 +1,5 @@
+import {financialApi} from './financial/api';
+import type {FinancialIngestionEnv} from './financial/refresh';
 import {collectionPolicyApi} from './collection/policy-api';
 import {invoiceExceptionsApi} from './collection/api';
 import {driveApi,driveCallback} from './drive/api';
@@ -15,7 +17,7 @@ import {emailApi} from './email/api';
 import {gmailCallback} from './email/oauth';
 import type {EmailEnv} from './email/shared';
 import {rendererProof} from './statement/proof';
-interface Env extends OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
+interface Env extends FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function upstream(url: string, options: RequestInit) {
   const controller = new AbortController();
@@ -30,6 +32,7 @@ async function upstream(url: string, options: RequestInit) {
 export async function handleApi(request: Request, env: Env): Promise<Response> {
   const path = new URL(request.url).pathname;
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
+  const financialRequest=path.startsWith('/api/financial/');
   const driveRequest=path.startsWith('/api/drive/');
   const policyRequest=path==='/api/collection-policy'||path.startsWith('/api/collection-policy/');
   const exceptionRequest=path.startsWith('/api/invoice-exceptions/');
@@ -44,7 +47,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   const collectionValidation=path==='/api/collection/validate-selection'&&request.method==='POST';
   const documentRequest=path==='/api/documents'||path.startsWith('/api/documents/');
   const pdfValidation=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/(KAT|TSK)\/(pdf|json)$/.exec(path);
-  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest) return json({ error: 'method_not_allowed' }, 405);
+  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest) return json({ error: 'method_not_allowed' }, 405);
   if (path === '/api/config') {
     let googleEnabled = false;
     if (env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY) {
@@ -66,7 +69,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: connected?'connected':'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
     } catch { return json({ status: 'unavailable', supabase: 'unavailable', opera: 'not_connected' }, 503); }
   }
-  if (!policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
+  if (!financialRequest && !policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
   if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ error: 'supabase_unavailable' }, 503);
@@ -78,6 +81,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if (user.email?.toLowerCase() !== 'ar@katathani.com' || !user.email_confirmed_at || user.is_anonymous) return json({ error: 'forbidden' }, 403);
     if(path==='/api/mail-reconciliation'){if(request.method==='GET')return json({...await backendRpc<Record<string,unknown>>(env,'ar_mail_reconcile_status',{}),enabled:env.GMAIL_RECONCILE_ENABLED==='true',intervalMinutes:15});if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);return json(await requestMailReconcile(env,'manual'));}return json({error:'method_not_allowed'},405);}
     if(driveRequest){if(!user.id)return json({error:'unauthorized'},401);return driveApi(request,env,user.id);}
+    if(financialRequest){if(!user.id)return json({error:'unauthorized'},401);return financialApi(request,env,user.id);}
     if(policyRequest){if(!user.id)return json({error:'unauthorized'},401);return collectionPolicyApi(request,env,user.id);}
     if(exceptionRequest){if(!user.id)return json({error:'unauthorized'},401);return invoiceExceptionsApi(request,env,user.id);}
     if(accountWorkspaceRequest){if(!user.id)return json({error:'unauthorized'},401);return accountWorkspaceApi(request,env,user.id);}

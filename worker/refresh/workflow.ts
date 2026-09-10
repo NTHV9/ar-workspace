@@ -1,3 +1,4 @@
+import {runFinancialHistory,requestFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
 import {runFinancialDiagnostic} from '../opera/financial-diagnostic';
 import {runMailReconcile} from '../email/reconcile';
 import type {ReconcileEnv} from '../email/reconcile';
@@ -10,13 +11,14 @@ import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
 
-export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv,RefreshParams> {
+export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
     assertStatementWorkflowPolicy(payload);
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(this.env,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
+    if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');return runFinancialHistory(this.env,{actor:payload.actorId,runId},step);}
     if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(this.env,hotel as 'KAT'|'TSK'));
     if(payload.documentJob)return runDocumentJob(this.env,runId,step);
     if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(this.env,hotel,accountId,async(bytes,expected)=>{
@@ -83,6 +85,13 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
         if(!accountId){const after=await discoverAccountIds(reader,hotel);const expected=new Set(ids);if(after.length!==ids.length||after.some(id=>!expected.has(id)))throw new OperaError('pagination_changed');}
         await backendRpc(this.env,'ar_publish_refresh',{p_run_id:runId,p_expected_accounts:ids.length});return {accounts:ids.length};
+      });
+      if(payload.refreshReason==='scheduled'&&!accountId&&this.env.FINANCIAL_HISTORY_ENABLED==='true')await step.do('enqueue-financial-history',{retries:{limit:1,delay:'5 seconds'},timeout:'2 minutes'},async()=>{
+        try{const actor=await backendRpc<string|null>(this.env,'ar_financial_service_actor',{});if(!actor)return {status:'actor_unavailable'};
+          const next=await requestFinancialHistory(this.env,actor,{commandId:runId,hotel:hotel as 'KAT'|'TSK',reason:'scheduled'});
+          if(next.id&&['queued','running'].includes(next.status)&&this.env.AR_REFRESH){try{await this.env.AR_REFRESH.create({id:next.id,params:{runId:next.id,hotel,actorId:actor,financialHistory:true}});}catch{await(await this.env.AR_REFRESH.get(next.id)).status();}}
+          return {status:next.status};
+        }catch{return {status:'financial_queue_unavailable'};}
       });
       return {hotel,status:'succeeded',accounts:ids.length};
     }catch(error){
