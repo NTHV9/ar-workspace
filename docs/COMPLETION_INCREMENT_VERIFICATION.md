@@ -1,6 +1,12 @@
 # Completion increment verification
 
-Status at 2026-09-10 21:25 ICT: implemented and locally tested, SQL applied/tested on the confirmed Supabase project. New Worker/frontend deployment is the next step. The all-work Goal remains active.
+Status at 2026-09-10 21:34 ICT: pushed/deployed and tested on Cloudflare; SQL applied/tested on the confirmed Supabase project. The all-work Goal remains active.
+
+Source `c369c848dbc69e7d7cb9407e7f546e51469d13e5`, Worker deployment `66ce2d5bd1884a48a14d5e65b9d0ebb1`, Workflow version `b1a66d8a-52c6-406b-b8c0-ace38634dbac`. Health matches source and database. [Source CI](https://github.com/NTHV9/ar-workspace/actions/runs/34489256837) passed.
+
+Final Cloudflare browser run passed19/19 in16.6seconds. The initial run saw old UI on two deep links (17/19); verified the current HTML/script and repeated the complete suite successfully, without changing assertions. New anonymous boundaries5/5 and existing thread/remittance19/19 rejected access. An authenticated real Account read returned zero saved history/documents correctly; no mutation was made.
+
+Financial diagnostic Workflow runs `f6716c81-304f-4a5e-9bda-462d1fe9b909` (KAT) and `ce768ad8-fb8e-4df2-8d82-56851f1b38d7` (TSK) completed read-only. Nonempty history samples matched page10/20 membership/value and transaction-date/adjacent-day checks; TSK included four zero invoices. Three applied-payment mapping reads failed validation. These outcomes do not enable ingestion or prove cash/application-date statistics. No raw identifiers, amounts or customer content were returned in the diagnostics.
 
 ## Behavior
 

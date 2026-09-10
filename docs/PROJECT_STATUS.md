@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026 21:34 ICT: completion increment แรก Deploy และอ่านจริง
+
+- Source **c369c848dbc69e7d7cb9407e7f546e51469d13e5** Push `codex/opera-refresh` ใน public `NTHV9/ar-workspace`; staged79filesตรวจsecret/private-artifact/one-time-recipientแล้วไม่พบ. Worker `ar-workspace` deployment **66ce2d5bd1884a48a14d5e65b9d0ebb1**; Workflow **b1a66d8a-52c6-406b-b8c0-ace38634dbac**. HealthตรวจSHA/Supabaseตรง. URL https://ar-workspace.ar-c82.workers.dev/ . Secrets/Cron/แผนบริการเดิมคงไว้.
+- Cloudflare browserชุดใหม่19กรณีผ่านครบในการตรวจสุดท้าย และ CIของsourceผ่าน. รอบแรก17/19ผ่าน โดยสองURLยังโหลดUIเก่าที่Account tabsเป็นข้อความ; ตรวจHTML/assetsใหม่แล้วรันยืนยันทั้งชุดผ่าน19/19 ไม่เปลี่ยนbaseline/ลดassertionsเพื่อผ่าน. Unit666/67filesและTypecheck/Buildผ่านก่อนpush (รวมbudgetfoundationที่ยังไม่เปิด). Anonymousใหม่5routesได้401 และthread/remittanceเดิม19routesได้401.
+- Browserจริงด้วยsessionที่มีอยู่เปิด Account Collection History และ Documents & Gmail ผ่าน Worker/Supabase แสดงemptyตามข้อมูลจริง ไม่มีสร้างDraft/แก้ประวัติบัญชี. ภาพในGitทั้งหมดเป็นAPI fixturesสมมติ; sourcePNGเดิมคงไว้.
+- Financial read-only diagnostic จริงในWorkflow: KATสองบัญชีพบinvoice/payment5/1และ2/1; TSKสองบัญชีพบ0/0และ5/3 (ยอดศูนย์4บิล). page20เทียบ10ตรงทั้งmembership/ค่าที่อ่าน; transactionDateอยู่ในช่วงและadjacent-day checksตรงในตัวอย่างที่มีข้อมูล. รายการจับคู่applied-paymentของสามตัวอย่างยังinvalid_response จึงยังไม่เปิดfinancialingestion/ไม่เรียกยอดตัดInvoiceว่าverified. ขั้นต่อไปตรวจfieldshapeเฉพาะที่อนุญาตโดยไม่ส่งcustomerpayloadออกlog.
+- Goalยังactive และยังไม่ใช่ส่งมอบครบทั้งหมด. Policy UI/database integration, financial ingestion/reports, external billing/operations, quota/retention execution และ recovery completionยังดำเนินต่อ.
+
 ## Checkpoint ระหว่างงาน — 10 กันยายน 2026 21:25 ICT: completion Goal และกฎล่าสุด
 
 - Goal ยัง active: ทำงานที่เหลือทั้งหมดตาม COMPLETION_PLAN. เจ้าของยืนยัน Statement ใช้ renderer ระบบเราเท่านั้น; Invoice/Folio ใช้ API. ยืนยันเก็บไฟล์ Supabase/Drive หนึ่งเดือนปฏิทินหลังบิลทุกใบที่ผูก verified-zero และไม่มีงานเอกสาร/อีเมลค้าง คงประวัติรายการและการส่ง. ยังไม่เปิดลบระหว่างพัฒนา.
