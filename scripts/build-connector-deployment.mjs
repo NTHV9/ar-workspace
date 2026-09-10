@@ -24,7 +24,9 @@ export default { scheduled:worker.scheduled, async fetch(request, env) {
   if(!asset)return new Response('Not found',{status:404});
   const bytes=Uint8Array.from(atob(asset.data),x=>x.charCodeAt(0));
   const body=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(req.method==='HEAD'?null:body,{headers:{'Content-Type':asset.type,'Cache-Control':url.pathname.startsWith('/assets/')?'public,max-age=31536000,immutable':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'}});
+  // Google Picker validates the restricted browser key against the app origin.
+  // Cross-origin requests must identify that origin without exposing paths or queries.
+  return new Response(req.method==='HEAD'?null:body,{headers:{'Content-Type':asset.type,'Cache-Control':url.pathname.startsWith('/assets/')?'public,max-age=31536000,immutable':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY'}});
  }}; return worker.fetch(request,{...env,ASSETS});
 }};`);
 await build({entryPoints:['dist-worker/entry.js'],bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers'],outfile:'dist-worker/deploy.js',minify:true});
