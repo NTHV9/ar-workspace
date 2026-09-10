@@ -10,19 +10,33 @@ export async function renderStatement(model:StatementModel,assets:StatementAsset
  if(assets.hotel!==model.hotel||assets.version!=='rtf-20260909-v3'||!model.rows.length||model.rows.length>500)fail();
  const doc=await PDFDocument.create();doc.registerFontkit(fontkit);
  const latin=await doc.embedFont(StandardFonts.Helvetica),bold=await doc.embedFont(StandardFonts.HelveticaBold),thai=await doc.embedFont(Uint8Array.from(atob(noto),c=>c.charCodeAt(0)),{subset:true});
- const charset=new Set(thai.getCharacterSet());const font=(s:string,b=false):PDFFont=>{if(/[^\x20-\x7e]/.test(s)){if([...s].some(c=>!charset.has(c.codePointAt(0)!)))throw Error('document_statement_character_unsupported');return thai;}return b?bold:latin;};
- // Standard PDF text placement has no pair-kerning adjustments; center by glyph advances.
- const voucherWidth=(s:string,b=false)=>{const f=font(s,b);return f===thai?f.widthOfTextAtSize(s,8):[...s].reduce((n,c)=>n+f.widthOfTextAtSize(c,8),0);};
+ const latinCharset=new Set(latin.getCharacterSet()),thaiCharset=new Set(thai.getCharacterSet());
+ const supported=(s:string,chars:Set<number>)=>[...s].every(c=>chars.has(c.codePointAt(0)!));
+ const runs=(value:string,b=false):{text:string;font:PDFFont}[]=>{
+  const text=value.normalize('NFC'),lf=b?bold:latin;
+  if(supported(text,latinCharset))return [{text,font:lf}];
+  if(supported(text,thaiCharset))return [{text,font:thai}];
+  const result:{text:string;font:PDFFont}[]=[];
+  for(const {segment}of new Intl.Segmenter('th',{granularity:'grapheme'}).segment(text)){
+   const selected=supported(segment,latinCharset)?lf:supported(segment,thaiCharset)?thai:null;
+   if(!selected)throw Error('document_statement_character_unsupported');
+   const previous=result.at(-1);if(previous?.font===selected)previous.text+=segment;else result.push({text:segment,font:selected});
+  }return result;
+ };
+ const width=(s:string,size:number,b=false)=>runs(s,b).reduce((n,r)=>n+r.font.widthOfTextAtSize(r.text,size),0);
+ // Standard-font vouchers retain their existing glyph-advance centering.
+ const voucherWidth=(s:string,b=false)=>runs(s,b).reduce((total,r)=>total+(r.font===thai?r.font.widthOfTextAtSize(r.text,8):[...r.text].reduce((n,c)=>n+r.font.widthOfTextAtSize(c,8),0)),0);
  const images:PDFImage[]=[];for(const asset of [assets.header,assets.closing,assets.footer]){
   if(asset.width!==612||asset.height<1||asset.height>400||asset.png.length>2000000)fail();
   const bytes=Uint8Array.from(atob(asset.png),c=>c.charCodeAt(0));const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');if(hash!==asset.sha256)throw Error('document_statement_template_invalid');
   images.push(await doc.embedPng(bytes));
  }
  const edges=[32,82,128,231,277,328,410,464,519,580],pages:PDFPage[]=[];let page!:PDFPage,y=0;
- const write=(s:string,x:number,top:number,size=8,b=false)=>{if(s)page.drawText(s,{x,y:792-top-size,size,font:font(s,b)});};
- const wrap=(s:string,width:number,size=8):string[]=>{
+ const write=(s:string,x:number,top:number,size=8,b=false)=>{if(s)for(const r of runs(s,b)){page.drawText(r.text,{x,y:792-top-size,size,font:r.font});x+=r.font.widthOfTextAtSize(r.text,size);}};
+ const wrap=(s:string,maxWidth:number,size=8):string[]=>{
+  s=s.normalize('NFC');
   if(s.length>1000)fail();const parts=[...new Intl.Segmenter('th',{granularity:'grapheme'}).segment(s)].map(x=>x.segment);const lines:string[]=[];let line='';
-  for(const ch of parts){if(font(line+ch).widthOfTextAtSize(line+ch,size)>width){if(!line)fail();const space=line.lastIndexOf(' ');if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);}else{lines.push(line);line='';}}line+=ch;}
+  for(const ch of parts){if(width(line+ch,size)>maxWidth){if(!line)fail();const space=line.lastIndexOf(' ');if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);}else{lines.push(line);line='';}}line+=ch;}
   lines.push(line);if(lines.length>12)fail();return lines;
  };
  const address=model.address.flatMap(s=>wrap(s,300,9));if(address.length>12)fail();
@@ -31,8 +45,8 @@ export async function renderStatement(model:StatementModel,assets:StatementAsset
   if(table){rectangle(32,y,548,26,.85);['Date','Folio','Description','Arrival','Departure','Voucher','Debit','Credit','Balance'].forEach((s,i)=>write(s,i>=6?edges[i+1]-4-bold.widthOfTextAtSize(s,8):i===5?(edges[i]+edges[i+1]-voucherWidth(s,true))/2:edges[i]+4,y+8,8,true));y+=30;}
  };
  add(true);
- for(const r of model.rows){const values=[r.date,r.folio,r.guest,r.arrival,r.departure,r.voucher.trim(),money(r.debit),r.credit?money(r.credit):'',money(r.balance)];const cells=values.map((s,i)=>wrap(s,edges[i+1]-edges[i]-8));if(cells.slice(6).some(c=>c.length!==1))fail();const h=Math.max(...cells.map(c=>c.length))*10+4;if(y+h>705)add(true);if(y+h>705)fail();cells.forEach((lines,i)=>lines.forEach((s,j)=>write(s,i>=6?edges[i+1]-4-font(s).widthOfTextAtSize(s,8):i===5?(edges[i]+edges[i+1]-voucherWidth(s))/2:edges[i]+4,y+j*10)));y+=h;}
+ for(const r of model.rows){const values=[r.date,r.folio,r.guest,r.arrival,r.departure,r.voucher.trim(),money(r.debit),r.credit?money(r.credit):'',money(r.balance)];const cells=values.map((s,i)=>wrap(s,edges[i+1]-edges[i]-8));if(cells.slice(6).some(c=>c.length!==1))fail();const h=Math.max(...cells.map(c=>c.length))*10+4;if(y+h>705)add(true);if(y+h>705)fail();cells.forEach((lines,i)=>lines.forEach((s,j)=>write(s,i>=6?edges[i+1]-4-width(s,8):i===5?(edges[i]+edges[i+1]-voucherWidth(s))/2:edges[i]+4,y+j*10)));y+=h;}
  if(y+27>705)add(true);rectangle(32,y,548,26,.85);write('Balance Due',400,y+8,8,true);const total=money(model.total)+' (THB)';if(bold.widthOfTextAtSize(total,8)>120)fail();write(total,576-bold.widthOfTextAtSize(total,8),y+8,8,true);y+=40;
- const closingHeight=60+assets.closing.height;if(y+closingHeight>705)add(false);if(y+closingHeight>705)fail();write('Aging Summary:',36,y,9,true);const tableY=y+14;for(let i=0;i<6;i++){const x=32+i*548/6;rectangle(x,tableY,548/6,17,.85);rectangle(x,tableY+17,548/6,17);const label=model.aging[i].label,value=money(model.aging[i].cents);if(font(label,true).widthOfTextAtSize(label,8)>548/6-4||font(value).widthOfTextAtSize(value,8)>548/6-4)fail();write(label,x+(548/6-font(label,true).widthOfTextAtSize(label,8))/2,tableY+4,8,true);write(value,x+(548/6-font(value).widthOfTextAtSize(value,8))/2,tableY+21);}
+ const closingHeight=60+assets.closing.height;if(y+closingHeight>705)add(false);if(y+closingHeight>705)fail();write('Aging Summary:',36,y,9,true);const tableY=y+14;for(let i=0;i<6;i++){const x=32+i*548/6;rectangle(x,tableY,548/6,17,.85);rectangle(x,tableY+17,548/6,17);const label=model.aging[i].label,value=money(model.aging[i].cents);if(width(label,8,true)>548/6-4||width(value,8)>548/6-4)fail();write(label,x+(548/6-width(label,8,true))/2,tableY+4,8,true);write(value,x+(548/6-width(value,8))/2,tableY+21);}
  page.drawImage(images[1],{x:0,y:792-y-60-assets.closing.height,width:612,height:assets.closing.height});pages.forEach((p,i)=>{page=p;write(`Page ${i+1} of ${pages.length}`,528,156,9);});return doc.save();
 }
