@@ -36,15 +36,17 @@ Consumes EmailDraft.thread and the routes/models above. Produces a reusable choo
 
 ## Task 3 — Integration, live validation and handoff
 
-- [ ] Review both implementations together against the design; resolve load-bearing findings and re-run relevant tests.
-- [ ] Inspect live schema for collisions, apply only the new migration, run synthetic rollback SQL. Check anonymous rejection and client grants.
-- [ ] Build/typecheck/unit/browser tests, inspect synthetic screenshots and staged files for secrets/customer/test-recipient data. Push only to NTHV9/ar-workspace after remote/visibility check.
-- [ ] Deploy to existing Worker preserving secrets/workflow/cron. Verify health SHA, authenticated route behavior and anonymous 401.
-- [ ] Send a generic diagnostic reply to the existing synthetic test conversation using only the current authorized recipient. Verify Gmail thread/header/SENT and zero business events. If an inbound reply requires the owner, prepare the exact test and report that limit without claiming it passed.
-- [ ] Record source/deployment/migration/results/remaining limits in PROJECT_STATUS and return a reviewable milestone.
+- [x] Review both implementations together against the design; resolve load-bearing findings and re-run relevant tests.
+- [x] Inspect live schema for collisions, apply only the new migration, run synthetic rollback SQL. Check anonymous rejection and client grants.
+- [x] Build/typecheck/unit/browser tests, inspect synthetic screenshots and staged files for secrets/customer/test-recipient data. Push only to NTHV9/ar-workspace after remote/visibility check.
+- [x] Deploy to existing Worker preserving secrets/workflow/cron. Verify health SHA, authenticated route behavior and anonymous 401.
+- [x] Send a generic diagnostic reply to the existing synthetic test conversation using only the current authorized recipient. Verify Gmail thread/header/SENT and zero business events. If an inbound reply requires the owner, prepare the exact test and report that limit without claiming it passed.
+- [x] Record source/deployment/migration/results/remaining limits in PROJECT_STATUS and return a reviewable milestone.
 
 ## Execution ledger
 
 - 2026-09-10: design and contracts established. Owner's existing approval to continue covers this implementation; no repeated per-file approvals. Work in the explicitly designated existing workspace, preserving the current branch and legacy resources.
 
 - Pre-release: migration ar_email_threads applied as management version 20260910112014; synthetic rollback checks passed with no leftover synthetic jobs, private choices or business events. Independent reviews closed subject/race/history/RFC/hash issues. Full 342 unit tests, Typecheck/Build and 20 thread browser cases passed; 24 existing email regressions passed. Live provider validation follows deployment.
+
+- Live completion: source 67ad43f0121adfeb7e53a5c0d002ba76aa92b588 deployed; Cloudflare 21 browser cases and6 anonymous boundary checks passed. Synthetic threaded email SENT at18:31:44 ICT; owner reply observed at18:36 with Incoming and exact parent reference. Business events/dates/stages and account thread choices remain0. Migration filename aligned to actual management version20260910112014 without changing SQL. Details in EMAIL_THREADS_VERIFICATION.md.

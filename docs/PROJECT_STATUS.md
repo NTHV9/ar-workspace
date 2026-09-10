@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026 18:36 ICT: เธรด Gmail และดูบทสนทนา
+
+- Implemented / pushed / deployed: เลือก New email/Existing thread ใน Email Composer, ค้นหาจาก To/CC ที่ตั้งเอง, preview ผู้ร่วมสนทนาและ parent, ยืนยัน Hotel/Account ก่อนเลือก, ล็อก subject ให้ตรงเธรดและกลับไป New email ได้. ไม่แทนผู้รับด้วยอีเมล OPERA หรือ participant ใน Gmail.
+- ดูข้อความ metadata/snippet แบบแบ่งหน้าและ Refresh โดยคน; ใช้ historyId กันข้อความคนละเวอร์ชันปนกัน. แสดง incoming/outgoing/unknown และ explicit reply reference โดยไม่เปลี่ยนยอด วันวางบิล วันครบกำหนด stage/hold หรือ KPI. ยังไม่ใช่ระบบ auto-monitor inbox/Remittance.
+- Source **`67ad43f0121adfeb7e53a5c0d002ba76aa92b588`**, branch `codex/opera-refresh`; Worker deployment **`03c7af55e74245199353ecec01251518`**, Workflow **`f10eaa54-c2ed-4e77-b9b1-b3a823328a7c`**. Health SHA/Supabase verified และ anonymous 6 routes ได้401. ไม่เปลี่ยน cron/secrets/บริการเก่า.
+- Supabase applied **`20260910112014_ar_email_threads`**: private choices/RLS, selection/getter, save/claim thread guards และ isolated diagnostic list. ฟังก์ชันเดิมของแอปใหม่นี้เก็บใน private helpers เพื่อรักษากฎธุรกิจและปิดทางเรียกข้าม guard. ไม่มี reset/drop/แก้ ledger. SQL synthetic rollback ผ่าน; leftovers0/business events0.
+- Typecheck/Build และ342 unit testsผ่าน; rootทดสอบ browser20กรณีบนlocalและ21กรณีบนCloudflare (รวม Picker regression). ภาพใหม่ที่1440×900,1280×800,390×844ใช้ข้อมูลสมมติและเปิดตรวจแล้ว; baseline/referenceเดิมคงไว้.
+- Tested Gmail จริง **18:31:44 ICT**: อ่านเธรด test เดิมผ่าน Worker, ส่ง generic PDF สมมติ1ไฟล์แบบ reply, ตรวจ SENT/threadId/RFC headers/ผู้รับ/ข้อความ/file hash ผ่าน และอ่านเห็น2ข้อความในเธรดเดียวกัน. Diagnostic sentรวม5, business events0, private account thread choices0. ผู้รับทดสอบไม่เข้าGit/defaults และ proofไม่เก็บ matchedRecipients.
+- Tested incoming จริงหลังเจ้าของตอบ: Refresh เวลา18:36แสดง3ข้อความในเธรด โดยคำตอบเวลา18:34เป็น Incoming พร้อม snippet และ Explicit reply reference ตรง parent ของtestล่าสุด. หลังอ่าน business events/วันวางบิล/stageทวง/การผูกเธรดกับบัญชีจริงยัง0. เส้นทางบัญชีจริงยังไม่ทดสอบส่ง/บันทึกเธรดกับลูกค้า ตามคำสั่งให้ใช้ข้อมูลสมมติ. รายละเอียด [EMAIL_THREADS_VERIFICATION.md](EMAIL_THREADS_VERIFICATION.md).
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026 17:46 ICT: Drive จริงและแก้ Google Picker
 
 - Implemented / pushed / deployed: Storage, แยก Drive OAuth แบบ `drive.file`, ยืนยันโฟลเดอร์ที่เจ้าของกำหนด, archive ชุด PDF ที่ตรวจแล้วแบบ explicit และ synthetic connection test. Source แรก `40590266b46014a1f204297c45e30277a2b7cfe1`; source ปัจจุบัน **`ebfc2cf79fba1d3636b323edd613accb65e00302`**, branch `codex/opera-refresh` ใน public `NTHV9/ar-workspace`.
