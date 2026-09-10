@@ -4,7 +4,7 @@ const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'syn
 const account='PRIVATE-SYNTHETIC-ACCOUNT',transaction='123456789',paymentId='987654321',money=(amount:string)=>({amount,currencyCode:'THB'});
 const invoice={hotelId:'KAT',transactionNo:transaction,invoiceNo:'1234',folioNo:'5678',transactionDate:'2026-09-09',postingDate:'2026-09-09',invoiceType:'Normal',originalAmount:money('10000.00'),amount:money('10000.00'),payments:money('1000.00'),balance:money('9000.00'),compressed:false,guestName:'PRIVATE GUEST'};
 const payment={hotelId:'KAT',transactionNo:paymentId,transactionDate:'2026-09-10',postingDate:'2026-09-10',amount:money('-1000.00'),amountUsed:money('-1000.00'),balance:money('0.00'),transferredIn:false,transferredOut:false,paymentCard:{cardNumber:'PRIVATE CARD'}};
-type Overrides={candidates?:unknown;changeTen?:boolean;historyError?:boolean;mappingError?:boolean;emptyMapping?:boolean;emptyWindow?:boolean;missingDate?:boolean;secondAccount?:boolean;candidateStatus?:number};
+type Overrides={candidates?:unknown;changeTen?:boolean;historyError?:boolean;mappingError?:boolean;mappingRaw?:unknown;emptyMapping?:boolean;emptyWindow?:boolean;missingDate?:boolean;secondAccount?:boolean;candidateStatus?:number};
 function setup(overrides:Overrides={}){
  const calls:{url:URL;method:string;body:string|null}[]=[];
  vi.stubGlobal('fetch',async(input:RequestInfo|URL,init:RequestInit={})=>{
@@ -12,7 +12,7 @@ function setup(overrides:Overrides={}){
   if(url.origin===env.SUPABASE_URL){expect(url.pathname).toBe('/rest/v1/rpc/ar_financial_diagnostic_candidates');return Response.json(overrides.candidates??{hotel:'KAT',accounts:[{accountId:account,invoiceTransactionId:transaction,invoiceNo:'1234'},...(overrides.secondAccount?[{accountId:'OTHER-PRIVATE-ACCOUNT',invoiceTransactionId:null,invoiceNo:null}]:[])]},{status:overrides.candidateStatus??200});}
   if(url.pathname==='/oauth/v1/tokens')return Response.json({access_token:'synthetic-private-token',expires_in:3600});
   if(url.pathname==='/bof/v1/hotels/KAT/businessDate')return Response.json({hotels:[{hotelId:'KAT',businessDate:'2026-09-10'}]});
-  if(url.pathname.endsWith('/invoiceAppliedPayments'))return overrides.mappingError?new Response('PRIVATE ERROR',{status:503}):Response.json({details:overrides.emptyMapping?[]:[{...invoice,paymentTrxNo:paymentId,appliedAmount:money('1000.00')}]});
+  if(url.pathname.endsWith('/invoiceAppliedPayments'))return overrides.mappingError?new Response('PRIVATE ERROR',{status:503}):Response.json(overrides.mappingRaw??{details:overrides.emptyMapping?[]:[{...invoice,paymentTrxNo:paymentId,appliedAmount:money('1000.00')}]});
   if(url.pathname.endsWith('/invoicePaymentDetails'))return Response.json({details:[{hotelId:'KAT',accountId:{id:account},invoices:[invoice]}]});
   if(url.pathname.startsWith('/ars/v1/invoicePayments/accounts/')){
    if(overrides.historyError)return new Response('PRIVATE ERROR',{status:503});
@@ -37,3 +37,9 @@ it('never silently truncates an excessive or cross-hotel candidate response',asy
 it('reports no candidates explicitly and does not call OPERA',async()=>{const calls=setup({candidates:{hotel:'KAT',accounts:[]}});expect(await runFinancialDiagnostic(env,'KAT')).toMatchObject({status:'no_candidates',accountsChecked:0,readChecksPassed:false});expect(calls).toHaveLength(1);});
 it('checks both selected accounts without exposing their identities',async()=>{setup({secondAccount:true});const result=await runFinancialDiagnostic(env,'KAT');expect(result.accountsChecked).toBe(2);expect(result.samples[1].mapping.status).toBe('no_candidate');expect(JSON.stringify(result)).not.toContain('OTHER-PRIVATE-ACCOUNT');});
 it('rejects invalid hotel and candidate limits before service access',async()=>{const calls=setup();await expect(runFinancialDiagnostic(env,'OTHER' as 'KAT')).rejects.toMatchObject({code:'invalid_request'});await expect(runFinancialDiagnostic(env,'KAT',{maxAccounts:3 as 2})).rejects.toMatchObject({code:'invalid_request'});expect(calls).toHaveLength(0);});
+it('reports allowlisted mapping field types and a static parse stage from a single response',async()=>{
+ const calls=setup({mappingRaw:{details:[{...invoice,transactionNo:'111111111',paymentTrxNo:paymentId,appliedAmount:{amount:1000},['PRIVATE UNKNOWN KEY']:'PRIVATE VALUE',paymentCard:{cardNumber:'PRIVATE CARD'}}]}});
+ const r=await runFinancialDiagnostic(env,'KAT');expect(r.samples[0].mapping).toMatchObject({status:'unavailable',parseStage:'financial_mapping_identity',shape:{type:'object',fields:{details:{type:'array',count:1,sample:{type:'object',fields:{hotelId:{type:'string'},transactionNo:{type:'string'},appliedAmount:{type:'object',fields:{amount:{type:'number'}}}}}}}},identityChecks:{sampled:1,hotelMatches:1,invoiceTransactionMatches:0,paymentIdentityPresent:1}});
+ const output=JSON.stringify(r);expect(output).not.toMatch(/111111111|987654321|123456789|PRIVATE|10000.00|synthetic-private/);expect(calls.filter(c=>c.url.pathname.endsWith('/invoiceAppliedPayments'))).toHaveLength(1);
+});
+it('distinguishes mapping currency failure without printing the source currency or amount',async()=>{setup({mappingRaw:{details:[{...invoice,paymentTrxNo:paymentId,appliedAmount:{amount:1000}}]}});const r=await runFinancialDiagnostic(env,'KAT');expect(r.samples[0].mapping).toMatchObject({parseStage:'financial_currency',shape:{fields:{details:{sample:{fields:{appliedAmount:{fields:{amount:{type:'number'}}}}}}}}});expect(JSON.stringify(r.samples[0].mapping)).not.toContain('1000');});

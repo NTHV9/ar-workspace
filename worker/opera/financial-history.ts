@@ -171,12 +171,16 @@ export async function readFinancialTransactionDetail(reader:OperaReader,input:Fi
  const transaction=rows.find(r=>r.kind===query.kind&&r.transactionId===query.transactionId)??null;
  return {status:transaction?'found':'missing',transaction,coverage:{query,observedAt:settings.observedAt,endpoint:'transaction_detail',completeForFinancialPeriod:false}};
 }
-export async function readAppliedPaymentMapping(reader:OperaReader,input:AppliedPaymentQuery,readOptions:FinancialReadOptions={}):Promise<AppliedPaymentMapping> {
- const requested=scope(input),settings=options(readOptions);let invoiceTransactionId:string;
+function appliedQuery(input:AppliedPaymentQuery):AppliedPaymentQuery {
+ const requested=scope(input);let invoiceTransactionId:string;
  try{invoiceTransactionId=transactionId(input.invoiceTransactionId);}catch{return invalid('invoice_identity');}
  if(input.invoiceNo!==undefined&&(typeof input.invoiceNo!=='string'||!/^(0|[1-9][0-9]*)$/.test(input.invoiceNo)||input.invoiceNo.length>80))return invalid('invoice_identity');
- const query={...requested,invoiceTransactionId,...(input.invoiceNo===undefined?{}:{invoiceNo:input.invoiceNo})};
- const result=envelope(await reader.appliedInvoicePayments(query)),items=result.details as unknown[];if(items.length>settings.maxRows)throw new OperaError('response_too_large',undefined,'financial_history_row_budget');
+ return {...requested,invoiceTransactionId,...(input.invoiceNo===undefined?{}:{invoiceNo:input.invoiceNo})};
+}
+/** Parse the exact response used by diagnostics; no second provider read is needed. */
+export function parseAppliedPaymentMapping(value:unknown,input:AppliedPaymentQuery,readOptions:FinancialReadOptions={}):AppliedPaymentMapping {
+ const query=appliedQuery(input),requested=scope(query),invoiceTransactionId=query.invoiceTransactionId,settings=options(readOptions);
+ const result=envelope(value),items=result.details as unknown[];if(items.length>settings.maxRows)throw new OperaError('response_too_large',undefined,'financial_history_row_budget');
  const seen=new Set<string>();const links:AppliedPaymentLink[]=items.map(item=>{
   const row=object(item);checkReturnedScope(row,requested,true);
   const sourceInvoice=transactionId(row.transactionNo),paymentTransactionId=transactionId(row.paymentTrxNo),invoiceNo=optionalText(row.invoiceNo);
@@ -186,4 +190,8 @@ export async function readAppliedPaymentMapping(reader:OperaReader,input:Applied
   return {...requested,invoiceTransactionId:sourceInvoice,paymentTransactionId,invoiceNo,appliedAmount,currency:appliedAmount===null?null:'THB',invoiceTransactionDate:calendar(row.transactionDate,true),invoicePostingDate:calendar(row.postingDate,true),invoiceCloseDate:calendar(row.closeDate,true),applicationDate:null,applicationEventId:null};
  });
  return {links,coverage:{query,observedAt:settings.observedAt,pagination:'not_exposed',completeness:'unverified',dateSemantics:'invoice_dates_only',accountScope:'request_path',applicationEventHistory:false}};
+}
+export async function readAppliedPaymentMapping(reader:OperaReader,input:AppliedPaymentQuery,readOptions:FinancialReadOptions={}):Promise<AppliedPaymentMapping> {
+ const query=appliedQuery(input);options(readOptions);
+ return parseAppliedPaymentMapping(await reader.appliedInvoicePayments(query),query,readOptions);
 }

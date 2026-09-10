@@ -2,7 +2,7 @@ import {OperaError,type OperaErrorCode} from './client';
 import {makeReader} from './probe';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {readBusinessDate} from '../refresh/read-snapshot';
-import {readFinancialHistory,readFinancialTransactionDetail,readAppliedPaymentMapping,type FinancialHotel,type FinancialInvoice,type FinancialPayment,type FinancialHistoryResult} from './financial-history';
+import {readFinancialHistory,readFinancialTransactionDetail,parseAppliedPaymentMapping,type FinancialHotel,type FinancialInvoice,type FinancialPayment,type FinancialHistoryResult} from './financial-history';
 
 export interface FinancialDiagnosticOptions {maxAccounts?:1|2;maxPages?:number;maxRows?:number}
 type DiagnosticStage='candidates'|'business_date'|'history_20'|'history_10'|'adjacent_days'|'detail'|'mapping';
@@ -10,7 +10,8 @@ interface DiagnosticError {stage:DiagnosticStage;code:OperaErrorCode|'unavailabl
 interface DateCount {present:number;withinWindow:number}
 type DateField='transactionDate'|'postingDate'|'revenueDate'|'transferDate'|'closeDate';
 type DateFields=Record<DateField,DateCount>;
-interface MappingCheck {status:'no_candidate'|'read'|'unavailable';links:number|null;knownAmounts:number|null;paymentLinksSeenInWindow:number|null;invoiceDatesPresent:number|null;applicationDatesPresent:0;complete:false;error?:DiagnosticError}
+interface FieldShape {type:'null'|'array'|'object'|'string'|'number'|'boolean'|'undefined';count?:number;sample?:FieldShape;fields?:Record<string,FieldShape>}
+interface MappingCheck {status:'no_candidate'|'read'|'unavailable';links:number|null;knownAmounts:number|null;paymentLinksSeenInWindow:number|null;invoiceDatesPresent:number|null;applicationDatesPresent:0;complete:false;error?:DiagnosticError;shape?:FieldShape;identityChecks?:{sampled:number;hotelMatches:number;invoiceTransactionMatches:number;paymentIdentityPresent:number};parseStage?:string|null}
 export interface FinancialDiagnosticSample {
  sample:number;status:'checked'|'unavailable';sameMembership:boolean|null;sameValues:boolean|null;
  invoices:number|null;payments:number|null;pages20:number|null;pages10:number|null;zeroInvoices:number|null;openingBalances:number|null;
@@ -35,6 +36,21 @@ function candidates(value:unknown,hotel:FinancialHotel,limit:number):Candidate[]
  });
 }
 function error(stage:DiagnosticStage,value:unknown):DiagnosticError {return {stage,code:value instanceof OperaError?value.code:'unavailable'};}
+const shapeFields=['details','invoices','payments','appliedPayments','invoicePayments','paymentDetails','hotelId','accountId','id','type','transactionNo','invoiceNo','paymentTrxNo','appliedAmount','amount','currencyCode','transactionDate','postingDate','closeDate','balance','originalAmount','warnings'];
+function fieldShape(value:unknown,depth=0):FieldShape {
+ const type=value===null?'null':Array.isArray(value)?'array':typeof value;
+ if(!['null','array','object','string','number','boolean','undefined'].includes(type))return {type:'undefined'};
+ const result:FieldShape={type:type as FieldShape['type']};
+ if(Array.isArray(value)){result.count=value.length;if(value.length&&depth<4)result.sample=fieldShape(value[0],depth+1);}
+ else if(value&&typeof value==='object'&&depth<4){const record=value as Record<string,unknown>;result.fields=Object.fromEntries(shapeFields.filter(key=>Object.hasOwn(record,key)).map(key=>[key,fieldShape(record[key],depth+1)]));}
+ return result;
+}
+function mappingIdentityChecks(value:unknown,hotel:string,invoiceId:string){
+ const items=value&&typeof value==='object'&&'details' in value&&Array.isArray(value.details)?value.details.slice(0,3):[];
+ const records=items.map(item=>item&&typeof item==='object'?item as Record<string,unknown>:{});
+ return {sampled:records.length,hotelMatches:records.filter(row=>row.hotelId===hotel).length,invoiceTransactionMatches:records.filter(row=>String(row.transactionNo)===invoiceId).length,paymentIdentityPresent:records.filter(row=>row.paymentTrxNo!==undefined&&row.paymentTrxNo!==null).length};
+}
+const parserStages=new Set(['financial_shape','financial_details','financial_hotel_scope','financial_account_scope','financial_mapping_identity','financial_transaction_identity','financial_identifier','financial_text','financial_currency','financial_amount','financial_amount_precision','financial_date','financial_upstream_error','financial_upstream_warning','financial_history_row_budget']);
 function shifted(day:string,days:number):string {const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10);}
 type Row=FinancialInvoice|FinancialPayment;
 function rows(result:FinancialHistoryResult):Row[] {return [...result.invoices,...result.payments];}
@@ -76,9 +92,11 @@ export async function runFinancialDiagnostic(env:RefreshEnv,hotel:FinancialHotel
    if(candidate.invoiceTransactionId!==null){
     stage='detail';try{const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:candidate.invoiceTransactionId},readOptions);entry.detail={status:detail.status};}catch(e){entry.detail={status:'unavailable',error:error('detail',e)};}
     stage='mapping';try{
-     const mapping=await readAppliedPaymentMapping(reader,{...scope,invoiceTransactionId:candidate.invoiceTransactionId,...(candidate.invoiceNo===null?{}:{invoiceNo:candidate.invoiceNo})},readOptions);const paymentIds=new Set(twenty.payments.map(p=>p.transactionId));
-     entry.mapping={status:'read',links:mapping.links.length,knownAmounts:mapping.links.filter(l=>l.appliedAmount!==null).length,paymentLinksSeenInWindow:mapping.links.filter(l=>paymentIds.has(l.paymentTransactionId)).length,invoiceDatesPresent:mapping.links.filter(l=>l.invoiceTransactionDate!==null).length,applicationDatesPresent:0,complete:false};
-    }catch(e){entry.mapping={...entry.mapping,status:'unavailable',error:error('mapping',e)};}
+     const query={...scope,invoiceTransactionId:candidate.invoiceTransactionId,...(candidate.invoiceNo===null?{}:{invoiceNo:candidate.invoiceNo})};
+     const raw=await reader.appliedInvoicePayments(query);entry.mapping.shape=fieldShape(raw);entry.mapping.identityChecks=mappingIdentityChecks(raw,hotel,candidate.invoiceTransactionId);
+     const mapping=parseAppliedPaymentMapping(raw,query,readOptions),paymentIds=new Set(twenty.payments.map(p=>p.transactionId));
+     entry.mapping={...entry.mapping,status:'read',links:mapping.links.length,knownAmounts:mapping.links.filter(l=>l.appliedAmount!==null).length,paymentLinksSeenInWindow:mapping.links.filter(l=>paymentIds.has(l.paymentTransactionId)).length,invoiceDatesPresent:mapping.links.filter(l=>l.invoiceTransactionDate!==null).length,applicationDatesPresent:0,complete:false,parseStage:null};
+    }catch(e){entry.mapping={...entry.mapping,status:'unavailable',error:error('mapping',e),parseStage:e instanceof OperaError&&e.stage&&parserStages.has(e.stage)?e.stage:null};}
    }
    entry.status='checked';
   }catch(e){entry.error=error(stage,e);}
