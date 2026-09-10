@@ -63,7 +63,7 @@ export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{act
     if(saved.staged)return saved.counts;
     if(!await rpc<boolean>(env,'ar_financial_renew',args))return fail('financial_lease_invalid');
     const accountContext=context(await reader.account(accountId),run.hotel,accountId);
-    const history=await readFinancialHistory(reader,{hotel:run.hotel,accountId,start:run.from,end:run.to},{observedAt:run.startedAt??undefined});
+    const history=await readFinancialHistory(reader,{hotel:run.hotel,accountId,start:run.from,end:run.to},{observedAt:run.startedAt?new Date(run.startedAt).toISOString():undefined});
     history.invoices.sort((a,b)=>a.transactionId.localeCompare(b.transactionId));history.payments.sort((a,b)=>a.transactionId.localeCompare(b.transactionId));
     const eligible=history.invoices.filter(i=>i.entryClassification==='invoice'&&['standalone','parent'].includes(i.collectionRole));const applications:AppliedPaymentLink[]=[];
     const verified:string[]=[],mappingFailures:{invoiceId:string;code:string}[]=[];
