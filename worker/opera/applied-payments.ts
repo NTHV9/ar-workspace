@@ -10,7 +10,11 @@ const identity=(value:unknown)=>{if(typeof value==='number'&&Number.isSafeIntege
 const invoiceFacts=(value:FinancialInvoice)=>JSON.stringify([value.hotel,value.accountId,value.transactionId,value.invoiceNo,value.currentAmount,value.cumulativePayments,value.openAmount,value.collectionRole]);
 async function invoiceDetail(reader:OperaReader,query:AppliedPaymentQuery,options:FinancialReadOptions){
  const response=await readFinancialTransactionDetail(reader,{hotel:query.hotel,accountId:query.accountId,kind:'invoice',transactionId:query.invoiceTransactionId},options);
- const invoice=response.transaction;if(response.status!=='found'||invoice?.kind!=='invoice'||query.invoiceNo!==undefined&&invoice.invoiceNo!==query.invoiceNo||!['standalone','parent'].includes(invoice.collectionRole))return bad('financial_mapping_invoice');
+ const invoice=response.transaction;if(response.status!=='found'||invoice?.kind!=='invoice')return bad('financial_mapping_invoice_identity');
+ if(query.invoiceNo!==undefined&&invoice.invoiceNo!==null&&invoice.invoiceNo!==query.invoiceNo)return bad('financial_mapping_invoice_reference');
+ // A sparse detail response supplies no new collection eligibility. The ingest
+ // caller independently selects standalone/parent rows from scoped history.
+ if(invoice.collectionRole==='child')return bad('financial_mapping_child');
  return invoice;
 }
 export interface CorroboratedApplications {
