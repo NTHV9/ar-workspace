@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 10 กันยายน 2026 22:54 ICT: กฎรอบทวงและความถูกต้องของประวัติ
+
+- Implemented/local browser tested: Collection rules แบบเพิ่ม/เลื่อน/retire/เปลี่ยนวันและชื่อรอบ พร้อม Preview/CAS/command replay; Queue/Composer/Templates/History ใช้policyเดียวกัน. Message claim เก็บpolicyVersionและstage snapshot; รอบTerminalที่ส่งแล้วคงUrgentแม้เปลี่ยนpolicyภายหลัง. ยังไม่สร้างpolicyจริงใหม่เพื่อทดสอบกับบัญชีลูกค้า.
+- Applied/tested Supabase: `20260910145824_ar_collection_policy`, `20260910153901_ar_report_stage_evidence`, `20260910154154_ar_account_history_stage_labels`, `20260910154423_ar_sent_order_tiebreak`. SQL rollbackผ่าน custom stages/templates, policyเปลี่ยนระหว่างpending send, legacy/exception/thread/BySystem guards, captured labelsและurgent. พบและแก้duplicate Gmail auditในmanual-history และเมื่อsent_atเท่ากันใช้captured workflow revisionแทนrandomUUIDตัดสินรอบล่าสุด. Policyheadคง1; business events/synthetic accountsคง0.
+- Typecheckและfull unit702/70filesผ่าน. Localbrowser17policy/queue/reports casesผ่าน; ก่อนหน้านี้22policy/queue/templates/composer regressionsผ่าน. ปรับกริดคิวให้สถานะOn holdเพิ่มแล้วไม่เกิดแถวว่างบนDesktop และตรวจสามขนาดซ้ำผ่าน. การDeployชุดนี้ยังรอขั้นถัดไป;ไม่อ้างCloudflare UIผ่านจากlocal tests.
+- Wrangler4.129.0เชื่อมจริงแล้วด้วยaccount/user readและworkers_scripts write. CLIรายงานencrypted credential fileโดยกุญแจอยู่Windows Credential Manager;ไม่มีToken/Secretเข้าworkspaceหรือGit. ติดตั้งnative keyring1.3.0เฉพาะdirectoryของWrangler. คงขอบเขตบัญชี/Workerเดิม, public headersและWorkflow concurrency2; dry-runผ่าน. ไม่เพิ่มoptional OAuthสิทธิ์อื่น/paid resource.
+- งานย่อยหยุดเพราะCodex usage limit;งานหลักยังดำเนินต่อ. Financial mapping corroboration, financial ingestion/reports, external billing, Operations/recovery/budget/retention integrationและAuth recoveryยังเหลือ. Goalยังactive.
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026 21:34 ICT: completion increment แรก Deploy และอ่านจริง
 
 - Source **c369c848dbc69e7d7cb9407e7f546e51469d13e5** Push `codex/opera-refresh` ใน public `NTHV9/ar-workspace`; staged79filesตรวจsecret/private-artifact/one-time-recipientแล้วไม่พบ. Worker `ar-workspace` deployment **66ce2d5bd1884a48a14d5e65b9d0ebb1**; Workflow **b1a66d8a-52c6-406b-b8c0-ace38634dbac**. HealthตรวจSHA/Supabaseตรง. URL https://ar-workspace.ar-c82.workers.dev/ . Secrets/Cron/แผนบริการเดิมคงไว้.

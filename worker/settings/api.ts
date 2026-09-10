@@ -1,3 +1,4 @@
+import {isCollectionStageKey} from '../../src/domain/collection-policy';
 import type {RefreshEnv} from '../refresh/backend';
 import {parseSettings} from './validation';
 const json=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -12,7 +13,7 @@ export async function settingsApi(request:Request,env:RefreshEnv,actor:string){t
   else{const v=parseSettings(await input(request));result=await rpc(env,'ar_settings_save_v2',{p_actor:actor,p_hotel:hotel,p_account_id:accountId,p_revision:v.revision,p_billing_required:v.billingRequired,p_credit_term:v.creditTerm,p_billing_recipients:v.billingRecipients,p_collection_recipients:v.collectionRecipients,p_delivery:Object.fromEntries(['billingMethod','billingPortal','billingInstructions','collectionInstructions'].filter(k=>k in v).map(k=>[k,v[k as keyof typeof v]]))});}
  }else if(parts[2]==='invoice-history'&&parts.length===6&&request.method==='PUT'){
   const v=await input(request),invoiceId=decodeURIComponent(parts[5]);const date=(d:unknown)=>d===null||typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&Number.isFinite(Date.parse(d))&&new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;
-  if(!Number.isSafeInteger(v.revision)||v.revision<0||!date(v.firstBillingDate)||!date(v.lastReminderDate)||!(v.lastReminderStage===null||['Friendly','Follow 1','Follow 2','Follow 3','Final'].includes(v.lastReminderStage))||!invoiceId||invoiceId.length>200)return json({error:'history_invalid'},400);
+  if(!Number.isSafeInteger(v.revision)||v.revision<0||!date(v.firstBillingDate)||!date(v.lastReminderDate)||!(v.lastReminderStage===null||isCollectionStageKey(v.lastReminderStage))||!invoiceId||invoiceId.length>200)return json({error:'history_invalid'},400);
   result=await rpc(env,'ar_workflow_history_save',{p_actor:actor,p_hotel:hotel,p_account_id:accountId,p_invoice_id:invoiceId,p_revision:v.revision,p_first_billing_date:v.firstBillingDate,p_stage:v.lastReminderStage,p_stage_date:v.lastReminderDate});
  }else return json({error:'not_found'},404);
  if(typeof result?.error==='string')return json(result,/conflict|pending/.test(result.error)?409:/forbidden/.test(result.error)?403:/missing/.test(result.error)?404:400);return json(result);

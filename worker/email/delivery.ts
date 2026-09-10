@@ -1,3 +1,5 @@
+import {readPolicyForHandoff} from '../collection/policy-api';
+import {isCollectionStageKey} from '../../src/domain/collection-policy';
 import {plainMessage} from '../../src/email/rich-message';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
 import {emailRpc,googleJson,boundedBody,type EmailEnv,type EmailDraft} from './shared';
@@ -26,17 +28,18 @@ async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,tok
  // Read-only reconciliation is safe even after an ambiguous provider response.
  try{return await checkDelivery(env,actor,delivery.id);}catch{return {id:delivery.id,state:'awaiting_evidence',recorded:false};}
 }
-export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,revision:number,mode:'send'|'draft',stage:string|null){
+export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,revision:number,mode:'send'|'draft',stage:string|null,policyVersion?:number){
  if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return deliveryView(existing);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  parseRecipients(draft.recipients);if(mode==='send'&&(!draft.recipients.to.length||!draft.subject.trim()||!draft.body.trim()))throw Error('email_incomplete');
- if(draft.purpose==='collection'&&!['Friendly','Follow 1','Follow 2','Follow 3','Final'].includes(stage??''))throw Error('email_stage_required');
+ if(draft.purpose==='collection'&&!isCollectionStageKey(stage))throw Error('email_stage_required');
+ const stagePolicy=draft.purpose==='collection'?await readPolicyForHandoff(env,actor,stage!,policyVersion):null;
  if(draft.purpose==='billing')stage=null;
  const id=crypto.randomUUID(),messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,token=await gmailToken(env,actor);
  const {raw,expected}=await prepareMail(env,actor,draft,messageId);
- const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:draftId,p_revision:revision,p_mode:mode,p_stage:stage,p_message_id:messageId,p_expected:expected});
+ const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:draftId,p_revision:revision,p_mode:mode,p_stage:stage,p_message_id:messageId,p_expected:{...expected,...(stagePolicy?{policyVersion:stagePolicy.policyVersion}:{})}});
  return submit(env,actor,claim,raw,token);
 }
 export interface TestSupplementals {draftId:string;revision:number;ids:string[]}

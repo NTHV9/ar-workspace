@@ -1,3 +1,4 @@
+import {isCollectionStageKey} from '../../src/domain/collection-policy';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const modes=['activity','current','options'];
@@ -8,7 +9,7 @@ export function parseReportQuery(url:URL){
  if(url.pathname!==`/api/reports/${mode}`||!modes.includes(mode))invalid();
  const field=(key:string,max=200)=>{const value=q.get(key)||null;if(value&&(value.length>max||/[\u0000-\u001f]/.test(value)))invalid();return value;};
  const hotel=field('hotel'),account=field('account'),type=field('type'),invoice=field('invoice'),kind=field('kind');
- if(hotel&&!['KAT','TSK'].includes(hotel)||account&&!hotel||invoice&&(!account||!hotel)||kind&&!kinds.includes(kind))invalid();
+ if(hotel&&!['KAT','TSK'].includes(hotel)||account&&!hotel||invoice&&(!account||!hotel)||kind&&!kinds.includes(kind)&&!isCollectionStageKey(kind))invalid();
  const date=(key:string)=>{const value=field(key,10);if(value&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value+'T00:00:00Z').toISOString().slice(0,10)!==value))invalid();return value;};
  const from=date('from'),to=date('to');if(from&&to&&from>to)invalid();
  const page=Number(q.get('page')??0),limit=Number(q.get('limit')??50);

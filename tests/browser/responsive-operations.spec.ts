@@ -1,3 +1,4 @@
+import {policyFixture} from './fixtures/collection-policy';
 import {test, expect, type Page, type Locator} from '@playwright/test';
 import {mkdirSync} from 'node:fs';
 
@@ -35,7 +36,8 @@ async function syntheticQueue(page:Page) {
   await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
   await page.route('**/api/**',r=>{
     const request=r.request(),path=new URL(request.url()).pathname;calls.push(request.method()+' '+path);
-    if(path==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+    if(path==='/api/collection-policy')return r.fulfill({json:policyFixture});
+  if(path==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
     if(path==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
     if(path==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:rows.map(row=>({id:row.account_id,hotel:row.hotel,name:row.account_name,type:row.account_type,open:row.open,items:1,over90:0})),refresh:{running:false,hotels:[]}}});
     if(path==='/api/collection-queue')return r.fulfill({json:{rows,asOf:'2026-09-10'}});

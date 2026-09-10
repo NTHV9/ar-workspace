@@ -1,3 +1,4 @@
+import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 import type {EmailDraft} from '../../worker/email/shared';
 import type {ThreadChoice,ThreadSummary} from '../../src/email/threads';
@@ -19,6 +20,7 @@ async function setup(page:Page,options:{selected?:boolean;handoff?:boolean;failu
   if(url.hostname==='example.supabase.co')return r.fulfill({json:{user}});
   if(!p.startsWith('/api/')){if(url.hostname==='127.0.0.1'||url.hostname==='localhost')return r.continue();unexpected.push(q.url());return r.abort();}
   calls.push({path:p+url.search,method:q.method(),body:q.postData()?q.postDataJSON():undefined,auth:q.headers().authorization});
+  if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});

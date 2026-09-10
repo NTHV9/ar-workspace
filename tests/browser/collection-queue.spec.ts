@@ -1,3 +1,4 @@
+import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 const accountNames=['Azure Travel · Synthetic','Harbor Tours · Synthetic','Coral Travel · Synthetic','Palm Holidays · Synthetic','Bay Travel · Synthetic','Island Agency · Synthetic','Lagoon Travel · Synthetic','North Travel · Synthetic','Review Account · Synthetic'];
 function rows(){return accountNames.map((name,index)=>({hotel:index%2?'TSK':'KAT',account_id:String(index+1),id:String(index+100),guest:'Synthetic Guest '+(index+1),invoice_no:'INV-'+(index+1),folio_no:'FOL-'+(index+1),open:[740000,510000,390000,310000,280000,190000,140000,95000,85000][index],transaction_date:'2026-08-01',collection_role:'standalone',collection_selectable:index!==8,verification_state:index===8?'unverified':'verified',account_name:name,account_type:index%2?'Corporate':'OTA',workflow:index===5?null:{revision:0,billing_required:index===0,credit_term:30,first_billing_date:null,last_reminder_stage:[null,'Follow 1','Final','Friendly',null,null,'Follow 2','Follow 3',null][index],last_reminder_date:[null,'2026-09-01','2026-09-09','2026-09-03',null,null,'2026-09-04','2026-09-01',null][index],due_date:index===4?'2026-09-25':index===0?null:'2026-09-09'}}));}
@@ -6,7 +7,8 @@ async function setup(page:Page,fail=false){const data=rows(),calls:string[]=[];c
  await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+86400,token_type:'bearer',user:u})),user);
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',async r=>{const q=r.request(),p=new URL(q.url()).pathname;calls.push(q.method()+' '+p);
- if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+ if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
+  if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
  if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
  if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:data.map(d=>({id:d.account_id,hotel:d.hotel,name:d.account_name,type:d.account_type,open:d.open,items:1,over90:0})),refresh:{running:false,hotels:[]}}});
  if(p==='/api/collection-queue')return r.fulfill({status:fail?503:200,json:fail?{error:'unavailable'}:{rows:data,asOf:'2026-09-10'}});

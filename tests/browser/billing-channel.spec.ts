@@ -1,3 +1,4 @@
+import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 
 const jobId='00000000-0000-4000-8000-000000000081',draftId='00000000-0000-4000-8000-000000000082';
@@ -15,6 +16,7 @@ async function setup(page:Page,options:{legacy?:boolean;portal?:string;rejectHan
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',async r=>{
   const q=r.request(),p=new URL(q.url()).pathname;calls.push(`${q.method()} ${p}`);
+  if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[{id:job.account_id,hotel:'KAT',name:job.account_name,type:'OTA',open:100,over90:0,items:1}],refresh:{running:false,hotels:[]}}});

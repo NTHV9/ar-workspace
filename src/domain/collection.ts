@@ -14,7 +14,7 @@ export function nextCollectionAction(invoice:QueueInvoice,today:string,policy:Co
  if(invoice.open<=0||invoice.collection_role==='child')return null;
  const w=invoice.workflow,latest=w?.last_reminder_stage??(w?.first_billing_date?'Billed':'No reminders sent');let captured:StageSnapshot|null=null,snapshotInvalid=false;
  if(w?.last_reminder_stage){try{const raw=snapshot??w.last_reminder_stage_snapshot;captured=raw?parseStageSnapshot(raw):legacyStageSnapshot(w.last_reminder_stage);if(captured&&captured.key!==w.last_reminder_stage)snapshotInvalid=true;}catch{snapshotInvalid=true;}}
- const urgent=!!captured?.terminal&&validDate(w?.last_reminder_date)&&w.last_reminder_date<=today;
+ const urgent=!snapshotInvalid&&!!captured?.terminal&&validDate(w?.last_reminder_date)&&w.last_reminder_date<=today;
  const overdueDays=validDate(w?.due_date)?Math.max(0,Math.round((Date.parse(today)-Date.parse(w.due_date))/86400000)):null;
  const result=(stage:ActionStage,date:string|null,reason?:string):CollectionAction=>({stage,date,ready:date===null||date<=today,reason,latest,overdueDays,urgent});
  if(!validDate(today))return result('Needs review',null,'Calendar date unavailable');

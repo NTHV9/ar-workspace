@@ -19,6 +19,8 @@ begin
  values(delivery,actor,'send','<'||delivery||'@example.test>','{"draft":{"subject":"Immutable synthetic message","body":"Evidence only","recipients":{"to":["recipient@example.test"],"cc":[],"bcc":[]}}}','sent',now());
  insert into public.ar_sent_events(delivery_id,owner,hotel,account_id,invoice_ids,purpose,sent_at,gmail_id,open_at_send)
  values(delivery,actor,'KAT',scope,array['A'],'billing',now(),'synthetic-'||delivery,100);
+ insert into ar_private.invoice_workflow_history(hotel,account_id,invoice_id,revision,actor,details)
+ values('KAT',scope,'A',1000,actor,jsonb_build_object('source','gmail_sent','delivery_id',delivery));
  r:=public.ar_account_workspace_read(actor,'KAT',scope,'history');
  if r->>'total'<>'2' or not exists(select 1 from jsonb_array_elements(r->'rows') x where x->>'source'='Verified Gmail send' and x->'message'->>'subject'='Immutable synthetic message') or not exists(select 1 from jsonb_array_elements(r->'rows') x where x->>'source'='Manual history correction' and x->>'actual_date' is null and x->>'first_billing_date'='2026-08-01') then raise exception 'history provenance invalid'; end if;
  if jsonb_array_length(public.ar_account_workspace_read(actor,'KAT',scope,'history',1,1)->'rows')<>1 then raise exception 'history pagination invalid'; end if;

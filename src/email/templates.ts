@@ -1,5 +1,6 @@
+import {isCollectionStageKey,type CollectionStageKey} from '../domain/collection-policy';
 import {parseRichMessage,plainMessage,richText,type RichMessage} from './rich-message';
-export type TemplateStage='Friendly'|'Follow 1'|'Follow 2'|'Follow 3'|'Final';
+export type TemplateStage=CollectionStageKey;
 export interface TemplateInput {name:string;purpose:'billing'|'collection';stage:TemplateStage|null;subject:string;richBody:RichMessage;archived:boolean}
 export interface EmailTemplate extends TemplateInput {id:string;revision:number;updated_at:string}
 export interface TemplateReference {id:string;revision:number;name:string}
@@ -9,7 +10,7 @@ const tokens=new Set(['account_name','hotel','invoice_count']);
 function checkTokens(text:string){for(const match of text.matchAll(/\{\{([^{}]*)\}\}/g))if(!tokens.has(match[1]))throw Error('template_token_invalid');if(text.replace(/\{\{[^{}]*\}\}/g,'').includes('{{')||text.replace(/\{\{[^{}]*\}\}/g,'').includes('}}'))throw Error('template_token_invalid');}
 export function parseTemplate(input:unknown):TemplateInput{
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('template_invalid');const v=input as Record<string,unknown>;
- if(Object.keys(v).some(k=>!keys.includes(k))||typeof v.name!=='string'||!v.name.trim()||v.name.length>80||/[\x00-\x1f]/.test(v.name)||!['billing','collection'].includes(String(v.purpose))||typeof v.subject!=='string'||v.subject.length>998||/[\x00-\x1f\x7f]/.test(v.subject)||typeof v.archived!=='boolean'||(v.purpose==='billing'?v.stage!==null:!stages.includes(String(v.stage))))throw Error('template_invalid');
+ if(Object.keys(v).some(k=>!keys.includes(k))||typeof v.name!=='string'||!v.name.trim()||v.name.length>80||/[\x00-\x1f]/.test(v.name)||!['billing','collection'].includes(String(v.purpose))||typeof v.subject!=='string'||v.subject.length>998||/[\x00-\x1f\x7f]/.test(v.subject)||typeof v.archived!=='boolean'||(v.purpose==='billing'?v.stage!==null:!isCollectionStageKey(v.stage)))throw Error('template_invalid');
  const richBody=parseRichMessage(v.richBody);checkTokens(v.subject);for(const b of richBody.blocks)for(const r of b.runs){checkTokens(r.text);if(r.href&&/[{}]/.test(r.href))throw Error('template_token_invalid');}
  return {name:v.name.trim(),purpose:v.purpose as TemplateInput['purpose'],stage:v.stage as TemplateStage|null,subject:v.subject,richBody,archived:v.archived};
 }

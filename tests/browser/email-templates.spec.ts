@@ -1,3 +1,4 @@
+import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 import {starterTemplates,type EmailTemplate} from '../../src/email/templates';
 async function setup(page:Page,unavailable=false){
@@ -6,6 +7,7 @@ async function setup(page:Page,unavailable=false){
  await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',async r=>{const q=r.request(),url=new URL(q.url()),p=url.pathname;calls.push(q.method()+' '+p);
+  if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});

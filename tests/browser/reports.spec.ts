@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {policyFixture} from './fixtures/collection-policy';
 const account={hotel:'KAT',id:'SYNTH-REPORT',name:'Azure Travel · Synthetic',type:'OTA',open:1200,over90:200,items:2};
 const activity={delivery_id:'synthetic-delivery',hotel:'KAT',account_id:account.id,account_name:account.name,account_type:'OTA',invoice_id:'SYNTH-INV',invoice_no:'SYNTH-INV',folio_no:'SYNTH-FOL',sent_at:'2026-09-09T18:30:00Z',sent_date:'2026-09-10',kind:'First billing',purpose:'billing',stage:null,amount:5000};
 async function setup(page:Page,fail=false){
@@ -8,6 +9,7 @@ async function setup(page:Page,fail=false){
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',async r=>{const u=new URL(r.request().url()),p=u.pathname;calls.push(r.request().method()+' '+u.pathname+u.search);
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+  if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[account],refresh:{running:false,hotels:[]}}});
   if(p==='/api/reports/options')return r.fulfill({json:{rows:[{hotel:'KAT',account_id:account.id,account_name:account.name,account_type:'OTA'}],total:1}});
@@ -70,3 +72,10 @@ test('opening an account and returning restores report mode, scope, dates and pa
  await expect(page.getByLabel('Report account',{exact:true})).toHaveValue('');await expect(page.getByLabel('Report activity kind')).toHaveValue('');
  await expect(page.getByRole('button',{name:'Previous report page',exact:true})).toBeDisabled();
 });
+
+ test('report keeps captured label and terminal status after a round is renamed',async({page})=>{
+  await setup(page);
+  await page.route('**/api/collection-policy',r=>r.fulfill({json:{version:3,rounds:[...policyFixture.rounds.map(x=>({...x,active:false})),{key:'round_terminal',label:'Current renamed terminal',anchor:'due',offsetDays:1,terminal:true,active:true}]}}));
+  await page.route('**/api/reports/current*',r=>r.fulfill({json:{rows:[{...activity,id:'SYNTH-INV',open:1200,latest_stage:'round_terminal',latest_stage_label:'Captured terminal name',latest_terminal:true,last_sent_at:activity.sent_at}],total:1,summary:{invoices:1,amount:1200,urgent:1,unbilled:0,stages:[{kind:'round_terminal',invoices:1,amount:1200}],hotels:[]}}}));
+  await page.goto('/?reports=1');await expect(page.locator('.reports-table tbody')).toContainText('Captured terminal name');await expect(page.locator('.reports-table .reports-urgent')).toContainText('Captured terminal name');await page.getByLabel('Report activity kind').selectOption('round_terminal');await expect(page.locator('.reports-table tbody')).not.toContainText('Current renamed terminal');
+ });

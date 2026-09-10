@@ -3,6 +3,10 @@ import {reportsApi,parseReportQuery} from '../worker/reports/api';
 afterEach(()=>vi.unstubAllGlobals());
 const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic'};
 const actor='00000000-0000-4000-8000-000000000001';
+it('accepts stable custom stage keys without treating display labels as identities',()=>{
+ expect(parseReportQuery(new URL('https://app.test/api/reports/current?kind=round_personal-followup')).p_kind).toBe('round_personal-followup');
+ expect(()=>parseReportQuery(new URL('https://app.test/api/reports/current?kind=Personal%20follow-up'))).toThrow('reports_invalid');
+});
 it('rejects invalid calendar dates, reversed ranges, ambiguous accounts and oversized pages',()=>{
  for(const search of ['from=2026-02-30','from=2026-10-01&to=2026-09-01','account=A','limit=201','page=-1','hotel=OTHER','kind=Draft','page=1.5'])expect(()=>parseReportQuery(new URL('https://app.test/api/reports/activity?'+search))).toThrow('reports_invalid');
 });

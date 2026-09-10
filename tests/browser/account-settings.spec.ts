@@ -1,3 +1,4 @@
+import {policyFixture} from './fixtures/collection-policy';
 import {test,expect} from '@playwright/test';
 const user={id:'synthetic-settings-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
 async function setup(page:any,conflict=false){
@@ -5,7 +6,8 @@ async function setup(page:any,conflict=false){
  await page.addInitScript((u:any)=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
  await page.route('https://example.supabase.co/**',(route:any)=>route.fulfill({json:{user}}));
  await page.route('**/api/**',async(route:any)=>{const q=route.request(),p=new URL(q.url()).pathname;
- if(p==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+ if(p==='/api/collection-policy')return route.fulfill({json:policyFixture});
+  if(p==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
  if(p==='/api/refresh')return route.fulfill({json:{jobs:[],running:false,hotels:[]}});
  if(p==='/api/portfolio')return route.fulfill({json:{status:'connected',accounts:[{id:'example',hotel:'KAT',name:'Synthetic settings account',type:'OTA',open:100,over90:0,items:1}],refresh:{running:false,hotels:[]}}});
  if(p==='/api/accounts/KAT/example')return route.fulfill({json:{invoices:[]}});
