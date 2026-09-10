@@ -14,13 +14,13 @@ Owner approved continuing in order: configure the real Drive destination, valida
 
 ## Work and validation
 
-- [ ] Backend: Drive OAuth, configuration/status, fixed-destination verification, resumable upload, verified job archive and isolated synthetic test.
-- [ ] UI: Storage destination/status and explicit Picker authorization; archive reviewed document exports with actual loading/error states.
-- [ ] SQL: service-only owner/RLS guards, immutable source revisions, target revision and pre-generated file ID claims, safe retries.
-- [ ] Tests: no unauthenticated access, wrong folder/owner/revision denied, no duplicate creates, checksum mismatch/partial archive truthfulness, explicit actions only.
-- [ ] Real configuration: confirm required Google APIs/browser key, authorize Drive, select the owner-confirmed folder, prove Worker upload/read/cleanup of a synthetic PDF.
-- [ ] Attended review, updated by owner: use synthetic accounts/documents only. By Email diagnostic may send to the one-time recipient authorized in chat; never persist that recipient in source/defaults. By System only links to the account portal and lets staff record the actual date themselves; test link/date behavior with synthetic data, without submitting to any portal or changing real account history.
-- [ ] Push/deploy and record exact evidence in PROJECT_STATUS.
+- [x] Backend: Drive OAuth, configuration/status, fixed-destination verification, resumable upload, verified job archive and isolated synthetic test.
+- [x] UI: Storage destination/status and explicit Picker authorization; archive reviewed document exports with actual loading/error states.
+- [x] SQL: service-only owner/RLS guards, immutable source revisions, target revision and pre-generated file ID claims, safe retries.
+- [x] Tests: no unauthenticated access, wrong folder/owner/revision denied, no duplicate creates, checksum mismatch/partial archive truthfulness, explicit actions only.
+- [x] Real configuration: confirm required Google APIs/browser key, authorize Drive, select the owner-confirmed folder, prove Worker upload/read/cleanup of a synthetic PDF.
+- [x] Synthetic validation requested by owner: By Email diagnostic sent and verified without customer files or business history; recipient was not persisted in source/defaults. By System portal link/guidance and billing-send guards passed browser simulation, without portal submission or changes to real account history. This does not claim an actual external portal billing event was performed.
+- [x] Push/deploy and record exact evidence in PROJECT_STATUS.
 
 ## Provider sources inspected
 
@@ -38,3 +38,12 @@ Owner approved continuing in order: configure the real Drive destination, valida
 - The restricted browser key was placed in Worker Secret GOOGLE_PICKER_BROWSER_KEY without printing its value or saving it in Git. Project number is public configuration. Browser uses its own narrow, short-lived Picker token; server credentials remain private.
 - Applied ar_drive_archive migration after confirming no name collisions; synthetic SQL rollback checks passed. Seeded only the explicitly confirmed target row with worker verification still pending. No archive files or business events were created by SQL tests.
 - Backend/UI review fixes cover stale-token CAS, reviewed destination revisions, old-target receipts and null-safe assertions.49 Drive unit tests and full319 unit tests passed; Typecheck passed. Live Worker verification follows deployment.
+
+## Live result and Picker correction
+
+- Source `ebfc2cf79fba1d3636b323edd613accb65e00302` is pushed and deployed. The Picker key initially failed despite matching the Google Console key and having the approved restrictions. The deployed HTML used `same-origin` referrer policy, which suppressed the application's origin on the cross-origin Picker iframe request.
+- Changed only the asset referrer policy to `strict-origin-when-cross-origin`. The regression drives a browser iframe request from the actual deployed page, intercepts only its synthetic destination, and checks that Referer is the application origin with no path/query. It failed before the fix and passed after deployment. OAuth callbacks retain `no-referrer`; the key's website and API restrictions remain unchanged.
+- The owner selected the real folder successfully after the fix. Worker/DB confirmed Restricted sharing and revision 1. At 17:44:24 ICT, the explicit test uploaded a synthetic 622-byte PDF, verified metadata/SHA-256 and read-back bytes, and moved only its durable pre-generated Drive file ID to Trash. The receipt records read_verified=true/state=trashed with no error or retained upload session.
+- At 17:45:45 ICT, a real Gmail diagnostic sent one synthetic PDF and verified SENT. No customer attachment, supplemental file, account default, billing date or business sent event was introduced. Business events remain zero.
+- 26 deployed browser cases passed for Drive/document/By System plus the new referrer regression. Real reviewed customer export archival remains intentionally untested; only the isolated synthetic connection test touched Drive. Automatic archiving/deletion remain disabled, and retention remains undecided.
+- Provider references: [Google Picker key restrictions](https://developers.google.com/workspace/drive/picker/guides/web-picker) and [Referrer policy behavior](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy).
