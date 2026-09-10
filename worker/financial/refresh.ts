@@ -70,7 +70,12 @@ export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{act
     for(const [index,invoice]of eligible.entries()){
      if(index%10===0&&!await rpc<boolean>(env,'ar_financial_renew',args))return fail('financial_lease_invalid');
      try{
-      const mapping=await readCorroboratedApplications(reader,{hotel:run.hotel,accountId,invoiceTransactionId:invoice.transactionId,...(invoice.invoiceNo!==null&&/^[0-9]+$/.test(invoice.invoiceNo)?{invoiceNo:invoice.invoiceNo}:{})},{observedAt:history.coverage.observedAt});applications.push(...mapping.links);verified.push(invoice.transactionId);
+      const mapping=await readCorroboratedApplications(reader,{hotel:run.hotel,accountId,invoiceTransactionId:invoice.transactionId,...(invoice.invoiceNo!==null&&/^[0-9]+$/.test(invoice.invoiceNo)?{invoiceNo:invoice.invoiceNo}:{})},{observedAt:history.coverage.observedAt},undefined,invoice);
+      if(invoice.currentAmount===null||invoice.openAmount===null||invoice.cumulativePayments===null)throw new OperaError('invalid_response',undefined,'financial_mapping_history_unknown');
+      const cents=(s:string)=>BigInt(s.replace('.','')),abs=(n:bigint)=>n<0n?-n:n;
+      const applied=mapping.links.reduce((sum,link)=>sum+cents(link.appliedAmount!),0n);
+      if(applied!==cents(invoice.currentAmount)-cents(invoice.openAmount)||abs(applied)!==abs(cents(invoice.cumulativePayments)))throw new OperaError('invalid_response',undefined,'financial_mapping_history_changed');
+      applications.push(...mapping.links);verified.push(invoice.transactionId);
      }catch(error){
       // The independently read history remains useful. No links from a failed
       // corroboration are published and its application total stays unavailable.
@@ -89,5 +94,5 @@ export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{act
    if(JSON.stringify(after)!==JSON.stringify([...expectedAccounts].sort()))return fail('financial_discovery_changed');
    return rpc<FinancialWorkflowResult>(env,'ar_financial_publish',{...args,p_accounts:after});
   });
- }catch(e){const code=safeError(e);try{await rpc(env,'ar_financial_fail',{...args,p_code:code});}catch{/* last successful publication is not modified */}return {status:'failed',accounts:accountCount,...zeroCounts,error:code};}
+ }catch(e){const code=safeError(e);await step.do('financial-record-failure',stepConfig,async()=>{await rpc(env,'ar_financial_fail',{...args,p_code:code});return {status:'failed'};});return {status:'failed',accounts:accountCount,...zeroCounts,error:code};}
 }

@@ -19,17 +19,27 @@ async function invoiceDetail(reader:OperaReader,query:AppliedPaymentQuery,option
 }
 export interface CorroboratedApplications {
  links:AppliedPaymentLink[];payments:FinancialPayment[];
- coverage:{contract:'expanded_invoice_rows_correlated_v1'|'scoped_payment_rows_correlated_v1';invoiceTotalsReconciled:true;applicationEventHistory:false;observedAt:string;completeness:'invoice_totals_reconciled';dateSemantics:'no_application_event_date'};
+ coverage:{contract:'expanded_invoice_rows_correlated_v1'|'scoped_payment_rows_correlated_v1'|'history_zero_and_mapping_empty_v1';invoiceTotalsReconciled:true;applicationEventHistory:false;observedAt:string;completeness:'invoice_totals_reconciled';dateSemantics:'no_application_event_date'};
 }
 /** Reads only fixed OPERA paths. Returned links are current observations, never dated application events.
  * Slim rows identify payments in this environment, unlike the inherited invoice-row schema.
  * Independent scoped invoice/payment reads and monetary reconciliation are mandatory. */
-export async function readCorroboratedApplications(reader:OperaReader,query:AppliedPaymentQuery,options:FinancialReadOptions={},responseAlreadyRead?:unknown):Promise<CorroboratedApplications>{
+export async function readCorroboratedApplications(reader:OperaReader,query:AppliedPaymentQuery,options:FinancialReadOptions={},responseAlreadyRead?:unknown,historyInvoice?:FinancialInvoice):Promise<CorroboratedApplications>{
+ if(historyInvoice){
+  if(historyInvoice.hotel!==query.hotel||historyInvoice.accountId!==query.accountId||historyInvoice.transactionId!==query.invoiceTransactionId||!['standalone','parent'].includes(historyInvoice.collectionRole)||query.invoiceNo!==undefined&&historyInvoice.invoiceNo!==query.invoiceNo)return bad('financial_mapping_source_identity');
+  if(historyInvoice.currency==='THB'&&historyInvoice.cumulativePayments==='0.00'&&historyInvoice.currentAmount!==null&&historyInvoice.currentAmount===historyInvoice.openAmount){
+   const zeroCheck=record(responseAlreadyRead??await reader.appliedInvoicePayments(query));
+   // Two explicit source facts: zero applied in complete scoped history, and an
+   // empty scoped mapping. Missing fields or a provider error cannot enter here.
+   if(Array.isArray(zeroCheck.details)&&zeroCheck.details.length===0&&zeroCheck.hasMore!==true&&['errors','warnings'].every(k=>zeroCheck[k]===undefined||Array.isArray(zeroCheck[k])&&zeroCheck[k].length===0))return {links:[],payments:[],coverage:{contract:'history_zero_and_mapping_empty_v1',invoiceTotalsReconciled:true,applicationEventHistory:false,observedAt:options.observedAt??new Date().toISOString(),completeness:'invoice_totals_reconciled',dateSemantics:'no_application_event_date'}};
+   responseAlreadyRead=zeroCheck;
+  }
+ }
  const before=await invoiceDetail(reader,query,options);
  if(before.currentAmount===null)return bad('financial_mapping_missing_current');
  if(before.openAmount===null)return bad('financial_mapping_missing_open');
  const envelope=record(responseAlreadyRead??await reader.appliedInvoicePayments(query));
- if(!Array.isArray(envelope.details)||envelope.details.length>(options.maxRows??5000))return bad('financial_mapping_shape');
+ if(!Array.isArray(envelope.details)||envelope.details.length>(options.maxRows??5000)||envelope.hasMore===true)return bad('financial_mapping_shape');
  for(const key of ['errors','warnings'])if(envelope[key]!==undefined&&(!Array.isArray(envelope[key])||envelope[key].length))return bad('financial_mapping_upstream_notice');
  const rows=envelope.details.map(record),expanded=rows.length>0&&rows.every(row=>row.paymentTrxNo!==undefined);
  if(!expanded&&rows.some(row=>row.paymentTrxNo!==undefined))return bad('financial_mapping_mixed_contract');

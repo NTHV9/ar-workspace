@@ -1,3 +1,4 @@
+import type {FinancialInvoice} from '../worker/opera/financial-history';
 import {afterEach,expect,it,vi} from 'vitest';
 import {OperaReader} from '../worker/opera/client';
 import {readCorroboratedApplications} from '../worker/opera/applied-payments';
@@ -21,3 +22,8 @@ for(const option of ['wrongAmount','wrongDate','wrongScope','changedInvoice','ne
 
 it('reconciles independently reported invoice amount and open even when optional cumulative payments are omitted',async()=>{const {reader}=setup({missingCumulative:true});const r=await readCorroboratedApplications(reader,query);expect(r.links[0].appliedAmount).toBe('300.00');expect(r.coverage.invoiceTotalsReconciled).toBe(true);});
 it('missing cumulative payment does not excuse a difference between mapped money and invoice amount minus open',async()=>{const {reader}=setup({missingCumulative:true,netMismatch:true});await expect(readCorroboratedApplications(reader,query)).rejects.toMatchObject({stage:'financial_mapping_total'});});
+
+const zeroInvoice:FinancialInvoice={hotel:'KAT',accountId:'A',kind:'invoice',transactionId:'101',invoiceNo:'201',folioNo:null,invoiceType:'Normal',transactionDate:'2026-09-01',postingDate:null,revenueDate:null,transferDate:null,currency:'THB',transferredIn:false,transferredOut:false,originalAmount:'1000.00',currentAmount:'1000.00',cumulativePayments:'0.00',openAmount:'1000.00',closeDate:null,compressed:false,parentInvoiceNo:null,collectionRole:'standalone',entryClassification:'invoice'};
+it('an empty mapping is not zero when the source cumulative field is missing',async()=>{const {reader,calls}=setup();await expect(readCorroboratedApplications(reader,query,{}, {details:[]},{...zeroInvoice,cumulativePayments:null})).rejects.toMatchObject({stage:'financial_mapping_total'});expect(calls.some(p=>p.endsWith('/invoicePaymentDetails'))).toBe(true);});
+it('a scoped zero proof cannot cross invoice or hotel identity',async()=>{const {reader,calls}=setup();await expect(readCorroboratedApplications(reader,query,{}, {details:[]},{...zeroInvoice,hotel:'TSK'})).rejects.toMatchObject({stage:'financial_mapping_source_identity'});expect(calls).toHaveLength(0);});
+it('provider errors and warnings cannot confirm an empty zero mapping',async()=>{const {reader}=setup();await expect(readCorroboratedApplications(reader,query,{}, {details:[],warnings:[{text:'Synthetic warning'}]},zeroInvoice)).rejects.toMatchObject({stage:'financial_mapping_upstream_notice'});vi.stubGlobal('fetch',async()=>new Response('synthetic private failure',{status:503}));await expect(readCorroboratedApplications(reader,query,{},undefined,zeroInvoice)).rejects.toMatchObject({code:'provider_unavailable'});});
