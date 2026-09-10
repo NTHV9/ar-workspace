@@ -125,3 +125,7 @@ For an eventual real production restore, additionally preserve a pre-restore pri
 - Retention criteria are fully confirmed as stated above; no repeat permission question is needed. Gmail messages and immutable business history are not included in the byte-deletion instruction. No additional paid capacity or quota overage is authorized.
 
 **Completion status:** read-only operations audit completed; Pro entitlement, managed physical-backup inventory, current Spend Cap, private boundaries, metadata, and the initial migration mapping verified. Application-data export/restore, object recovery drill, measured RTO/RPO, and post-restore external reconciliation are not yet verified.
+
+### Later local drill evidence — 21:25 ICT
+
+After this audit, the owner authorized a disposable local PostgreSQL 17 runtime, and root reviewed the scoped synthetic dump script. A **local synthetic logical restore** passed with 37 migrations, six SQL rollback fixtures, matching data hashes/counts, preserved permissions/RLS, and no duplicate SENT event on replay. The server was verified stopped; the 419,376-byte synthetic dump remains private. See RECOVERY_RUNBOOK.md. No live application data, managed physical backup, Storage object bytes, Google resources, or provider credentials were restored; those boundaries above remain explicit.

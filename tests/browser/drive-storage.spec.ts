@@ -18,6 +18,8 @@ async function setup(page:Page){
   if(path==='/api/portfolio')return route.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(path==='/api/documents/'+jobId)return route.fulfill({json:controls.job});
   if(path==='/api/documents')return route.fulfill({json:{jobs:[],hasMore:false}});
+  if(path==='/api/collection-policy')return route.fulfill({status:503,json:{error:'policy_unavailable'}});
+  if(path.startsWith('/api/operations/'))return route.fulfill({json:{enabled:false}});
   if(path==='/api/drive/status')return controls.statusFailure?route.fulfill({status:503,json:{error:'drive_status_unavailable'}}):route.fulfill({json:controls.status});
   if(path==='/api/drive/config')return route.fulfill({json:{clientId:'synthetic-client',browserKey:'synthetic-key',projectNumber:'123456',scope:'https://www.googleapis.com/auth/drive.file',folderId:controls.status.folder?.id}});
   if(path==='/api/drive/verify-folder'){controls.folderWrites.push(request.postDataJSON());controls.status.folder!.ready=true;controls.status.folder!.verifiedAt='2026-09-10T01:00:00Z';return route.fulfill({json:controls.status.folder});}

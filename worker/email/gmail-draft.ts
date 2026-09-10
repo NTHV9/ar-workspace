@@ -1,3 +1,4 @@
+import {readManagedStorage} from '../operations/storage';
 import {emailRpc,boundedBody,googleJson,type EmailEnv,type EmailDraft} from './shared';
 import {gmailToken} from './oauth';
 import {hash,url64} from './crypto';
@@ -11,7 +12,7 @@ export function draftBudget(env:EmailEnv){const n=Number(env.GMAIL_DRAFT_MAX_BYT
 export async function readMailFile(env:EmailEnv,draft:EmailDraft,file:{name:string;storage_key:string;byte_count:number;sha256:string;mime?:string}):Promise<MailFile>{
  if(!file.storage_key.startsWith(`jobs/${draft.document_job_id}/`)||!/^jobs\/[0-9a-f-]{36}\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(file.storage_key)||/(^|\/)\.\.?($|\/)/.test(file.storage_key)||!Number.isSafeInteger(file.byte_count)||file.byte_count<1||file.byte_count>draftBudget(env))throw Error('email_attachment_invalid');
  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('email_unavailable');
- const r=await fetch(`${env.SUPABASE_URL}/storage/v1/object/authenticated/ar-working-files/${file.storage_key}`,{headers:{apikey:env.SUPABASE_SECRET_KEY},redirect:'manual',signal:AbortSignal.timeout(30000)});
+ const r=await readManagedStorage(env,file.storage_key,file.byte_count);
  if(!r.ok){await r.body?.cancel();throw Error('email_attachment_unavailable');}
  const bytes=await boundedBody(r,file.byte_count);if(bytes.length!==file.byte_count||await hash(bytes)!==file.sha256)throw Error('email_attachment_changed');
  return {name:file.name,mime:file.mime??'application/pdf',bytes};

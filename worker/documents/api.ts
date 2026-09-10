@@ -1,3 +1,4 @@
+import {readManagedStorage} from '../operations/storage';
 import type {RefreshEnv} from '../refresh/backend';
 import {documentSource} from './source-policy';
 import {PDFDocument} from 'pdf-lib';
@@ -15,7 +16,7 @@ async function bodyJson(request:Request,max=65536):Promise<Record<string,unknown
 }
 async function rpc(env:RefreshEnv,name:string,args:Record<string,unknown>){
  const response=await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY!,'Content-Type':'application/json'},body:JSON.stringify(args),redirect:'manual',signal:AbortSignal.timeout(20000)});
- const value:unknown=await response.json();if(!response.ok){const message=value&&typeof value==='object'&&'message'in value?value.message:null;throw new Error(typeof message==='string'&&/^document_[a-z_]+$/.test(message)?message:'document_service_unavailable');}return value;
+ const value:unknown=await response.json();if(!response.ok){const message=value&&typeof value==='object'&&'message'in value?value.message:null;throw new Error(typeof message==='string'&&/^(document|storage|budget|retention)_[a-z_]+$/.test(message)?message:'document_service_unavailable');}return value;
 }
 export async function documentApi(request:Request,env:RefreshEnv,owner:string,headers:Record<string,string>):Promise<Response>{
  try{
@@ -42,7 +43,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    const index=Number(child);const exported=action==='exports'&&Number.isSafeInteger(index)&&index>=0?job.exports[index]:null;
    const key=action==='project'?job.project_key:file?.storage_key??exported?.storage_key;
    if(!key||!key.startsWith(`jobs/${id}/`))return json({error:'document_file_missing'},404);
-   const response=await fetch(`${env.SUPABASE_URL}/storage/v1/object/authenticated/ar-working-files/${key}`,{headers,redirect:'manual',signal:AbortSignal.timeout(30000)});
+   const response=await readManagedStorage(env,key,action==='project'?67108864:file?.byte_count??exported?.byte_count??104857600,{headers});
    if(!response.ok){await response.body?.cancel();return json({error:'document_file_unavailable'},503);}
    return new Response(response.body,{headers:{'Content-Type':action==='project'?'application/json':'application/pdf','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
   }
@@ -68,7 +69,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
   }
   return json({error:'method_not_allowed'},405);
  }catch(error){
-  const code=error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'document_service_unavailable';
-  const status=code==='document_upload_too_large'?413:/conflict|selection_invalid|sources_unavailable/.test(code)?409:/invalid|source_retired/.test(code)?400:503;return json({error:code},status);
+  const code=error instanceof Error&&/^(document|storage|budget|retention)_[a-z_]+$/.test(error.message)?error.message:'document_service_unavailable';
+  const status=code==='storage_file_expired'?410:code==='document_upload_too_large'?413:/conflict|selection_invalid|sources_unavailable/.test(code)?409:/invalid|source_retired/.test(code)?400:503;return json({error:code},status);
  }
 }

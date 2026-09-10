@@ -1,7 +1,8 @@
+import {operationMessages} from '../../worker/operations/messages';
 export interface DriveFolder {configured:boolean;id:string|null;name:string|null;revision:number|null;ready:boolean;verifiedAt:string|null;visibility:'public'|'restricted'|'unknown'}
 export interface DriveStatus {configured:boolean;connected:boolean;email:string|null;folder:DriveFolder|null;cleanupDisabled:true;pickerConfigured:boolean;error?:string}
-export interface DriveArchiveFile {ordinal:number;name:string;state:'pending'|'uploading'|'verified'|'error'|'trashed';driveFileId:string|null;url:string|null;error?:string|null}
-export interface DriveArchiveView {id:string;kind:'job'|'test';documentJobId:string|null;documentRevision:number|null;targetRevision:number;state:'pending'|'partial'|'verified'|'error'|'cleaned';files:DriveArchiveFile[];createdAt:string}
+export interface DriveArchiveFile {ordinal:number;name:string;state:'pending'|'uploading'|'verified'|'error'|'trashed'|'expired';driveFileId:string|null;url:string|null;error?:string|null}
+export interface DriveArchiveView {id:string;kind:'job'|'test';documentJobId:string|null;documentRevision:number|null;targetRevision:number;state:'pending'|'partial'|'verified'|'error'|'cleaned'|'expired';files:DriveArchiveFile[];createdAt:string}
 
 export function driveFolderReady(status:DriveStatus|null){const folder=status?.folder;return !!(status?.configured&&status.connected&&!status.error&&folder?.configured&&folder.id&&Number.isSafeInteger(folder.revision)&&Number(folder.revision)>0&&folder.verifiedAt&&folder.ready&&folder.visibility==='restricted');}
 export function safeDriveUrl(value:string|null|undefined){

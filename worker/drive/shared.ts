@@ -25,7 +25,7 @@ export async function driveRpc<T>(env:DriveEnv,name:string,args:Record<string,un
  if(value&&typeof value==='object'&&'error' in value)throw Error(safeError(value.error));return value as T;
 }
 const errors=new Set(['drive_forbidden','drive_invalid','drive_not_configured','drive_not_connected','drive_reconnect_required','drive_unavailable','drive_missing','drive_target_missing','drive_target_changed','drive_target_not_ready','drive_target_not_private','drive_folder_mismatch','drive_folder_unavailable','drive_identity_mismatch','drive_command_conflict','drive_revision_conflict','drive_unreviewed','drive_incomplete','drive_busy','drive_source_changed','drive_source_unavailable','drive_checksum_mismatch','drive_metadata_mismatch','drive_upload_pending','drive_unsafe_upload_url','drive_response_too_large','drive_cleanup_failed']);
-export function safeError(e:unknown){const value=e instanceof Error?e.message:String(e);return errors.has(value)?value:'drive_unavailable';}
+export function safeError(e:unknown){const value=e instanceof Error?e.message:String(e);return value==='storage_object_size_changed'||value==='storage_object_changed'?'drive_source_changed':/^(budget|storage)_[a-z_]+$/.test(value)?value:errors.has(value)?value:'drive_unavailable';}
 export function folderView(t:Target|null,ready=false){return t?{configured:true,id:t.folder_id,name:t.name,revision:t.revision,ready,verifiedAt:t.verified_at,visibility:t.visibility}:{configured:false,id:null,name:null,revision:null,ready:false,verifiedAt:null,visibility:'unknown'};}
 export function archiveView(a:Archive){
  const complete=a.files.length>0&&a.files.every(f=>a.kind==='test'?f.state==='trashed':f.state==='verified');

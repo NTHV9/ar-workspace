@@ -1,3 +1,6 @@
+import {sweepRetention} from '../operations/retention-sweep';
+import type {DriveEnv} from '../drive/shared';
+import {writeManagedStorage} from '../operations/storage';
 import {financialWorkflow,runFinancialHistory,requestFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
 import {runFinancialDiagnostic} from '../opera/financial-diagnostic';
 import {runMailReconcile} from '../email/reconcile';
@@ -11,7 +14,7 @@ import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
 
-export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv,RefreshParams> {
+export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
@@ -24,9 +27,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(this.env,hotel,accountId,async(bytes,expected)=>{
       if(!this.env.SUPABASE_URL||!this.env.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
       for(const [extension,body,type]of [['pdf',new Uint8Array(bytes).buffer,'application/pdf'],['json',JSON.stringify(expected),'application/json']] as const){
-        const response=await fetch(`${this.env.SUPABASE_URL}/storage/v1/object/ar-working-files/validation/${runId}/${hotel}.${extension}`,{method:'POST',headers:{apikey:this.env.SUPABASE_SECRET_KEY,'Content-Type':type,'x-upsert':'false'},body,redirect:'manual',signal:AbortSignal.timeout(30000)});
-        if(!response.ok){await response.body?.cancel();throw new Error('private_storage_write_failed');}
-        await response.body?.cancel();
+        await writeManagedStorage(this.env,`validation/${runId}/${hotel}.${extension}`,typeof body==='string'?new TextEncoder().encode(body):new Uint8Array(body),type);
       }
     })));
     if(payload.historyAudit){
@@ -93,6 +94,9 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
           if(next.id&&['queued','running'].includes(next.status)&&workflow){try{await workflow.create({id:next.id,params:{runId:next.id,hotel,actorId:actor,financialHistory:true}});}catch{await(await workflow.get(next.id)).status();}}
           return {status:next.status};
         }catch{return {status:'financial_queue_unavailable'};}
+      });
+      if(!accountId&&this.env.RETENTION_ENABLED==='true')await step.do('completed-file-retention',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},async()=>{
+        try{return await sweepRetention(this.env);}catch{return {enabled:true,error:'retention_unavailable'};}
       });
       return {hotel,status:'succeeded',accounts:ids.length};
     }catch(error){

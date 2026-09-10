@@ -1,3 +1,4 @@
+import {writeManagedStorage} from '../operations/storage';
 import {workspaceStatement} from '../statement/generate';
 import {documentSource} from './source-policy';
 import type {WorkflowStep} from 'cloudflare:workers';
@@ -35,8 +36,7 @@ export async function createDocumentJob(env:RefreshEnv,owner:string,input:Docume
 export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,type:string){
  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
  if(!/^jobs\/[0-9a-f-]{36}\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(path)||/(^|\/)\.\.?($|\/)/.test(path))throw new Error('invalid_storage_path');
- const r=await fetch(`${env.SUPABASE_URL}/storage/v1/object/ar-working-files/${path}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':type,'x-upsert':'false'},body:new Uint8Array(bytes).buffer,redirect:'manual',signal:AbortSignal.timeout(30000)});
- if(!r.ok){await r.body?.cancel();throw new Error('private_storage_write_failed');}await r.body?.cancel();
+ await writeManagedStorage(env,path,bytes,type);
 }
 export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowStep){
  const job=await documentJob(env,jobId);if(!job)throw new Error('document_job_missing');
@@ -55,7 +55,7 @@ export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowSt
     await backendRpc(env,'ar_document_finish_file',{p_job_id:job.id,p_file_id:file.id,p_storage_key:key,p_bytes:pdf.bytes.length,p_sha256:pdf.sha256});
     return {state:'ready',pages:pdf.pages};
    }catch(error){
-    const code=error instanceof OperaError?error.stage??error.code:error instanceof Error&&(/^(document_statement_[a-z_]+|document_source_changed)$/.test(error.message)||['document_manifest_invalid','private_storage_write_failed','private_storage_unavailable'].includes(error.message))?error.message:'document_generation_failed';
+    const code=error instanceof OperaError?error.stage??error.code:error instanceof Error&&(/^(document_statement_[a-z_]+|document_source_changed|budget_[a-z_]+|storage_[a-z_]+)$/.test(error.message)||['document_manifest_invalid','private_storage_write_failed','private_storage_unavailable'].includes(error.message))?error.message:'document_generation_failed';
     await backendRpc(env,'ar_document_fail_file',{p_job_id:job.id,p_file_id:file.id,p_code:code,p_uncertain:renderStarted});
     return {state:renderStarted?'uncertain':'unavailable',code};
    }

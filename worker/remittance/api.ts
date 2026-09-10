@@ -1,3 +1,4 @@
+import {operationMessages} from '../operations/messages';
 import type {RemittanceAccount,RemittanceHistory,RemittanceInvoiceList,RemittanceList,RemittanceSummary} from '../../src/remittance/model';
 import {checkedRemittanceRecord,checkedRemittanceRow,remittanceFileRequest,remittanceFileRpc,remittanceLimits,type RemittanceFilesEnv} from './files';
 import {runRemittanceDiagnostic} from './diagnostic';
@@ -66,6 +67,7 @@ const errors:Record<string,[number,string]>={
 };
 function errorResponse(error:unknown):Response {
  const requested=error instanceof Error?error.message:'';
+ if(Object.hasOwn(operationMessages,requested))return json({error:requested,message:operationMessages[requested]},requested==='storage_file_expired'?410:409);
  const code=Object.hasOwn(errors,requested)?requested:'remittance_unavailable';
  const [status,message]=errors[code];return json({error:code,message},status);
 }

@@ -1,3 +1,4 @@
+import {writeManagedStorage} from '../operations/storage';
 import {boundedBody,emailRpc,jsonBody,type EmailAttachment,type EmailDraft,type EmailEnv} from './shared';
 import {draftBudget,readMailFile} from './gmail-draft';
 import {hash} from './crypto';
@@ -5,6 +6,7 @@ import {inspectSupplemental,supplementalName} from './supplemental-validation';
 
 interface AttachmentRecord extends EmailAttachment {removed:boolean}
 async function writeFile(env:EmailEnv,draft:EmailDraft,file:EmailAttachment,bytes:Uint8Array){
+ if(env.OPERATIONS_BUDGET_ENABLED==='true'){await writeManagedStorage(env,file.storage_key,bytes,file.mime??'application/pdf');return;}
  const r=await fetch(`${env.SUPABASE_URL}/storage/v1/object/ar-working-files/${file.storage_key}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY!,'Content-Type':file.mime,'x-upsert':'false'},body:new Uint8Array(bytes).buffer,redirect:'manual',signal:AbortSignal.timeout(30000)});
  const status=r.status;await r.body?.cancel();if(r.ok)return;
  if(status===400||status===409){await readMailFile(env,draft,file);return;}

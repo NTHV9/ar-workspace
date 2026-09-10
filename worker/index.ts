@@ -1,3 +1,5 @@
+import {operationsApi} from './operations/api';
+import {readManagedStorage} from './operations/storage';
 import {observationsApi} from './reports/observations';
 import {externalBillingApi} from './billing/api';
 import {financialApi} from './financial/api';
@@ -34,6 +36,7 @@ async function upstream(url: string, options: RequestInit) {
 export async function handleApi(request: Request, env: Env): Promise<Response> {
   const path = new URL(request.url).pathname;
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
+  const operationsRequest=path.startsWith('/api/operations/');
   const observationsRequest=path.startsWith('/api/observations/');
   const billingRequest=path==='/api/external-billing'||path.startsWith('/api/external-billing/');
   const financialRequest=path.startsWith('/api/financial/');
@@ -51,7 +54,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   const collectionValidation=path==='/api/collection/validate-selection'&&request.method==='POST';
   const documentRequest=path==='/api/documents'||path.startsWith('/api/documents/');
   const pdfValidation=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/(KAT|TSK)\/(pdf|json)$/.exec(path);
-  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest&&!billingRequest) return json({ error: 'method_not_allowed' }, 405);
+  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest&&!billingRequest&&!operationsRequest) return json({ error: 'method_not_allowed' }, 405);
   if (path === '/api/config') {
     let googleEnabled = false;
     if (env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY) {
@@ -73,7 +76,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: connected?'connected':'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
     } catch { return json({ status: 'unavailable', supabase: 'unavailable', opera: 'not_connected' }, 503); }
   }
-  if (!observationsRequest && !billingRequest && !financialRequest && !policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
+  if (!operationsRequest && !observationsRequest && !billingRequest && !financialRequest && !policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
   if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ error: 'supabase_unavailable' }, 503);
@@ -84,6 +87,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     const user = await auth.json() as { id?:string;email?: string; email_confirmed_at?: string; is_anonymous?: boolean };
     if (user.email?.toLowerCase() !== 'ar@katathani.com' || !user.email_confirmed_at || user.is_anonymous) return json({ error: 'forbidden' }, 403);
     if(path==='/api/mail-reconciliation'){if(request.method==='GET')return json({...await backendRpc<Record<string,unknown>>(env,'ar_mail_reconcile_status',{}),enabled:env.GMAIL_RECONCILE_ENABLED==='true',intervalMinutes:15});if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);return json(await requestMailReconcile(env,'manual'));}return json({error:'method_not_allowed'},405);}
+    if(operationsRequest){if(!user.id)return json({error:'unauthorized'},401);return operationsApi(request,env,user.id);}
     if(driveRequest){if(!user.id)return json({error:'unauthorized'},401);return driveApi(request,env,user.id);}
     if(observationsRequest){if(!user.id)return json({error:'unauthorized'},401);return observationsApi(request,env,user.id);}
     if(billingRequest){if(!user.id)return json({error:'unauthorized'},401);return externalBillingApi(request,env,user.id);}
@@ -99,7 +103,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if(documentRequest){if(!user.id)return json({error:'unauthorized'},401);return documentApi(request,env,user.id,headers);}
     if(pdfValidation){
       const [,runId,hotel,extension]=pdfValidation;
-      const response=await upstream(`${env.SUPABASE_URL}/storage/v1/object/authenticated/ar-working-files/validation/${runId}/${hotel}.${extension}`,{headers});
+      const response=await readManagedStorage(env,`validation/${runId}/${hotel}.${extension}`,extension==='pdf'?20971520:1048576,{headers});
       if(!response.ok){await response.body?.cancel();return json({error:'private_document_unavailable'},response.status===404?404:503);}
       return new Response(response.body,{headers:{'Content-Type':extension==='pdf'?'application/pdf':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
     }

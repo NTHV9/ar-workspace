@@ -1,3 +1,4 @@
+import {operationMessages} from '../../worker/operations/messages';
 import {useEffect,useRef,useState} from 'react';
 import {getDocument,GlobalWorkerOptions,type PDFDocumentProxy,type RenderTask} from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -11,11 +12,11 @@ export function PrivatePdfPreview({jobId,fileId,token,maxBytes,onClose}:{jobId:s
  useEffect(()=>{const controller=new AbortController();let active=true,destroy:(()=>Promise<void>)|undefined;setPdf(null);setError('');
   void(async()=>{try{
    const response=await fetch(`/api/documents/${jobId}/files/${fileId}`,{headers:{Authorization:`Bearer ${auth.current}`},signal:controller.signal});
-   if(!response.ok||!response.body)throw Error();if(Number(response.headers.get('content-length'))>maxBytes){await response.body.cancel();throw Error();}
+   if(response.status===410)throw Error(operationMessages.storage_file_expired);if(!response.ok||!response.body)throw Error();if(Number(response.headers.get('content-length'))>maxBytes){await response.body.cancel();throw Error();}
    const reader=response.body.getReader(),chunks:Uint8Array[]=[];let size=0;try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>maxBytes){await reader.cancel();throw Error();}chunks.push(part.value);}}finally{reader.releaseLock();}
    const data=new Uint8Array(size);let at=0;for(const chunk of chunks){data.set(chunk,at);at+=chunk.length;}
    const loading=getDocument({data,enableXfa:false});destroy=()=>loading.destroy();const document=await loading.promise;if(active)setPdf(document);
-  }catch{if(active)setError('Private PDF preview is unavailable. No replacement document is shown.');}})();
+  }catch(e){if(active)setError(e instanceof Error&&e.message===operationMessages.storage_file_expired?e.message:'Private PDF preview is unavailable. No replacement document is shown.');}})();
   return()=>{active=false;controller.abort();void destroy?.();};
  },[jobId,fileId,maxBytes]);
  useEffect(()=>{if(!pdf)return;let active=true;let task:RenderTask|undefined;setRendering(true);setError('');

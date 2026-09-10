@@ -1,3 +1,4 @@
+import {readManagedStorage} from '../operations/storage';
 import {hash,seal,unseal} from '../email/crypto';
 import {driveRpc,safeError,type Archive,type DriveEnv,type DriveFile} from './shared';
 import {beginUpload,generateId,metadata,readTest,trashTest,uploadPosition,uploadStream,verifyFolder,verifyMetadata} from './provider';
@@ -16,7 +17,7 @@ async function source(env:DriveEnv,a:Archive,f:DriveFile,offset:number){
  if(a.kind==='test'){const bytes=syntheticPdf();if(bytes.length!==f.byte_count||await hash(bytes)!==f.sha256)throw Error('drive_source_changed');return new ReadableStream<Uint8Array>({start(c){c.enqueue(bytes.subarray(offset));c.close();}});}
  const key=f.storage_key;if(!key||!a.document_job_id||!key.startsWith(`jobs/${a.document_job_id}/exports/`)||!/^jobs\/[0-9a-f-]{36}\/exports\/[0-9a-f-]{36}\.pdf$/.test(key)||!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('drive_source_changed');
  const base=new URL(env.SUPABASE_URL);if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw Error('drive_not_configured');
- const r=await fetch(base.origin+'/storage/v1/object/authenticated/ar-working-files/'+key,{headers:{apikey:env.SUPABASE_SECRET_KEY},redirect:'manual',signal:AbortSignal.timeout(90000)});
+ const r=await readManagedStorage(env,key,f.byte_count,{timeoutMs:90000,sizeError:'drive_source_changed'});
  if(!r.ok||!r.body){await r.body?.cancel();throw Error('drive_source_unavailable');}
  const length=r.headers.get('Content-Length');if(length&&Number(length)!==f.byte_count){await r.body.cancel();throw Error('drive_source_changed');}
  return byteRangeStream(r.body,offset,f.byte_count);

@@ -1,10 +1,12 @@
+import type {BudgetEnvironment} from '../operations/budget';
+import {readManagedStorage,writeManagedStorage} from '../operations/storage';
 import type {RemittanceConfig,RemittanceFile,RemittanceRecord,RemittanceRow} from '../../src/remittance/model';
 import {boundedBody} from '../email/shared';
 import {hash} from '../email/crypto';
 import {inspectSupplemental,supplementalName} from '../email/supplemental-validation';
 import {parseRemittanceFileAction,readRemittanceJson,parseRevision} from './validation';
 
-export interface RemittanceFilesEnv {
+export interface RemittanceFilesEnv extends BudgetEnvironment {
  SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;
  REMITTANCE_MAX_FILE_BYTES?:string;REMITTANCE_MAX_FILES?:string;REMITTANCE_MAX_TOTAL_FILE_BYTES?:string;
 }
@@ -29,7 +31,7 @@ export function remittanceService(env:RemittanceFilesEnv){
  return {origin:base.origin,key:env.SUPABASE_SECRET_KEY};
 }
 async function bodyBytes(response:Request|Response,max:number,tooLarge:string){
- try{return await boundedBody(response,max);}catch(e){if(e instanceof Error&&e.message==='email_too_large')throw Error(tooLarge);throw Error('remittance_unavailable');}
+ try{return await boundedBody(response,max);}catch(e){if(e instanceof Error&&(e.message==='email_too_large'||e.message===tooLarge))throw Error(tooLarge);throw Error('remittance_unavailable');}
 }
 /** Fixed RPC names and configured HTTPS origin only; never expose provider error bodies. */
 export async function remittanceFileRpc<T=unknown>(env:RemittanceFilesEnv,name:string,args:Record<string,unknown>):Promise<T>{
@@ -83,15 +85,16 @@ function storageUrl(env:RemittanceFilesEnv,file:PrivateRemittanceObject,read:boo
  const service=remittanceService(env);return {url:`${service.origin}/storage/v1/object/${read?'authenticated/':''}ar-working-files/${file.storageKey}`,key:service.key};
 }
 export async function readRemittanceObject(env:RemittanceFilesEnv,file:PrivateRemittanceObject):Promise<Uint8Array>{
- const target=storageUrl(env,file,true);let response:Response;
- try{response=await fetch(target.url,{headers:{apikey:target.key},redirect:'manual',signal:AbortSignal.timeout(30000)});}catch{throw Error('remittance_storage_unavailable');}
+ storageUrl(env,file,true);let response:Response;
+ try{response=await readManagedStorage(env,file.storageKey,file.byteCount,{sizeError:'remittance_checksum_mismatch'});}catch(e){if(e instanceof Error&&e.message==='remittance_checksum_mismatch')throw e;if(e instanceof Error&&e.message==='storage_object_size_changed')throw Error('remittance_checksum_mismatch');throw e instanceof Error&&/^(budget|storage)_/.test(e.message)?e:Error('remittance_storage_unavailable');}
  if(!response.ok){await response.body?.cancel();throw Error(response.status===404?'remittance_file_bytes_missing':'remittance_storage_unavailable');}
  const length=response.headers.get('Content-Length');if(length!==null&&(!/^[0-9]+$/.test(length)||Number(length)!==file.byteCount)){await response.body?.cancel();throw Error('remittance_checksum_mismatch');}
- let bytes:Uint8Array;try{bytes=await bodyBytes(response,file.byteCount,'remittance_checksum_mismatch');}catch(e){if(e instanceof Error&&e.message==='remittance_checksum_mismatch')throw e;throw Error('remittance_storage_unavailable');}
+ let bytes:Uint8Array;try{bytes=await bodyBytes(response,file.byteCount,'remittance_checksum_mismatch');}catch(e){if(e instanceof Error&&e.message==='storage_object_size_changed')throw Error('remittance_checksum_mismatch');if(e instanceof Error&&e.message==='remittance_checksum_mismatch')throw e;throw Error('remittance_storage_unavailable');}
  if(bytes.length!==file.byteCount||await hash(bytes)!==file.sha256)throw Error('remittance_checksum_mismatch');return bytes;
 }
 export async function writeRemittanceObject(env:RemittanceFilesEnv,file:PrivateRemittanceObject,bytes:Uint8Array){
  const target=storageUrl(env,file,false);if(bytes.length!==file.byteCount||await hash(bytes)!==file.sha256)throw Error('remittance_file_conflict');
+ if(env.OPERATIONS_BUDGET_ENABLED==='true'){await writeManagedStorage(env,file.storageKey,bytes,file.mime);await readRemittanceObject(env,file);return;}
  let response:Response;try{response=await fetch(target.url,{method:'POST',headers:{apikey:target.key,'Content-Type':file.mime,'x-upsert':'false'},body:new Uint8Array(bytes).buffer,redirect:'manual',signal:AbortSignal.timeout(30000)});}catch{throw Error('remittance_upload_pending');}
  const status=response.status;await response.body?.cancel();
  if(!response.ok&&status!==400&&status!==409)throw Error('remittance_storage_unavailable');

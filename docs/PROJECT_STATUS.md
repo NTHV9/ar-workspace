@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 11 กันยายน 2026 04:42 ICT: Storage controls และ Retention
+
+- Source ที่ live ก่อนรอบนี้คือ 40a940e80bad38f399adb5b02bcd26f54d7a1940, Worker ade3e831-89c2-421d-998d-5f86084229aa. แยก financial Workflow concurrency1 จากคิวเอกสาร/current refresh concurrency2. KAT full historyสำเร็จ 5,752 Invoice rows /369 Payments /1,836 application links; TSKก่อนหน้าสำเร็จ1,001/135/265. Payment dateใช้OPERA transactionDate ไม่ใช้วันพบยอดศูนย์.
+- แก้Statementfont mappingและกู้เฉพาะStatementของงานที่เจ้าของแจ้งแล้ว; PDFจริงเปิดดูได้. NativeInvoice3ไฟล์เดิมคงbytes/timestamps ไม่มีการพิมพ์ซ้ำ. รายละเอียด STATEMENT_FONT_REPAIR.md. Daily ARมีactualcapture2ชุด/175Account rowsแล้ว;ไม่มีการสร้างวันย้อนหลังเทียม.
+- Apply4 migrationsใหม่: 20260910213926_ar_operation_budgets, 20260910213928_ar_file_retention, 20260910213931_ar_storage_budget_integration, 20260910213933_ar_retention_integration. รวม50migrations. ก่อนapplyไม่มีตารางชื่อชน; DB41,348,243bytes. Private/RLS/service-only;ไม่มีการReset/Dropหรือเปลี่ยนledger.
+- Managed file budget: immutable upload reservations, bounded/precharged downloads, checksum reconciliationไม่uploadซ้ำ, Storage/DB usageจริง, 1GiB stored /2GiB managed file transferต่อเดือนปฏิทินไทย /256MiB DBพร้อม20%headroom. ไม่อ้างว่าmeterนี้คือproviderbillingทั้งหมด; SpendCapที่ตรวจไว้ยังเป็นขอบเขตค่าใช้จ่ายฝั่งprovider. GuardDBหยุดการเริ่มงาน/เพิ่มstaging ไม่บล็อกการบันทึกผลของproviderที่เริ่มไปแล้ว.
+- Retention: onecalendar month,exactappownedobjectID/checksum,source+pendingworkrecheck,shared-referencefences,providerDELETEack/absenceproof,tombstonesและhistoryretained. ภาพ/notes/credentialsจริงไม่เข้าGit. Runtimecleanupยังปิดจนกว่าผ่านการทดสอบproviderด้วยข้อมูลสมมติเฉพาะงาน.
+- Local schema50migrations/14rollbackfixturesผ่าน. Hostedbudgetfixtureผ่าน; hostedretentionตรวจcalendar/freshness/refs/dispatch/uncertainty/permissionsผ่านแล้วrollback. HostedStorageห้ามSQLDELETEแม้fixture:รักษาguardเดิมและแยกabsence/tombstoneเป็นlocal/providerproof ไม่ปิดการป้องกัน. ตรวจหลังจบไม่มีsyntheticAccount/reservation/retentionitemค้าง.
+- Unit749/77files,Typecheck/Buildผ่านก่อนการปรับป้ายexpiredล่าสุด; LocalbrowserStorage+Drive18casesผ่านรวม1440/1280/390. SecurityadvisorมีเฉพาะINFO47privateRLS-no-policyที่ตั้งใจdenyclient. กำลังตรวจรอบสุดท้ายและDeploy;ไม่อ้างว่าcodeใหม่นี้liveแล้ว.
+- Goalยังactive: Operations/recoveryhold,finalrestore/acceptance,isolatedAccount3Invoicesจริงในappและscopedcleanupยังต้องทำต่อ. ไม่ส่งเมลลูกค้าจริงหรือเปิดpaidaddon.
+
+
 ## Checkpoint ล่าสุด — 11 กันยายน 2026 01:13 ICT: ประวัติการเงินและ Password Recovery
 
 - Pushed/deployed source `84b32af` บน branch `codex/opera-refresh`; Worker version `d23b27d0-2e26-40d0-a495-41657e012bad`. ก่อนหน้านี้ `75b1b02310d5cadd6ab2d6a18ccff6f5b7cdca27` ผ่าน live health database_verified และ anonymous financial routes 3 เส้นทางถูกปฏิเสธ401. รอบ84แก้การแปลง timestamp PostgreSQL เมื่อ Workflowกลับมาทำต่อ; ไม่เปลี่ยน frontend.
