@@ -1,3 +1,4 @@
+import {writesHeld} from './operations/write-hold';
 import {operationsApi} from './operations/api';
 import {readManagedStorage} from './operations/storage';
 import {observationsApi} from './reports/observations';
@@ -64,7 +65,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       } catch { /* Configuration stays fail-closed; no provider error details reach the client. */ }
     }
     const configuredBudget=Number(env.DOC_EDITOR_MAX_BYTES??67108864);
-    return json({ supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null, googleEnabled,documentEditorMaxBytes:Number.isSafeInteger(configuredBudget)&&configuredBudget>0&&configuredBudget<=536870912?configuredBudget:67108864 });
+    return json({ writeHold:writesHeld(env),supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null, googleEnabled,documentEditorMaxBytes:Number.isSafeInteger(configuredBudget)&&configuredBudget>0&&configuredBudget<=536870912?configuredBudget:67108864 });
   }
   if (path === '/api/health') {
     if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ status: 'unavailable', supabase: 'not_configured', opera: 'not_connected', commit: env.COMMIT_SHA ?? 'development' }, 503);
@@ -86,6 +87,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if (!auth.ok) return json({ error: auth.status >= 500 ? 'auth_unavailable' : 'unauthorized' }, auth.status >= 500 ? 503 : 401);
     const user = await auth.json() as { id?:string;email?: string; email_confirmed_at?: string; is_anonymous?: boolean };
     if (user.email?.toLowerCase() !== 'ar@katathani.com' || !user.email_confirmed_at || user.is_anonymous) return json({ error: 'forbidden' }, 403);
+    if(writesHeld(env)&&request.method!=='GET'&&!/^\/api\/email\/deliveries\/[0-9a-f-]{36}\/check$/.test(path))return json({error:'operations_write_hold',message:'New work is paused for recovery review. Saved data remains readable.'},503);
     if(path==='/api/mail-reconciliation'){if(request.method==='GET')return json({...await backendRpc<Record<string,unknown>>(env,'ar_mail_reconcile_status',{}),enabled:env.GMAIL_RECONCILE_ENABLED==='true',intervalMinutes:15});if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);return json(await requestMailReconcile(env,'manual'));}return json({error:'method_not_allowed'},405);}
     if(operationsRequest){if(!user.id)return json({error:'unauthorized'},401);return operationsApi(request,env,user.id);}
     if(driveRequest){if(!user.id)return json({error:'unauthorized'},401);return driveApi(request,env,user.id);}
@@ -177,6 +179,7 @@ export default {
     return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Application assets unavailable', { status: 503 });
   },
   async scheduled(event:{cron?:string},env:Env) {
+    if(writesHeld(env))return;
     if(event.cron===gmailReconcileCron){if(env.GMAIL_RECONCILE_ENABLED==='true')await requestMailReconcile(env,'scheduled');return;}
     if(event.cron!=='0 0,12 * * *'||env.OPERA_REFRESH_ENABLED!=='true')return;
     for(const hotel of ['KAT','TSK'])await requestRefresh(env,hotel,null,'scheduled');

@@ -1,3 +1,4 @@
+import {assertWritesEnabled} from '../operations/write-hold';
 import {runGranularFinancialHistory} from './granular';
 import {readCorroboratedApplications} from '../opera/applied-payments';
 import type {WorkflowStep} from 'cloudflare:workers';
@@ -53,6 +54,7 @@ const stepConfig={retries:{limit:1,delay:'5 seconds' as const,backoff:'constant'
 const zeroCounts:FinancialCounts={invoices:0,payments:0,applications:0};
 /** Private source rows stay inside callbacks/DB staging; durable step outputs are counts only. */
 export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{actor:string;runId:string},step:Pick<WorkflowStep,'do'>):Promise<FinancialWorkflowResult>{
+ assertWritesEnabled(env);
  const {actor,runId}=payload;if(!uuid.test(actor)||!uuid.test(runId))return fail();
  const args={p_actor:actor,p_run_id:runId};
  if(!enabled(env)){try{await rpc(env,'ar_financial_fail',{...args,p_code:'financial_history_disabled'});}catch{/* source reads and publication remain disabled */}return {status:'not_enabled',accounts:0,...zeroCounts};}

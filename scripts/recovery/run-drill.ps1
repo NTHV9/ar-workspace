@@ -118,6 +118,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_external_billing'){$fixtures+='external-billing-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_source_observation_reports'){$fixtures+='source-observation-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_financial_granular_steps'){$fixtures+='financial-granular-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_operations_recovery'){$fixtures+='operations-recovery-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture

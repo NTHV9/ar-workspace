@@ -1,7 +1,9 @@
+import {writesHeld} from './write-hold';
 import {backendRpc} from '../refresh/backend';
 import {enrollRetention,retentionStatus,runRetentionItem} from './retention';
 import {retentionProviders,type RetentionProviderEnv} from './retention-providers';
 export async function sweepRetention(env:RetentionProviderEnv){
+ if(writesHeld(env))return {enabled:false,paused:true};
  if(env.RETENTION_ENABLED!=='true')return {enabled:false};
  const actor=await backendRpc<string|null>(env,'ar_financial_service_actor',{});if(!actor)throw Error('retention_forbidden');
  const counts={checked:0,deleted:0,blocked:0,uncertain:0,errors:0};

@@ -1,3 +1,4 @@
+import {assertWritesEnabled} from '../operations/write-hold';
 import {sweepRetention} from '../operations/retention-sweep';
 import type {DriveEnv} from '../drive/shared';
 import {writeManagedStorage} from '../operations/storage';
@@ -16,6 +17,7 @@ import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './rea
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
+    assertWritesEnabled(this.env);
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
     assertStatementWorkflowPolicy(payload);

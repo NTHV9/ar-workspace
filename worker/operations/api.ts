@@ -1,12 +1,20 @@
+import {writesHeld} from './write-hold';
+import {recoverySentPage} from './recovery';
+import type {EmailEnv} from '../email/shared';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import type {RetentionEnvironment} from './retention';
 import {operationBudgetLimits} from './budget';
 import {reconcileStorageUpload} from './storage';
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
-export async function operationsApi(request:Request,env:RefreshEnv&RetentionEnvironment,actor:string){
+export async function operationsApi(request:Request,env:RefreshEnv&EmailEnv&RetentionEnvironment,actor:string){
  const u=new URL(request.url);
  if(request.method!=='GET'&&request.headers.get('Origin')&&request.headers.get('Origin')!==u.origin)return json({error:'forbidden'},403);
  try{
+  if(u.pathname==='/api/operations/queue'&&request.method==='GET'){
+   const kind=u.searchParams.get('kind')??'all',page=Number(u.searchParams.get('page')??'0');if(!['all','document','email','archive','refresh','financial'].includes(kind)||!Number.isSafeInteger(page)||page<0)throw Error('operations_invalid');
+   const value=await backendRpc<Record<string,unknown>>(env,'ar_operations_queue',{p_actor:actor,p_kind:kind,p_offset:page*50});if(value.error)throw Error(String(value.error));return json({...value,writeHold:writesHeld(env)});
+  }
+  if(u.pathname==='/api/operations/recovery-sent'&&request.method==='GET')return json(await recoverySentPage(env,actor,u));
   if(u.pathname==='/api/operations/retention'&&request.method==='GET'){
    if(env.RETENTION_ENABLED!=='true')return json({enabled:false});
    const page=Number(u.searchParams.get('page')??'0');if(!Number.isSafeInteger(page)||page<0)throw Error('retention_invalid');
@@ -23,5 +31,5 @@ export async function operationsApi(request:Request,env:RefreshEnv&RetentionEnvi
    return json(await reconcileStorageUpload(env,actor,match[1]));
   }
   return json({error:'not_found'},404);
- }catch(e){const code=e instanceof Error&&/^(budget|storage|retention)_[a-z_]+$/.test(e.message)?e.message:'operations_unavailable';return json({error:code},code.endsWith('_forbidden')?403:503);}
+ }catch(e){const code=e instanceof Error&&/^(budget|storage|retention|operations|recovery|gmail)_[a-z_]+$/.test(e.message)?e.message:'operations_unavailable';return json({error:code},code.endsWith('_forbidden')?403:503);}
 }

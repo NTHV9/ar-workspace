@@ -1,5 +1,16 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 11 กันยายน 2026 05:05 ICT: Operations และการกู้คืน
+
+- Storage controls Push/Deployแล้ว: source321e96e53e4cc2b71c3cc554b89d535d7ebe51ca, Worker2be508b2-4532-4b3a-9af2-ccb2861d4913. HealthตรงSHA/database_verified;3Operationsroutesที่ไม่Loginได้401. Cloudflarebrowser18Storage/Drivecasesและอีก1expired-archivecaseผ่าน.
+- เปิดเว็บจริงอ่านStored11.2MiB/DB40.1MiB, DriveยังConnected/Restricted. เปิดStatementเดิมผ่านguardและเห็นPDF1หน้า; Supabaseยืนยันreadreservation1รายการ/221,092bytes. ไม่มีการสร้างเอกสารซ้ำ. Budgetenabledจริง;Retentioncleanupยังdisabledระหว่างทดสอบprovider.
+- LocalSyntheticRestoreฉบับ50migrations/14fixturesผ่าน ใช้pg_dump/pg_restoreจริง เปรียบเทียบcounts/hashesและno-duplicateSENT;serverหยุดแล้ว. ไม่ใช่การrestorebackupจริงของProduction.
+- Implemented Operations & recovery: งานค้างทุกประเภทแบบแบ่งหน้า,เปิดงานเดิม,ตรวจexistingSENTโดยไม่ส่งซ้ำ,metadata-onlypost-backupauditเทียบARdeliverymarkersกับreceiptในDB. Missingreceiptไม่ใช่หลักฐานว่ายังไม่ส่งและไม่สร้างreceiptสมมติ.
+- Implemented writeholdนอกDBสำหรับก่อนrestore: กันnewmutations/cron/Workflow/providerdispatch;ยังอ่านข้อมูลและตรวจexistingSENTได้. ต้องdrainงานที่เริ่มไปแล้วก่อนrestoreตามrunbook. ไม่ได้เปิดholdในProductionหรือทำproductionrestoreเพื่อทดสอบ.
+- Apply20260910220244_ar_operations_recovery (รวม51migrations) หลังตรวจไม่มีfunctionชื่อชน. Local51schema/15fixturesและhostedOperationsrollbackผ่าน. Unitfull758/78filesผ่าน;targeted9/9และLocalbrowser5/5รวม1440/1280/390ผ่าน. กำลังPush/DeployOperations;ผลliveSENTauditยังไม่ได้อ้างว่าผ่าน.
+- Goalยังactive: ตรวจliveOperations,providerretentionproof/enablement,บัญชีทดลองแยก3บิลพร้อมทดสอบครบและลบเฉพาะข้อมูลนั้น,finalacceptance/runbook.
+
+
 ## Checkpoint ระหว่างงาน — 11 กันยายน 2026 04:42 ICT: Storage controls และ Retention
 
 - Source ที่ live ก่อนรอบนี้คือ 40a940e80bad38f399adb5b02bcd26f54d7a1940, Worker ade3e831-89c2-421d-998d-5f86084229aa. แยก financial Workflow concurrency1 จากคิวเอกสาร/current refresh concurrency2. KAT full historyสำเร็จ 5,752 Invoice rows /369 Payments /1,836 application links; TSKก่อนหน้าสำเร็จ1,001/135/265. Payment dateใช้OPERA transactionDate ไม่ใช้วันพบยอดศูนย์.

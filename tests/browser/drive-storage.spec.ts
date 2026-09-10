@@ -102,3 +102,9 @@ test('a verified receipt for a previous destination does not mark the current de
 test('Picker reloads its fixed target after the destination changes',async({page})=>{
  const controls=await setup(page);controls.status.pickerConfigured=true;await mockPicker(page);await page.goto('/?storage=1');await expect(page.getByRole('button',{name:'Choose confirmed folder',exact:true})).toBeEnabled();controls.status.folder!.id='synthetic-revised-folder';controls.status.folder!.revision=2;await page.getByRole('button',{name:'Refresh status',exact:true}).click();await page.getByRole('button',{name:'Choose confirmed folder',exact:true}).click();await page.evaluate(()=>(window as any).__syntheticPicker.pickerCallback({action:'picked',docs:[{id:'synthetic-revised-folder'}]}));await expect.poll(()=>controls.folderWrites.length).toBe(1);expect(controls.folderWrites[0]).toEqual({folderId:'synthetic-revised-folder'});
 });
+
+test('expired archive retains its receipt without offering a broken link or re-upload',async({page})=>{
+ const controls=await setup(page);const old=partialArchive();controls.archive={...old,state:'expired',files:old.files.map(f=>({...f,state:'expired',url:null,error:'storage_file_expired'}))};
+ await page.goto(`/?documentJob=${jobId}`);const region=page.getByRole('region',{name:'Archive reviewed files'});
+ await expect(region.getByRole('button',{name:'Files expired',exact:true})).toBeDisabled();await expect(region.getByText('Completed files were deleted under the retention policy')).toBeVisible();await expect(region.getByRole('link',{name:/Open .* in Drive/})).toHaveCount(0);expect(controls.archiveWrites).toHaveLength(0);
+});

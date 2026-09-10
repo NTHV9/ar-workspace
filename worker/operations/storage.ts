@@ -1,3 +1,4 @@
+import {assertWritesEnabled} from './write-hold';
 import {boundedBody} from '../email/shared';
 import type {RetentionEnvironment} from './retention';
 import {operationBudgetLimits,type BudgetEnvironment} from './budget';
@@ -25,6 +26,7 @@ export async function readManagedStorage(env:StorageBudgetEnv,key:string,ceiling
  return new Response(body,{status:response.status,headers:response.headers});
 }
 export async function writeManagedStorage(env:StorageBudgetEnv,key:string,bytes:Uint8Array,mime:string):Promise<void>{
+ assertWritesEnabled(env);
  path(key);if(bytes.length<1||bytes.length>104857600)throw Error('storage_size_invalid');
  const enabled=env.OPERATIONS_BUDGET_ENABLED==='true';let owner='',id='';const digest=await sha(bytes);
  if(enabled){owner=await actor(env);id=await uploadId(owner,key);const receipt=await rpc<{id:string;proceed:boolean;verified:boolean}>(env,'ar_storage_write_begin',{p_actor:owner,p_id:id,p_key:key,p_bytes:bytes.length,p_sha256:digest,p_mime:mime,p_limits:operationBudgetLimits(env)});

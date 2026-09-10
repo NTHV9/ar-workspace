@@ -1,3 +1,4 @@
+import {assertWritesEnabled} from '../operations/write-hold';
 import {writeManagedStorage} from '../operations/storage';
 import {workspaceStatement} from '../statement/generate';
 import {documentSource} from './source-policy';
@@ -39,6 +40,7 @@ export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,
  await writeManagedStorage(env,path,bytes,type);
 }
 export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowStep){
+ assertWritesEnabled(env);
  const job=await documentJob(env,jobId);if(!job)throw new Error('document_job_missing');
  for(const file of job.files){
   if(!['pending','generating'].includes(file.state))continue;

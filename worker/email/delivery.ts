@@ -1,3 +1,4 @@
+import {assertWritesEnabled} from '../operations/write-hold';
 import {readPolicyForHandoff} from '../collection/policy-api';
 import {isCollectionStageKey} from '../../src/domain/collection-policy';
 import {plainMessage} from '../../src/email/rich-message';
@@ -29,6 +30,7 @@ async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,tok
  try{return await checkDelivery(env,actor,delivery.id);}catch{return {id:delivery.id,state:'awaiting_evidence',recorded:false};}
 }
 export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,revision:number,mode:'send'|'draft',stage:string|null,policyVersion?:number){
+ assertWritesEnabled(env);
  if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return deliveryView(existing);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
@@ -45,6 +47,7 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
 export interface TestSupplementals {draftId:string;revision:number;ids:string[]}
 const testSourceKey=(s?:TestSupplementals)=>JSON.stringify(s?[s.draftId,s.revision,s.ids]:null);
 export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false,replyToDeliveryId?:string){
+ assertWritesEnabled(env);
  if(replyToDeliveryId&&supplementals)throw Error('email_invalid');
  const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));

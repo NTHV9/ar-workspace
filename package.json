@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "pnpm build && wrangler deploy --keep-vars",
     "test:browser": "playwright test"
   },
   "dependencies": {

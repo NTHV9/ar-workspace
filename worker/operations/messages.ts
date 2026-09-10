@@ -1,5 +1,6 @@
 /** Public, sanitized explanations shared by API and UI. No provider details. */
 export const operationMessages:Record<string,string>={
+ operations_write_hold:'New work is paused for recovery review. Saved data remains readable.',
  storage_file_expired:'This working file was deleted after the completed-work retention period. Its billing and sending history is retained.',
  storage_upload_uncertain:'The upload result is unconfirmed. Check the file in Storage before starting another upload.',
  storage_object_changed:'The stored file differs from its original receipt and needs review.',

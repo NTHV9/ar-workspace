@@ -6,6 +6,7 @@ export interface BudgetMeasurement {observedAt:{storedBytes:string|null;egressBy
 export interface BudgetLimits extends BudgetBytes {safetyPercent:number;maxConcurrent:number;measurementMaxAgeSeconds:number}
 export interface BudgetReservation {id:string;resource:string;state:'reserved'|'started'|'finished'|'released';reserved:BudgetBytes;actual:BudgetBytes|null;overrun:boolean}
 export interface BudgetEnvironment {
+ OPERATIONS_WRITE_HOLD?:string;
  SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;OPERATIONS_BUDGET_ENABLED?:string;
  OPS_BUDGET_STORED_BYTES?:string;OPS_BUDGET_EGRESS_BYTES?:string;OPS_BUDGET_DATABASE_BYTES?:string;
  OPS_BUDGET_SAFETY_PERCENT?:string;OPS_BUDGET_MAX_CONCURRENT?:string;OPS_BUDGET_MEASUREMENT_SECONDS?:string;

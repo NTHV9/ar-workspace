@@ -1,3 +1,4 @@
+import {assertWritesEnabled} from '../operations/write-hold';
 import {readManagedStorage} from '../operations/storage';
 import {emailRpc,boundedBody,googleJson,type EmailEnv,type EmailDraft} from './shared';
 import {gmailToken} from './oauth';
@@ -18,6 +19,7 @@ export async function readMailFile(env:EmailEnv,draft:EmailDraft,file:{name:stri
  return {name:file.name,mime:file.mime??'application/pdf',bytes};
 }
 export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revision:number){
+ assertWritesEnabled(env);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:owner,p_id:id});
  if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  const existing=await emailRpc<Attempt|null>(env,'ar_gmail_attempt_get',{p_owner:owner,p_draft:id,p_revision:revision});

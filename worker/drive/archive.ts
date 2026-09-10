@@ -1,3 +1,4 @@
+import {assertWritesEnabled} from '../operations/write-hold';
 import {readManagedStorage} from '../operations/storage';
 import {hash,seal,unseal} from '../email/crypto';
 import {driveRpc,safeError,type Archive,type DriveEnv,type DriveFile} from './shared';
@@ -32,6 +33,7 @@ async function finishVerified(env:DriveEnv,token:string,a:Archive,f:DriveFile){
  }else await mutate(env,a,f,'verified',{url});
 }
 export async function runArchive(env:DriveEnv,token:string,a:Archive){
+ assertWritesEnabled(env);
  // One explicit command can be continued using its durable receipt. Bound each Worker request.
  let attempted=0;
  for(const current of a.files){
@@ -48,7 +50,7 @@ export async function runArchive(env:DriveEnv,token:string,a:Archive){
    if(session){const position=await uploadPosition(token,session,f.byte_count);if(position.complete){await finishVerified(env,token,a,f);continue;}offset=position.offset;if(position.expired){session=null;await mutate(env,a,f,'session',null);}}
    if(!session){session=await beginUpload(token,a,f);if(!session){await finishVerified(env,token,a,f);continue;}await mutate(env,a,f,'session',await seal(env.GMAIL_TOKEN_KEY!,`drive-upload:${a.id}:${f.ordinal}`,{url:session}));}
    const bytes=await source(env,a,f,offset);await uploadStream(token,session,bytes,offset,f.byte_count);await finishVerified(env,token,a,f);
-  }catch(error){try{await mutate(env,a,f,'error',{error:safeError(error)});}catch{/* The claimed immutable ID remains authoritative even if database persistence failed. */}}
+  }catch(error){try{await mutate(env,a,f,'error',{error:/^(budget|storage)_/.test(safeError(error))?'drive_budget_or_file_unavailable':safeError(error)});}catch{/* The claimed immutable ID remains authoritative even if database persistence failed. */}}
  }
  return driveRpc<Archive>(env,'ar_drive_archive_read',{p_owner:a.owner,p_archive:a.id});
 }
