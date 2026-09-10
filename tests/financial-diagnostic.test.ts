@@ -46,7 +46,7 @@ it('distinguishes mapping currency failure without printing the source currency 
 it('corroborates slim mapping transaction IDs through independent scoped payment detail without accepting them yet',async()=>{
  const calls=setup({mappingRaw:{details:[{transactionNo:Number(paymentId),originalAmount:money('-1000.00'),appliedAmount:money('1000.00'),postingDate:'2026-09-10'}]}});
  const result=await runFinancialDiagnostic(env,'KAT');expect(result.samples[0].mapping).toMatchObject({status:'unavailable',parseStage:'financial_hotel_scope',corroboration:{sampled:1,candidateIds:1,idsInWindow:1,paymentDetailsFound:1,originalAmountMatches:1,originalAbsolutePaymentMatches:1,originalInvoiceAmountMatches:0,appliedWithinPaymentAmount:1,appliedWithinInvoiceOriginal:1,paymentNegative:1,appliedPositive:1,postingDateMatches:1,paymentTransactionDateMatches:1,sourceInvoiceConfirmed:true,acceptedAsMapping:false,errors:0}});
- expect(calls.filter(c=>c.url.pathname.includes('/transactions/'+paymentId+'/invoicePaymentDetails'))).toHaveLength(1);expect(JSON.stringify(result)).not.toMatch(/987654321|123456789|1000.00|PRIVATE/);
+ expect(calls.filter(c=>c.url.pathname.includes('/transactions/'+paymentId+'/invoicePaymentDetails'))).toHaveLength(2);expect(JSON.stringify(result)).not.toMatch(/987654321|123456789|1000.00|PRIVATE/);
 });
 it('does not infer payment identity or normalize away mismatching original amounts/dates',async()=>{
  setup({mappingRaw:{details:[{transactionNo:Number(paymentId),originalAmount:money('1000.00'),appliedAmount:money('1000.00'),postingDate:'2026-09-09'}]}});

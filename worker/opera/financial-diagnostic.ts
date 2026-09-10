@@ -1,4 +1,5 @@
 import {OperaError,type OperaErrorCode,type OperaReader} from './client';
+import {readCorroboratedApplications} from './applied-payments';
 import {makeReader} from './probe';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {readBusinessDate} from '../refresh/read-snapshot';
@@ -12,7 +13,7 @@ type DateField='transactionDate'|'postingDate'|'revenueDate'|'transferDate'|'clo
 type DateFields=Record<DateField,DateCount>;
 interface FieldShape {type:'null'|'array'|'object'|'string'|'number'|'boolean'|'undefined';count?:number;sample?:FieldShape;fields?:Record<string,FieldShape>}
 interface MappingCorroboration {sampled:number;candidateIds:number;idsInWindow:number;paymentDetailsFound:number;originalAmountMatches:number;originalAbsolutePaymentMatches:number;originalInvoiceAmountMatches:number;appliedWithinPaymentAmount:number;appliedWithinInvoiceOriginal:number;paymentNegative:number;appliedPositive:number;postingDateMatches:number;paymentTransactionDateMatches:number;sourceInvoiceConfirmed:boolean;acceptedAsMapping:false;errors:number}
-interface MappingCheck {status:'no_candidate'|'read'|'unavailable';links:number|null;knownAmounts:number|null;paymentLinksSeenInWindow:number|null;invoiceDatesPresent:number|null;applicationDatesPresent:0;complete:false;error?:DiagnosticError;shape?:FieldShape;identityChecks?:{sampled:number;hotelMatches:number;invoiceTransactionMatches:number;paymentIdentityPresent:number};parseStage?:string|null;corroboration?:MappingCorroboration}
+interface MappingCheck {status:'no_candidate'|'read'|'unavailable';links:number|null;knownAmounts:number|null;paymentLinksSeenInWindow:number|null;invoiceDatesPresent:number|null;applicationDatesPresent:0;complete:false;error?:DiagnosticError;shape?:FieldShape;identityChecks?:{sampled:number;hotelMatches:number;invoiceTransactionMatches:number;paymentIdentityPresent:number};parseStage?:string|null;corroboration?:MappingCorroboration;verifiedMapping?:{status:'verified'|'unavailable';links:number|null;invoiceTotalsReconciled:boolean;contract:string|null;failureStage:string|null}}
 export interface FinancialDiagnosticSample {
  sample:number;status:'checked'|'unavailable';sameMembership:boolean|null;sameValues:boolean|null;
  invoices:number|null;payments:number|null;pages20:number|null;pages10:number|null;zeroInvoices:number|null;openingBalances:number|null;
@@ -126,6 +127,7 @@ export async function runFinancialDiagnostic(env:RefreshEnv,hotel:FinancialHotel
      const query={...scope,invoiceTransactionId:candidate.invoiceTransactionId,...(candidate.invoiceNo===null?{}:{invoiceNo:candidate.invoiceNo})};
      const raw=await reader.appliedInvoicePayments(query);entry.mapping.shape=fieldShape(raw);entry.mapping.identityChecks=mappingIdentityChecks(raw,hotel,candidate.invoiceTransactionId);
      entry.mapping.corroboration=await corroborateSlimMapping(reader,raw,scope,twenty.payments,sourceInvoice,readOptions);
+     try{const verified=await readCorroboratedApplications(reader,query,readOptions,raw);entry.mapping.verifiedMapping={status:'verified',links:verified.links.length,invoiceTotalsReconciled:true,contract:verified.coverage.contract,failureStage:null};}catch(e){const failed=e instanceof OperaError&&/^financial_[a-z_]+$/.test(e.stage??'')?e.stage!:null;entry.mapping.verifiedMapping={status:'unavailable',links:null,invoiceTotalsReconciled:false,contract:null,failureStage:failed};}
      const mapping=parseAppliedPaymentMapping(raw,query,readOptions),paymentIds=new Set(twenty.payments.map(p=>p.transactionId));
      entry.mapping={...entry.mapping,status:'read',links:mapping.links.length,knownAmounts:mapping.links.filter(l=>l.appliedAmount!==null).length,paymentLinksSeenInWindow:mapping.links.filter(l=>paymentIds.has(l.paymentTransactionId)).length,invoiceDatesPresent:mapping.links.filter(l=>l.invoiceTransactionDate!==null).length,applicationDatesPresent:0,complete:false,parseStage:null};
     }catch(e){entry.mapping={...entry.mapping,status:'unavailable',error:error('mapping',e),parseStage:e instanceof OperaError&&e.stage&&parserStages.has(e.stage)?e.stage:null};}
