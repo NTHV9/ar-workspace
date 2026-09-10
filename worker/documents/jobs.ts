@@ -9,29 +9,31 @@ import {OperaError} from '../opera/client';
 import {getNativeInvoicePdf,type DocumentInvoice} from './native-invoice';
 export interface DocumentFile {id:string;kind:'statement'|'invoice';invoice_id:string|null;ordinal:number;state:string;storage_key:string|null;error_code:string|null;byte_count:number|null;sha256:string|null}
 export interface DocumentExport {name:string;storage_key:string;byte_count:number;sha256:string}
-export interface DocumentJob {statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
+export interface DocumentJob {execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
 export interface DocumentCreateInput {statementSource?:string;commandKey:string;hotel:string;accountId:string;ids:string[];content:string;layout:string;purpose:string}
 export const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export async function documentJob(env:RefreshEnv,id:string){return backendRpc<DocumentJob|null>(env,'ar_document_get',{p_job_id:id});}
+export function documentWorkflow(env:RefreshEnv,job:DocumentJob){if(job.execution_queue==='documents')return env.AR_DOCUMENTS;if(job.execution_queue===undefined||job.execution_queue==='refresh')return env.AR_REFRESH;throw Error('document_execution_queue_invalid');}
 export async function reconcileDocumentStatus(env:RefreshEnv,job:DocumentJob){
- if(!env.AR_REFRESH||!job.files.some(f=>['pending','generating'].includes(f.state)))return job;
- let status:string|undefined;try{status=(await(await env.AR_REFRESH.get(job.id)).status()).status;}catch{return job;}
+ const workflow=documentWorkflow(env,job);if(!workflow||!job.files.some(f=>['pending','generating'].includes(f.state)))return job;
+ let status:string|undefined;try{status=(await(await workflow.get(job.id)).status()).status;}catch{return job;}
  if(!['complete','errored','terminated'].includes(status??''))return job;
  const current=await documentJob(env,job.id);if(!current)return job;
  for(const file of current.files.filter(f=>['pending','generating'].includes(f.state)))await backendRpc(env,'ar_document_fail_file',{p_job_id:job.id,p_file_id:file.id,p_code:'document_workflow_interrupted',p_uncertain:file.state==='generating'});
  return (await documentJob(env,job.id))??job;
 }
 export async function dispatchDocumentJob(env:RefreshEnv,job:DocumentJob){
- if(!env.AR_REFRESH)throw new Error('document_dispatch_unavailable');
+ if(!job.files.some(f=>['pending','generating'].includes(f.state)))return job;
+ const workflow=documentWorkflow(env,job);if(!workflow)throw new Error('document_dispatch_unavailable');
  if(job.files.some(f=>['pending','generating'].includes(f.state))){
-  try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:job.hotel,documentJob:true}});}
-  catch{try{await(await env.AR_REFRESH.get(job.id)).status();}catch{throw new Error('document_dispatch_unavailable');}}
+  try{await workflow.create({id:job.id,params:{runId:job.id,hotel:job.hotel,documentJob:true}});}
+  catch{try{await(await workflow.get(job.id)).status();}catch{throw new Error('document_dispatch_unavailable');}}
  }
  return reconcileDocumentStatus(env,job);
 }
 export async function createDocumentJob(env:RefreshEnv,owner:string,input:DocumentCreateInput){
  const source=documentSource(input);
- const job=await backendRpc<DocumentJob>(env,'ar_document_create_v2',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
+ const job=await backendRpc<DocumentJob>(env,'ar_document_create_v3',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
  return dispatchDocumentJob(env,job);
 }
 export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,type:string){

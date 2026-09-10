@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 11 กันยายน 2026 06:04 ICT: SENT audit และคิว PDF เฉพาะ
+
+- Operations source838acca555e75c208d666abc0e9a6cb18affc34b DeployบนWorker1f89a280-dbe2-42d2-bc9b-10e1024582ac และผ่านCloudflarebrowser5cases. แก้auditเพิ่มprovider-ID matchingและSENTที่ยังอยู่ในTrashในsource225f8aba7049d710e744d34d8ee52a4a5b582f8f, Worker c9887cee-9980-4501-bda1-648f2a761ab5. HealthตรงSHAและdatabase_verified.
+- ตรวจGmailจริง (แยกจากข้อมูลวันรับเงินOPERA): ช่วง10กันยายนถึงเวลาตรวจ11กันยายน อ่านครบ33SENTmessages พบ5ARmatches ทั้ง5เป็นReceipt recordedตรงกับ5รายการที่DBยืนยันไว้. ไม่มีการส่งอีเมลหรือแก้กล่องจดหมายในaudit. ข้อความที่หายทั้งreceipt/markerยังต้องตรวจMailboxด้วยคน ไม่ถือว่ายังไม่ส่ง.
+- Apply20260910223712_ar_recovery_provider_identity และhostedrollbackผ่าน. Read-onlyauditใช้ข้อมูลกำกับข้อความ ไม่มีการอ่านbody/attachmentของข้อความที่ไม่เกี่ยวข้อง. หน้ารายงานรักษาpaginationและไม่ใช้ผลpartialอ้างว่าอ่านครบ.
+- พบCurrent OPERA refreshสองโรงแรมยังใช้คิวเดียวกับPDF. เพิ่มคิวar-workspace-documentsภายในWorkerเดิม (concurrency2) แยกจากrefresh2/financial1. Apply20260910230220_ar_document_queue_isolationแล้ว (รวม53migrations): คิวของjobกำหนดครั้งเดียวตอนINSERT; replay/activejoinของงานเดิมคงrefreshqueue ไม่ย้ายแล้วพิมพ์ซ้ำ. NewV3RPCใช้documentsqueue;oldV2ยังใช้refreshระหว่างrollingdeploymentได้อย่างปลอดภัย.
+- Hostedqueuefixtureผ่าน new/replay/old-active-join/immutable-location/permissions. Sourcecodequeueใหม่กำลังPush/Deploy;ยังไม่อ้างว่าทดสอบเวลารันจริงผ่านแล้ว. ไม่มีWorkerใหม่/backendซ้ำหรือpaidaddon.
+- บัญชีทดลอง3บิล: แผนแยกnamespaceอยู่ในISOLATED_ACCEPTANCE_PLAN. Blueprintและgatewayผ่านlocal53/54schema replay รวมกรณีInvoice triggerไม่แตะตารางธุรกิจจริง;ยังไม่ได้สร้างnamespaceนี้บนSupabaseหรือส่งอีเมลของscenario. Goalยังactiveจนจบscenario,retentionproviderproof/enablementและfinalacceptance.
+
+
 ## Checkpoint ระหว่างงาน — 11 กันยายน 2026 05:05 ICT: Operations และการกู้คืน
 
 - Storage controls Push/Deployแล้ว: source321e96e53e4cc2b71c3cc554b89d535d7ebe51ca, Worker2be508b2-4532-4b3a-9af2-ccb2861d4913. HealthตรงSHA/database_verified;3Operationsroutesที่ไม่Loginได้401. Cloudflarebrowser18Storage/Drivecasesและอีก1expired-archivecaseผ่าน.

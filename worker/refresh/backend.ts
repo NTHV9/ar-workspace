@@ -7,6 +7,7 @@ export interface RefreshParams { financialHistory?:boolean; actorId?:string; ref
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
+  AR_DOCUMENTS?:RefreshEnv['AR_REFRESH'];
   OPERA_REFRESH_ENABLED?:string;
   REFRESH_STALE_MINUTES?:string;
   DOC_UPLOAD_MAX_BYTES?:string;
