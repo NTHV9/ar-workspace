@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026 23:04 ICT: Policy บน Cloudflare และหลักฐาน Payment
+
+- Source **e4f56a85fd397bbf3a59680670f1917c86b4e0f8** Push branch `codex/opera-refresh` และDeployผ่านWranglerจริงบนWorkerเดิม. Worker version **4864f885-3c83-4f55-a916-52408020acab**, Workflow **1e3b0361-c2bf-40eb-a097-8031b0ac47bf**. HealthSHA/Supabaseตรง; anonymousthread/remittance19routesยัง401. ไม่เปลี่ยนSecrets/Cron/บัญชีปลายทาง.
+- Cloudflare browser26กรณีผ่าน รวมPolicy1440/1280/390, Queue, Composer, Reports และGooglePicker origin-only referrer. Browserจริงเปิด `?collectionPolicy=1` อ่านversion1/offsets-7,+1,+7,+7,+7จากSupabaseได้ ไม่Publishกฎสมมติลงข้อมูลจริง. รายละเอียด COLLECTION_POLICY_VERIFICATION.
+- Financial corroboration แบบอ่านจริง: รหัสtransactionในคำตอบapplied-paymentแบบslimตรงกับPayment detailที่อ่านแยกในHotel/Accountเดิม และวันที่ตรง. OriginalAmountยังไม่ตรง signed Payment amount จึงยังไม่ยอมรับเป็นmapping/เปิดingestion. กำลังเพิ่มเฉพาะการเทียบsign/magnitude/Invoice amountแบบcounter ไม่ส่งยอดหรือIDจริงออกlog.
+- พบและแก้การพิมพ์ค่ารอบติดลบในlocalUI (เช่น-14) ที่เดิมเครื่องหมายลบหาย; regressionใหม่ผ่าน. การแก้ย่อยนี้กับdiagnosticถัดไปยังรอPush/Deployรอบต่อไป. Goalยังactive;งานส่วนที่เหลือไม่ได้ถูกตัดออกจากขอบเขต.
+
 ## Checkpoint ระหว่างงาน — 10 กันยายน 2026 22:54 ICT: กฎรอบทวงและความถูกต้องของประวัติ
 
 - Implemented/local browser tested: Collection rules แบบเพิ่ม/เลื่อน/retire/เปลี่ยนวันและชื่อรอบ พร้อม Preview/CAS/command replay; Queue/Composer/Templates/History ใช้policyเดียวกัน. Message claim เก็บpolicyVersionและstage snapshot; รอบTerminalที่ส่งแล้วคงUrgentแม้เปลี่ยนpolicyภายหลัง. ยังไม่สร้างpolicyจริงใหม่เพื่อทดสอบกับบัญชีลูกค้า.

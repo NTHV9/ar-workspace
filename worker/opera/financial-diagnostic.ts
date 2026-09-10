@@ -11,7 +11,7 @@ interface DateCount {present:number;withinWindow:number}
 type DateField='transactionDate'|'postingDate'|'revenueDate'|'transferDate'|'closeDate';
 type DateFields=Record<DateField,DateCount>;
 interface FieldShape {type:'null'|'array'|'object'|'string'|'number'|'boolean'|'undefined';count?:number;sample?:FieldShape;fields?:Record<string,FieldShape>}
-interface MappingCorroboration {sampled:number;candidateIds:number;idsInWindow:number;paymentDetailsFound:number;originalAmountMatches:number;postingDateMatches:number;paymentTransactionDateMatches:number;sourceInvoiceConfirmed:boolean;acceptedAsMapping:false;errors:number}
+interface MappingCorroboration {sampled:number;candidateIds:number;idsInWindow:number;paymentDetailsFound:number;originalAmountMatches:number;originalAbsolutePaymentMatches:number;originalInvoiceAmountMatches:number;appliedWithinPaymentAmount:number;appliedWithinInvoiceOriginal:number;paymentNegative:number;appliedPositive:number;postingDateMatches:number;paymentTransactionDateMatches:number;sourceInvoiceConfirmed:boolean;acceptedAsMapping:false;errors:number}
 interface MappingCheck {status:'no_candidate'|'read'|'unavailable';links:number|null;knownAmounts:number|null;paymentLinksSeenInWindow:number|null;invoiceDatesPresent:number|null;applicationDatesPresent:0;complete:false;error?:DiagnosticError;shape?:FieldShape;identityChecks?:{sampled:number;hotelMatches:number;invoiceTransactionMatches:number;paymentIdentityPresent:number};parseStage?:string|null;corroboration?:MappingCorroboration}
 export interface FinancialDiagnosticSample {
  sample:number;status:'checked'|'unavailable';sameMembership:boolean|null;sameValues:boolean|null;
@@ -52,11 +52,11 @@ function mappingIdentityChecks(value:unknown,hotel:string,invoiceId:string){
  return {sampled:records.length,hotelMatches:records.filter(row=>row.hotelId===hotel).length,invoiceTransactionMatches:records.filter(row=>String(row.transactionNo)===invoiceId).length,paymentIdentityPresent:records.filter(row=>row.paymentTrxNo!==undefined&&row.paymentTrxNo!==null).length};
 }
 const parserStages=new Set(['financial_shape','financial_details','financial_hotel_scope','financial_account_scope','financial_mapping_identity','financial_transaction_identity','financial_identifier','financial_text','financial_currency','financial_amount','financial_amount_precision','financial_date','financial_upstream_error','financial_upstream_warning','financial_history_row_budget']);
-async function corroborateSlimMapping(reader:OperaReader,value:unknown,scope:{hotel:FinancialHotel;accountId:string},payments:FinancialPayment[],invoiceConfirmed:boolean,options:FinancialReadOptions):Promise<MappingCorroboration|undefined>{
+async function corroborateSlimMapping(reader:OperaReader,value:unknown,scope:{hotel:FinancialHotel;accountId:string},payments:FinancialPayment[],sourceInvoice:FinancialInvoice|null,options:FinancialReadOptions):Promise<MappingCorroboration|undefined>{
  const details=value&&typeof value==='object'&&'details'in value&&Array.isArray(value.details)?value.details:[];
  const candidates=details.filter(row=>row&&typeof row==='object'&&!Object.hasOwn(row,'paymentTrxNo')&&Object.hasOwn(row,'transactionNo')).slice(0,3) as Record<string,unknown>[];
  if(!candidates.length)return undefined;
- const result:MappingCorroboration={sampled:candidates.length,candidateIds:0,idsInWindow:0,paymentDetailsFound:0,originalAmountMatches:0,postingDateMatches:0,paymentTransactionDateMatches:0,sourceInvoiceConfirmed:invoiceConfirmed,acceptedAsMapping:false,errors:0};
+ const result:MappingCorroboration={sampled:candidates.length,candidateIds:0,idsInWindow:0,paymentDetailsFound:0,originalAmountMatches:0,originalAbsolutePaymentMatches:0,originalInvoiceAmountMatches:0,appliedWithinPaymentAmount:0,appliedWithinInvoiceOriginal:0,paymentNegative:0,appliedPositive:0,postingDateMatches:0,paymentTransactionDateMatches:0,sourceInvoiceConfirmed:sourceInvoice!==null,acceptedAsMapping:false,errors:0};
  const windowIds=new Set(payments.map(payment=>payment.transactionId));
  for(const row of candidates){
   const rawId=row.transactionNo;
@@ -65,7 +65,14 @@ async function corroborateSlimMapping(reader:OperaReader,value:unknown,scope:{ho
   try{
    const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'payment',transactionId:id},options);
    if(detail.status!=='found'||detail.transaction?.kind!=='payment')continue;result.paymentDetailsFound++;
-   const original=parseFinancialMoney(row.originalAmount),payment=detail.transaction;
+   const original=parseFinancialMoney(row.originalAmount),applied=parseFinancialMoney(row.appliedAmount),payment=detail.transaction;
+   const magnitude=(value:string)=>BigInt(value.replace('-','').replace('.',''));
+   if(payment.amount?.startsWith('-'))result.paymentNegative++;
+   if(applied!==null&&!applied.startsWith('-')&&magnitude(applied)>0n)result.appliedPositive++;
+   if(original!==null&&payment.amount!==null&&magnitude(original)===magnitude(payment.amount))result.originalAbsolutePaymentMatches++;
+   if(original!==null&&sourceInvoice?.originalAmount!==null&&sourceInvoice?.originalAmount!==undefined&&original===sourceInvoice.originalAmount)result.originalInvoiceAmountMatches++;
+   if(applied!==null&&payment.amount!==null&&magnitude(applied)<=magnitude(payment.amount))result.appliedWithinPaymentAmount++;
+   if(applied!==null&&sourceInvoice?.originalAmount!==null&&sourceInvoice?.originalAmount!==undefined&&magnitude(applied)<=magnitude(sourceInvoice.originalAmount))result.appliedWithinInvoiceOriginal++;
    if(original!==null&&payment.amount!==null&&original===payment.amount)result.originalAmountMatches++;
    if(typeof row.postingDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(row.postingDate)){
     if(payment.postingDate!==null&&row.postingDate===payment.postingDate)result.postingDateMatches++;
@@ -114,11 +121,11 @@ export async function runFinancialDiagnostic(env:RefreshEnv,hotel:FinancialHotel
    }
    entry.adjacentDays.transactionDatesMatch=dateMatches;entry.adjacentDays.membershipMatchesWindow=membershipMatches;
    if(candidate.invoiceTransactionId!==null){
-    stage='detail';try{const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:candidate.invoiceTransactionId},readOptions);entry.detail={status:detail.status};}catch(e){entry.detail={status:'unavailable',error:error('detail',e)};}
+    stage='detail';let sourceInvoice:FinancialInvoice|null=null;try{const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:candidate.invoiceTransactionId},readOptions);entry.detail={status:detail.status};if(detail.transaction?.kind==='invoice')sourceInvoice=detail.transaction;}catch(e){entry.detail={status:'unavailable',error:error('detail',e)};}
     stage='mapping';try{
      const query={...scope,invoiceTransactionId:candidate.invoiceTransactionId,...(candidate.invoiceNo===null?{}:{invoiceNo:candidate.invoiceNo})};
      const raw=await reader.appliedInvoicePayments(query);entry.mapping.shape=fieldShape(raw);entry.mapping.identityChecks=mappingIdentityChecks(raw,hotel,candidate.invoiceTransactionId);
-     entry.mapping.corroboration=await corroborateSlimMapping(reader,raw,scope,twenty.payments,entry.detail.status==='found',readOptions);
+     entry.mapping.corroboration=await corroborateSlimMapping(reader,raw,scope,twenty.payments,sourceInvoice,readOptions);
      const mapping=parseAppliedPaymentMapping(raw,query,readOptions),paymentIds=new Set(twenty.payments.map(p=>p.transactionId));
      entry.mapping={...entry.mapping,status:'read',links:mapping.links.length,knownAmounts:mapping.links.filter(l=>l.appliedAmount!==null).length,paymentLinksSeenInWindow:mapping.links.filter(l=>paymentIds.has(l.paymentTransactionId)).length,invoiceDatesPresent:mapping.links.filter(l=>l.invoiceTransactionDate!==null).length,applicationDatesPresent:0,complete:false,parseStage:null};
     }catch(e){entry.mapping={...entry.mapping,status:'unavailable',error:error('mapping',e),parseStage:e instanceof OperaError&&e.stage&&parserStages.has(e.stage)?e.stage:null};}

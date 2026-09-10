@@ -1,6 +1,8 @@
 # Configurable collection policy verification
 
-Status: implemented; local/browser and hosted SQL verification passed. Worker/frontend deployment is pending at this record. The all-work Goal remains active.
+Status: pushed, deployed and tested on Cloudflare. The all-work Goal remains active.
+
+Source `e4f56a85fd397bbf3a59680670f1917c86b4e0f8`, deployed through Wrangler to the existing `ar-workspace`. Worker version `4864f885-3c83-4f55-a916-52408020acab`; Workflow version `1e3b0361-c2bf-40eb-a097-8031b0ac47bf`. Health matches source and Supabase. Final Cloudflare browser run:26/26 passed, including Picker referrer and current/history report regressions. Existing anonymous thread/remittance boundaries19/19 remained401. Actual authenticated Browser → Worker → Supabase displayed policy version1 with the approved offsets; no policy publication was performed against real data.
 
 ## Behavior and integration
 
