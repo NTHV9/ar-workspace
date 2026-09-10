@@ -29,6 +29,7 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
  if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return deliveryView(existing);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
+ if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  parseRecipients(draft.recipients);if(mode==='send'&&(!draft.recipients.to.length||!draft.subject.trim()||!draft.body.trim()))throw Error('email_incomplete');
  if(draft.purpose==='collection'&&!['Friendly','Follow 1','Follow 2','Follow 3','Final'].includes(stage??''))throw Error('email_stage_required');
  if(draft.purpose==='billing')stage=null;

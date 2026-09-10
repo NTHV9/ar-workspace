@@ -37,6 +37,7 @@ export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revis
 }
 
 export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,messageId:string){
+ if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');
  const job=await documentJob(env,draft.document_job_id);if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
  const reader=makeReader(env,job.hotel),businessDate=await readBusinessDate(reader,job.hotel);
