@@ -1,15 +1,11 @@
+import {runFinancialDiagnostic} from '../opera/financial-diagnostic';
 import {runMailReconcile} from '../email/reconcile';
 import type {ReconcileEnv} from '../email/reconcile';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 import { makeReader,probeOpera } from '../opera/probe';
 import { OperaError } from '../opera/client';
-import {probeSelectedStatement} from '../opera/selected-statement';
-import {auditCombinedStatement} from '../documents/combined-statement-audit';
-import {auditStatementHistory} from '../documents/statement-history-audit';
-import {auditPrintedVisibility} from '../documents/printed-visibility-audit';
-import {runStatementPostTrial} from '../documents/statement-post-trial';
+import {assertStatementWorkflowPolicy} from '../documents/source-policy';
 import {runDocumentJob} from '../documents/jobs';
-import {discoverStatementReport} from '../opera/report-discovery';
 import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
@@ -18,15 +14,11 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
     const {runId,hotel,accountId}=payload as RefreshParams;
+    assertStatementWorkflowPolicy(payload);
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(this.env,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
-    if(payload.combinedStatementAudit)return step.do('combined-statement-get',{retries:{limit:0,delay:'5 seconds'},timeout:'4 minutes'},()=>auditCombinedStatement(this.env,runId));
-    if(payload.statementHistoryAudit)return step.do('statement-history-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'4 minutes'},()=>auditStatementHistory(this.env,runId,payload.observedBatch));
-    if(payload.printedVisibilityAudit)return step.do('printed-visibility-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'8 minutes'},()=>auditPrintedVisibility(this.env,runId));
-    if(payload.statementPostTrial)return step.do('statement-post-trial',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},()=>runStatementPostTrial(this.env,runId));
+    if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(this.env,hotel as 'KAT'|'TSK'));
     if(payload.documentJob)return runDocumentJob(this.env,runId,step);
-    if(payload.reportDiscovery){if(!accountId)throw new Error('account_required');return step.do('statement-report-metadata',{retries:{limit:0,delay:'5 seconds'}},async()=>JSON.stringify(await discoverStatementReport(this.env,hotel,accountId)));}
-    if(payload.statementProbe){if(!accountId)throw new Error('account_required');return step.do('selected-statement',{retries:{limit:0,delay:'5 seconds'}},()=>probeSelectedStatement(makeReader(this.env,hotel),hotel,accountId));}
     if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(this.env,hotel,accountId,async(bytes,expected)=>{
       if(!this.env.SUPABASE_URL||!this.env.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
       for(const [extension,body,type]of [['pdf',new Uint8Array(bytes).buffer,'application/pdf'],['json',JSON.stringify(expected),'application/json']] as const){

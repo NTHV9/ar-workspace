@@ -25,3 +25,20 @@ for(const width of [1440,1280])test(`settings ${width}: blank defaults, zero ter
  await page.screenshot({path:`evidence/account-settings-${width}.png`,fullPage:true});
 });
 test('settings conflict retains unsaved values',async({page})=>{await setup(page,true);await page.goto('/?account=example&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();await page.getByLabel('Credit term (calendar days)').fill('30');await page.getByRole('button',{name:'Save account settings',exact:true}).click();await expect(page.getByRole('alert')).toContainText('changed in another session');await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('30');});
+
+test('unsaved account settings survive background reload and same-user token renewal',async({page})=>{
+ await setup(page);await page.goto('/?account=example&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();
+ await page.getByLabel('Credit term (calendar days)').fill('45');
+ await page.getByRole('button',{name:'Reload saved data',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Reload saved data',exact:true})).toBeEnabled();
+ await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('45');
+ await page.evaluate(u=>{const next={access_token:'synthetic-new-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:u};localStorage.setItem('sb-example-auth-token',JSON.stringify(next));const channel=new BroadcastChannel('sb-example-auth-token');channel.postMessage({event:'TOKEN_REFRESHED',session:next});channel.close();},user);
+ await expect(page.getByRole('button',{name:'Reload saved data',exact:true})).toBeEnabled();await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('45');
+});
+test('unsaved account settings require explicit discard before tab or app navigation',async({page})=>{
+ await setup(page);await page.goto('/?account=example&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();await page.getByLabel('Credit term (calendar days)').fill('45');
+ let prompts=0;page.on('dialog',async dialog=>{prompts++;await dialog.dismiss();});
+ await page.getByRole('button',{name:'Collection History',exact:true}).click();await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('45');
+ await page.getByRole('button',{name:'Collections',exact:true}).click();await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('45');expect(prompts).toBe(2);
+ page.removeAllListeners('dialog');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Collection History',exact:true}).click();await expect(page.getByRole('heading',{name:'Collection History',exact:true})).toBeVisible();
+});

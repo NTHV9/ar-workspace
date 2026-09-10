@@ -102,6 +102,28 @@ function preview(conversation:Conversation,offset:number,historyId?:string):Thre
  return {thread:conversation.thread,messages:conversation.messages.slice(offset,offset+50).map(({id,date,from,to,subject,snippet,direction,matchesReply})=>({id,date,from,to,subject,snippet,direction,matchesReply})),nextMessageOffset:offset+50<conversation.messages.length?offset+50:null,checkedAt:new Date().toISOString(),historyId:conversation.historyId};
 }
 export async function previewThread(env:EmailEnv,actor:string,id:string,revision:number,threadId:string,offset=0,historyId?:string){const d=await accessibleDraft(env,actor,id,revision);return preview(await readConversation(await tokenForRead(env,actor),threadId,d.recipients,d.thread?.rfcMessageId),offset,historyId);}
+export interface SavedDraftScope {hotel:'KAT'|'TSK';accountId:string;draftId:string}
+/** Historical inspection does not grant permission to edit, select a thread, or send. */
+export async function savedDraftForReview(env:EmailEnv,actor:string,scope:SavedDraftScope):Promise<EmailDraft> {
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+ if(!uuid.test(actor))throw Error('email_forbidden');
+ if(!uuid.test(scope.draftId)||!['KAT','TSK'].includes(scope.hotel)||typeof scope.accountId!=='string'||!scope.accountId.trim()||scope.accountId.length>200||/[\x00-\x1f\x7f]/.test(scope.accountId))throw Error('email_invalid');
+ const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:scope.draftId});if(!draft)throw Error('email_missing');
+ if(draft.owner!==actor||draft.id!==scope.draftId||draft.hotel!==scope.hotel||draft.account_id!==scope.accountId)throw Error('email_forbidden');
+ if(!uuid.test(draft.document_job_id)||!Number.isSafeInteger(draft.revision)||draft.revision<0||!Number.isSafeInteger(draft.document_revision)||draft.document_revision<0||typeof draft.package_changed!=='boolean'||typeof draft.subject!=='string'||typeof draft.body!=='string'||!['billing','collection'].includes(draft.purpose))throw Error('email_invalid');
+ parseRecipients(draft.recipients);if(draft.thread)validateThreadChoice(draft.thread,draft.recipients,draft.subject);
+ return draft;
+}
+/** The only provider ID comes from the owner/scoped saved choice, never from the URL. */
+export async function previewSavedDraftThread(env:EmailEnv,actor:string,scope:SavedDraftScope,revision:number,offset=0,historyId?:string):Promise<ThreadPreview> {
+ if(!Number.isSafeInteger(revision)||revision<0||!Number.isSafeInteger(offset)||offset<0||offset>0&&!historyId||historyId!==undefined&&!/^\d{1,30}$/.test(historyId))return invalid();
+ const draft=await savedDraftForReview(env,actor,scope);if(draft.revision!==revision)throw Error('email_revision_conflict');if(!draft.thread)throw Error('email_thread_not_selected');
+ const saved=validateThreadChoice(draft.thread,draft.recipients,draft.subject);
+ const conversation=await readConversation(await tokenForRead(env,actor),saved.threadId,draft.recipients,saved.rfcMessageId);
+ const parent=chooseParent(conversation,draft.recipients,saved.parentMessageId);
+ if(parent.rfcMessageId!==saved.rfcMessageId||JSON.stringify(parent.references)!==JSON.stringify(saved.references)||parent.subject!==saved.subject||parent.parentDate!==saved.parentDate)throw Error('email_thread_changed');
+ return preview(conversation,offset,historyId);
+}
 export async function selectThread(env:EmailEnv,actor:string,id:string,revision:number,threadId:string|null,parentId?:string){
  const d=await accessibleDraft(env,actor,id,revision);
  const choice=threadId===null?null:chooseParent(await readConversation(await tokenForRead(env,actor),threadId,d.recipients),d.recipients,providerId(parentId));

@@ -53,6 +53,8 @@ function FinalPdfPreview({ file, onRendered, onRendering }: { file: PdfExportFil
 }
 
 export function PdfWorkspace({ documents: sources, initialProject, initialDelivery='combined', accountName, hotel, selectedCount, onClose, onSave, onSaveDraft }: Props) {
+  const [companion,setCompanion]=useState(()=>matchMedia('(max-width:899px)').matches);
+  useEffect(()=>{const media=matchMedia('(max-width:899px)'),change=()=>setCompanion(media.matches);media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
   const [loaded, setLoaded] = useState<Map<string, PDFDocumentProxy>>(new Map());
   const [project, setProject] = useState<PdfProject | null>(null);
   const [persistedProject, setPersistedProject] = useState<PdfProject | null>(null);
@@ -64,6 +66,7 @@ export function PdfWorkspace({ documents: sources, initialProject, initialDelive
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [saved, setSaved] = useState(false);
   const [preview, setPreview] = useState<PdfExportFile[] | null>(null), [previewIndex, setPreviewIndex] = useState(0);
   const [ack, setAck] = useState(false), [viewed, setViewed] = useState<number[]>([]);
+  useEffect(()=>{if(companion){setPreview(null);setAck(false);}},[companion]);
   const [zoom, setZoom] = useState(90);
   const stage = useRef<HTMLDivElement>(null);
   const workspace = useRef<HTMLDivElement>(null);
@@ -134,7 +137,7 @@ export function PdfWorkspace({ documents: sources, initialProject, initialDelive
     const added = current.filter(p => p.sourcePage === null).length;
     return [...(removed.length ? [`${source.name}: removed original page${removed.length > 1 ? 's' : ''} ${removed.join(', ')}`] : []), ...(reordered ? [`${source.name}: original page order ${order.join(' → ')}`] : []), ...(added ? [`${source.name}: ${added} blank page${added > 1 ? 's' : ''} added`] : [])];
   }) : [];
-  return <div className="pdf-workspace" ref={workspace} role="dialog" aria-modal={!preview&&!closeConfirm} aria-label="PDF Workspace" onKeyDown={event => {
+  return <div className="pdf-workspace" data-companion={companion} ref={workspace} role="dialog" aria-modal={!preview&&!closeConfirm} aria-label="PDF Workspace" onKeyDown={event => {
     if (event.key === 'Escape' && closeConfirm) { event.preventDefault(); setCloseConfirm(false); return; }
     if (event.key === 'Escape' && preview) { event.preventDefault(); setPreview(null); return; }
     if (event.key !== 'Tab') return;
@@ -145,6 +148,7 @@ export function PdfWorkspace({ documents: sources, initialProject, initialDelive
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }}>
     <header className="pdf-header"><img src="/katathani-collection.svg" alt="Katathani Collection"/><div><b>Katathani AR Collection System</b><small>Document preparation · PDF Workspace</small></div><div className="pdf-context"><small>{hotel} · {accountName}</small><b>{selectedCount} selected Invoice / Folio rows</b></div><button className="pdf-close" aria-label="Close PDF Workspace" onClick={requestClose}><X size={17}/></button></header>
+    {companion&&<section className="pdf-companion"><h2>Continue editing on desktop</h2><p>Your current PDF project and unsaved edits are retained. Save a draft to resume on a larger screen. Final preview and export require desktop review.</p>{onSaveDraft&&<button disabled={busy||!project||!dirty} onClick={()=>void saveDraft(true)}>Save draft for desktop</button>}<button disabled={busy} onClick={requestClose}>Close workspace</button></section>}
     <nav className="pdf-steps" aria-label="Document steps">{['Scope & Purpose', 'Documents', 'PDF Review', 'Email', 'Handoff'].map((name, i) => <div key={name} className={i === 2 ? 'current' : i < 2 ? 'done' : ''}><span>{i < 2 ? <Check size={15}/> : i + 1}</span><div><b>{name}</b><small>{['Hotel & Account', 'Selected source PDFs', 'Edit, preview, flatten', 'Not enabled here', 'Private save / download'][i]}</small></div></div>)}</nav>
     {error && !closeConfirm && <p className="pdf-error" role="alert">{error}</p>}
     {!project ? <div className="pdf-empty">{error ? 'Document unavailable. Close and retry from the Account.' : 'Opening source PDFs…'}</div> : <div className="pdf-layout">

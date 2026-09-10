@@ -4,6 +4,8 @@ export class OperaError extends Error {
 }
 export interface OperaReadConfig { origin:string; appKey:string; hotelId:string; timeoutMs?:number; maxResponseBytes?:number }
 export type FetchPort = (request:Request)=>Promise<Response>;
+export interface FinancialReadScope {hotel:string;accountId:string}
+export interface FinancialHistoryRead extends FinancialReadScope {start:string;end:string;kinds:readonly ('invoice'|'payment')[]}
 
 /** Property reads plus explicit Statement document processing. No caller-supplied URL or accounting mutations. */
 export class OperaReader {
@@ -41,6 +43,26 @@ export class OperaReader {
   invoiceHistory(accountId:string,invoiceNumbers:string[],offset=0,limit=20) {
     if(invoiceNumbers.some(n=>!/^\d+$/.test(n)))throw new OperaError('invalid_request');
     return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','true'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],...invoiceNumbers.map(n=>['invoiceNo',n]),...this.page(offset,limit)]);
+  }
+  private financialScope(scope:FinancialReadScope) {
+    if(!['KAT','TSK'].includes(scope.hotel)||scope.hotel!==this.config.hotelId||typeof scope.accountId!=='string'||!scope.accountId||scope.accountId.length>200||scope.accountId.trim()!==scope.accountId||scope.accountId==='.'||scope.accountId==='..'||/[\x00-\x1f\x7f/\\]/.test(scope.accountId))throw new OperaError('invalid_request',undefined,'financial_scope');
+  }
+  /** A separate dated read; the incumbent current-debt refresh does not call it. */
+  financialHistoryPage(scope:FinancialHistoryRead,offset=0,limit=20) {
+    this.financialScope(scope);
+    const date=(v:string)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!v.startsWith('0000-')&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
+    if(!date(scope.start)||!date(scope.end)||scope.start>scope.end||(Date.parse(scope.end)-Date.parse(scope.start))/86400000>=366||!Array.isArray(scope.kinds)||scope.kinds.length<1||scope.kinds.length>2||new Set(scope.kinds).size!==scope.kinds.length||scope.kinds.some(k=>!['invoice','payment'].includes(k))||![10,20].includes(limit))throw new OperaError('invalid_request',undefined,'financial_history_query');
+    return this.read(`/ars/v1/invoicePayments/accounts/${this.id(scope.accountId)}`,[['hotelIds',scope.hotel],['start',scope.start],['end',scope.end],['inclZeroBalance','true'],['inclDetails','true'],['orderBy','TransactionDate'],['sortOrder','Asc'],...scope.kinds.map(kind=>['fetchInstructions',kind==='invoice'?'Invoices':'Payments']),...this.page(offset,limit)]);
+  }
+  financialTransactionDetail(scope:FinancialReadScope&{transactionId:string}) {
+    this.financialScope(scope);
+    if(typeof scope.transactionId!=='string'||!/^-?(0|[1-9][0-9]*)$/.test(scope.transactionId)||scope.transactionId==='-0'||scope.transactionId.length>80)throw new OperaError('invalid_request',undefined,'financial_transaction_identity');
+    return this.read(`/ars/v1/hotels/${this.id(scope.hotel)}/accounts/${this.id(scope.accountId)}/transactions/${this.id(scope.transactionId)}/invoicePaymentDetails`,[]);
+  }
+  appliedInvoicePayments(scope:FinancialReadScope&{invoiceTransactionId:string;invoiceNo?:string}) {
+    this.financialScope(scope);
+    if(typeof scope.invoiceTransactionId!=='string'||!/^[1-9][0-9]*$/.test(scope.invoiceTransactionId)||scope.invoiceTransactionId.length>80||scope.invoiceNo!==undefined&&(typeof scope.invoiceNo!=='string'||!/^(0|[1-9][0-9]*)$/.test(scope.invoiceNo)||scope.invoiceNo.length>80))throw new OperaError('invalid_request',undefined,'financial_invoice_identity');
+    return this.read(`/ars/v1/hotels/${this.id(scope.hotel)}/transactions/${this.id(scope.invoiceTransactionId)}/accounts/${this.id(scope.accountId)}/invoiceAppliedPayments`,scope.invoiceNo===undefined?[]:[['invoiceNo',scope.invoiceNo]]);
   }
   statementSelection(accountId:string,transactionIds:string[],includeFolios=false) {
     if(typeof includeFolios!=='boolean'||!transactionIds.length||transactionIds.some(id=>!/^\d+$/.test(id)))throw new OperaError('invalid_request');

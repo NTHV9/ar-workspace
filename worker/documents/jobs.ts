@@ -1,4 +1,5 @@
 import {workspaceStatement} from '../statement/generate';
+import {documentSource} from './source-policy';
 import type {WorkflowStep} from 'cloudflare:workers';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {makeReader} from '../opera/probe';
@@ -27,7 +28,8 @@ export async function dispatchDocumentJob(env:RefreshEnv,job:DocumentJob){
  return reconcileDocumentStatus(env,job);
 }
 export async function createDocumentJob(env:RefreshEnv,owner:string,input:DocumentCreateInput){
- const job=await backendRpc<DocumentJob>(env,'ar_document_create_v2',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:input.statementSource??'native'});
+ const source=documentSource(input);
+ const job=await backendRpc<DocumentJob>(env,'ar_document_create_v2',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
  return dispatchDocumentJob(env,job);
 }
 export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,type:string){
@@ -45,7 +47,7 @@ export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowSt
    if(!claim.claimed)return {state:claim.file.state};
    let renderStarted=false;
    try{
-    if(file.kind==='statement'&&job.statement_source!=='workspace')throw new OperaError('invalid_configuration',undefined,'native_statement_transport_unverified');
+    if(file.kind==='statement'&&job.statement_source!=='workspace')throw new OperaError('invalid_configuration',undefined,'document_statement_source_retired');
     const invoice=job.manifest.find(i=>i.id===file.invoice_id);if(file.kind!=='statement'&&(!invoice||invoice.hotel!==job.hotel||invoice.account_id!==job.account_id))throw new Error('document_manifest_invalid');
     const pdf=file.kind==='statement'?await workspaceStatement(env,job):await getNativeInvoicePdf(makeReader(env,job.hotel),invoice!,()=>{renderStarted=true;});
     const key=`jobs/${job.id}/originals/${file.id}.pdf`;

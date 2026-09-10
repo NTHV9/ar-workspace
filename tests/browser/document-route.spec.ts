@@ -107,3 +107,33 @@ for(const [layout,label] of [['statement_bundle','Statement + combined Invoices'
   await expect(page.getByRole('button',{name:label,exact:true})).toHaveClass(/chosen/);
  });
 }
+
+test('Statement preparation has one approved system source and preserves Invoice delivery choices',async({page})=>{
+ const controls=await mockApplication(page);
+ await page.goto('/?account=synthetic-account&property=KAT');
+ await page.getByLabel('Select INVOICE-A',{exact:true}).check();
+ await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
+ await page.getByRole('combobox',{name:'Document content',exact:true}).selectOption('both');
+ await expect(page.getByRole('dialog')).toContainText('Statement: Generate in AR Workspace');
+ await expect(page.getByRole('option',{name:'Original from OPERA',exact:true})).toHaveCount(0);
+ await page.getByRole('combobox',{name:'Delivery layout',exact:true}).selectOption('statement_bundle');
+ await page.getByRole('button',{name:'Create document job',exact:true}).click();
+ await expect.poll(()=>controls.createRequests.length).toBe(1);
+ expect(controls.createRequests[0]).toMatchObject({content:'both',statementSource:'workspace',layout:'statement_bundle',ids:['A']});
+});
+
+test('mobile document companion previews one private source at a time without editing',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await mockApplication(page);await page.goto(`/?documentJob=${jobId}`);
+ await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toBeDisabled();
+ await expect(page.getByText('Continue PDF editing and final review on a larger screen.',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview source PDF',exact:true}).click();await expect(page.getByRole('img',{name:'PDF page 1',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Note',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.screenshot({path:'evidence/pdf-mobile-readonly-390.png'});
+ await page.getByRole('button',{name:'Close PDF preview',exact:true}).click();await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();
+});
+test('desktop PDF edits survive a resize to the mobile companion and can be saved as a draft',async({page})=>{
+ const controls=await mockApplication(page);await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('Synthetic desktop edit survives resize');
+ await page.setViewportSize({width:390,height:844});await expect(page.getByRole('heading',{name:'Continue editing on desktop',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Note',exact:true})).not.toBeVisible();
+ await page.getByRole('button',{name:'Save draft for desktop',exact:true}).click();await expect.poll(()=>controls.uploadRequests.length).toBe(1);expect(controls.uploadRequests[0].project.pages[0].layers[0].text).toBe('Synthetic desktop edit survives resize');
+});

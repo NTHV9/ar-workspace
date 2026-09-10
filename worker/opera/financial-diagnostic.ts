@@ -1,0 +1,89 @@
+import {OperaError,type OperaErrorCode} from './client';
+import {makeReader} from './probe';
+import {backendRpc,type RefreshEnv} from '../refresh/backend';
+import {readBusinessDate} from '../refresh/read-snapshot';
+import {readFinancialHistory,readFinancialTransactionDetail,readAppliedPaymentMapping,type FinancialHotel,type FinancialInvoice,type FinancialPayment,type FinancialHistoryResult} from './financial-history';
+
+export interface FinancialDiagnosticOptions {maxAccounts?:1|2;maxPages?:number;maxRows?:number}
+type DiagnosticStage='candidates'|'business_date'|'history_20'|'history_10'|'adjacent_days'|'detail'|'mapping';
+interface DiagnosticError {stage:DiagnosticStage;code:OperaErrorCode|'unavailable'}
+interface DateCount {present:number;withinWindow:number}
+type DateField='transactionDate'|'postingDate'|'revenueDate'|'transferDate'|'closeDate';
+type DateFields=Record<DateField,DateCount>;
+interface MappingCheck {status:'no_candidate'|'read'|'unavailable';links:number|null;knownAmounts:number|null;paymentLinksSeenInWindow:number|null;invoiceDatesPresent:number|null;applicationDatesPresent:0;complete:false;error?:DiagnosticError}
+export interface FinancialDiagnosticSample {
+ sample:number;status:'checked'|'unavailable';sameMembership:boolean|null;sameValues:boolean|null;
+ invoices:number|null;payments:number|null;pages20:number|null;pages10:number|null;zeroInvoices:number|null;openingBalances:number|null;
+ unknownPrimaryAmounts:number|null;transferFlaggedPayments:number|null;receiptClassification:'unknown';reversalClassification:'unknown';
+ dateFields:{invoice:DateFields;payment:DateFields};adjacentDays:{checked:number;transactionDatesMatch:boolean|null;membershipMatchesWindow:boolean|null};
+ detail:{status:'no_candidate'|'found'|'missing'|'unavailable';error?:DiagnosticError};mapping:MappingCheck;error?:DiagnosticError;
+}
+export interface FinancialDiagnosticResult {
+ hotel:FinancialHotel;status:'checked'|'no_candidates'|'unavailable';windowDays:7;accountsChecked:number;candidatesSelected:number;
+ readChecksPassed:boolean;financialPeriodCoverageVerified:false;applicationDatesVerified:false;samples:FinancialDiagnosticSample[];error?:DiagnosticError;
+}
+interface Candidate {accountId:string;invoiceTransactionId:string|null;invoiceNo:string|null}
+const bad=():never=>{throw new OperaError('invalid_response',undefined,'financial_diagnostic_candidates');};
+function candidates(value:unknown,hotel:FinancialHotel,limit:number):Candidate[] {
+ if(!value||typeof value!=='object'||Array.isArray(value))return bad();const v=value as Record<string,unknown>;
+ if(v.hotel!==hotel||!Array.isArray(v.accounts)||v.accounts.length>limit)return bad();const seen=new Set<string>();
+ return v.accounts.map(value=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return bad();const row=value as Record<string,unknown>;
+  if(typeof row.accountId!=='string'||!row.accountId||row.accountId.length>200||row.accountId.trim()!==row.accountId||/[\x00-\x1f\x7f/\\]/.test(row.accountId)||seen.has(row.accountId)||row.accountId==='.'||row.accountId==='..')return bad();seen.add(row.accountId);
+  for(const key of ['invoiceTransactionId','invoiceNo'] as const)if(row[key]!==null&&(typeof row[key]!=='string'||row[key].length>80||!/^[1-9][0-9]*$/.test(row[key])))return bad();
+  return {accountId:row.accountId,invoiceTransactionId:row.invoiceTransactionId as string|null,invoiceNo:row.invoiceNo as string|null};
+ });
+}
+function error(stage:DiagnosticStage,value:unknown):DiagnosticError {return {stage,code:value instanceof OperaError?value.code:'unavailable'};}
+function shifted(day:string,days:number):string {const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10);}
+type Row=FinancialInvoice|FinancialPayment;
+function rows(result:FinancialHistoryResult):Row[] {return [...result.invoices,...result.payments];}
+function fingerprint(data:Row[],values=false):string {return JSON.stringify(data.map(row=>JSON.stringify(values?row:[row.hotel,row.accountId,row.kind,row.transactionId])).sort());}
+function dateFields(data:Row[],start:string,end:string):DateFields {
+ const dates=(key:DateField)=>data.map(row=>key==='closeDate'?row.kind==='invoice'?row.closeDate:null:row[key]);
+ const count=(key:DateField):DateCount=>{const values=dates(key);return {present:values.filter(v=>v!==null).length,withinWindow:values.filter(v=>v!==null&&v>=start&&v<=end).length};};
+ return {transactionDate:count('transactionDate'),postingDate:count('postingDate'),revenueDate:count('revenueDate'),transferDate:count('transferDate'),closeDate:count('closeDate')};
+}
+function sample(index:number):FinancialDiagnosticSample {
+ return {sample:index+1,status:'unavailable',sameMembership:null,sameValues:null,invoices:null,payments:null,pages20:null,pages10:null,zeroInvoices:null,openingBalances:null,unknownPrimaryAmounts:null,transferFlaggedPayments:null,receiptClassification:'unknown',reversalClassification:'unknown',dateFields:{invoice:dateFields([],'',''),payment:dateFields([],'','')},adjacentDays:{checked:0,transactionDatesMatch:null,membershipMatchesWindow:null},detail:{status:'no_candidate'},mapping:{status:'no_candidate',links:null,knownAmounts:null,paymentLinksSeenInWindow:null,invoiceDatesPresent:null,applicationDatesPresent:0,complete:false}};
+}
+/** All returned fields are categorical/aggregate. Candidate identities and source rows stay in memory. */
+export async function runFinancialDiagnostic(env:RefreshEnv,hotel:FinancialHotel,options:FinancialDiagnosticOptions={}):Promise<FinancialDiagnosticResult> {
+ const maxAccounts=options.maxAccounts??2,maxPages=options.maxPages??50,maxRows=options.maxRows??5000;
+ if(!['KAT','TSK'].includes(hotel)||![1,2].includes(maxAccounts)||!Number.isSafeInteger(maxPages)||maxPages<1||!Number.isSafeInteger(maxRows)||maxRows<1)throw new OperaError('invalid_request',undefined,'financial_diagnostic_options');
+ const result:FinancialDiagnosticResult={hotel,status:'unavailable',windowDays:7,accountsChecked:0,candidatesSelected:0,readChecksPassed:false,financialPeriodCoverageVerified:false,applicationDatesVerified:false,samples:[]};
+ let selected:Candidate[];try{selected=candidates(await backendRpc(env,'ar_financial_diagnostic_candidates',{p_hotel:hotel,p_limit:maxAccounts}),hotel,maxAccounts);}catch(e){result.error=error('candidates',e);return result;}
+ result.candidatesSelected=selected.length;if(!selected.length){result.status='no_candidates';return result;}
+ let reader:ReturnType<typeof makeReader>,end:string;try{reader=makeReader(env,hotel);end=await readBusinessDate(reader,hotel);}catch(e){result.error=error('business_date',e);return result;}
+ const start=shifted(end,-6),observedAt=new Date().toISOString();
+ for(const [index,candidate]of selected.entries()){
+  const entry=sample(index);result.samples.push(entry);result.accountsChecked++;let stage:DiagnosticStage='history_20';
+  const scope={hotel,accountId:candidate.accountId},readOptions={observedAt,maxPages,maxRows};
+  try{
+   const twenty=await readFinancialHistory(reader,{...scope,start,end},{...readOptions,pageSize:20});entry.pages20=twenty.coverage.pages;
+   entry.invoices=twenty.invoices.length;entry.payments=twenty.payments.length;entry.zeroInvoices=twenty.invoices.filter(i=>i.openAmount==='0.00').length;entry.openingBalances=twenty.invoices.filter(i=>i.entryClassification==='opening_balance').length;
+   entry.unknownPrimaryAmounts=twenty.coverage.unknownPrimaryAmounts;entry.transferFlaggedPayments=twenty.payments.filter(p=>['in','out','both'].includes(p.transfer)).length;
+   entry.dateFields={invoice:dateFields(twenty.invoices,start,end),payment:dateFields(twenty.payments,start,end)};
+   stage='history_10';const ten=await readFinancialHistory(reader,{...scope,start,end},{...readOptions,pageSize:10});entry.pages10=ten.coverage.pages;
+   const allRows=rows(twenty);entry.sameMembership=fingerprint(allRows)===fingerprint(rows(ten));entry.sameValues=fingerprint(allRows,true)===fingerprint(rows(ten),true);
+   stage='adjacent_days';let dateMatches=true,membershipMatches=true;
+   for(const day of [shifted(end,-1),end]){
+    const single=await readFinancialHistory(reader,{...scope,start:day,end:day},{...readOptions,pageSize:20});const singleRows=rows(single);entry.adjacentDays.checked++;
+    dateMatches&&=singleRows.every(row=>row.transactionDate===day);
+    membershipMatches&&=fingerprint(singleRows)===fingerprint(allRows.filter(row=>row.transactionDate===day));
+   }
+   entry.adjacentDays.transactionDatesMatch=dateMatches;entry.adjacentDays.membershipMatchesWindow=membershipMatches;
+   if(candidate.invoiceTransactionId!==null){
+    stage='detail';try{const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:candidate.invoiceTransactionId},readOptions);entry.detail={status:detail.status};}catch(e){entry.detail={status:'unavailable',error:error('detail',e)};}
+    stage='mapping';try{
+     const mapping=await readAppliedPaymentMapping(reader,{...scope,invoiceTransactionId:candidate.invoiceTransactionId,...(candidate.invoiceNo===null?{}:{invoiceNo:candidate.invoiceNo})},readOptions);const paymentIds=new Set(twenty.payments.map(p=>p.transactionId));
+     entry.mapping={status:'read',links:mapping.links.length,knownAmounts:mapping.links.filter(l=>l.appliedAmount!==null).length,paymentLinksSeenInWindow:mapping.links.filter(l=>paymentIds.has(l.paymentTransactionId)).length,invoiceDatesPresent:mapping.links.filter(l=>l.invoiceTransactionDate!==null).length,applicationDatesPresent:0,complete:false};
+    }catch(e){entry.mapping={...entry.mapping,status:'unavailable',error:error('mapping',e)};}
+   }
+   entry.status='checked';
+  }catch(e){entry.error=error(stage,e);}
+ }
+ result.status='checked';
+ result.readChecksPassed=result.samples.every(s=>s.status==='checked'&&(s.invoices??0)+(s.payments??0)>0&&s.sameMembership===true&&s.sameValues===true&&s.adjacentDays.checked===2&&s.adjacentDays.transactionDatesMatch===true&&s.adjacentDays.membershipMatchesWindow===true&&s.dateFields.invoice.transactionDate.withinWindow===s.invoices&&s.dateFields.payment.transactionDate.withinWindow===s.payments&&!['unavailable','missing'].includes(s.detail.status)&&s.mapping.status!=='unavailable');
+ return result;
+}

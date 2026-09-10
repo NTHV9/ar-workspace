@@ -34,18 +34,10 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
   if(typeof accountId!=='string')throw new OperaError('invalid_response');
   const [current,history,businessDate]=await Promise.all([checked('current_account',()=>reader.account(accountId)),checked('invoice_history',()=>reader.history(accountId,0,20)),checked('business_date',()=>reader.businessDate())]);
   const dates=object(businessDate).hotels;const date=Array.isArray(dates)?object(dates[0]).businessDate:null;
-  let statementSelection:unknown={status:'no_eligible_sample'};
+  const statementSelection={status:'retired',source:'workspace'};
   const currentInvoices=object(object(current).accountDetails).invoices;
   const eligibleInvoices=Array.isArray(currentInvoices)?currentInvoices.map(object).filter(i=>i.balance&&Number(object(i.balance).amount)>0&&!i.parentInvoiceNo):[];
   const selectedInvoice=eligibleInvoices.find(i=>i.reservationId&&i.folioNo!==undefined)??eligibleInvoices[0];
-  if(selectedInvoice&&typeof selectedInvoice.transactionNo==='number'){
-    try{
-      const result=object(await reader.statementSelection(accountId,[String(selectedInvoice.transactionNo)]));
-      const statements=Array.isArray(result.aRStatements)?result.aRStatements.map(object):[];
-      const returned=statements.flatMap(s=>Array.isArray(s.invoices)?s.invoices.map(object):[]);
-      statementSelection={status:'prepared',requested:1,returned:returned.length,exactScope:statements.length===1&&statements[0].hotelId===hotel&&object(statements[0].accountId).id===accountId&&returned.length===1&&returned[0].transactionNo===selectedInvoice.transactionNo,balanceMatchesSelection:statements.length===1&&!!statements[0].balance&&Number(object(statements[0].balance).amount)===Number(object(selectedInvoice.balance).amount),reportDescriptorPresent:statements.some(s=>typeof s.reportFileName==='string'||typeof s.statementName==='string'),nativePdfBytesReceived:false};
-    }catch(e){statementSelection={status:'unavailable',code:e instanceof OperaError?e.code:'unavailable',upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
-  }
   let nativeFolio:unknown={status:'selector_not_available'};
   if(selectedInvoice?.reservationId&&typeof selectedInvoice.folioDate==='string'&&selectedInvoice.folioNo!==undefined){
     try{

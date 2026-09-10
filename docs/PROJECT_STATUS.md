@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 10 กันยายน 2026 21:25 ICT: completion Goal และกฎล่าสุด
+
+- Goal ยัง active: ทำงานที่เหลือทั้งหมดตาม COMPLETION_PLAN. เจ้าของยืนยัน Statement ใช้ renderer ระบบเราเท่านั้น; Invoice/Folio ใช้ API. ยืนยันเก็บไฟล์ Supabase/Drive หนึ่งเดือนปฏิทินหลังบิลทุกใบที่ผูก verified-zero และไม่มีงานเอกสาร/อีเมลค้าง คงประวัติรายการและการส่ง. ยังไม่เปิดลบระหว่างพัฒนา.
+- Implemented/local tested: เส้นทาง Statement บังคับ workspace รวมปิด native research/generic probe; หน้า Account มี Collection History และ Documents & Gmail แบบแบ่งหน้า, saved email อ่าน exact draft/revision โดยไม่สร้างฉบับใหม่; note/dispute/manual hold/release/reopen review มี Preview/CAS/retryคำสั่งเดิม. Dirty account forms คงอยู่เมื่อโหลดข้อมูล/token refresh และถามก่อนทิ้ง; มือถือ preview PDF อ่านอย่างเดียว และย่อจาก Desktop แล้วยังบันทึก Draft ได้.
+- Applied SQL จริงใน Supabase ใหม่: `20260910134824_ar_statement_source_policy`, `20260910140014_ar_account_workspace_read`, `20260910140917_ar_invoice_exceptions`, `20260910142129_ar_financial_diagnostic_candidates`. Source/account/exception SQL synthetic rollback ผ่าน. ไม่เปลี่ยน ledger หรือวันวางบิล/stageลูกค้า. ข้อมูลสังเคราะห์คงเหลือ0; business sent events0; exceptions0. เพิ่ม compact last-verified-balance observations1109แถว/zero observation clocks75แถว เพื่อไม่ลืม verified-zero เมื่อมี API unknown ระหว่างทาง และระงับ clock เมื่อ reopen.
+- Unit suiteล่าสุด666กรณี/67filesผ่านและTypecheckผ่าน รวม foundationที่ยังไม่เปิดใช้งาน. Browserชุดใหม่ทดสอบบนlocalด้วยAPIสมมติ; ผลCloudflareของincrementนี้ยังรอdeploy. ไม่ใช้ผลunit/SQLแทนหลักฐานOPERA financial historyจริง.
+- ตรวจSupabaseDashboardจริง: Pro, Spend Capเปิด, projected/currentค่าแพ็กเกจ$25; egress0.032/250GB, cached0.006/250GB, averageStorage0.004/100GB, disk2GBใช้0.27GB (DB31.9MB/WAL80MB/System167.9MB). Spend Capจำกัดขยายดิสก์ภายใน8GBincluded. ไม่มีเปลี่ยนแพ็กเกจ/add-on. Metricsมีความหน่วงตามProvider ไม่ใช่ตัววัดreal-time.
+- พบPhysical daily backupsจริง3รายการ: 9ก.ย.19:44:47UTC, 8ก.ย.19:43:47UTC, 8ก.ย.13:06:35UTC. PITRยังไม่เปิด. กำลังทำlocal PostgreSQL17 synthetic restore drill แยกจากliveและไม่อ้างว่าได้restorePhysical backupแล้ว.
+- ยังต้องปิด: policy UI/claims/templates integration, external billing provenance, source-backed daily financial ingestion/reports, Operations/recovery controls, budget integration/retention execution, Auth recovery และ final acceptance. รายละเอียด auditทั้งสามและแผนอยู่ใน COMPLETION_PLAN; checkpointนี้ไม่ใช่คำรับรองงานครบหรือdeployแล้ว.
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026 20:08 ICT: Remittance และหลักฐานส่วนตัว
 
 - เจ้าของยืนยันหนึ่งฉบับต่อหนึ่ง Hotel/Account. Implemented/pushed/deployed: เมนู Remittances และทางเข้าจาก Account, วันที่ได้รับ/เลขอ้างอิง/หมายเหตุ, เลือก Invoice หลายหน้า, ยอดรวมและรายบิลที่ไม่ระบุได้, Preview ก่อนบันทึก, correction history, void/restore และ private evidence PDF/PNG/JPEG.

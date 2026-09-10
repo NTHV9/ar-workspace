@@ -1,4 +1,5 @@
 import type {RefreshEnv} from '../refresh/backend';
+import {documentSource} from './source-policy';
 import {PDFDocument} from 'pdf-lib';
 import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput} from './jobs';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -28,8 +29,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    }
    if(request.method!=='POST')return json({error:'method_not_allowed'},405);
    const input=await bodyJson(request,1024*1024);if(typeof input.commandKey!=='string'||!uuidPattern.test(input.commandKey)||!['KAT','TSK'].includes(String(input.hotel))||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>200||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>4000||input.ids.some(id=>typeof id!=='string'||!id||id.length>200)||new Set(input.ids).size!==input.ids.length||!['statement','invoices','both'].includes(String(input.content))||!['combined','statement_bundle','separate'].includes(String(input.layout))||!['billing','collection'].includes(String(input.purpose)))return json({error:'document_request_invalid'},400);
-   if(input.statementSource!==undefined&&!['native','workspace'].includes(String(input.statementSource)))return json({error:'document_request_invalid'},400);
-   if(input.statementSource==='workspace'&&(input.content==='invoices'||input.ids.length>500))return json({error:'document_request_invalid'},400);
+   input.statementSource=documentSource({content:String(input.content),statementSource:input.statementSource,ids:input.ids});
    return json(await createDocumentJob(env,owner,input as unknown as DocumentCreateInput),202);
   }
   const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
@@ -69,6 +69,6 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
   return json({error:'method_not_allowed'},405);
  }catch(error){
   const code=error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'document_service_unavailable';
-  const status=code==='document_upload_too_large'?413:/conflict|selection_invalid|sources_unavailable/.test(code)?409:/invalid/.test(code)?400:503;return json({error:code},status);
+  const status=code==='document_upload_too_large'?413:/conflict|selection_invalid|sources_unavailable/.test(code)?409:/invalid|source_retired/.test(code)?400:503;return json({error:code},status);
  }
 }
