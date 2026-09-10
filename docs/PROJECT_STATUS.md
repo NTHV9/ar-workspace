@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 11 กันยายน 2026 01:13 ICT: ประวัติการเงินและ Password Recovery
+
+- Pushed/deployed source `84b32af` บน branch `codex/opera-refresh`; Worker version `d23b27d0-2e26-40d0-a495-41657e012bad`. ก่อนหน้านี้ `75b1b02310d5cadd6ab2d6a18ccff6f5b7cdca27` ผ่าน live health database_verified และ anonymous financial routes 3 เส้นทางถูกปฏิเสธ401. รอบ84แก้การแปลง timestamp PostgreSQL เมื่อ Workflowกลับมาทำต่อ; ไม่เปลี่ยน frontend.
+- Applied `20260910173527_ar_financial_history_ingestion` และ `20260910174454_ar_financial_mapping_coverage`: private source invoice/payment/application observations, immutable changes, exact date coverage/commands/leases, atomic Hotel publication. Ten new tables have RLS and no direct client grants. Hosted synthetic transaction rollback passed. ไม่แก้ ledger OPERA หรือ billing/send history.
+- Implemented/enabled Financial history: ทุก Account ที่ discoveryพบ, source-date range, paginated records, แยก payment credits/debits/currently applied/unallocated; current applications ตาม invoice-date cohort. วันที่ application event ไม่มีใน API จึงไม่สร้างเอง. Unknown mapping แยกจาก verified payment history และไม่แสดงผลรวม application เป็นศูนย์.
+- Full real TSK run `b1e46aaa-369b-4488-816e-574deefc348b` succeeded:70/70 Accounts,1001 invoice rows,135 payment rows,265 verified application links สำหรับ12สิงหาคม–11กันยายน2026. KATยังไม่ผ่านเต็มรอบ; อ่านใหม่และตรวจ Workflowต่อ. ไม่อ้าง financial reportครบสองโรงแรมหรือ current applicationsทุกใบตรวจได้แล้ว.
+- Actual sparse detail: cumulative payment fieldอาจไม่ส่งมา; ยืนยัน SUM applicationsกับ independently-read invoice amount minus openก่อน/หลัง โดยค่าที่ขาดยังเป็นnull. ถ้าpayment identity/detailsไม่ครบ คง unavailableเฉพาะmappingนั้น. ไม่มี amount/customer identitiesเข้ารายงานหลักฐานPublic.
+- Web password recovery deployed: explicit request, PKCE callback, new/confirm password, short/error/session states; ไม่โหลด/Refreshข้อมูลARขณะกู้รหัส. Supabase allowed redirectเพิ่มเฉพาะ `/?recover=1` บนWorkerนี้; Site URLเดิม/Googleเดิมคงไว้. ตรวจtemplateใช้ConfirmationURL และยังเป็นbuilt-in mail service; ไม่มีSMTP/add-onใหม่. ไม่ส่ง recovery emailจริงหรือเปลี่ยนpasswordผู้ใช้เพื่อทดสอบ.
+- Build/Typecheckผ่าน; full unit720ผ่านก่อนtimestampfix และ focusedfinancial10ผ่านหลังfix. Cloudflarebrowser10ผ่านสำหรับauth5+financial5; synthetic images1440/1280/390ตรวจแล้ว. Native Invoice path/Statement rendererไม่เปลี่ยน. LocalPGreplay45migrations/10fixturesผ่านและserverหยุดแล้ว ก่อนเริ่มdraftexternalbilling.
+- Supabase connectorเคยขอreauthชั่วคราว; ตรวจใหม่ตามเจ้าของเสนอและSQLผ่านแล้ว. SQL Dashboardยังเข้าถึงได้. ไม่มีcredentialถูกอ่าน/แสดงเพิ่ม.
+- งานที่ดำเนินต่อ: external billing provenance/preview/corrections/daily activity, dailyAR/clearing metrics, Operations/recovery hold, integrationของbudget/retentionทั้งSupabase/Drive, final acceptance. Goalยัง active; ไม่อ้างจบงานทั้งหมด. Retention foundationยังไม่เปิดลบไฟล์จริง.
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026 23:04 ICT: Policy บน Cloudflare และหลักฐาน Payment
 
 - Source **e4f56a85fd397bbf3a59680670f1917c86b4e0f8** Push branch `codex/opera-refresh` และDeployผ่านWranglerจริงบนWorkerเดิม. Worker version **4864f885-3c83-4f55-a916-52408020acab**, Workflow **1e3b0361-c2bf-40eb-a097-8031b0ac47bf**. HealthSHA/Supabaseตรง; anonymousthread/remittance19routesยัง401. ไม่เปลี่ยนSecrets/Cron/บัญชีปลายทาง.

@@ -11,6 +11,7 @@ async function setup(page:Page,{failed=false,empty=false}={}){
   if(path==='/api/refresh')return route.fulfill({json:{running:false,hotels:[],jobs:[]}});
   if(path==='/api/portfolio')return route.fulfill({json:{accounts:[{id:'A',name:'Synthetic Evidence Account',hotel:'TSK',type:'Agent',items:1,open:12500,over90:0}],status:'connected',refresh:{running:false,hotels:[]}}});
   if(path==='/api/accounts/TSK/A')return route.fulfill({json:{invoices:[]}});
+  if(path==='/api/external-billing')return route.fulfill({json:{rows:[],total:0,summary:{records:0,invoices:0,firstBillingInvoices:0,amount:'0.00',unknownAmounts:0}}});
   if(path.startsWith('/api/account-workspace/')){
    requests.push(path+url.search);if(failed)return route.fulfill({status:503,json:{error:'account_workspace_unavailable'}});
    if(empty)return route.fulfill({json:{rows:[],total:0}});
