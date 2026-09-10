@@ -1,5 +1,9 @@
 # ข้อสรุปล่าสุด ข้อเสนอ และเรื่องที่ต้องยืนยัน
 
+## ยืนยันล่าสุด — ชีท Agent และ Billing Type (10 กันยายน 2026)
+
+เจ้าของให้ใช้ Credit Term/ผู้รับ Billing/Collection จากชีทที่ส่งมา ทุกแถว Billing Required; By Emailคือวางบิลทางอีเมล และBy SystemคือวางบิลในระบบของAccount. ยืนยันให้ใช้ทั้งKAT/TSKที่Account No.ตรงกัน แยกledgerตามเดิม. Importแล้ว104บัญชี/721eligibleinvoice workflowsโดยไม่เดาวันวางบิลหรือรอบทวง;รายละเอียดBILLING_CHANNEL_IMPORT.md. ช่องที่เป็นPortal/คำแนะนำไม่ถูกนำไปเป็นEmail To และไม่คัดลอกCollection emailมาแทนBillingที่ขาด
+
 ## วิธีอ่าน
 
 ยืนยัน 10 กันยายน 2026: ใช้คำเต็ม **Follow-up 1, Follow-up 2, Follow-up 3** บนหน้าจอ คิวงาน และหน้าส่งอีเมล การเปลี่ยนชื่อแสดงผลไม่เขียนทับค่าประวัติเดิมในฐานข้อมูล

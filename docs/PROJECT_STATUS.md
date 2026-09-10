@@ -1,5 +1,19 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026: นำเข้ากฎและผู้รับจากชีท Agent
+
+- เจ้าของยืนยันทุก53แถวในชีทเป็น Billing Required และให้ใช้กับทั้ง KAT/TSK ที่ Account No.ตรงกัน นำเข้า104บัญชีจริง (KAT53/TSK51) แบบtransactionเดียว ไม่เลือกจากชื่อคล้ายและไม่สร้างบัญชีที่ไม่พบ
+- KAT By Email49/By System4; TSK By Email47/By System4. อ่านกลับเทียบค่า Credit Term,อีเมลแยก Billing/Collection,Portal/คำแนะนำครบ104รายการตรง ไม่มี mismatch;ข้อมูลและSQLรายบัญชีอยู่ในprivate/agent-settings-import ไม่อยู่Git
+- 721 eligible existing invoice workflows รับกฎเริ่มต้นตามที่เคยอนุมัติ ยังคงไม่มีวันวางบิล/รอบทวง/Due Date ที่เดาขึ้น และไม่มี business sent events
+- สอง source rows ช่องอีเมลวางบิลเป็นชื่อแบบฟอร์ม: เก็บคำแนะนำพร้อมเว้นBilling To ไม่คัดลอกอีเมลทวงมาแทน. สองsource accountsไม่พบTSKจึงกำหนดเฉพาะKAT. ปรับquoteเกินท้ายและรายชื่อซ้ำตามprivateaudit
+- เพิ่ม Billing Type,HTTPS PortalและคำแนะนำในAccount Settings. BySystemเตรียมPDFแล้ววางในระบบAccountและบันทึกfirst actual billing date; Gmail Billingถูกบล็อกทั้งUI/Worker/data claim แต่Collection emailยังใช้ได้ ไม่มีเชื่อมPortalAPIหรือส่งแบบอัตโนมัติ
+- เพิ่มLoad account recipientsให้ผู้ใช้เลือกดึงprofileปัจจุบันเข้าอีเมลที่ค้างไว้ โดยไม่แก้ข้อความ/ผู้รับเก่าเงียบๆ
+- Applied `20260910062740_ar_billing_channel`; SQLrollbackพิสูจน์pending-handoff guardแม้ยังไม่มีsettings,zero-day term,actor/revision/no-op,legacy/currentclaimและประวัติไม่เปลี่ยน. Full104-rowrehearsalrollbackผ่านก่อนนำเข้าจริง
+- Typecheck/Build/270unit testsและ29Cloudflarebrowser checksผ่าน;ภาพใช้ข้อมูลสมมติ. เปิดAccount Settingsจริงเห็นBySystem/CreditTerm/Portalตรงชีท;ไม่ส่งอีเมลหรือSubmitPortalในรอบนี้
+- Push/Deploy source **9a95100669e2c4b8d0ee6f7adff2f64ef6ec9474** บน`codex/opera-refresh`; Worker deployment **0771d880f4594ff5ace7f93986793413**, Workflow **388d39aa-c46c-4bc9-8619-775ecc95e78b**. Health200 SHAตรงและSupabaseverified
+- รายละเอียด: [BILLING_CHANNEL_IMPORT.md](BILLING_CHANNEL_IMPORT.md). ยังต้องเติมอีเมลวางบิลสองsource rowsเมื่อมีข้อมูล;บัญชีอื่นนอกชีทยังไม่ได้กำหนดกฎเอง
+
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026: Templates, Rich text, Reports และจอเล็กพร้อมตรวจ
 
 - ทำครบชุดงานที่เจ้าของอนุมัติให้ทำขณะไม่อยู่หน้าคอม: versioned email templates, rich message editor, verified activity/current reports, laptop/mobile และ regression/security checks
