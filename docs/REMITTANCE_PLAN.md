@@ -33,14 +33,16 @@ Files: worker/remittance/{files,diagnostic}.ts; tests/remittance-files.test.ts a
 
 ## Task 4 — Database, review and live verification (root)
 
-- [ ] Add new notices, lines, immutable revisions, commands, file reservations and private diagnostic receipts after checking actual schema. Add service-only owner/revision RPCs and RLS/no direct client writes. Never modify OPERA or workflow values in normal routines.
-- [ ] Implement deduplicated summaries, historical identity snapshots and unknown/zero distinctions. Synthetic fixtures verify money/counts/edits/retries/permissions and roll back completely. A runtime diagnostic returns after a deliberately rolled-back synthetic subtransaction.
-- [ ] Independent review of API/UI/file/data seams; fix load-bearing findings. Build, typecheck, full unit suite and targeted browser checks with synthetic evidence.
-- [ ] Verify Git remote/visibility and staged privacy, Push to NTHV9/ar-workspace, deploy existing Worker with unchanged secrets/cron, run authenticated diagnostic and anonymous boundary checks on Cloudflare, confirm zero test business rows/events.
-- [ ] Update PROJECT_STATUS with exact source/deployment/migration/evidence, limitations and next work; return a reviewable milestone.
+- [x] Add new notices, lines, immutable revisions, commands, file reservations and private diagnostic receipts after checking actual schema. Add service-only owner/revision RPCs and RLS/no direct client writes. Never modify OPERA or workflow values in normal routines.
+- [x] Implement deduplicated summaries, historical identity snapshots and unknown/zero distinctions. Synthetic fixtures verify money/counts/edits/retries/permissions and roll back completely. A runtime diagnostic returns after a deliberately rolled-back synthetic subtransaction.
+- [x] Independent review of API/UI/file/data seams; fix load-bearing findings. Build, typecheck, full unit suite and targeted browser checks with synthetic evidence.
+- [x] Verify Git remote/visibility and staged privacy, Push to NTHV9/ar-workspace, deploy existing Worker with unchanged secrets/cron, run authenticated diagnostic and anonymous boundary checks on Cloudflare, confirm zero test business rows/events.
+- [x] Update PROJECT_STATUS with exact source/deployment/migration/evidence, limitations and next work; return a reviewable milestone.
 
 ## Execution ledger
 
 - 2026-09-10: Owner answered single Hotel/Account per notice. Root preflight found no remittance objects; business sent events0. Existing approved workspace/branch and application services remain the targets. Design ref pages were opened; no old business gates imported.
 
 - Pre-release: four reviewed migrations applied with actual versions20260910125100/125102/125104/125107; synthetic SQL behavior+permissions passed and rolled back with0notice/line/synthetic-account rows. Full490unit tests andTypecheck/Build passed. Peerreview fixes cover scoped diagnostic assertions, exact restore-command replay, retained/reservedbytequota andconflict/screenshotclarity. Normal customer records were not test inputs.
+
+- Live completion: source0eb387d5651d0d134d4df1681a8d02f0677cb9f4 deployed;22Cloudflarebrowser cases and19anonymous boundaries passed. At20:08:22ICT, database diagnostic rolledback and private622-bytePDF readback/hash verified. One isolated retained receipt; no business notice/line/history/file rows orsyntheticAccounts remain. Details inREMITTANCE_VERIFICATION.md.

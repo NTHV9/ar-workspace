@@ -1,5 +1,16 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ล่าสุด — 10 กันยายน 2026 20:08 ICT: Remittance และหลักฐานส่วนตัว
+
+- เจ้าของยืนยันหนึ่งฉบับต่อหนึ่ง Hotel/Account. Implemented/pushed/deployed: เมนู Remittances และทางเข้าจาก Account, วันที่ได้รับ/เลขอ้างอิง/หมายเหตุ, เลือก Invoice หลายหน้า, ยอดรวมและรายบิลที่ไม่ระบุได้, Preview ก่อนบันทึก, correction history, void/restore และ private evidence PDF/PNG/JPEG.
+- สรุปแยกจำนวนฉบับกับ Invoice ไม่ซ้ำ และยอดแจ้งชำระกับ OPERA open. Pending ไม่จำกัดวันที่รับ; Activity ใช้วันที่รับจริง. Void ไม่รวมในยอดสรุป; บิลหาย/ข้อมูลไม่ยืนยันไม่เป็นศูนย์; linked-zero ไม่ถือเป็นเงินรับ. ไม่มีเปลี่ยน ledger, Due Date/stage/hold หรือส่งอีเมลจาก Remittance.
+- Source **`0eb387d5651d0d134d4df1681a8d02f0677cb9f4`**, branch `codex/opera-refresh`; Worker `ar-workspace` deployment **`5167f983036f4d0482cc9ac614f62c96`**; Workflow **`c878bcad-207a-40e8-859c-2df8044176b9`**. URL https://ar-workspace.ar-c82.workers.dev/?remittances=1 ; health SHA/Supabase ตรง. คง Secrets/Cron/บริการเดิม.
+- Supabase applied `20260910125100_ar_remittance_core`, `20260910125102_ar_remittance_commands`, `20260910125104_ar_remittance_evidence`, `20260910125107_ar_remittance_diagnostic`. มี RLS/owner/revision/command guards และ immutable history/file identities; private helper/table ไม่ให้ client เขียนตรง. ไม่ reset/drop ฐานข้อมูลหรือเพิ่มบริการเสียเงิน.
+- Typecheck/Build และ490 unit testsผ่าน; browserบนCloudflare22กรณีผ่าน รวมRemittance21และPicker1. Boundary13routesของRemittanceและ6routesเธรดเดิมได้401; unapproved user ได้403ในtests. ภาพสมมติ12ภาพขนาด1440×900/1280×800/390×844เปิดตรวจแล้ว; referenceเดิมไม่เปลี่ยน.
+- Tested จริง **20:08:22 ICT** ผ่าน Browser → Worker → Supabase: synthetic command/summary/history/file metadata tests ทำใน subtransaction แล้วrollback; PDFสมมติ622bytesอัปโหลดPrivate Storageและอ่านกลับ SHA-256ตรง. มี diagnostic receipt verified1/ไฟล์ส่วนตัว622bytesคงไว้. Notice/lines/commands/history/evidenceธุรกิจและsynthetic Accountsคงเหลือ0; business sent events/วันวางบิล/stageทวงยัง0.
+- ไฟล์เอาลิงก์ออกยังเก็บ bytes; quotaนับ retained/reserved bytes ส่วนจำนวนไฟล์นับ active links. Restoreคำสั่งเดิมใช้ผลบันทึกเดิมได้แม้Storageขัดข้อง; restoreใหม่ต้องอ่านตรวจbytesก่อน. ยังปิดauto-delete/auto-archive.
+- ไม่ทดสอบสร้างRemittanceค้างถาวรกับAccountลูกค้าตามคำสั่งเจ้าของ; normal UI/APIใช้synthetic fixturesร่วมกับDBrollbackและlive isolated storage proof. ขั้นเงินรับจริง/บิลเข้ารายวัน/retention/restore backupยังแยกงาน ไม่อ้างว่าพร้อมครบทุกสถิติ. รายละเอียด [REMITTANCE_VERIFICATION.md](REMITTANCE_VERIFICATION.md).
+
 ## Checkpoint ล่าสุด — 10 กันยายน 2026 18:36 ICT: เธรด Gmail และดูบทสนทนา
 
 - Implemented / pushed / deployed: เลือก New email/Existing thread ใน Email Composer, ค้นหาจาก To/CC ที่ตั้งเอง, preview ผู้ร่วมสนทนาและ parent, ยืนยัน Hotel/Account ก่อนเลือก, ล็อก subject ให้ตรงเธรดและกลับไป New email ได้. ไม่แทนผู้รับด้วยอีเมล OPERA หรือ participant ใน Gmail.
