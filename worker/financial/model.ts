@@ -11,12 +11,13 @@ export interface FinancialObservation {
  accountName:string;accountType:string;accountNo:string|null;sourceStatus:'observed'|'not_observed';
  firstObservedAt:string;lastObservedAt:string;lastCheckedAt:string;
 }
-export type FinancialInvoiceReportRow=FinancialInvoice&FinancialObservation;
+export type FinancialInvoiceReportRow=FinancialInvoice&FinancialObservation&{mappingVerified?:boolean;mappingError?:string|null};
 export type FinancialPaymentReportRow=FinancialPayment&FinancialObservation;
 export type FinancialApplicationReportRow=AppliedPaymentLink&FinancialObservation&{paymentTransactionDate:string|null;paymentSourceStatus:'observed'|'not_observed'|null};
 export interface FinancialCoverageRow {id:string;hotel:FinancialHotel;from:string;to:string;publishedAt:string;accounts:number;invoices:number;payments:number;applications:number;initialImport:boolean;periodComplete:boolean;proof:string}
 export interface FinancialAccountOption {hotel:FinancialHotel;accountId:string;name:string;type:string;accountNo:string|null}
 export interface FinancialReportSummary {
+ mappingUnverified?:number;mappingVerified?:number;
  paymentTotals?:{creditPostings:string|null;debitPostings:string|null;currentlyApplied:string|null;currentlyUnallocated:string|null;transferRows:number;unknownTransferRows:number};
  rows:number;measuredRows:number;knownAmount:string;amount:string|null;unknownAmounts:number;notObserved:number;unknownSourceDates:number;
  compressedChildren:number;openingBalances:number;credits:number;invoiceCount:number;paymentCount:number;

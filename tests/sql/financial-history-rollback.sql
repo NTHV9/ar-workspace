@@ -2,7 +2,7 @@
 begin;
 do $$
 declare
- actor uuid;other uuid:=gen_random_uuid();command uuid:=gen_random_uuid();run uuid;second_run uuid;failed_run uuid;r jsonb;before_publications bigint;
+ actor uuid;other uuid:=gen_random_uuid();command uuid:=gen_random_uuid();run uuid;second_run uuid;mapping_run uuid;failed_run uuid;r jsonb;before_publications bigint;
  a text:='SYNTHETIC-FIN-A-'||gen_random_uuid();b text:='SYNTHETIC-FIN-B-'||gen_random_uuid();input jsonb;inv jsonb;pay jsonb;link jsonb;coverage jsonb;ctx jsonb;
 begin
  select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null and not coalesce(is_anonymous,false);
@@ -45,6 +45,16 @@ begin
  select count(*) into before_publications from ar_private.financial_publications where run_id=run;
  perform public.ar_financial_publish(actor,run,'{}');if (select count(*) from ar_private.financial_publications where run_id=run)<>before_publications then raise exception 'publish replay duplicated';end if;
  if public.ar_financial_fail(actor,run,'financial_test_failure') then raise exception 'failure changed successful publication';end if;
+ mapping_run:=(public.ar_financial_request(actor,gen_random_uuid(),input,'1901-01-01','1901-01-31','synthetic-proof')->>'id')::uuid;
+ perform public.ar_financial_claim(actor,mapping_run);perform public.ar_financial_discovery_set(actor,mapping_run,array[a]);
+ perform public.ar_financial_stage_batch(actor,mapping_run,a,'invoice',0,jsonb_build_array(inv));perform public.ar_financial_stage_batch(actor,mapping_run,a,'payment',0,jsonb_build_array(pay));
+ begin perform public.ar_financial_account_done(actor,mapping_run,a,ctx,'{"invoices":1,"payments":1,"applications":0}',coverage||'{"mappingVerified":0,"mappingFailures":[{"invoiceId":"999","code":"financial_mapping_missing_payments"}]}','{}');raise exception 'unrelated mapping failure accepted';exception when others then if sqlerrm<>'financial_mapping_invalid' then raise;end if;end;
+ perform public.ar_financial_account_done(actor,mapping_run,a,ctx,'{"invoices":1,"payments":1,"applications":0}',coverage||'{"mappingVerified":0,"mappingFailures":[{"invoiceId":"101","code":"financial_mapping_missing_payments"}]}','{}');
+ perform public.ar_financial_publish(actor,mapping_run,array[a]);
+ r:=public.ar_financial_report(actor,'applications','KAT',a,null,'1901-01-01','1901-01-31');if r->'summary'->'amount' is distinct from 'null'::jsonb or r->'coverage'->'complete' is distinct from 'false'::jsonb or r->'summary'->>'mappingUnverified'<>'1' then raise exception 'unknown mapping became a confirmed zero';end if;
+ if not exists(select 1 from ar_private.financial_applications where account_id=a and applied_amount=0.30 and source_status='not_observed') then raise exception 'unknown mapping lost prior evidence';end if;
+ r:=public.ar_financial_report(actor,'payments','KAT',a,null,'1901-01-01','1901-01-31');if r->'summary'->'paymentTotals'->>'creditPostings'<>'0.30' then raise exception 'mapping failure hid verified payment';end if;
+ r:=public.ar_financial_report(actor,'invoice_entries','KAT',a,null,'1901-01-01','1901-01-31');if r->'rows'->0->>'mappingError'<>'financial_mapping_missing_payments' or r->'summary'->>'amount'<>'0.30' then raise exception 'invoice mapping coverage invisible';end if;
  second_run:=(public.ar_financial_request(actor,gen_random_uuid(),input,'1901-01-01','1901-01-31','synthetic-proof')->>'id')::uuid;
  perform public.ar_financial_claim(actor,second_run);perform public.ar_financial_discovery_set(actor,second_run,array[a]);
  perform public.ar_financial_account_done(actor,second_run,a,ctx,'{"invoices":0,"payments":0,"applications":0}',coverage||'{"members":0,"roots":0,"reportedRoots":0,"mappingVerified":0}','{}');

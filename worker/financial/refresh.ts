@@ -66,14 +66,22 @@ export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{act
     const history=await readFinancialHistory(reader,{hotel:run.hotel,accountId,start:run.from,end:run.to},{observedAt:run.startedAt??undefined});
     history.invoices.sort((a,b)=>a.transactionId.localeCompare(b.transactionId));history.payments.sort((a,b)=>a.transactionId.localeCompare(b.transactionId));
     const eligible=history.invoices.filter(i=>i.entryClassification==='invoice'&&['standalone','parent'].includes(i.collectionRole));const applications:AppliedPaymentLink[]=[];
+    const verified:string[]=[],mappingFailures:{invoiceId:string;code:string}[]=[];
     for(const [index,invoice]of eligible.entries()){
      if(index%10===0&&!await rpc<boolean>(env,'ar_financial_renew',args))return fail('financial_lease_invalid');
-     const mapping=await readCorroboratedApplications(reader,{hotel:run.hotel,accountId,invoiceTransactionId:invoice.transactionId,...(invoice.invoiceNo!==null&&/^[0-9]+$/.test(invoice.invoiceNo)?{invoiceNo:invoice.invoiceNo}:{})},{observedAt:history.coverage.observedAt});applications.push(...mapping.links);
+     try{
+      const mapping=await readCorroboratedApplications(reader,{hotel:run.hotel,accountId,invoiceTransactionId:invoice.transactionId,...(invoice.invoiceNo!==null&&/^[0-9]+$/.test(invoice.invoiceNo)?{invoiceNo:invoice.invoiceNo}:{})},{observedAt:history.coverage.observedAt});applications.push(...mapping.links);verified.push(invoice.transactionId);
+     }catch(error){
+      // The independently read history remains useful. No links from a failed
+      // corroboration are published and its application total stays unavailable.
+      const code=error instanceof OperaError&&/^financial_[a-z_]{1,80}$/.test(error.stage??'')?error.stage!:error instanceof OperaError?'financial_mapping_'+error.code:'financial_mapping_unavailable';
+      mappingFailures.push({invoiceId:invoice.transactionId,code});
+     }
     }
     applications.sort((a,b)=>a.invoiceTransactionId.localeCompare(b.invoiceTransactionId)||a.paymentTransactionId.localeCompare(b.paymentTransactionId));
     await stageRows(env,actor,runId,accountId,'invoice',history.invoices);await stageRows(env,actor,runId,accountId,'payment',history.payments);await stageRows(env,actor,runId,accountId,'application',applications);
     const counts={invoices:history.invoices.length,payments:history.payments.length,applications:applications.length};
-    return rpc<FinancialCounts>(env,'ar_financial_account_done',{...args,p_account:accountId,p_context:accountContext,p_counts:counts,p_coverage:{...history.coverage,mappingVerified:eligible.length,mappingContractVersion:'correlated_v1'},p_mapping_invoices:eligible.map(i=>i.transactionId)});
+    return rpc<FinancialCounts>(env,'ar_financial_account_done',{...args,p_account:accountId,p_context:accountContext,p_counts:counts,p_coverage:{...history.coverage,mappingVerified:verified.length,mappingFailures,mappingContractVersion:'correlated_v1'},p_mapping_invoices:verified});
    });
   }
   return await step.do('financial-publish',stepConfig,async()=>{

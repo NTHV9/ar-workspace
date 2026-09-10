@@ -26,7 +26,9 @@ export interface CorroboratedApplications {
  * Independent scoped invoice/payment reads and monetary reconciliation are mandatory. */
 export async function readCorroboratedApplications(reader:OperaReader,query:AppliedPaymentQuery,options:FinancialReadOptions={},responseAlreadyRead?:unknown):Promise<CorroboratedApplications>{
  const before=await invoiceDetail(reader,query,options);
- if(before.currentAmount===null||before.openAmount===null||before.cumulativePayments===null)return bad('financial_mapping_invoice_amounts');
+ if(before.currentAmount===null)return bad('financial_mapping_missing_current');
+ if(before.openAmount===null)return bad('financial_mapping_missing_open');
+ if(before.cumulativePayments===null)return bad('financial_mapping_missing_payments');
  const envelope=record(responseAlreadyRead??await reader.appliedInvoicePayments(query));
  if(!Array.isArray(envelope.details)||envelope.details.length>(options.maxRows??5000))return bad('financial_mapping_shape');
  for(const key of ['errors','warnings'])if(envelope[key]!==undefined&&(!Array.isArray(envelope[key])||envelope[key].length))return bad('financial_mapping_upstream_notice');
