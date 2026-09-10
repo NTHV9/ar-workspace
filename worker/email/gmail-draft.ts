@@ -5,6 +5,7 @@ import {buildMime,type MailFile} from './mime';
 import {documentJob} from '../documents/jobs';
 import {makeReader} from '../opera/probe';
 import {readBusinessDate,readVerifiedAccount} from '../refresh/read-snapshot';
+import {revalidateThread} from './threads';
 interface Attempt {id:string;state:string;claimed?:boolean;gmail_draft_id?:string;error?:string}
 export function draftBudget(env:EmailEnv){const n=Number(env.GMAIL_DRAFT_MAX_BYTES??10485760);return Number.isSafeInteger(n)&&n>0&&n<=12582912?n:10485760;}
 export async function readMailFile(env:EmailEnv,draft:EmailDraft,file:{name:string;storage_key:string;byte_count:number;sha256:string;mime?:string}):Promise<MailFile>{
@@ -20,6 +21,8 @@ export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revis
  if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  const existing=await emailRpc<Attempt|null>(env,'ar_gmail_attempt_get',{p_owner:owner,p_draft:id,p_revision:revision});
  if(existing)return {state:existing.state,created:existing.state==='created',alreadyRequested:true};
+ // Retained legacy helper has no expected-choice claim. Thread handoffs use deliverMessage.
+ if(draft.thread)throw Error('email_thread_invalid');
  const token=await gmailToken(env,owner);const messageId=`<${crypto.randomUUID()}@ar-workspace.ar-c82.workers.dev>`;const {raw}=await prepareMail(env,owner,draft,messageId);
  const attempt=await emailRpc<Attempt>(env,'ar_gmail_attempt_claim',{p_owner:owner,p_draft:id,p_revision:revision,p_message_id:messageId});
  if(attempt.error)throw Error(attempt.error);if(!attempt.claimed)return {state:attempt.state,created:attempt.state==='created',alreadyRequested:true};
@@ -44,6 +47,7 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
  const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
  for(const invoice of job.manifest){const current=snapshot.invoices.find(i=>i.id===invoice.id);if(!current||current.open<=0||!['standalone','parent'].includes(current.collection_role)||current.open!==invoice.open||current.invoice_no!==invoice.invoice_no||current.folio_no!==invoice.folio_no)throw Error('email_source_changed');}
  const loaded:MailFile[]=[];for(const file of files)loaded.push(await readMailFile(env,draft,file));
- const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null},loaded,messageId));
- return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,files:files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256}))}};
+ const thread=await revalidateThread(env,owner,draft);
+ const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null},loaded,messageId,thread));
+ return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,...(thread?{thread}:{}),files:files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256}))}};
 }

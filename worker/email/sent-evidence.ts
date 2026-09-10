@@ -1,9 +1,11 @@
 import {hash,unbase64} from './crypto';
 import type {Recipients} from '../settings/validation';
 import {parseRichMessage,richHtml,richText,type RichMessage} from '../../src/email/rich-message';
-export interface ExpectedMail {messageId:string;gmailId?:string;recipients:Recipients;subject:string;body:string;richBody?:RichMessage|null;files:{name:string;sha256:string;byte_count:number}[]}
+
+import {rfcIds,validateReplyHeaders,type ThreadProof} from './threads';
+export interface ExpectedMail {thread?:ThreadProof|null;messageId:string;gmailId?:string;recipients:Recipients;subject:string;body:string;richBody?:RichMessage|null;files:{name:string;sha256:string;byte_count:number}[]}
 interface Part {mimeType?:string;filename?:string;headers?:{name:string;value:string}[];parts?:Part[];body?:{data?:string;size?:number;attachmentId?:string}}
-interface Message {id?:string;labelIds?:string[];internalDate?:string;payload?:Part}
+interface Message {threadId?:string;id?:string;labelIds?:string[];internalDate?:string;payload?:Part}
 export const decodeUrl64=(s:string)=>unbase64(s.replaceAll('-','+').replaceAll('_','/'));
 const normalizedText=(s:string)=>s.replace(/\r\n?/g,'\n').replace(/\n+$/,'');
 function addresses(value:string):string[]{
@@ -20,6 +22,7 @@ export async function verifySentEvidence(message:Message,expected:ExpectedMail,a
   check='message_identity';const correlation=expected.messageId.slice(1).split('@')[0];
   const identity=expected.gmailId!==undefined?message.id===expected.gmailId:header('Message-ID').trim()===expected.messageId||(/^[0-9a-f-]{36}$/.test(correlation)&&header('X-AR-Delivery-ID').trim()===correlation);
   if(!identity||JSON.stringify(addresses(header('From')))!==JSON.stringify(['ar@katathani.com']))throw Error();
+  if(expected.thread){check='message_thread';validateReplyHeaders(expected.thread);if(expected.thread.subject!==expected.subject||message.threadId!==expected.thread.threadId||header('In-Reply-To').trim()!==expected.thread.rfcMessageId||JSON.stringify(rfcIds(header('References').replace(/\r\n[ \t]+/g,' ')))!==JSON.stringify(expected.thread.references))throw Error();}
   check='message_recipients';for(const field of ['to','cc','bcc'] as const)if(JSON.stringify(addresses(header(field)))!==JSON.stringify(expected.recipients[field].map(s=>s.toLowerCase()).sort()))throw Error();
   check='message_subject';if(decodedHeader(header('Subject'))!==expected.subject)throw Error();
   check='message_parts';const leaves:Part[]=[];function visit(p:Part,depth=0){if(depth>12||leaves.length>100)throw Error();if(p.parts?.length){for(const child of p.parts)visit(child,depth+1);}else leaves.push(p);}visit(message.payload);

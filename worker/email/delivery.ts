@@ -8,7 +8,8 @@ import {prepareMail,readMailFile,draftBudget} from './gmail-draft';
 import type {MailFile} from './mime';
 import {verifySentEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
-export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals}};claimed?:boolean;error?:string}
+import {syntheticConversation,type ThreadProof} from './threads';
+export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string}};claimed?:boolean;error?:string}
 export const deliveryView=(d:Delivery)=>({id:d.id,state:d.state,mode:d.mode,sentAt:d.sent_at,reason:d.reason,recorded:d.state==='sent'&&d.mode!=='test'});
 async function record(env:EmailEnv,actor:string,d:Delivery,state:string,gmailId:string|null=null,draftId:string|null=null,reason:string|null=null){
  await emailRpc(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:state,p_gmail_id:gmailId,p_gmail_draft_id:draftId,p_reason:reason});
@@ -17,7 +18,7 @@ function assertDelivery(d:Delivery){if(d.error)throw Error(d.error);}
 async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,token:string){
  assertDelivery(delivery);if(!delivery.claimed)return deliveryView(delivery);
  try{
-  const draft=delivery.mode==='draft';const r=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/'+(draft?'drafts':'messages/send'),{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(draft?{message:{raw}}:{raw})});
+  const draft=delivery.mode==='draft';const message={raw,...(delivery.snapshot.expected.thread?{threadId:delivery.snapshot.expected.thread.threadId}:{})};const r=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/'+(draft?'drafts':'messages/send'),{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(draft?{message}:message)});
   const id=draft?(r.message as {id?:unknown})?.id:r.id;if(typeof id!=='string'||!id||draft&&typeof r.id!=='string')throw Error('gmail_unavailable');
   await record(env,actor,delivery,draft?'created':'awaiting_evidence',id,draft?String(r.id):null);
   if(draft)return {id:delivery.id,state:'created',created:true,mode:'draft',recorded:false};
@@ -40,18 +41,21 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
 }
 export interface TestSupplementals {draftId:string;revision:number;ids:string[]}
 const testSourceKey=(s?:TestSupplementals)=>JSON.stringify(s?[s.draftId,s.revision,s.ids]:null);
-export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false){
+export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false,replyToDeliveryId?:string){
+ if(replyToDeliveryId&&supplementals)throw Error('email_invalid');
  const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));
- const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals)||!!existing.snapshot.expected.richBody!==rich)throw Error('email_test_command_conflict');return deliveryView(existing);}
+ const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals)||!!existing.snapshot.expected.richBody!==rich||existing.snapshot.expected.replyToDeliveryId!==replyToDeliveryId)throw Error('email_test_command_conflict');return deliveryView(existing);}
  const extraFiles:MailFile[]=[];if(supplementals){const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:supplementals.draftId});if(!draft)throw Error('email_missing');if(draft.revision!==supplementals.revision)throw Error('email_revision_conflict');const selected=supplementals.ids.map(fileId=>{const file=draft.attachments.find(a=>a.id===fileId);if(!file)throw Error('email_attachment_missing');return file;});if(selected.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');for(const file of selected)extraFiles.push(await readMailFile(env,draft,file));}
- const messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,subject=supplementals?'Katathani AR Workspace — attachment verification':'Katathani AR Workspace — direct send verification';
+ const reply=replyToDeliveryId?(await syntheticConversation(env,actor,replyToDeliveryId,recipientHash)).choice:null;
+ const thread:ThreadProof|null=reply?{threadId:reply.threadId,parentMessageId:reply.parentMessageId,rfcMessageId:reply.rfcMessageId,references:reply.references,subject:reply.subject,parentDate:reply.parentDate}:null;
+ const messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,subject=reply?reply.subject:supplementals?'Katathani AR Workspace — attachment verification':'Katathani AR Workspace — direct send verification';
  const body='This is an authorized one-time integration test sent directly by AR Workspace on Cloudflare. Includes a system-generated synthetic PDF and any supplemental files explicitly selected for this test. This test does not change billing, collection stages or financial balances.';
  const richBody=rich?plainMessage(body):null;if(richBody)richBody.blocks[0].runs[0].bold=true;
  const pdf=await PDFDocument.create(),page=pdf.addPage([595,842]),font=await pdf.embedFont(StandardFonts.Helvetica);page.drawText('AR Workspace - Email integration test',{x:45,y:775,size:18,font});page.drawText('Synthetic document only. No customer or invoice data.',{x:45,y:735,size:11,font});page.drawText('No billing or collection activity will be recorded.',{x:45,y:710,size:11,font});const bytes=await pdf.save();
  const files:MailFile[]=[{name:'AR-Workspace-Test.pdf',mime:'application/pdf',bytes},...extraFiles];if(files.length>50||files.reduce((n,f)=>n+f.bytes.length,0)>draftBudget(env))throw Error('email_too_large');
- const expected={messageId,subject,body,...(richBody?{richBody}:{}),files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
- const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},files,messageId)),token=await gmailToken(env,actor);
+ const expected={messageId,subject,body,...(thread?{thread,replyToDeliveryId}:{}),...(richBody?{richBody}:{}),files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
+ const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},files,messageId,reply)),token=await gmailToken(env,actor);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:null,p_revision:null,p_mode:'test',p_stage:null,p_message_id:messageId,p_expected:expected});
  return submit(env,actor,claim,raw,token);
 }

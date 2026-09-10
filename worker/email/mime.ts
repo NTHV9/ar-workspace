@@ -1,6 +1,8 @@
 import {base64} from './crypto';
 import {parseEmailDraft,type EmailInput} from './validation';
 import {richHtml} from '../../src/email/rich-message';
+import type {ThreadChoice} from '../../src/email/threads';
+import {validateThreadChoice} from './threads';
 export interface MailFile {name:string;mime:string;bytes:Uint8Array}
 const lines=(s:string)=>s.match(/.{1,76}/g)?.join('\r\n')??'';
 export function encodedHeader(text:string){
@@ -9,10 +11,12 @@ export function encodedHeader(text:string){
  for(const char of text){if(new TextEncoder().encode(part+char).length>42){words.push('=?UTF-8?B?'+base64(new TextEncoder().encode(part))+'?=');part='';}part+=char;}
  if(part)words.push('=?UTF-8?B?'+base64(new TextEncoder().encode(part))+'?=');return words.join('\r\n ');
 }
-export function buildMime(input:EmailInput,files:MailFile[],messageId:string):Uint8Array{
+export function buildMime(input:EmailInput,files:MailFile[],messageId:string,thread?:ThreadChoice|null):Uint8Array{
  const v=parseEmailDraft(input);if(!/^<[0-9a-f-]{36}@ar-workspace\.ar-c82\.workers\.dev>$/.test(messageId))throw Error('email_invalid');
  const boundary='ar_'+crypto.randomUUID();
+ if(thread)validateThreadChoice(thread,v.recipients,v.subject);
  const headers=['From: ar@katathani.com',...(['to','cc','bcc'] as const).filter(f=>v.recipients[f].length).map(f=>`${f}: ${v.recipients[f].join(',\r\n ')}`),'Subject: '+encodedHeader(v.subject),'Message-ID: '+messageId,'X-AR-Delivery-ID: '+messageId.slice(1).split('@')[0],'MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${boundary}"`];
+ if(thread)headers.splice(5,0,'In-Reply-To: '+thread.rfcMessageId,'References: '+thread.references.join('\r\n '));
  const parts=[headers.join('\r\n'),'','--'+boundary];
  const alternative='alt_'+crypto.randomUUID();
  if(v.richBody)parts.push(`Content-Type: multipart/alternative; boundary="${alternative}"`,'','--'+alternative);
