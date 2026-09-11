@@ -71,7 +71,11 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
  const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d)throw Error('email_missing');if(d.state==='sent')return deliveryView(d);
  if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor),headers={Authorization:'Bearer '+token};
  let hits:{id:string}[]=[];
- const trustedId=d.mode!=='draft'?d.provider_receipt_id:null;
+ // Gmail's web composer can replace RFC Message-ID and remove custom headers.
+ // Its recorded message ID is a candidate identity for either path; the complete
+ // evidence check below still requires SENT, no DRAFT, exact recipients/content
+ // and attachment hashes. Draft creation itself never establishes sending.
+ const trustedId=d.provider_receipt_id;
  if(trustedId)hits=[{id:trustedId}];
  else{
   const search=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+new URLSearchParams({q:'in:sent rfc822msgid:'+d.message_id,maxResults:'2'}),{headers});
