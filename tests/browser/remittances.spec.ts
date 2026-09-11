@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {policyFixture} from './fixtures/collection-policy';
 async function capture(page:Page,surface:string,width:number){await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));await page.screenshot({path:`evidence/remittance-${surface}-${width}.png`,fullPage:false,animations:'disabled'});await page.screenshot({path:`.tmp/remittance-${surface}-${width}-full.png`,fullPage:true,animations:'disabled'});}
 const id='10000000-0000-4000-8000-000000000001',account={hotel:'KAT',id:'SYNTH-REMIT',name:'Azure Travel · Synthetic',type:'OTA',open:30000,over90:0,items:3};
 const lines=Array.from({length:3},(_,i)=>({invoiceId:`SYNTH-${i+1}`,invoiceNo:`INV-${i+1}`,folioNo:`FOL-${i+1}`,guest:`Synthetic guest ${i+1}`,reportedAmount:null,currentOpen:'10000.00',currentStatus:'open',sourceVerifiedAt:'2026-09-10T03:00:00Z'}));
@@ -13,6 +14,7 @@ async function setup(page:Page,options:{empty?:boolean;unknown?:boolean;zero?:bo
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',async r=>{const u=new URL(r.request().url()),path=u.pathname,method=r.request().method();let body:any;try{body=r.request().postDataJSON();}catch{}calls.push({path,method,body,query:u.search,authorization:r.request().headers().authorization??null});
   if(path==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+  if(path==='/api/collection-policy'&&method==='GET')return r.fulfill({json:policyFixture});
   if(path==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(path==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[account],refresh:{running:false,hotels:[]}}});
   if(path.startsWith('/api/accounts/'))return r.fulfill({json:{invoices:[]}});

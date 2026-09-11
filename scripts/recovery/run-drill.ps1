@@ -119,7 +119,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_source_observation_reports'){$fixtures+='source-observation-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_financial_granular_steps'){$fixtures+='financial-granular-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_operations_recovery'){$fixtures+='operations-recovery-rollback.sql'}
-    if($AdditionalMigrationNames -contains 'ar_isolated_acceptance'){$fixtures+='isolated-acceptance-rollback.sql'}
+    if(($AdditionalMigrationNames -contains 'ar_isolated_acceptance') -and ($AdditionalMigrationNames -notcontains 'ar_retire_acceptance_workspace')){$fixtures+='isolated-acceptance-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_recovery_provider_identity'){$fixtures+='recovery-provider-identity-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_document_queue_isolation'){$fixtures+='document-queue-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_retained_zero_verification'){$fixtures+='retained-zero-rollback.sql'}

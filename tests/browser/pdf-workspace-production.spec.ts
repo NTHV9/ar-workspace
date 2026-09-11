@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { mkdirSync } from 'node:fs';
+import {policyFixture} from './fixtures/collection-policy';
 
 // Deployment UI evidence only. Every API response and every PDF is synthetic.
 // In particular this does NOT verify OPERA native Statement availability.
@@ -48,6 +49,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await page.route('**/api/**', route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/config') return route.fulfill({ json: { supabaseUrl: 'https://example.supabase.co', publishableKey: 'synthetic-key' } });
+      if (path === '/api/collection-policy' && route.request().method() === 'GET') return route.fulfill({json:policyFixture});
       if (path === '/api/refresh') return route.fulfill({ json: { jobs: [], running: false, hotels: [] } });
       if (path === '/api/portfolio') return route.fulfill({ json: { status: 'connected', accounts: [], refresh: { running: false, hotels: [] } } });
       if (path === `/api/documents/${jobId}`) return route.fulfill({ json: job });
