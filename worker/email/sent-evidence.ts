@@ -8,6 +8,9 @@ interface Part {mimeType?:string;filename?:string;headers?:{name:string;value:st
 interface Message {threadId?:string;id?:string;labelIds?:string[];internalDate?:string;payload?:Part}
 export const decodeUrl64=(s:string)=>unbase64(s.replaceAll('-','+').replaceAll('_','/'));
 const normalizedText=(s:string)=>s.replace(/\r\n?/g,'\n').replace(/\n+$/,'');
+// Gmail's web composer wraps long plain-text lines. Preserve paragraphs and all
+// words/punctuation while ignoring line wrapping inside the same paragraph.
+const normalizedPlainText=(s:string)=>normalizedText(s).split(/\n[ \t]*\n+/).map(p=>p.replace(/[ \t]*\n[ \t]*/g,' ')).join('\n\n');
 function addresses(value:string):string[]{
  if(!value.trim())return [];
  return (value.match(/(?:[^,"]|"[^"]*")+/g)??[]).map(s=>{const angle=/<([^<>]+)>/.exec(s);const address=(angle?angle[1]:s).trim().toLowerCase();if(!/^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(address))throw Error();return address;}).sort();
@@ -30,7 +33,7 @@ export async function verifySentEvidence(message:Message,expected:ExpectedMail,a
   const matched=new Set<number>();for(const file of files){const index=expected.files.findIndex((f,i)=>!matched.has(i)&&f.name===file.filename&&f.byte_count===file.body?.size);if(index<0)throw Error();check='attachment_content';const data=file.body?.data?decodeUrl64(file.body.data):file.body?.attachmentId?await attachment(file.body.attachmentId):null;if(!data||data.length!==expected.files[index].byte_count||await hash(data)!==expected.files[index].sha256)throw Error();matched.add(index);}
   if(leaves.some(p=>!p.filename&&p.mimeType!=='text/plain'&&!(expected.richBody&&p.mimeType==='text/html')))throw Error();
   const plain=leaves.filter(p=>!p.filename&&p.mimeType==='text/plain');if(plain.length!==1||!plain[0].body?.data)throw Error();
-  check='message_body';if(normalizedText(new TextDecoder().decode(decodeUrl64(plain[0].body.data)))!==normalizedText(expected.body))throw Error();
+  check='message_body';if(normalizedPlainText(new TextDecoder().decode(decodeUrl64(plain[0].body.data)))!==normalizedPlainText(expected.body))throw Error();
   if(expected.richBody){
    check='message_html';const rich=parseRichMessage(expected.richBody);if(richText(rich)!==expected.body)throw Error();
    const html=leaves.filter(p=>!p.filename&&p.mimeType==='text/html');if(html.length!==1||!html[0].body?.data||normalizedText(new TextDecoder().decode(decodeUrl64(html[0].body.data)))!==normalizedText(richHtml(rich)))throw Error();
