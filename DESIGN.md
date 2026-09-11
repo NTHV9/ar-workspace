@@ -189,6 +189,8 @@ Supporting tables, definition lists and remittance totals use the same white sur
 
 TSK, KAT and Total columns remain distinct. Default Total Open descending; every supported column sorts. Guest Name, Invoice No. and Folio No. remain separate. Selection never crosses Hotel + Account. These incumbent decisions remain in force alongside the new Dashboard patterns.
 
+The selected-invoice count, amount and actions sit above the Account Detail ledger. Keep this single action bar sticky while the page scrolls, with responsive wrapping on small screens. Preparing documents and recording external billing must remain reachable with a long invoice list.
+
 ## Do's and Don'ts
 
 ### Do:

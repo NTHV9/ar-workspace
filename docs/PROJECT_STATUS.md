@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Sticky selected-invoice actions — 11 กันยายน 2026
+
+- เจ้าของขอให้แถบจำนวนบิล/ยอดที่เลือกและปุ่มทำงานไม่อยู่ท้ายรายการยาว. ย้ายแถบเดียวขึ้นเหนือตาราง Account Detail และตรึงด้านบนขณะ page scroll; จำนวน ยอด Hotel/Account และ event handlers เดิมคงอยู่ ไม่มีแถบซ้ำ
+- ย้ายออกจาก ledger panel ที่ตัด overflow และใช้ overflow clip เฉพาะ app shell ที่มีแถบนี้ เพื่อให้ sticky อิงการเลื่อนหน้าเว็บจริง. จอเล็กจัดปุ่มหลายแถวและคง touch targets; native document/external-billing dialogs ยังอยู่เหนือแถบ
+- Fixture 84 invoices ล้มเหลวก่อนแก้ทั้ง 1440/1100/390. หลังแก้ตรวจ DOM order, scroll 1600px, sticky bounds, count/amount, เปิด Prepare documents พร้อม 3 selected invoices, เปิด external billing และ Clear selection ผ่าน. Local regression 22 cases และ typecheck ผ่าน กำลัง Build/Deploy/ตรวจ Cloudflare
+- ทดสอบด้วยข้อมูลสมมติ ไม่มีการสร้างเอกสาร/บันทึกวางบิล/ส่งเมลจริงหรือแก้ฐานข้อมูล. ไม่เปลี่ยนแผง Selected guest/item, Aging หรือ Latest Sent
+
 ## Checkpoint Account panel presentation — 11 กันยายน 2026
 
 - เจ้าของย้ำว่าภาพก่อนแก้ PDF ต่างจากแผงลอยปัจจุบัน จึง reconstruct source ก่อน PDF clarity (`1c938970^`, `a9feb61`) และ source ก่อนปรับรอบนี้ (`8779266`) ด้วย synthetic fixture เดียวกัน 84 rows, เวลา/scroll/viewport เท่ากัน แทนการสรุปจากรายชื่อไฟล์ที่แก้เพียงอย่างเดียว

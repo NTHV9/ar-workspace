@@ -114,3 +114,10 @@ dialog.invoice-detail:not([open]){display:none}
 /* Keep the classic side-by-side account view on working laptop widths. */
 @media(max-width:1000px){.account-workspace{grid-template-columns:1fr}.invoice-detail{display:none}.invoice-detail.drawer-open{display:block;position:fixed;z-index:31;width:340px;right:15px;top:100px;bottom:20px;overflow:auto;box-shadow:0 20px 80px #12283e40}.drawer-close{display:grid;position:absolute;right:10px;top:10px}.drawer-backdrop{display:block;position:fixed;inset:0;background:#13243d50;z-index:30}}
 @media(min-width:1001px) and (max-width:1200px){.account-page .table-scroll-hint{display:block;padding:6px 12px;font-size:10px;color:var(--muted)}}
+/* Keep selected invoice actions available while the document itself scrolls. */
+.app-shell:has(> .account-page > .selection-bar){overflow:clip}
+.account-page .selection-bar{position:sticky;top:8px;z-index:12;margin:0 0 12px;flex-wrap:wrap;gap:12px 24px}
+.account-page .selection-bar>div{min-width:0}
+.account-page .selection-bar small{overflow-wrap:anywhere}
+.account-page .selection-bar button{white-space:nowrap}
+@media(max-width:600px){.account-page .selection-bar{top:4px;gap:10px;padding:10px}.account-page .selection-bar>div{flex:1 1 40%}.account-page .selection-bar button{flex:1 1 auto}}
