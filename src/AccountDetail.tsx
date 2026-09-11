@@ -20,8 +20,8 @@ export function AccountDetail({account, invoices, review, refresh, back, loading
   const validSelected=new Set([...selected].filter(id=>invoices.some(i=>i.id===id&&selectableInvoice(i,review))));
   const [drawer,setDrawer]=useState(false), [aging,setAging]=useState(true);
   const detailDialog=useRef<HTMLDialogElement>(null);
-  const [compact,setCompact]=useState(()=>typeof matchMedia!=='undefined'&&matchMedia('(max-width:1200px)').matches);
-  useEffect(()=>{const media=matchMedia('(max-width:1200px)');const changed=()=>setCompact(media.matches);media.addEventListener('change',changed);return()=>media.removeEventListener('change',changed);},[]);
+  const [compact,setCompact]=useState(()=>typeof matchMedia!=='undefined'&&matchMedia('(max-width:1000px)').matches);
+  useEffect(()=>{const media=matchMedia('(max-width:1000px)');const changed=()=>setCompact(media.matches);media.addEventListener('change',changed);return()=>media.removeEventListener('change',changed);},[]);
   useEffect(()=>{
     const dialog=detailDialog.current;if(!dialog)return;
     if(dialog.open&&(compact!==dialog.matches(':modal')||compact&&!drawer))dialog.close();

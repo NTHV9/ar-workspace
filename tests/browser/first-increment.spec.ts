@@ -40,7 +40,7 @@ test('Portfolio and Account Detail preserve navigation, filtering, sorting and s
   await page.screenshot({path:'evidence/portfolio-1280.png',animations:'disabled'});
   await page.locator('.accounts-panel td.kat button').first().click();
   await page.screenshot({path:'evidence/account-1280.png',animations:'disabled'});
-  await page.setViewportSize({width:1100,height:760});
+  await page.setViewportSize({width:900,height:760});
   await page.locator('.ledger .name-link').first().click();
   await expect(page.locator('.invoice-detail.drawer-open')).toBeVisible();
   await page.getByRole('button',{name:'Close invoice details'}).click();

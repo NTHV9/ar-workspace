@@ -42,10 +42,23 @@ test('latest activity distinguishes unbilled, billed, exempt, unknown and actual
  await expect(badge('1')).toHaveText('No billing sent',{timeout:1500});await expect(badge('2')).toHaveText('Billed');await expect(badge('3')).toHaveText('No reminders sent');await expect(badge('4')).toHaveText('Final · Urgent');await expect(badge('7')).toHaveText('Not available');await expect(badge('8')).toHaveText('Billing setup needed');
  await page.getByRole('button',{name:'C Exempt · Synthetic',exact:true}).click();await expect(page.locator('.detail-fields').getByText('Not required',{exact:true})).toBeVisible();
 });
-for(const width of [1100,1200,390])test(`selected item stays against the right edge at ${width}px and returns focus on Escape`,async({page})=>{
+for(const width of [900,1000,390])test(`selected item stays against the right edge at ${width}px and returns focus on Escape`,async({page})=>{
  await page.setViewportSize({width,height:800});await setup(page);await page.goto('/?account=SYN-A&property=KAT');
  const trigger=page.getByRole('button',{name:'A Pending · Synthetic',exact:true});await trigger.click();const drawer=page.getByRole('dialog',{name:'Invoice details',exact:true});await expect(drawer).toBeVisible();
  const box=await drawer.boundingBox();expect(box).not.toBeNull();expect(Math.abs(width-box!.x-box!.width-15)).toBeLessThanOrEqual(2);if(width>600)expect(box!.x).toBeGreaterThan(width/2);
  await page.screenshot({path:`evidence/account-ledger-drawer-${width}.png`,animations:'disabled'});
  await page.keyboard.press('Escape');await expect(drawer).not.toBeVisible();await expect(trigger).toBeFocused();
+});
+
+for(const width of [1024,1100,1200])test(`laptop ${width}: details stay beside the ledger without dimming or blocking selection`,async({page})=>{
+ await page.setViewportSize({width,height:900});await setup(page);await page.goto('/?account=SYN-A&property=KAT');
+ await page.getByRole('button',{name:'A Pending · Synthetic',exact:true}).click();
+ const panel=page.locator('.invoice-detail');await expect(panel).toBeVisible();
+ expect(await panel.evaluate(el=>el.matches(':modal'))).toBe(false);
+ const side=await panel.boundingBox(),ledger=await page.locator('.ledger-panel').boundingBox();expect(side!.x).toBeGreaterThanOrEqual(ledger!.x+ledger!.width);
+ await page.getByLabel('Select SYN-2',{exact:true}).check();await expect(page.locator('.selection-bar')).toContainText('1 items selected');
+ expect(await page.locator('.selection-bar').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+ if(width===1100)await page.screenshot({path:'evidence/account-panel-inline-1100.png',animations:'disabled'});
+ await page.setViewportSize({width:900,height:800});await expect(page.getByRole('dialog',{name:'Invoice details'})).toBeVisible();expect(await panel.evaluate(el=>el.matches(':modal'))).toBe(true);
+ await page.setViewportSize({width,height:900});await expect(page.getByRole('complementary',{name:'Invoice details'})).toBeVisible();expect(await panel.evaluate(el=>el.matches(':modal'))).toBe(false);await expect(page.getByLabel('Select SYN-2',{exact:true})).toBeChecked();
 });
