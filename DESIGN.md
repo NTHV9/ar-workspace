@@ -161,6 +161,8 @@ Gently rounded controls sit inside broader rounded content surfaces and the soft
 
 Default buttons are white with a fine border, rounded control corners and a subtle blue-tinted hover. Shared primary buttons use interaction blue and white text. Keyboard focus uses a visible outline (3px) with offset (3px). Disabled buttons reduce opacity and retain their disabled state.
 
+Keep primary foreground and background colors paired in every state. Contextual footer or generic button rules must not replace a primary background with white while retaining white text. Primary PDF hover states use the darker interaction blue; disabled buttons do not gain an enabled hover appearance. Check button labels before hover, while hovered, and with keyboard focus.
+
 Dashboard source links are descriptive text with a small inline arrow icon. Link each measure or row to its matching evidence; preserve date, hotel, account type and Hotel + Account identity where applicable, plus the Dashboard return path. In-page links connect First billed to billing channels and Follow-up sends to sent-stage evidence.
 
 ### Inputs and account-filter disclosure

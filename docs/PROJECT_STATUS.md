@@ -5,7 +5,8 @@
 - Reproduced Create document job แบบ white-on-white ใน normal state: computed foreground/background เป็น rgb(255,255,255), contrast 1:1. สาเหตุ `.document-dialog footer button` ทับ primary background แต่ไม่เปลี่ยน foreground. ลบ background override นี้เพื่อให้ใช้คู่สีของปุ่มหลัก
 - ตรวจพบอีกกรณีจริงใน deployed PDF Workspace ก่อนแก้: Save reviewed PDFs privately เมื่อ hover ถูก generic PDF button hover ทับเป็นพื้นอ่อน/ตัวขาว (contrast 1.11:1). เพิ่ม primary hover pair และกัน generic hover บน disabled buttons. ปรับ primary ใน reviewed-document list ให้ใช้สีหลักเดียวกัน (white contrast 4.66:1)
 - เพิ่ม browser checks normal/hover/keyboard focus และ disabled/disabled hover โดยใช้ computed foreground/background กับ opacity. ตรวจปุ่มหลักและปุ่มข้อความใน Create documents, PDF final review, reviewed documents, email/send confirmation, Account Settings, invoice actions/history, templates, Storage และ Remittance editor/review. ไม่ใช่การอ้างว่า audit WCAG ทุกส่วนของเว็บไซต์ครบ
-- Local 9 audit flows ผ่านรวม Create documents ที่ 1440/390, typecheck/build ผ่าน. Tests ใช้ synthetic data; ไม่ส่ง Gmail/สร้างไฟล์ Drive/แก้ข้อมูลลูกค้าจริง. กำลัง Push/Deploy และตรวจ Cloudflare
+- Local 9 audit flows ผ่านรวม Create documents ที่ 1440/390, typecheck/build ผ่าน. Cloudflare 11 cases ผ่านรวม button audit และ health/auth protection. Tests ใช้ synthetic data; ไม่ส่ง Gmail/สร้างไฟล์ Drive/แก้ข้อมูลลูกค้าจริง
+- Deployed source `8d51ea927f36cf2d3069c31a27cb3b3556a309f6`, Worker `48d1b3be-7c51-439d-843c-0cece43b5590`; health ตรง SHA/database_verified. [PR #9](https://github.com/NTHV9/ar-workspace/pull/9) Merge แล้ว `5bc5ef2152c1fdf6c71568ca973d49654c63d301` หลัง CI ผ่าน; merge tree ตรง tested source
 
 ## Checkpoint Sticky selected-invoice actions — 11 กันยายน 2026
 
