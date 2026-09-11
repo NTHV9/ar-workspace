@@ -1,4 +1,4 @@
-import {writeManagedStorage} from '../operations/storage';
+import {writeManagedStorage,StorageWriteNotDispatched} from '../operations/storage';
 import {boundedBody,emailRpc,jsonBody,type EmailAttachment,type EmailDraft,type EmailEnv} from './shared';
 import {draftBudget,readMailFile} from './gmail-draft';
 import {hash} from './crypto';
@@ -13,7 +13,7 @@ async function writeFile(env:EmailEnv,draft:EmailDraft,file:EmailAttachment,byte
  throw Error('email_attachment_unavailable');
 }
 export async function supplementalRequest(request:Request,env:EmailEnv,actor:string,draftId:string,fileId:string):Promise<EmailDraft|Record<string,unknown>|Response>{
- const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');
+ const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.document_closed_at)throw Error('document_closed');
  if(request.method==='GET'){
   const file=draft.attachments.find(a=>a.id===fileId);if(!file)throw Error('email_attachment_missing');
   const content=await readMailFile(env,draft,file);
@@ -42,6 +42,7 @@ export async function supplementalRequest(request:Request,env:EmailEnv,actor:str
  const files=[...draft.exports,...draft.attachments];if(files.length+1>50||files.reduce((n,f)=>n+f.byte_count,0)+bytes.length>draftBudget(env))throw Error('email_too_large');
  const inspected=await inspectSupplemental(bytes,name,(request.headers.get('Content-Type')??'').split(';')[0].trim().toLowerCase());
  const file:EmailAttachment={id:fileId,name,storage_key:`jobs/${draft.document_job_id}/email/${draft.id}/${fileId}`,mime:inspected.mime,byte_count:inspected.byte_count,sha256:inspected.sha256};
- await writeFile(env,draft,file,bytes);
+ const intent=draft.document_lifecycle==='transient'?await emailRpc<{created:boolean}>(env,'ar_document_begin_upload',{p_actor:actor,p_job_id:draft.document_job_id,p_storage_key:file.storage_key,p_bytes:file.byte_count,p_sha256:file.sha256}):null;
+ try{await writeFile(env,draft,file,bytes);}catch(error){if(intent?.created&&error instanceof StorageWriteNotDispatched)await emailRpc(env,'ar_document_cancel_undispatched_upload',{p_actor:actor,p_job_id:draft.document_job_id,p_key:file.storage_key,p_sha256:file.sha256});throw error;}
  return emailRpc(env,'ar_email_attachment_add_v2',{p_actor:actor,p_id:draftId,p_revision:draft.revision,p_file_id:fileId,p_name:name,p_key:file.storage_key,p_mime:file.mime,p_bytes:file.byte_count,p_sha256:file.sha256,p_budget:draftBudget(env),p_inspection:{version:1,...(inspected.pages?{pages:inspected.pages}:{}),...(inspected.width?{width:inspected.width,height:inspected.height}:{})}});
 }

@@ -1,4 +1,15 @@
-# สถานะโครงการใหม่
+#
+## Checkpoint Transient document preparation — 11 กันยายน 2026
+
+- Implemented: นำเมนู/หน้ารวม Documents ออก เริ่มงานจาก Account/Collections. งานใหม่ไม่บันทึก editor JSON; Preview + acknowledgment แล้ว Continue to email ในขั้นเดียว หรือ Download reviewed PDFs สำหรับ By System. ปุ่ม Back/ปิดแท็บเตือนเมื่อมี PDF edits; กำลัง handoff จะล็อก editor. Legacy job/draft recovery และ Account email history ยังเข้าถึงได้
+- Reviewed bytes พักใน Private Storage เฉพาะ attempt. Network retry ใช้ upload receipts/revision/bytes เดิม; ไม่สร้าง email send อัตโนมัติ. Sent ที่ยืนยันแล้วปิด transient preparation ทันที และ sweep ที่ bounded ทุก 15 นาทีลบ exact original/export objects เมื่อผ่าน reference/claim/arm/provider-absence guards. การตอบ Sent ไม่รอการลบไฟล์. Explicit discard ใช้กับ terminal preparation ที่ไม่มี pending generation/mail/upload; metadata คงอยู่
+- Existing legacy/Drive/Remittance/supplemental files คงนโยบายเดือนปฏิทินเดิม. ไม่สร้าง Drive archive สำหรับ transient jobs. Unknown upload/send ยังคงไฟล์; known no-dispatch budget failure ปลด intent พร้อม audit. Supplemental orphan ที่ยืนยัน bytes แล้วมี receipt สำหรับ original retention policy
+- Supabase migration applied: `20260911104715_ar_transient_documents` บน `jmyvpurzmoiecpydjrci`. เพิ่ม lifecycle/closure, upload intents และ cleanup rotation พร้อม service-only review/discard/create_v4 RPC. v4 explicit opt-in ทำให้ runtime v3 เดิมปลอดภัยระหว่าง DB-first rollout. ก่อน/หลังพบ 31 legacy jobs, 3 email drafts, 115 Storage objects; ไม่แปลงหรือลบงานเก่า
+- Tested: Typecheck/Build/dry-run ผ่าน. Vitest 835 tests / 91 files ผ่าน และ focused final 47 tests ผ่านหลัง versioned creation. Local PostgreSQL replay 61 migrations / 20 rollback suites ผ่าน. Hosted rollback fixture ผ่าน review/no project/exact replay, owner denial, Draft/uncertain, actual ar_mail_confirm_sent, discard, shared references และ provider-observation guards; ไม่เหลือ synthetic business rows
+- Hosted Storage ปฏิเสธ SQL จำลองการลบ metadata จึงแยก test branch ให้ตรวจว่า existing object ไม่ถูกอ้างว่า absent โดยไม่ปิด guard. Tombstone simulation ผ่านเฉพาะ local provider stub; รอบนี้ยังไม่มีการอ้างว่าได้ลบ customer files หรือส่งอีเมลจริง. Security advisor มี INFO เฉพาะ private RLS tables ที่ตั้งใจไม่ให้ client policy; ไม่มี WARN/ERROR
+- Browser tests: legacy flow 11 cases และ transient flow/Back/in-flight guards 7 cases ผ่าน; Account/Gmail/Drive context 23 cases ผ่านหลังแก้ assertion ของหน้า Portfolio ที่เปลี่ยนปลายทาง. ภาพ synthetic Preview ที่ 1440×900 และ 1280×800 เปิดตรวจแล้ว. ปุ่ม Continue/Download อ่านได้ normal/hover/focus; renderer clarity และ selection ordering คงเดิม
+- Deployment / merge: อยู่ระหว่าง final GitHub/Cloudflare verification; จะบันทึก SHA/Worker และผล deployed browser ที่ตรวจจริงใน checkpoint นี้หลังเสร็จ
+ สถานะโครงการใหม่
 
 ## Checkpoint Button visibility — 11 กันยายน 2026
 

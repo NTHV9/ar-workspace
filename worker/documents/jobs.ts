@@ -9,7 +9,7 @@ import {OperaError} from '../opera/client';
 import {getNativeInvoicePdf,type DocumentInvoice} from './native-invoice';
 export interface DocumentFile {id:string;kind:'statement'|'invoice';invoice_id:string|null;ordinal:number;state:string;storage_key:string|null;error_code:string|null;byte_count:number|null;sha256:string|null}
 export interface DocumentExport {name:string;storage_key:string;byte_count:number;sha256:string}
-export interface DocumentJob {execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
+export interface DocumentJob {lifecycle?:'legacy'|'transient';closed_at?:string|null;closed_reason?:'sent'|'discarded'|null;execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
 export interface DocumentCreateInput {statementSource?:string;commandKey:string;hotel:string;accountId:string;ids:string[];content:string;layout:string;purpose:string}
 export const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export async function documentJob(env:RefreshEnv,id:string){return backendRpc<DocumentJob|null>(env,'ar_document_get',{p_job_id:id});}
@@ -33,7 +33,7 @@ export async function dispatchDocumentJob(env:RefreshEnv,job:DocumentJob){
 }
 export async function createDocumentJob(env:RefreshEnv,owner:string,input:DocumentCreateInput){
  const source=documentSource(input);
- const job=await backendRpc<DocumentJob>(env,'ar_document_create_v3',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
+ const job=await backendRpc<DocumentJob>(env,'ar_document_create_v4',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
  return dispatchDocumentJob(env,job);
 }
 export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,type:string){

@@ -12,6 +12,7 @@ import {revalidateThread} from './threads';
 interface Attempt {id:string;state:string;claimed?:boolean;gmail_draft_id?:string;error?:string}
 export function draftBudget(env:EmailEnv){const n=Number(env.GMAIL_DRAFT_MAX_BYTES??10485760);return Number.isSafeInteger(n)&&n>0&&n<=12582912?n:10485760;}
 export async function readMailFile(env:EmailEnv,draft:EmailDraft,file:{name:string;storage_key:string;byte_count:number;sha256:string;mime?:string}):Promise<MailFile>{
+ if(draft.document_closed_at)throw Error('document_closed');
  if(!file.storage_key.startsWith(`jobs/${draft.document_job_id}/`)||!/^jobs\/[0-9a-f-]{36}\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(file.storage_key)||/(^|\/)\.\.?($|\/)/.test(file.storage_key)||!Number.isSafeInteger(file.byte_count)||file.byte_count<1||file.byte_count>draftBudget(env))throw Error('email_attachment_invalid');
  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('email_unavailable');
  const r=await readManagedStorage(env,file.storage_key,file.byte_count);
@@ -47,7 +48,7 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
  await assertAcceptanceRecipient(env,draft.recipients);
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');
- const job=await documentJob(env,draft.document_job_id);if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
+ const job=await documentJob(env,draft.document_job_id);if(job?.closed_at)throw Error('document_closed');if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
  const reader=makeReader(env,job.hotel),businessDate=await readBusinessDate(reader,job.hotel);
  const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
  for(const invoice of job.manifest){const current=snapshot.invoices.find(i=>i.id===invoice.id);if(!current||current.open<=0||!['standalone','parent'].includes(current.collection_role)||current.open!==invoice.open||current.invoice_no!==invoice.invoice_no||current.folio_no!==invoice.folio_no)throw Error('email_source_changed');}

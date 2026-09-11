@@ -43,7 +43,7 @@
 
 ใช้ Drive folder จริงที่ยืนยันแล้ว ติดตาม file IDs ของการทดสอบ ลบเฉพาะไฟล์ที่ทดสอบนั้นสร้าง ไม่ลบจากชื่ออย่างเดียว
 
-Retention ของไฟล์แอปใน Supabase/Drive: เจ้าของให้เก็บ 1 เดือนหลังงานเสร็จ ก่อนเปิดการลบต้องใช้เกณฑ์งานเสร็จที่ยืนยันใน `docs/DECISIONS_AND_OPEN_ITEMS.md` และ exact object/file IDs เท่านั้น รักษาประวัติธุรกิจ คุมโควต้าพร้อมหยุดงานเขียนเมื่อพื้นที่ไม่พอ ไม่เพิ่มค่าใช้จ่ายเอง
+เอกสารใหม่เป็น transient preparation ไม่มีหน้า Documents กลางหรือ saved editor project; พัก reviewed bytes จนยืนยัน Sent หรือ explicit discard. ก่อนแก้ retention/read/write ของไฟล์ อ่านนโยบายล่าสุดใน `docs/DECISIONS_AND_OPEN_ITEMS.md`: Draft/uncertain ต้องคงไฟล์เดิม; ไฟล์เก่า/Drive/Remittance คงเกณฑ์ 1 เดือนหลังงานเสร็จ. ลบเฉพาะ exact object/file IDs ที่ตรวจสิทธิ์/ความสัมพันธ์แล้ว รักษาประวัติธุรกิจและคุมโควต้า ไม่เพิ่มค่าใช้จ่ายเอง
 
 ไม่เปิด arbitrary credentialed URL fetch; ตรวจปลายทาง/redirect และไม่ส่ง Authorization ข้าม host โดยอัตโนมัติ
 

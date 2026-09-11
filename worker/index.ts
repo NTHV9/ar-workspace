@@ -1,3 +1,4 @@
+import {sweepTransientDocuments} from './operations/retention-sweep';
 import {acceptanceApi} from './acceptance/api';
 import {acceptanceCookie} from './acceptance/routing';
 import {acceptanceEnvironment,acceptanceRows} from './acceptance/context';
@@ -188,7 +189,7 @@ export default {
   },
   async scheduled(event:{cron?:string},env:Env) {
     if(writesHeld(env))return;
-    if(event.cron===gmailReconcileCron){if(env.GMAIL_RECONCILE_ENABLED==='true')await requestMailReconcile(env,'scheduled');return;}
+    if(event.cron===gmailReconcileCron){if(env.GMAIL_RECONCILE_ENABLED==='true')await requestMailReconcile(env,'scheduled');try{await sweepTransientDocuments(env);}catch{/* Durable exact candidates retry on the next cron. */}return;}
     if(event.cron!=='0 0,12 * * *'||env.OPERA_REFRESH_ENABLED!=='true')return;
     for(const hotel of ['KAT','TSK'])await requestRefresh(env,hotel,null,'scheduled');
   },

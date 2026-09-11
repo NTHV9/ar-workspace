@@ -4,3 +4,8 @@
 .pdf-email-next{position:sticky;bottom:-18px;background:white;padding:12px 0 5px;margin-top:14px;border-top:1px solid #dce5ef;z-index:2}.pdf-email-next p{margin:6px 0 0}.pdf-preview-zoom{display:flex;align-items:center;gap:10px;padding:0 20px 10px;flex-shrink:0}.pdf-preview-zoom select{padding:6px 10px;border:1px solid #d2dfee;border-radius:7px;background:white}.pdf-final-pages{min-width:0}.pdf-final-pages canvas{scroll-margin:12px}
 
 .pdf-workspace .pdf-primary:hover:where(:not(:disabled)){background:#3157df;color:white}
+.pdf-preview-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.pdf-preview-dialog footer:has(.pdf-preview-actions){flex-wrap:wrap;gap:12px}
+.pdf-preview-dialog footer:has(.pdf-preview-actions) label{flex-basis:100%}
+.pdf-preview-actions{margin-left:auto}
+@media(max-width:900px){.pdf-preview-actions{margin-left:0}.pdf-preview-actions button{flex:1}}
