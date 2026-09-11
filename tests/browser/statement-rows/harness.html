@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0"><div id="root"></div><script type="module">
+import React from 'react';import {createRoot} from 'react-dom/client';
+import {PdfWorkspace} from '/src/pdf/PdfWorkspace.tsx';
+import {syntheticStatement} from '/tests/browser/fixtures/statement-pdf.ts';
+import * as engine from '/src/pdf/engine.ts';import * as text from '/src/pdf/source-text.ts';import {rowGeometry} from '/src/pdf/row-geometry.ts';
+const params=new URLSearchParams(location.search);const sources=[{id:'statement',name:'Synthetic Statement.pdf',kind:'statement',bytes:await syntheticStatement(params.get('hotel')??'KAT',params.get('guest')??undefined)}];
+window.fixture={...engine,...text,rowGeometry,sources,project:null};
+createRoot(document.getElementById('root')).render(React.createElement(PdfWorkspace,{documents:sources,accountName:'Synthetic row test',hotel:'KAT',selectedCount:2,onClose:()=>{},onSaveDraft:async project=>window.fixture.project=project,onSave:async files=>window.fixture.saved=files}));
+</script></body></html>

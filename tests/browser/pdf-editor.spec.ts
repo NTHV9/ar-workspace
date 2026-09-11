@@ -169,10 +169,10 @@ test('a page with only a native move exports its moved pixels without hidden sou
  expect(proof.before).toBeGreaterThan(100);expect(proof.old).toBe(0);expect(proof.moved).toBeGreaterThan(100);expect(proof.text).toBe('');
 });
 
-test('Preview defaults to a complete page and requires visiting every output sheet',async({page})=>{
+test('Preview defaults to width without Fit page and requires visiting every output sheet',async({page})=>{
  await page.setViewportSize({width:1280,height:800});await page.goto('/tests/browser/pdf-editor-harness.html');await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
- const preview=page.getByRole('dialog',{name:'Final PDF preview',exact:true});await expect(preview.getByLabel('Preview zoom')).toHaveValue('fit-page');await expect(preview.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');await expect(preview.getByRole('checkbox')).toBeDisabled();
- const full=await preview.locator('.pdf-final-sheet canvas').evaluate(canvas=>{const page=canvas.getBoundingClientRect(),view=canvas.closest('.pdf-final-viewport')!.getBoundingClientRect();return page.left>=view.left&&page.right<=view.right&&page.top>=view.top&&page.bottom<=view.bottom;});expect(full).toBe(true);
+ const preview=page.getByRole('dialog',{name:'Final PDF preview',exact:true});await expect(preview.getByLabel('Preview zoom')).toHaveValue('fit-width');await expect(preview.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');await expect(preview.getByRole('checkbox')).toBeDisabled();
+ const full=await preview.locator('.pdf-final-sheet canvas').evaluate(canvas=>{const page=canvas.getBoundingClientRect(),view=canvas.closest('.pdf-final-viewport')!.getBoundingClientRect();return page.left>=view.left-.5&&page.right<=view.right+.5&&page.width>view.width-40;});expect(full).toBe(true);await expect(preview.getByLabel('Preview zoom').locator('option[value="fit-page"]')).toHaveCount(0);
  await reviewPreviewPages(page);await expect(preview.getByRole('checkbox')).toBeEnabled();
 });
 

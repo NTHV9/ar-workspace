@@ -770,3 +770,12 @@
 ## กติกาอัปเดตต่อไป
 
 เมื่อเริ่มทำจริงให้ระบุ phase, files/resources ที่เปลี่ยน, สิ่งที่ทดสอบพร้อมผล, สิ่งที่ยังไม่ได้พิสูจน์, blockers เฉพาะงาน และ next action ไม่อ้าง status ของระบบเก่ามาแทนหลักฐานของระบบใหม่
+
+## Checkpoint Statement row boundaries and Preview zoom — 11 กันยายน 2026
+
+- Reproduced ด้วย Statement จากตัวสร้างจริงของระบบและข้อมูล synthetic: แทรกแถวชื่อ2บรรทัดตัดที่230.156ptกลาง continuation; แถวสุดท้ายตัดที่266.156ptกลาง Balance Due rectangle ซึ่งเริ่ม256pt. สาเหตุคือใช้ physical text line เป็นrow และหา boundary จากข้อความถัดไปโดยไม่อ่านกรอบสี
+- Implemented: จัด continuation ตามcolumn/style/spacingของแถว, อ่าน filled rectangle/path bounds, ใช้ช่องว่างระหว่างขอบข้อความกับกรอบเป็นจุดแทรก. เลือกชื่อบรรทัด2หรือ3ยังได้ทั้งlogicalrow; ช่องใหม่ใช้column templateเดียว ไม่สร้างช่องซ้ำจากcontinuation. พื้นที่แทรกเผื่อความสูงcellและpadding และกรณีoverlapจริงไม่ตัดผ่านobject
+- Removed Fit page จาก Preview zoom ตามคำยืนยันล่าสุด. Default Fit width; คง numeric zoom, page navigation, Preview acknowledgment และ exact reviewed-byte handoff
+- Typecheck/Build ผ่าน; Vitest846tests/94filesผ่าน. ทดสอบ source-generator KAT/TSK ด้วยข้อมูลสมมติ, wrappedชื่อ2/3บรรทัด, เติมช่องใหม่/เพิ่มซ้ำ/ลบ, rectangle pixel continuity, dense Invoice rows, continuation pages, font styles, Undo และ email handoff. Final local browser suite **65 cases ผ่าน** รวมทั้ง reproduction และ regression
+- ภาพหลักฐานใหม่ synthetic เท่านั้น: pdf-statement-row-fix-1440/1280.png และ pdf-preview-width-1440/1280.png. ไม่เปลี่ยน reference images หรือเก็บภาพจากลูกค้าเข้าGit
+- ไม่มี database migration, OPERA ledger write, email send, file cleanup หรือการเปลี่ยนบริการภายนอกอื่น. Deployment/merge pending
