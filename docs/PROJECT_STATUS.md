@@ -4,7 +4,8 @@
 
 - เจ้าของขอให้แถบจำนวนบิล/ยอดที่เลือกและปุ่มทำงานไม่อยู่ท้ายรายการยาว. ย้ายแถบเดียวขึ้นเหนือตาราง Account Detail และตรึงด้านบนขณะ page scroll; จำนวน ยอด Hotel/Account และ event handlers เดิมคงอยู่ ไม่มีแถบซ้ำ
 - ย้ายออกจาก ledger panel ที่ตัด overflow และใช้ overflow clip เฉพาะ app shell ที่มีแถบนี้ เพื่อให้ sticky อิงการเลื่อนหน้าเว็บจริง. จอเล็กจัดปุ่มหลายแถวและคง touch targets; native document/external-billing dialogs ยังอยู่เหนือแถบ
-- Fixture 84 invoices ล้มเหลวก่อนแก้ทั้ง 1440/1100/390. หลังแก้ตรวจ DOM order, scroll 1600px, sticky bounds, count/amount, เปิด Prepare documents พร้อม 3 selected invoices, เปิด external billing และ Clear selection ผ่าน. Local regression 22 cases และ typecheck ผ่าน กำลัง Build/Deploy/ตรวจ Cloudflare
+- Fixture 84 invoices ล้มเหลวก่อนแก้ทั้ง 1440/1100/390. หลังแก้ตรวจ DOM order, scroll 1600px, sticky bounds, count/amount, เปิด Prepare documents พร้อม 3 selected invoices, เปิด external billing และ Clear selection ผ่าน. Local regression 22 cases, typecheck/build และ Cloudflare browser 25 cases ผ่าน
+- Deployed source `82e864dab46fcbdb7b5b1b6a34079d79ed347eae`, Worker `d8778469-0ded-4107-8b99-2b34d3c544c4`; health ตรง SHA/database_verified. [PR #8](https://github.com/NTHV9/ar-workspace/pull/8) Merge แล้ว `c4990975959ca071b7a5abf9d8e38e766951591a` หลัง CI ผ่านและ merge tree ตรง tested source. ภาพหลักฐาน `evidence/selected-actions-sticky-*.png` ใช้ synthetic fixtures
 - ทดสอบด้วยข้อมูลสมมติ ไม่มีการสร้างเอกสาร/บันทึกวางบิล/ส่งเมลจริงหรือแก้ฐานข้อมูล. ไม่เปลี่ยนแผง Selected guest/item, Aging หรือ Latest Sent
 
 ## Checkpoint Account panel presentation — 11 กันยายน 2026
