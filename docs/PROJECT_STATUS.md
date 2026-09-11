@@ -6,7 +6,9 @@
 - ใช้ Account No. เป็น reporting key โดยคง explicit group และป้องกันเลขขาด/กำกวม. สมาชิกในแถวยังเป็น Hotel + Account ID เดิม; ยอดศูนย์แสดง 0 และโรงแรมที่ไม่มีบัญชีแสดง —. กดยอดเปิด ledger ของโรงแรมนั้น; กดชื่อเลือกโรงแรมพร้อมชื่อเดิม/Account No.
 - Search/Account filter ตรวจสมาชิกทั้งคู่หลังจับแถว เพื่อไม่ให้การค้นชื่อที่สะกดต่างกันหรือ Account No. ทำให้อีกโรงแรมหาย. Hotel/type/aging filters คง scope เดิม; คอลัมน์ Accounts นับ operational accounts ในแถวและ Items รวมรายการของสมาชิก โดยไม่รวม ledger
 - Tests: regression ก่อนแก้ล้มเหลวตามอาการ 2 cases; หลังแก้ full unit 811/87 files, typecheck/build ผ่าน. Local browser 3 cases ผ่าน ครอบคลุม 1440×900/1280×800, ทุก sort column, filter/search, zero vs absent, chooser, KAT/TSK drilldown/back และ Account Detail selection เดิม. ภาพ `evidence/portfolio-comparison-*.png` เป็น synthetic API fixtures ไม่ใช่ข้อมูลลูกค้าจริง
-- กำลัง Push/Deploy และตรวจ live data หลัง Deploy. ไม่มี migration, database write หรือ resource ใหม่ในงานนี้
+- Deployed: source `5ae158ff351382e59e0ef36148a92f01be2ad912`, Worker version `25c3162d-f537-44e8-9dec-567a81af0e51`, [Portfolio](https://ar-workspace.ar-c82.workers.dev/). Health ตรง source SHA และ `database_verified`. [PR #3](https://github.com/NTHV9/ar-workspace/pull/3) Merge แล้วด้วย `224df2670c8225745a32c590ec3af0356c73cf4b`; CI ของ branch/PR ผ่านก่อน merge และ source tree ตรงกัน
+- Cloudflare browser 17 cases ผ่าน (Portfolio comparison, Account Detail เดิม, Dashboard และ health/auth rejection). ภาพ 1440×900/1280×800 ใช้ synthetic fixtures บน Cloudflare และเปิดตรวจจริง. แยกจาก signed-in live check: ชุดบัญชีที่เคยแยก 10 แถวเหลือ 5 แถว มี KAT/TSK ในแถวเดียวกัน; สองตัวอย่างที่เจ้าของแจ้งมีคู่ครบ และยอดศูนย์ยังแสดง 0. กดยอด KAT และ TSK เปิด internal Account IDs ของแต่ละโรงแรมถูกต้อง และกลับมารักษา search/type/sort เดิม
+- ไม่มี migration, database write หรือ resource ใหม่ในงานนี้; ไม่แก้ ledger/settings/OPERA และไม่มีข้อมูลลูกค้าหรือ credentials ในไฟล์หลักฐานที่ commit
 
 ## Checkpoint Dashboard — 11 กันยายน 2026: เพิ่มหน้ารวมกิจกรรมและงานค้าง
 
