@@ -6,7 +6,8 @@
 - พบ UI bug: report จะ reload หลัง status เปลี่ยนเมื่อ global queue ว่างเท่านั้น ทำให้ publication ของช่วงที่เลือกอาจไม่ขึ้นขณะที่ช่วงอื่นยังทำงาน. แก้ให้โหลดใหม่เมื่อมี run สิ้นสุดโดยไม่รอ global queue; คง server-side coverage gate และ unknown totals เป็น —
 - เพิ่มสถานะตามช่วงวันที่และโรงแรม แยก Queued/Reading OPERA/Finished/Failed กับงานช่วงอื่น; ป้องกันกดซ้ำเมื่อทั้ง scope มีงานอยู่แล้ว. Notice ระบุวันที่ที่ส่งจริงและล้างเมื่อเปลี่ยนช่วง. แสดง recent runs ครบที่ API คืนมา และบอกให้เลือกวันก่อนกด refresh
 - Regression สองกรณีล้มเหลวก่อนแก้และผ่านหลังแก้. Full unit 811/87 files และ typecheck/build ผ่าน; local browser Financial Reports + Dashboard 19 cases ผ่าน รวม date payload, other-range queue, publication ขณะคิวยังไม่ว่าง, missing coverage, unavailable API, 1440/1280/390. ภาพทดสอบ synthetic เท่านั้น
-- กำลัง Push/Deploy UI fix; ไม่มี migration, queue restart, เพิ่ม concurrency, OPERA accounting write หรือการสร้างคำขอ backfill ซ้ำจากการตรวจครั้งนี้
+- Deployed source `484a6a663edd31cdf1fe87f3ca78bdfb7aaa3b65`, Worker version `019fc1d7-b6ee-4a4e-bfc9-6bb4786b1046`. Health ตรง SHA และ database_verified. Cloudflare browser 19 cases ผ่าน; [PR #4](https://github.com/NTHV9/ar-workspace/pull/4) Merge แล้วด้วย `4d0389fb59b834e014157c07011c2c01c002d729` หลัง branch/PR CI ผ่าน และ merge source tree ตรงกับที่ทดสอบ
+- Signed-in live check เลือก 1–31 สิงหาคมแล้วเห็น KAT/TSK Queued ตรงทั้ง Supabase/Cloudflare; รอบก่อนหน้า KAT เสร็จ 105/105 บัญชีแล้วและงาน TSK ช่วงอื่นเริ่มต่อ. August totals ยังเป็น — ตาม coverage ที่ยังไม่ครบ ไม่อ้างว่าดึงเดือนสิงหาคมเสร็จจากผลทดสอบ UI สมมติ. ไม่มี migration, queue restart, เพิ่ม concurrency, OPERA accounting write หรือ backfill ซ้ำจากการตรวจครั้งนี้
 
 ## Checkpoint Account comparison — 11 กันยายน 2026
 
