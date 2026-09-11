@@ -20,4 +20,5 @@ describe('billing channels, reminders and money',()=>{
  it('combines first-billing counts, not whole external-record amounts or rebilling counts',()=>{expect(activityTotals(activity,external)).toMatchObject({firstBilled:5,reminderCount:4,reminderAmount:'200.30',emailBillingCount:3,emailBillingAmount:'140.30'});});
  it('does not turn a failed channel or unknown classification into zero first billings',()=>{expect(activityTotals(activity,undefined).firstBilled).toBeNull();expect(activityTotals({...activity,kinds:[...activity.kinds,{kind:'Billing classification unavailable',invoices:1,amount:null}]},external).firstBilled).toBeNull();expect(activityTotals(undefined,external).reminderCount).toBeNull();});
  it('preserves unknown amounts and exact decimal satang',()=>{expect(addAmounts(['0.10','0.20'])).toBe('0.30');expect(addAmounts(['0.10',null])).toBeNull();expect(activityTotals({...activity,kinds:[{kind:'Follow 1',invoices:1,amount:null}]},external).reminderAmount).toBeNull();});
+ it('retains OPERA credit/debit signs instead of flipping an allocation into a different accounting value',()=>{expect(addAmounts(['-1234.56','0.00'])).toBe('-1234.56');});
 });

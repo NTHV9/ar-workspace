@@ -10,6 +10,8 @@
 - Typecheck/build และ unit805 tests/87files ผ่าน. Dashboard browser cases12ผ่านใน local test runs รวมการเปลี่ยนวัน, cross-hotel identity, drilldown/back, failure/coverage, mobile disclosure และ new publication. กำลังตรวจบน Cloudflareก่อนส่งมอบ
 - Impeccable reviewer ให้ fix สองเรื่อง: mobile first viewport และ synthetic provenance. แก้แล้วและ reviewer ให้ ship สำหรับสองรายการนั้น; ภาพ1440/1280/390ใช้ข้อมูลสมมติพร้อมป้ายชัด ภาพ referenceเดิมไม่เปลี่ยน
 
+ผล Cloudflare เพิ่มเติม: source `f00a1f00a88e30fcfbc1623e546b9d06f9c1c8e4` / Worker `e8d0d01f-88dd-49f1-b640-266cfd15f2cb` Deploy แล้วและ healthตรงSHA/database_verified. Browser31casesผ่าน รวม12Dashboardcases. เปิดหน้า authenticated จริง โหลดทุกส่วนได้ เปลี่ยนวันที่11→10กันยายนและเปิด payment evidence ได้ยอด/จำนวนรายการตรงกัน พร้อมกลับ Dashboardโดยคงวันเดิม. ตัวเลขและภาพลูกค้าจริงไม่เก็บในGit. เพิ่มคำอธิบายว่า allocationใช้เครื่องหมาย debit/credit ตามOPERA และมีsign-preservation testด้วยข้อมูลสมมติ
+
 ## Checkpoint GitHub — 11 กันยายน 2026: Merge งานเข้าสาขาหลักแล้ว
 
 - [PR #1](https://github.com/NTHV9/ar-workspace/pull/1) เปลี่ยนจาก Draft และ Merge เข้า default branch `codex/first-increment` แล้ว ด้วย merge commit `ce027110538732864232f045cf2c5e1071c8588e` โดยคงประวัติเดิม

@@ -18,3 +18,13 @@ Direction contract:
 - Verify behavior and synthetic images at1440×900,1280×800,390×844. Verify the actual authenticated Cloudflare page privately; do not commit real customer screenshots.
 
 Implementation/evidence status is maintained in PROJECT_STATUS.md; this direction contract alone is not a provider-test result.
+
+## Verification — 11 September 2026
+
+- Cloudflare source `f00a1f00a88e30fcfbc1623e546b9d06f9c1c8e4`, Worker version `e8d0d01f-88dd-49f1-b640-266cfd15f2cb`, passed public health and authenticated page checks. Final deployment metadata is also available in `/api/health`.
+- The actual signed-in Dashboard loaded all source sections for both hotels. Selecting10September changed daily financial values; the linked payment report retained that exact date and matched the displayed credit total and record count. Returning retained the Dashboard date.11September correctly displayed its saved empty activity without substituting sample data.
+- Allocation amounts preserve OPERA debit/credit signs; they are not silently converted to positive values. Manual history corrections do not create new Gmail send activity.
+- The31-case Cloudflare browser run passed:12Dashboard cases plus Portfolio/Account, collection and financial-report regressions. These browser datasets are explicitly synthetic, apart from the public health/auth denial check. Live business data was inspected separately and kept out of committed images.
+- Full unit suite passed805tests before the additional sign-preservation case; the focused Dashboard suite now has13passing cases. Typecheck and production build passed.
+- Mechanical design detector returned no findings. Independent finishing review found mobile first-viewport density and missing synthetic capture labels; both were corrected, and the reviewer scored both resolved with a ship disposition for the fix pass.
+- Screenshots `evidence/dashboard-1440.png`, `dashboard-1280.png`, `dashboard-390.png` are captures of the deployed frontend using controlled API fixtures. The test harness inserts the visible SYNTHETIC TEST DATA marker; production source status is unchanged. Original design references were not modified.
