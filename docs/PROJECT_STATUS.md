@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## Checkpoint GitHub — 11 กันยายน 2026: Merge งานเข้าสาขาหลักแล้ว
+
+- [PR #1](https://github.com/NTHV9/ar-workspace/pull/1) เปลี่ยนจาก Draft และ Merge เข้า default branch `codex/first-increment` แล้ว ด้วย merge commit `ce027110538732864232f045cf2c5e1071c8588e` โดยคงประวัติเดิม
+- ตรวจ PR head `4215757f0d2c39b45e9d0dc36bba3938c8e2c2b7`: GitHub CI ผ่านทั้ง Push และ PR, ไม่มี conflict และล็อก expected head SHA ตอน Merge. ตรวจ tree ของ merge commit ตรงกับ head ที่ทดสอบแล้ว
+- Workspace เปลี่ยนมาที่ `codex/first-increment` และ fast-forward ตรง remote โดยไม่ force/reset หรือลบ branch/ไฟล์งานเดิม. Cloudflare ยังรัน source ที่ตรวจไว้ใน checkpoint ส่งมอบ; การ Merge นี้ไม่ได้เปลี่ยน runtime หรือบริการภายนอกอื่น
+
 ## Checkpoint ส่งมอบ — 11 กันยายน 2026: งานหลักและ acceptance ครบตามขอบเขต
 
 รายงานละเอียด: [FINAL_ACCEPTANCE_20260911.md](FINAL_ACCEPTANCE_20260911.md). ข้อจำกัดของ native Invoice บางชนิด, fixed-page PDF, password-reset completion และ production restore ระบุแยก ไม่ใช้คำว่า verified ครอบคลุมสิ่งที่ไม่ได้ทดสอบ
