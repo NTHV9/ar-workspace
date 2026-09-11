@@ -13,7 +13,7 @@ test('source reference survives reload without persisting CSS and rejects foreig
 test('native region transforms are bounded and persisted, legacy projects remain unchanged',()=>{
  const edits=[{id:'row',kind:'insert',y:20,height:10},{id:'area',kind:'move',x:20,y:20,width:100,height:30,dx:10,dy:20}];
  const input={...original,pages:[{...original.pages[0],rowEdits:edits}]};expect(restoreProject(input,original).pages[0].rowEdits).toEqual(edits);
- for(const edit of [{...edits[0],height:400},{...edits[1],dx:1000},{...edits[1],dy:-1000}])expect(()=>restoreProject({...original,pages:[{...original.pages[0],rowEdits:[edit]}]},original)).toThrow();
+ for(const edit of [{...edits[0],height:14400},{...edits[1],dx:1000},{...edits[1],dy:-1000}])expect(()=>restoreProject({...original,pages:[{...original.pages[0],rowEdits:[edit]}]},original)).toThrow();
  expect(restoreProject(original,original)).toEqual(original);
  expect(()=>restoreProject(saved({...layer,maskOriginal:false,sourceText:undefined}),original)).toThrow();
  expect(restoreProject(saved({...layer,maskOriginal:false}),original).pages[0].layers[0].maskOriginal).toBe(false);

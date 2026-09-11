@@ -1,5 +1,18 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Direct typing, content flow and whole-page Preview — 11 กันยายน 2026
+
+- Implemented: พิมพ์แก้บนหน้าเอกสารโดยตรงด้วย caret/selection และ Enter; กล่องด้านขวาเป็นตัวเลือกสำรอง. รักษาการวาด glyph ของต้นฉบับบน canvas และใช้ Unicode caret metrics ที่ปรับให้สอดคล้องกัน. ข้อความ/แถวเพิ่มแล้วดันเนื้อหาถัดไป รวมถึงส่วนท้ายลง พร้อมหน้าต่อเมื่อเกิน sheet เดิม. ตัว editor เก็บ logical source section; Preview แสดงจำนวนหน้าที่ออกจริง
+- แก้ Helvetica/WinAnsi ordinary-character mapping กรณีเติม lowercase n ในรหัส Statement. Private system-generator KAT/TSK samples มี45runsต่อไฟล์ รองรับn45/45; qualifying regular Helvetica9 field unchanged มี0 pixel differenceที่3x และเพิ่มnเรนเดอร์ได้. Native Invoice ยังมีบาง combined/subset groups ที่ต้องเลือกฟอนต์เอง ไม่อ้างรองรับทุกglyph
+- Tolerant editor render เก็บ source artwork และ edits ที่ถูกต้องไว้เมื่อ layer ใดมีปัญหา; เตือนสั้น ๆ แยกจาก artwork ไม่ยัด exception text ลงรูปย่อ. Strict export ยังคงปฏิเสธ unresolved edits. ไม่มีการส่งไฟล์ที่ละทิ้งข้อความแก้ไขเงียบ ๆ
+- New flow extent ไม่เปลี่ยน native sheet size. Source-fragment compositor และ per-sheet raster รักษาความละเอียด300dpiภายใต้20MPต่อsheet; ไม่ย่อภาพยักษ์หลายหน้ามาใช้ทั้งไฟล์. Pagination เลี่ยง text lines/ordinary native images เมื่อทำได้, รักษา footer และ thin vertical rules, trim unused source whitespace. หน้าที่ไม่แก้ยัง copy native
+- Typing spacers มี ownership metadata. Shrink ตรวจ source fragments + text/overlay occupancy; move destination ที่ทับพื้นที่ยกเลิก ownership. One multiline paste มากกว่าหนึ่งsheetทำได้ภายใต้ total extent limit; Undo/Redo และ paste/shrink tests ผ่าน. ปรับ dense-row geometry อ้าง line positions แทน bbox paddingที่ทำให้แทรกแถวปกติไม่ได้
+- Final Preview เริ่ม Fit page เห็นทั้ง4ขอบ; มี Fit width/numeric zoom, Previous/Next/page selector. ต้องเห็นทุก output page/fileก่อน acknowledgment. เก็บ visited state แยกจาก rendering state และกัน stale file/page renders. Preview overlayบัง editor handles และย่อ controls ให้พื้นที่เอกสารมากขึ้น
+- Tested local: Typecheck/Build ผ่าน; Vitest846tests/94files; Playwright56cases. รวม exact typing, missingglyph source-preservation, dense9pt/10.5leading row insertion,85-line paste/shrink, footer on continuation, high-resolution output, native images/rules, original style/reload, full-page1280/1440, pending/render guards และ email handoff. Independent review2findingsแก้และre-reviewผ่าน
+- Public evidence เป็นsynthetic: pdf-direct-typing-1440/1280.png และ pdf-fit-page-1440/1280.png. Private source samplesไม่เข้าGit. ไม่แก้ database/integration/OPERA ledger หรือส่ง Gmail ในรอบนี้
+- Limits: เป็นการแก้ PDF แบบพิมพ์ตรงและflow ไม่ใช่ Microsoft Word/DOCX engineเต็มรูปแบบ. Source text groupsบางแบบ/ฟอนต์หรือglyphที่ไม่มี/ภาพสูงเกินsheetยังมีข้อจำกัด. Existing solid source masksอาจเปลี่ยนพื้นหลังสีหรือเส้นใต้ข้อความ; source print page labelsและfinancial totalsไม่ปรับคำนวณใหม่อัตโนมัติ. ผู้ใช้ตรวจactualPreviewก่อนส่ง
+- Deployment / merge: pending final Cloudflare verification
+
 ## Checkpoint PDF source editing and native objects — 11 กันยายน 2026
 
 - Implemented: เอาข้อความเตรียมเอกสาร/Statement สองย่อหน้าที่เจ้าของระบุออก. PDF Workspace คลิกข้อความต้นฉบับได้โดยตรงและโฟกัสช่องแก้ไข, + Line / − Line, กรอบขยายตามข้อความโดยไม่ย่อฟอนต์, Restore original formatting และแยก Position & size ไว้ใน disclosure

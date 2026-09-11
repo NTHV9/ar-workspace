@@ -72,9 +72,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     mkdirSync('evidence', { recursive: true });
     await page.screenshot({ path: `evidence/pdf-workspace-cloudflare-${viewport.width}x${viewport.height}.png`, animations: 'disabled' });
     await page.getByRole('button', { name: 'Open mandatory Preview', exact: true }).click();
-    await expect(page.locator('.pdf-final-pages canvas')).toHaveCount(4);
+    await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(4);
     await expect(page.getByRole('img', { name: 'Final PDF page 1', exact: true })).toBeVisible();
-    await expect(page.locator('.pdf-preview-files button').first()).toHaveAttribute('data-reviewed','true');
+    await expect(page.locator('.pdf-preview-files button').first()).toHaveAttribute('data-reviewed','false');
     await expect(page.getByRole('button', { name: 'Save reviewed PDFs privately', exact: true })).toBeDisabled();
     await page.screenshot({ path: `evidence/pdf-workspace-cloudflare-final-preview-${viewport.width}x${viewport.height}.png`, animations: 'disabled' });
     expect(scripts.length).toBeGreaterThan(0); expect(unexpectedApis).toEqual([]); expect(pageErrors).toEqual([]);

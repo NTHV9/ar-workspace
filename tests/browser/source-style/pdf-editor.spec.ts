@@ -11,7 +11,7 @@ for(const fixture of ['sources','embeddedSources'])test(`${fixture} replacement 
   await f.renderPage(p,l.documents,a,3);p.layers=runs.map((r:any,i:number)=>f.createReplacementLayer(r,String(i)));await f.renderPage(p,l.documents,b,3);
   const aa=a.getContext('2d')!.getImageData(0,0,a.width,a.height).data,bb=b.getContext('2d')!.getImageData(0,0,b.width,b.height).data;let difference=0,ink=0;
   for(let i=0;i<aa.length;i+=4){if(aa[i]<250||aa[i+1]<250||aa[i+2]<250)ink++;if(Math.abs(aa[i]-bb[i])+Math.abs(aa[i+1]-bb[i+1])+Math.abs(aa[i+2]-bb[i+2])>30)difference++;}
-  const layer=p.layers[0];layer.text=fixture==='sources'?'New Invoice 98765\n123':'Invoice 98765\n123';const m=f.measureLayerText(layer);layer.width=Math.max(layer.width,m.width);layer.height=m.height;await f.renderPage(p,l.documents,b,3);
+  const layer=p.layers[0];layer.text=fixture==='sources'?'New Invoice 98765\n123':'Invoice 98765\n123';layer.width=Math.max(layer.width,f.measureLayerText(layer).naturalWidth);const m=f.measureLayerText(layer);layer.height=m.height;await f.renderPage(p,l.documents,b,3);
   const serialized=JSON.parse(JSON.stringify(p));l.dispose();const next=await f.loadSources(f[fixture]);await f.renderPage(serialized,next.documents,b,3);serialized.layers[0].text='\u4e0d\u53ef';let missing=false;try{await f.renderPage(serialized,next.documents,b,3);}catch{missing=true;}next.dispose();return{difference,ink,missing,lines:m.lines.length};
  },fixture);
  expect(result.difference/result.ink).toBeLessThan(.06);expect(result.missing).toBe(true);expect(result.lines).toBe(2);
