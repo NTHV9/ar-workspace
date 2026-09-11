@@ -32,7 +32,7 @@ begin
  update public.ar_invoices set verification_state='missing' where account_id=scope and id='B';
  r:=public.ar_dashboard_balances(actor,d,'KAT',scope);if r->>'complete'<>'false' or r->'metrics'->0->'amount'<>'null'::jsonb or r->>'unverified'<>'1' then raise exception 'unverified row produced exact sum';end if;
  update public.ar_invoices set verification_state='verified' where account_id=scope and id='B';
- update public.ar_refresh_state set status='failed' where hotel='KAT';r:=public.ar_dashboard_balances(actor,d,'KAT',scope);if r->>'complete'<>'false' then raise exception 'failed refresh covered current scope';end if;
+ update public.ar_refresh_state set status='failed' where hotel='KAT';r:=public.ar_dashboard_balances(actor,d,'KAT',scope);if r->>'complete'<>'true' or r->'freshness'->'failedHotels'<>'["KAT"]'::jsonb then raise exception 'failed attempt invalidated verified publication';end if;
  update public.ar_refresh_state set status='succeeded' where hotel='KAT';
  insert into ar_private.refresh_runs(id,hotel,reason,status,started_at,finished_at) values(run,'KAT','manual','succeeded',clock_timestamp()-interval '1 minute',clock_timestamp());
  update public.ar_refresh_state set run_id=run,last_success_at=clock_timestamp() where hotel='KAT';select count(*) into counted from public.ar_accounts where hotel='KAT';

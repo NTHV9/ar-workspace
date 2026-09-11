@@ -52,10 +52,44 @@ test('all matched accounts remain reachable by sorting, pagination and search',a
  await page.getByRole('button',{name:'Next',exact:true}).click();await expect(rows).toHaveCount(25);await page.getByRole('button',{name:'Next',exact:true}).click();await expect(rows).toHaveCount(15);await expect(rows.last()).toContainText('Extra 63');
  await page.getByLabel('Search current aging').fill('Extra 63');await expect(rows).toHaveCount(1);await expect(rows).toContainText('Extra 63');await expect(page.getByText('1 matched accounts · page 1 of 1',{exact:true})).toBeVisible();
 });
+test('column presets and toggles preserve hotel groups, exact amounts and drill-back context',async({page})=>{
+ const failures=await setup(page);await page.goto(local);
+ const comparison=page.getByRole('table',{name:'Current source aging comparison'}),columns=page.locator('.aging-column-controls');
+ await columns.locator('summary').click();await columns.getByRole('button',{name:'Summary',exact:true}).click();
+ await expect(comparison.locator('thead th[colspan]')).toHaveText(['Net open · THB']);
+ await expect(page.getByLabel('Current aging overview').locator('.aging-bucket-summary')).toHaveCount(6);
+ await columns.getByLabel('151+ days',{exact:true}).check();await columns.getByLabel('Net open',{exact:true}).uncheck();
+ await expect(columns.locator('summary')).toContainText('Custom');await expect(comparison.locator('thead th[colspan]')).toHaveText(['151+ days']);
+ await expect(comparison.locator('thead tr').nth(1).locator('th')).toHaveText(['TSK','KAT','Total']);
+ await expect(comparison.locator('tbody tr').first().locator('td')).toHaveText(['100.0066.7%','200.0071.4%','300.0069.8%']);
+ await columns.getByLabel('Bucket percentages',{exact:true}).uncheck();await expect(comparison.locator('tbody tr').first().locator('td')).toHaveText(['100.00','200.00','300.00']);
+ await columns.locator('summary').click();await comparison.getByRole('button',{name:'Open accounts in Agent',exact:true}).click();
+ await comparison.getByRole('button',{name:'Azure Travel · Synthetic · KAT · 151+',exact:true}).click();
+ await page.getByRole('button',{name:'Open invoice INV-kat-old',exact:true}).click();await page.getByRole('button',{name:'Return from Account Detail',exact:true}).click();
+ await expect(comparison.locator('thead th[colspan]')).toHaveText(['151+ days']);await expect(page.getByLabel('Invoice aging bucket')).toHaveValue('["151+",151,null,5]');
+ await columns.locator('summary').click();await expect(columns.getByLabel('Bucket percentages',{exact:true})).not.toBeChecked();
+ await columns.getByRole('button',{name:'All aging',exact:true}).click();await expect(comparison.locator('thead th[colspan]')).toHaveText(['Net open · THB','0–30 days','31–60 days','61–90 days','91–120 days','121–150 days','151+ days']);
+ await expect(comparison.locator('thead tr').nth(1).locator('th')).toHaveCount(21);expect(failures).toEqual([]);
+});
+test('overview follows the complete filtered set rather than the current table page',async({page})=>{
+ await setup(page);await page.goto(local+'?large=1');await page.getByRole('button',{name:'Open accounts in Agent',exact:true}).click();
+ const overview=page.getByLabel('Current aging overview');await expect(overview).toContainText('67 hotel accounts');
+ const before=await overview.textContent();await page.getByRole('button',{name:'Next',exact:true}).click();await expect(overview).toHaveText(before!);
+ await page.getByLabel('Search current aging').fill('Azure TSK');await expect(overview).toContainText('2 hotel accounts');await expect(overview.locator('.aging-overview-amount')).toContainText('430.00');
+});
+test('a retired saved bucket selection keeps net open visible after a source schema change',async({page})=>{
+ await setup(page);await page.goto(local+'?staleColumns=1');
+ const comparison=page.getByRole('table',{name:'Current source aging comparison'});
+ await expect(comparison.locator('thead th[colspan]')).toHaveText(['Net open · THB']);
+ await expect(comparison.locator('tbody tr').first().locator('td')).toHaveText(['150.00','280.00','430.00']);
+ await page.locator('.aging-column-controls summary').click();await page.getByRole('button',{name:'All aging',exact:true}).click();
+ await expect(comparison.locator('thead th[colspan]')).toHaveCount(7);
+});
 for(const width of [1440,1280,390])test(`current Aging ${width} stays within the viewport with scrollable comparison`,async({page})=>{
- const failures=await setup(page);await page.setViewportSize({width,height:width===1440?900:800});await page.goto(local);
+ const failures=await setup(page);await page.setViewportSize({width,height:width===1440?900:800});await page.goto(local+'?visual=1');
  await expect(page.getByRole('table',{name:'Current source aging comparison'})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.screenshot({path:`.superpowers/sdd/2026-09-12-dashboard-period-analysis/aging-${width}.png`,fullPage:false,animations:'disabled'});
+ await page.screenshot({path:`.superpowers/sdd/2026-09-12-dashboard-modern/modern-aging-${width}.png`,fullPage:width===390,animations:'disabled'});
+ await page.locator('.aging-column-controls summary').click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  expect(failures).toEqual([]);
 });

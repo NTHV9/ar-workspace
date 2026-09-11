@@ -10,6 +10,14 @@ export const currentAgingAccounts:Account[]=[
  account('KAT','kat-cedar','SYN-C','Cedar · Synthetic','Corporate',[300,0,0,0,0,0]),
 ];
 export const currentAgingManyAccounts=[...currentAgingAccounts,...Array.from({length:63},(_,i)=>account('KAT',`extra-${i+1}`,`EXTRA-${i+1}`,`Extra ${String(i+1).padStart(2,'0')} · Synthetic`,'Agent',[1000+i,0,0,0,0,0]))];
+// Synthetic source balances exercise readable large amounts and every aging range.
+export const currentAgingVisualAccounts:Account[]=[
+ account('KAT','visual-azure','VIS-A','Azure Travel · Synthetic','Agent',[1284300,642000,315500,246700,150000,830400]),
+ account('TSK','visual-azure-tsk','VIS-A','Azure TSK · Synthetic','Agent',[740100,305000,188000,143600,96200,404000]),
+ account('KAT','visual-birch','VIS-B','Birch · Synthetic','Agent',[374500,-82500,185000,65400,0,230000]),
+ account('TSK','visual-birch-tsk','VIS-B','Birch TSK · Synthetic','Agent',[238000,62500,88000,0,25000,113000]),
+ account('KAT','visual-cedar','VIS-C','Cedar · Synthetic','Corporate',[502000,143000,96500,42300,-7000,184000]),
+];
 const invoice=(hotel:string,account_id:string,id:string,open:number,age:number|null,extra={})=>({hotel,account_id,id,invoice_no:`INV-${id}`,folio_no:`FOL-${id}`,guest:'Synthetic guest',transaction_date:'2026-09-01',open,original:Math.abs(open),age,collection_role:'standalone',verification_state:'verified',...extra});
 export const currentAgingInvoices:Record<string,unknown[]>={
  'kat-azure':[invoice('KAT','kat-azure','kat-parent',100,10,{collection_role:'parent'}),invoice('KAT','kat-azure','kat-child',40,10,{collection_role:'child',parent_invoice_id:'kat-parent'}),invoice('KAT','kat-azure','kat-credit',-20,40),invoice('KAT','kat-azure','kat-old',180,160),invoice('KAT','kat-azure','kat-unknown',20,null)],
