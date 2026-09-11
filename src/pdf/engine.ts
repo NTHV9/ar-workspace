@@ -83,7 +83,7 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         // Only a new opaque bitmap is copied into edited pages. No source streams,
         // hidden OCR/text, annotations or attachments are retained on those pages.
         const canvas = document.createElement('canvas');
-        await renderPage(page, documents, canvas, 2);
+        await renderPage(page, documents, canvas, 300/72);
         const png = await output.embedPng(canvas.toDataURL('image/png'));
         output.addPage([page.width, page.height]).drawImage(png, { x: 0, y: 0, width: page.width, height: page.height });
         canvas.width = canvas.height = 0;

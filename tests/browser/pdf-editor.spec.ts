@@ -1,5 +1,19 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+
+test('editor and final preview render at device resolution when zoomed',async({browser,baseURL})=>{
+ test.setTimeout(60000);const context=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:2});const page=await context.newPage();
+ try{
+  await page.goto(baseURL+'/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible({timeout:30000});
+  await page.getByLabel('Zoom',{exact:true}).selectOption('150');
+  const sharp=async(selector:string)=>page.locator(selector).evaluate((c:HTMLCanvasElement)=>c.width>=c.getBoundingClientRect().width*devicePixelRatio-2);
+  await expect.poll(()=>sharp('.pdf-paper canvas'),{timeout:2000}).toBe(true);
+  await page.getByRole('button',{name:'Open mandatory Preview'}).click();await expect(page.locator('.pdf-final-pages canvas')).toHaveCount(4);
+  await expect.poll(()=>sharp('.pdf-final-pages canvas:first-child'),{timeout:2000}).toBe(true);
+  await page.getByLabel('Preview zoom').selectOption('200');await expect.poll(()=>sharp('.pdf-final-pages canvas:first-child')).toBe(true);
+  await page.locator('.pdf-final-pages canvas').last().scrollIntoViewIfNeeded();await expect.poll(()=>sharp('.pdf-final-pages canvas:last-child')).toBe(true);
+ }finally{await context.close();}
+});
 test('oversized geometry cannot create an unreopenable saved draft',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Note',exact:true}).click();const before=await page.getByRole('spinbutton',{name:'Layer x',exact:true}).inputValue();
@@ -24,6 +38,9 @@ test('source replacement exports opaque pages and preserves untouched multi-page
  mkdirSync('evidence',{recursive:true});await page.locator('#export-proof').screenshot({path:'evidence/pdf-editor-edited-export.png'});
  const result=await page.evaluate(async()=>{const api=(window as any).pdfTest;const saved=api.saved;const task=api.getDocument({data:saved.files[0].bytes.slice()});const pdf=await task.promise;const content=[];for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n);content.push((await p.getTextContent()).items.map((i:any)=>i.str||'').join(' '));}await task.destroy();return{count:pdf.numPages,text:content,edits:saved.project.pages[0].layers.length};});
  expect(result.count).toBe(4);expect(result.edits).toBe(1);expect(result.text[0]).toBe('');expect(result.text[1]).toContain('CONFIDENTIAL ORIGINAL WORDING');expect(result.text[2]).toContain('Page 2 of 2');
+ const rasterWidths=await page.evaluate(async()=>{const api=(window as any).pdfTest,doc=await api.PDFDocument.load(api.saved.files[0].bytes);const objects=doc.getPage(0).node.Resources().lookup(api.PDFName.of('XObject'));return objects.entries().map(([,ref]:any)=>doc.context.lookup(ref).dict.get(api.PDFName.of('Width')).asNumber());});
+ expect(Math.max(...rasterWidths)).toBeGreaterThanOrEqual(2480);
+
 });
 test('whiteout removes visible source pixels, while text, shapes, image and page edits survive export',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();

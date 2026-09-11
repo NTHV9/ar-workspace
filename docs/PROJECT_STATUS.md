@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint PDF clarity and Email handoff — 11 กันยายน 2026
+
+- เจ้าของพบ PDF ไม่คมเมื่อขยายและไม่เห็นปุ่มไปอีเมลใน Editor หลังบันทึก. สาเหตุ display ใช้ raster scale คงที่ และ Prepare email อยู่เฉพาะหน้ารายการเอกสารที่ถูก Editor บัง
+- Editor/thumbnail/source preview ใช้ขนาด CSS กับ devicePixelRatio และ re-render เมื่อขนาด/ความละเอียดจอเปลี่ยน ตาม [PDF.js HiDPI guidance](https://mozilla.github.io/pdf.js/examples/). Final Preview เพิ่ม Zoom ถึง 200% และเรนเดอร์หน้าที่อยู่ใน viewport ให้คม; หน้าไกล viewport ใช้ภาพเบา โดยคง pixel budget และการ render ทีละหน้า ไม่เก็บทุกหน้าเป็น bitmap ขนาดเต็มพร้อมกัน
+- Edited-page export เปลี่ยนจาก scale 2 เป็นเป้าหมาย 300 dpi ภายใต้ 20M pixel/page cap เดิม. หน้าที่ไม่มีการแก้ยัง copy native PDF; ตรวจหน้า A4 ที่แก้มี embedded image กว้างอย่างน้อย 2480px และไม่มี hidden original text. Whiteout/color/image/reorder/reopen tests ผ่าน
+- เพิ่ม Continue to email ทั้ง final-preview หลัง save และแผงขวา. ใช้ได้เฉพาะ latest project ที่ review/save สำเร็จหรือ saved project ที่ restore พร้อม acknowledgment; draft/new edits/start-from-original ไม่อาศัย acknowledgment ของไฟล์เก่า. ส่ง job ID + saved revision เข้า Email preparation; การเข้า Composer ไม่ส่ง Gmail. กลับออกมาแล้วเปิด project ล่าสุดได้
+- Local: 22 PDF/DocumentRoute browser cases ผ่าน, เพิ่ม save-failure guard ผ่าน, full unit 811/87 files และ typecheck/build ผ่าน. HiDPI/200% ใช้ DPR 2; browser fixtures และภาพใน Git เป็น synthetic เท่านั้น. กำลังตรวจบน Cloudflare; ยังไม่อ้างว่าข้อมูลลูกค้าถูกแก้หรือส่งอีเมลแล้ว
+- ไม่มี migration/credential/บริการใหม่ และไม่เปลี่ยนเอกสารลูกค้าเพื่อทดสอบ
+
 ## Checkpoint Financial range status — 11 กันยายน 2026
 
 - เจ้าของสั่ง backfill 1–31 สิงหาคมแล้วทั้ง KAT/TSK เวลา 13:41 ICT; ตรวจ Supabase และ Cloudflare ตรงกันว่า queued หลังงานช่วงอื่น. รอบก่อนหน้ามีบัญชีที่ต้องตรวจ payment links จำนวนมาก; ตรวจ step ใหม่เดินต่อและบันทึก mapping batches เพิ่ม ไม่ใช่ workflow หยุด. ยังไม่อ้างว่า August coverage ครบ
