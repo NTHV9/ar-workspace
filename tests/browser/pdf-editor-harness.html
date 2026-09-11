@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic PDF editor test</title><style>body{margin:0;background:#e8f1f6}</style></head><body><div id="root"></div><script type="module">
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, PDFName, StandardFonts, rgb } from 'pdf-lib';
 import { PdfWorkspace } from '/src/pdf/PdfWorkspace.tsx';
 import { loadSources, exportProject } from '/src/pdf/engine.ts';
 import { getDocument } from 'pdfjs-dist';
@@ -11,6 +11,6 @@ async function source(id,kind,count){const pdf=await PDFDocument.create();const 
 const sources=await Promise.all([source('Statement','statement',1),source('Invoice-A','invoice',2),source('Invoice-B','invoice',1)]);
 const root=createRoot(document.getElementById('root'));
 const mount=(initialProject,documents=sources)=>root.render(React.createElement(PdfWorkspace,{documents,initialProject,accountName:'Synthetic Account',hotel:'KAT',selectedCount:2,onClose:()=>{window.pdfTest.closed=true;},onSaveDraft:async(project)=>{if(window.pdfTest.draftWait)await window.pdfTest.draftWait;window.pdfTest.draft=project;},onSave:async(files,project)=>{if(window.pdfTest.saveWait)await window.pdfTest.saveWait;window.pdfTest.saved={files,project};}}));
-window.pdfTest={sources,loadSources,exportProject,getDocument,PDFDocument,mount,saved:null};
+window.pdfTest={sources,loadSources,exportProject,getDocument,PDFDocument,PDFName,mount,saved:null};
 mount();
 </script></body></html>

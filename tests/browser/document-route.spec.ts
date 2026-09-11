@@ -11,9 +11,9 @@ async function mockApplication(page: Page, requestedLayout='combined') {
   const font = await source.embedFont(StandardFonts.Helvetica);
   source.addPage([595, 842]).drawText('SYNTHETIC INVOICE A', { x: 45, y: 740, font, size: 18 });
   const bytes = Buffer.from(await source.save());
-  const job = { id: jobId, owner: user.id, hotel: 'KAT', account_id: 'synthetic-account', account_name: 'Synthetic Document Account', content: 'invoices', layout: requestedLayout, purpose: 'billing', invoice_ids: ['A'], manifest: [{ id: 'A', invoice_no: 'INVOICE-A' }], state: 'ready', revision: 0, project_key: null as string | null, exports: [], acknowledged: false, files: [{ id: fileId, kind: 'invoice', invoice_id: 'A', ordinal: 0, state: 'ready', storage_key: `jobs/${jobId}/originals/${fileId}.pdf`, error_code: null, byte_count: bytes.length, sha256: 'synthetic' }], created_at: '2026-09-09T00:00:00Z' };
+  const job = { id: jobId, owner: user.id, hotel: 'KAT', account_id: 'synthetic-account', account_name: 'Synthetic Document Account', content: 'invoices', layout: requestedLayout, purpose: 'billing', invoice_ids: ['A'], manifest: [{ id: 'A', invoice_no: 'INVOICE-A' }], state: 'ready', revision: 0, project_key: null as string | null, exports: [] as {name:string;storage_key:string;byte_count:number;sha256:string}[], acknowledged: false, files: [{ id: fileId, kind: 'invoice', invoice_id: 'A', ordinal: 0, state: 'ready', storage_key: `jobs/${jobId}/originals/${fileId}.pdf`, error_code: null, byte_count: bytes.length, sha256: 'synthetic' }], created_at: '2026-09-09T00:00:00Z' };
   const controls = {
-    portfolioRequests: [] as string[], documentReads: 0, sourceReads: 0,
+    portfolioRequests: [] as string[], documentReads: 0, sourceReads: 0, emailOpens:[] as any[],outboundRequests:[] as string[],
     saveRequests: [] as { token: string; body: Record<string, unknown> }[],
     uploadRequests: [] as { token: string; project: any }[], createRequests: [] as any[],
     holdPortfolio: false, pendingPortfolio: [] as (() => void)[],
@@ -25,6 +25,7 @@ async function mockApplication(page: Page, requestedLayout='combined') {
   // touch OPERA, Supabase, customer documents, or production services.
   await page.route('**/api/**', async route => {
     const request = route.request(), url = new URL(request.url()), token = request.headers().authorization || '';
+    if(/\/(send|gmail-draft)$/.test(url.pathname))controls.outboundRequests.push(url.pathname);
     if (url.pathname === '/api/config') return route.fulfill({ json: { supabaseUrl: 'https://example.supabase.co', publishableKey: 'synthetic-key' } });
     if (url.pathname === '/api/refresh') return route.fulfill({ json: { jobs: [], running: false, hotels: [] } });
     if (url.pathname === '/api/portfolio') {
@@ -36,18 +37,43 @@ async function mockApplication(page: Page, requestedLayout='combined') {
     if (url.pathname === '/api/documents' && request.method() === 'POST') { controls.createRequests.push(request.postDataJSON()); return route.fulfill({ json: job }); }
     if (url.pathname === `/api/documents/${jobId}`) { controls.documentReads++; return route.fulfill({ json: job }); }
     if (url.pathname === `/api/documents/${jobId}/files/${fileId}`) { controls.sourceReads++; return route.fulfill({ contentType: 'application/pdf', body: bytes }); }
+    if (url.pathname === `/api/documents/${jobId}/project`) return route.fulfill({json:controls.uploadRequests.at(-1)?.project});
+    if (url.pathname === '/api/gmail/status')return route.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
+    if (url.pathname === '/api/email/open') {controls.emailOpens.push(request.postDataJSON());return route.fulfill({json:{id:'synthetic-draft',document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic message',body:'Synthetic only',exports:job.exports,attachments:[],revision:0,package_changed:false}});}
     if (url.pathname === `/api/documents/${jobId}/upload`) {
       if (url.searchParams.get('kind') === 'project') controls.uploadRequests.push({ token, project: request.postDataJSON() });
-      return route.fulfill({ json: { storage_key: `jobs/${jobId}/drafts/synthetic-project.json`, byte_count: request.postDataBuffer()?.length || 0, sha256: 'synthetic' } });
+      return route.fulfill({ json: { storage_key: `jobs/${jobId}/${url.searchParams.get('kind')==='project'?'drafts/synthetic-project.json':'exports/synthetic-export.pdf'}`, byte_count: request.postDataBuffer()?.length || 0, sha256: 'synthetic' } });
     }
     if (url.pathname === `/api/documents/${jobId}/save`) {
-      const body = request.postDataJSON(); controls.saveRequests.push({ token, body }); job.revision++; job.project_key = String(body.projectKey);
+      const body = request.postDataJSON(); controls.saveRequests.push({ token, body }); job.revision++; job.project_key = String(body.projectKey);job.exports=body.exports;job.acknowledged=body.acknowledged;
       return route.fulfill({ json: job });
     }
     return route.fulfill({ status: 501, json: { error: 'unmocked_synthetic_test_api' } });
   });
   return controls;
 }
+
+test('reviewed PDF continues directly to email with the saved revision; newer edits require review again',async({page})=>{
+ const controls=await mockApplication(page);await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeDisabled({timeout:20000});
+ await page.getByRole('button',{name:'Text box',exact:true}).click();await page.getByLabel('Layer text').fill('SYNTHETIC REVIEWED EDIT');
+ await page.getByRole('button',{name:'Open mandatory Preview'}).click();await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();
+ const preview=page.getByRole('dialog',{name:'Final PDF preview'});await expect(preview.getByRole('button',{name:'Continue to email',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Close final preview'}).click();const next=page.getByRole('button',{name:'Continue to email',exact:true});await expect(next).toBeInViewport();await page.screenshot({path:'evidence/pdf-reviewed-email-handoff.png',animations:'disabled'});
+ await next.click();await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();
+ expect(controls.emailOpens.length).toBeGreaterThan(0);expect(controls.emailOpens.every(p=>p.jobId===jobId&&p.documentRevision===1)).toBe(true);const opens=controls.emailOpens.length;await expect(page.getByRole('dialog',{name:'PDF Workspace',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Back to document preparation'}).click();await page.getByRole('button',{name:'Start from original PDFs'}).click();await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Close PDF Workspace'}).click();await page.getByRole('button',{name:'Reopen saved PDF project'}).click();
+ await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeEnabled();await expect(page.locator('.pdf-differences')).toContainText('SYNTHETIC REVIEWED EDIT');
+ await page.getByRole('button',{name:'Note',exact:true}).click();await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeDisabled();expect(controls.emailOpens).toHaveLength(opens);expect(controls.outboundRequests).toEqual([]);
+});
+
+test('a failed private save cannot enable email continuation',async({page})=>{
+ await mockApplication(page);let failed=false;
+ await page.route(`**/api/documents/${jobId}/save`,r=>{if(!failed){failed=true;return r.fulfill({status:503,json:{error:'document_unavailable'}});}return r.fallback();});
+ await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Open mandatory Preview'}).click();await page.getByRole('checkbox').check();
+ await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();await expect(page.getByRole('alert')).toContainText('document unavailable');await expect(page.locator('.pdf-email-next button')).toBeDisabled();
+ await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview'}).getByRole('button',{name:'Continue to email'})).toBeEnabled();
+});
 
 test('dirty PDF survives same-user token refresh and portfolio reload; draft uses refreshed token', async ({ page }) => {
   const controls = await mockApplication(page);
