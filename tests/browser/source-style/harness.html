@@ -1,0 +1,14 @@
+<!doctype html><script type="module">
+import fontkit from '@pdf-lib/fontkit';
+import fontUrl from '@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-700-normal.woff?url';
+import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';
+import * as source from '/src/pdf/source-text.ts';
+import * as engine from '/src/pdf/engine.ts';
+const pdf=await PDFDocument.create(); const page=pdf.addPage([400,300]);
+for (const [i,name] of [StandardFonts.Helvetica,StandardFonts.HelveticaBold,StandardFonts.HelveticaOblique].entries()) {const font=await pdf.embedFont(name);page.drawText('Invoice 123',{x:40,y:250-i*60,size:18,font,color:i===2?rgb(.7,.1,.2):rgb(0,0,0)});}
+const sources=[{id:'synthetic',name:'Synthetic',kind:'invoice',bytes:await pdf.save()}];
+const embedded=await PDFDocument.create();embedded.registerFontkit(fontkit);const face=await embedded.embedFont(await (await fetch(fontUrl)).arrayBuffer(),{subset:true});embedded.addPage([400,300]).drawText('Invoice 1234567890',{x:40,y:240,size:18,font:face,color:rgb(.2,.3,.6)});
+const embeddedSources=[{id:'embedded',name:'Embedded synthetic',kind:'invoice',bytes:await embedded.save()}];
+const repeated=await PDFDocument.create();const rp=repeated.addPage([400,300]),rf=await repeated.embedFont(StandardFonts.Helvetica);rp.drawText('SAME ',{x:40,y:250,font:rf,size:18});rp.drawText('SAME',{x:40,y:200,font:rf,size:18,color:rgb(1,0,0)});const repeatedSources=[{id:'repeated',name:'Repeated synthetic',kind:'invoice',bytes:await repeated.save()}];
+window.fixture={repeatedSources,...engine,...source,sources,embeddedSources};
+</script>

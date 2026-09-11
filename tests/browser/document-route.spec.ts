@@ -11,6 +11,7 @@ async function mockApplication(page: Page, requestedLayout='combined', lifecycle
   const source = await PDFDocument.create();
   const font = await source.embedFont(StandardFonts.Helvetica);
   source.addPage([595, 842]).drawText('SYNTHETIC INVOICE A', { x: 45, y: 740, font, size: 18 });
+  source.getPage(0).drawLine({start:{x:45,y:650},end:{x:450,y:650},thickness:1});
   const bytes = Buffer.from(await source.save());
   const job = { lifecycle,closed_at:null as string|null,closed_reason:null as string|null,id: jobId, owner: user.id, hotel: 'KAT', account_id: 'synthetic-account', account_name: 'Synthetic Document Account', content: 'invoices', layout: requestedLayout, purpose: 'billing', invoice_ids: ['A'], manifest: [{ id: 'A', invoice_no: 'INVOICE-A' }], state: 'ready', revision: 0, project_key: null as string | null, exports: [] as {name:string;storage_key:string;byte_count:number;sha256:string}[], acknowledged: false, files: [{ id: fileId, kind: 'invoice', invoice_id: 'A', ordinal: 0, state: 'ready', storage_key: `jobs/${jobId}/originals/${fileId}.pdf`, error_code: null, byte_count: bytes.length, sha256: 'synthetic' }], created_at: '2026-09-09T00:00:00Z' };
   const controls = {
@@ -153,7 +154,7 @@ test('Statement preparation has one approved system source and preserves Invoice
  await page.getByLabel('Select INVOICE-A',{exact:true}).check();
  await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
  await page.getByRole('combobox',{name:'Document content',exact:true}).selectOption('both');
- await expect(page.getByRole('dialog')).toContainText('Statement: Generate in AR Workspace');
+ await expect(page.getByText('Statement: Generate in AR Workspace.',{exact:false})).toHaveCount(0);
  await expect(page.getByRole('option',{name:'Original from OPERA',exact:true})).toHaveCount(0);
  await page.getByRole('combobox',{name:'Delivery layout',exact:true}).selectOption('statement_bundle');
  await page.getByRole('button',{name:'Create document job',exact:true}).click();
@@ -241,4 +242,13 @@ test('a review in flight locks editing and keeps email closed until confirmed',a
  const preview=page.getByRole('dialog',{name:'Final PDF preview'});await preview.getByRole('checkbox').check();await preview.getByRole('button',{name:'Continue to email',exact:true}).click();await expect.poll(()=>started).toBe(true);
  await expect(page.locator('.pdf-layout')).toHaveAttribute('inert','');await expect(page.getByRole('button',{name:'Close final preview',exact:true})).toBeDisabled();expect(controls.emailOpens).toHaveLength(0);
  release();await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();expect(controls.reviewRequests).toHaveLength(1);expect(controls.outboundRequests).toEqual([]);
+});
+
+for(const width of [1440,1280])test(`source editing and dragging controls on deployed app at ${width}`,async({page})=>{
+ test.setTimeout(60000);await page.setViewportSize({width,height:width===1440?900:800});const controls=await mockApplication(page,'combined','transient');await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Edit original text: SYNTHETIC INVOICE A',exact:true}).click();
+ await expect(page.getByLabel('Text color',{exact:true})).toHaveValue('#000000');await expect(page.getByLabel('Font size',{exact:true})).toHaveValue('18');const text=page.getByRole('textbox',{name:'Layer text',exact:true});await text.fill('SYNTHETIC INVOICE 12345');
+ await expect(page.getByRole('button',{name:'Add row below',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Restore original formatting',exact:true})).toBeVisible();
+ await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');await page.screenshot({path:`evidence/pdf-source-editing-${width}.png`,animations:'disabled'});
+ await page.getByRole('button',{name:'Move lines',exact:true}).click();const line=page.locator('.pdf-native-line').first();await line.scrollIntoViewIfNeeded();const box=(await line.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+15,box.y+box.height/2+15,{steps:5});await page.mouse.up();await expect(page.locator('.pdf-differences')).toContainText('Moved line / area');
+ await page.getByRole('button',{name:'Continue to email',exact:true}).click();const preview=page.getByRole('dialog',{name:'Final PDF preview'});await preview.getByRole('checkbox').check();await preview.getByRole('button',{name:'Continue to email',exact:true}).click();await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();expect(controls.reviewRequests).toHaveLength(1);expect(controls.uploadRequests).toHaveLength(0);expect(controls.outboundRequests).toEqual([]);
 });

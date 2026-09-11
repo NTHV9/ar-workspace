@@ -1,6 +1,5 @@
-#
+# สเปกผลิตภัณฑ์ฉบับส่งต่อ — Katathani AR Clean Rebuild
 > คำยืนยัน 11 กันยายน 2026: งานเอกสารใหม่เป็น temporary preparation จาก Account/Collections ไม่มีหน้า Documents กลางหรือ saved editor project. Review แล้วไป Email ต่อ โดยพัก reviewed bytes จน Sent ที่ยืนยันแล้วหรือ explicit discard; Draft/uncertain และไฟล์เก่าคงการป้องกันเดิม. ดูนโยบายล่าสุดใน DECISIONS_AND_OPEN_ITEMS.md.
- สเปกผลิตภัณฑ์ฉบับส่งต่อ — Katathani AR Clean Rebuild
 
 > ใช้ร่วมกับคำยืนยันล่าสุดใน DECISIONS_AND_OPEN_ITEMS.md. ข้อความ handoff เรื่อง native Statement/renderer สำรองถูกแทนแล้ว: Statement ใช้ renderer ของระบบเท่านั้น ส่วน Invoice/Folio ใช้ OPERA API. ผลพัฒนาและขอบเขตที่ทดสอบจริงอยู่ใน FINAL_ACCEPTANCE_20260911.md
 

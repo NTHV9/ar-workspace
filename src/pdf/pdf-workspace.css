@@ -9,3 +9,22 @@
 .pdf-preview-dialog footer:has(.pdf-preview-actions) label{flex-basis:100%}
 .pdf-preview-actions{margin-left:auto}
 @media(max-width:900px){.pdf-preview-actions{margin-left:0}.pdf-preview-actions button{flex:1}}
+.pdf-toolbar{flex-wrap:wrap;row-gap:6px}
+.pdf-properties textarea{min-height:96px;font-size:13px;line-height:1.5;resize:vertical}
+.pdf-original-format{display:grid;gap:8px;margin:10px 0 12px;color:#51677e;font-size:10px;overflow-wrap:anywhere}
+.pdf-original-format button{font-size:10px;text-align:left}
+.pdf-line-actions,.pdf-row-controls>div{display:flex;gap:8px;margin:8px 0 12px}
+.pdf-line-actions button,.pdf-row-controls button{flex:1;font-size:10px}
+.pdf-geometry{margin:12px 0}
+.pdf-geometry summary{cursor:pointer;font-size:11px;font-weight:600;padding:8px 0;color:#173a62}
+.pdf-row-controls{border-top:1px solid #dce5ef;margin-top:16px;padding-top:12px}
+.pdf-text-warning{font-size:11px!important;line-height:1.5!important;color:#963e22!important;background:#fff4e8;padding:8px;border-radius:6px}
+.pdf-native-line,.pdf-native-area,.pdf-area-picker{position:absolute;z-index:6;touch-action:none}
+.pdf-workspace .pdf-native-line{padding:0;min-width:0;min-height:0;background:#3d65ff20;border:1px solid #3d65ff;border-radius:0;cursor:move}
+.pdf-workspace .pdf-native-line:hover{background:#3d65ff45;border-color:#3157df}
+.pdf-area-picker{inset:0;cursor:crosshair}
+.pdf-workspace .pdf-native-area{padding:0;min-width:0;min-height:0;background:#3d65ff0b;border:2px dashed #3157df;border-radius:0;cursor:move;z-index:7}
+.pdf-workspace .pdf-native-area.moving{pointer-events:none}
+.pdf-layer-target.empty-cell{border:1px dashed #657b96;background:#f1f6ff80}
+.pdf-layer-target.empty-cell::after{content:'+';position:absolute;inset:0;display:grid;place-items:center;color:#3157df;pointer-events:none;font-size:12px}
+.pdf-object-help p{font-size:11px;line-height:1.6}
