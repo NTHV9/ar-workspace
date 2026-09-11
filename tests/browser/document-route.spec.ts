@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
+import {assertButtonVisibility} from './fixtures/button-visibility';
 
 const jobId = 'a0000000-0000-4000-8000-000000000001';
 const fileId = 'b0000000-0000-4000-8000-000000000001';
@@ -53,11 +54,20 @@ async function mockApplication(page: Page, requestedLayout='combined') {
   return controls;
 }
 
+for(const width of [1440,390])test(`document actions ${width} are readable before hover, including the create-job dialog`,async({page})=>{
+ await page.setViewportSize({width,height:width===390?844:900});
+ const controls=await mockApplication(page);await page.goto('/?account=synthetic-account&property=KAT');await page.getByLabel('Select INVOICE-A',{exact:true}).check();
+ await page.getByRole('button',{name:'Prepare documents',exact:true}).click();await assertButtonVisibility(page,page.locator('.document-dialog'));
+ await page.locator('.document-dialog select').first().focus();await page.mouse.move(0,0);await page.screenshot({path:`evidence/document-create-button-visible-${width}.png`,animations:'disabled'});
+ await page.getByRole('button',{name:'Create document job',exact:true}).click();await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toBeVisible();await assertButtonVisibility(page,page.locator('.document-jobs'));
+ expect(controls.createRequests).toHaveLength(1);expect(controls.outboundRequests).toEqual([]);
+});
+
 test('reviewed PDF continues directly to email with the saved revision; newer edits require review again',async({page})=>{
  const controls=await mockApplication(page);await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
  await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeDisabled({timeout:20000});
  await page.getByRole('button',{name:'Text box',exact:true}).click();await page.getByLabel('Layer text').fill('SYNTHETIC REVIEWED EDIT');
- await page.getByRole('button',{name:'Open mandatory Preview'}).click();await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();
+ await page.getByRole('button',{name:'Open mandatory Preview'}).click();await page.getByRole('checkbox').check();await assertButtonVisibility(page,page.locator('.pdf-preview-dialog'));await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();
  const preview=page.getByRole('dialog',{name:'Final PDF preview'});await expect(preview.getByRole('button',{name:'Continue to email',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Close final preview'}).click();const next=page.getByRole('button',{name:'Continue to email',exact:true});await expect(next).toBeInViewport();await page.screenshot({path:'evidence/pdf-reviewed-email-handoff.png',animations:'disabled'});
  await next.click();await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();

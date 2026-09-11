@@ -1,5 +1,6 @@
 import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
+import {assertButtonVisibility} from './fixtures/button-visibility';
 import {starterTemplates,type EmailTemplate} from '../../src/email/templates';
 async function setup(page:Page,unavailable=false){
  const user={id:'00000000-0000-4000-8000-000000000009',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
@@ -19,6 +20,9 @@ async function setup(page:Page,unavailable=false){
   return r.fulfill({status:501,json:{error:'unmocked'}});
  });return {calls,versions};
 }
+test('template actions remain readable before hover and on keyboard focus',async({page})=>{
+ const {calls}=await setup(page);await page.goto('/?templates=1');await expect(page.getByLabel('Template name',{exact:true})).toBeVisible();await assertButtonVisibility(page,page.locator('.template-library'));expect(calls.every(c=>c.startsWith('GET')||c==='POST /api/refresh')).toBe(true);
+});
 for(const width of [1440,1280,390])test(`template library ${width}: versions, editable old copy and no sends`,async({page})=>{
  const {calls,versions}=await setup(page);await page.setViewportSize({width,height:width===1440?900:width===1280?800:844});await page.goto('/?templates=1');
  await expect(page.getByRole('heading',{name:'Email templates',exact:true})).toBeVisible();await expect(page.getByText('No saved templates yet.',{exact:false})).toBeVisible();

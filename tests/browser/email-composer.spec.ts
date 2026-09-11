@@ -1,5 +1,6 @@
 import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
+import {assertButtonVisibility} from './fixtures/button-visibility';
 const jobId='00000000-0000-4000-8000-000000000001',draftId='00000000-0000-4000-8000-000000000002';
 async function setup(page:Page,conflict=false){
  const user={id:'synthetic-email-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
@@ -22,6 +23,12 @@ async function setup(page:Page,conflict=false){
   return r.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});
  });return calls;
 }
+test('email actions remain readable without sending while checking hover and focus',async({page})=>{
+ const calls=await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);await expect(page.getByLabel('Email TO')).toBeVisible();await assertButtonVisibility(page,page.locator('.email-workspace'));
+ await page.getByLabel('Email TO').fill('recipient@example.test');await assertButtonVisibility(page,page.locator('.email-workspace'));await page.getByRole('button',{name:'Save workspace draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Workspace draft saved');
+ await page.getByRole('button',{name:'Review & send now',exact:true}).click();await assertButtonVisibility(page,page.locator('.email-send-confirm'));await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await assertButtonVisibility(page,page.locator('.email-send-confirm'));
+ expect(calls.some(c=>/\/(send|gmail-draft)$/.test(c))).toBe(false);
+});
 for(const width of [1440,1280])test(`email workspace ${width}: saved message and explicit Gmail draft`,async({page})=>{
  const calls=await setup(page);await page.setViewportSize({width,height:width===1440?900:800});await page.goto(`/?documentJob=${jobId}&compose=1`);
  await expect(page.getByLabel('Email TO')).toHaveValue('');expect(calls.some(c=>c.endsWith('/gmail-draft'))).toBe(false);
