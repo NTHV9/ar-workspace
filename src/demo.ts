@@ -21,6 +21,6 @@ export const demoInvoices = (account: Account): Invoice[] => {
     guest: `Guest ${String.fromCharCode(65+index)} · Synthetic`, invoiceNo: `INV-${10085+index*3691}`, folioNo: `FOL-${15803+index*5946}`,
     date: `2026-08-${12+index*2}`, due: index === 5 ? null : `2026-09-${11+index*3}`,
     original: Math.round(account.open * fraction * (index > 1 ? 1.2 : 1)), open: Math.round(account.open * fraction),
-    aging: agingLabels[5-index], stage: ['Follow 1','Friendly','Not sent','Follow 2','Final','Not billed'][index],
+    age: [164,135,100,78,43,15][index], aging: agingLabels[5-index], stage: ['Follow 1','Friendly','Not sent','Follow 2','Final','Not billed'][index],
   }));
 };

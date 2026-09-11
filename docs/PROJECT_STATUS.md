@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Account Detail corrections — 11 กันยายน 2026
+
+- แก้ drawer Selected guest/item ในจอ 601–1200px โดยล้าง browser dialog `left` ให้ยึดขอบขวา 15px. Desktop ยังเป็นคอลัมน์ขวา; mobile คงระยะขอบทั้งสองด้าน. Native modal/focus/Escape/selection เดิมคงทำงาน
+- Aging sort ใช้ OPERA `age` เป็นตัวเลข; หากขาด age ใช้ start day ของ source bucket ที่ตรงกัน ไม่เรียงข้อความอย่าง Up to 30. ค่าไม่ทราบอยู่ท้ายทั้ง asc/desc. Demo เพิ่ม source age สมมติที่ตรงกับช่วงเดิม ไม่ seed business data
+- Latest Sent ใช้ workflow แยก No billing sent/Billed/No reminders sent/Billing setup needed/Not available และคง actual reminder stage/Final urgency. ใช้กฎเดียวกันใน Account Detail และคิวงาน; Billing status ฝั่งรายละเอียดของ Not Required แสดง Not required
+- ก่อนแก้ browser regression ล้มเหลว 4 cases ตรงอาการ (sort, status และ right-edge ที่ 1100/1200). หลังแก้ 5 cases ผ่านรวม mobile; full unit 817/88 files, typecheck/build และ local regression 21 cases ผ่าน (selection/filter/back, queue, focus). หลักฐาน synthetic เท่านั้น
+- ตรวจบัญชีที่เจ้าของแจ้งแบบ read-only: open invoice workflows 84 รายการเป็น Billing Required และยังไม่มีวันวางบิลหรือ reminder stage ในระบบ จึงควรขึ้น No billing sent ตามคำยืนยัน. ไม่ได้แก้ฐานข้อมูลหรือเดาประวัติวางบิลเก่า. กำลัง Push/Deploy และตรวจผลจริง
+
 ## Checkpoint PDF clarity and Email handoff — 11 กันยายน 2026
 
 - เจ้าของพบ PDF ไม่คมเมื่อขยายและไม่เห็นปุ่มไปอีเมลใน Editor หลังบันทึก. สาเหตุ display ใช้ raster scale คงที่ และ Prepare email อยู่เฉพาะหน้ารายการเอกสารที่ถูก Editor บัง

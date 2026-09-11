@@ -31,7 +31,7 @@ dialog.invoice-detail:not([open]){display:none}
 .group-dialog h2,.detail-head h2{overflow-wrap:anywhere}
 .detail-head{padding-right:32px}
 @media(max-width:1200px){
-  dialog.invoice-detail.drawer-open{margin:0;max-height:none;max-width:none}
+  dialog.invoice-detail.drawer-open{margin:0;left:auto;right:15px;max-height:none;max-width:none}
 }
 @media(max-width:600px){
   .app-header{gap:10px;padding:14px 13px}
