@@ -1,0 +1,44 @@
+.dashboard-view-tabs{display:flex;gap:8px;margin:0 0 22px;border-bottom:1px solid var(--line);padding-bottom:12px;flex-wrap:wrap}
+.dashboard-view-tabs button{padding:10px 18px;background:transparent;border:1px solid transparent;border-radius:10px;color:#51677e;font-weight:600}
+.dashboard-view-tabs button[aria-pressed=true]{background:#fff;border-color:#c8d6eb;color:#2852c8}
+.dashboard-period-filters{margin-bottom:28px;background:#fff;padding:18px;border:1px solid var(--line);border-radius:14px}
+.dashboard-date-controls,.dashboard-scope-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.dashboard-period-filters label{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#51677e;min-width:150px}
+.dashboard-period-filters input,.dashboard-period-filters select{height:39px;padding:8px 10px;border:1px solid #c9d7e7;border-radius:8px;background:#fff;color:#10253f;font:inherit;min-width:0}
+.dashboard-presets{display:flex;gap:6px;flex-wrap:wrap}.dashboard-presets button{padding:9px 11px;font-size:11px}
+.dashboard-scope-controls{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.dashboard-scope-controls label:nth-child(2){flex:1;max-width:380px;min-width:230px}
+.dashboard-scope-controls p{flex:1;min-width:220px;font-size:11px;color:#51677e;line-height:1.6;margin:0;max-width:480px}
+.dashboard-period-balances,.dashboard-period-activity{margin-bottom:30px}
+.dashboard-period-balances .dashboard-section-heading>span{text-align:right;max-width:360px}
+.dashboard-period-balances .dashboard-section-heading small{display:block;font-size:10px;margin-top:4px}
+.dashboard-closing-total{display:flex;align-items:center;gap:20px;padding:16px 0 20px;flex-wrap:wrap}
+.dashboard-closing-total>span{font-size:12px;color:#51677e}.dashboard-closing-total>strong{font-size:23px;letter-spacing:-.02em}.dashboard-closing-total>b{font-size:23px;color:#2852c8;letter-spacing:-.02em}.dashboard-closing-total>button{margin-left:auto}
+.dashboard-status-columns{display:grid;grid-template-columns:minmax(0,1.13fr) minmax(0,1fr);gap:20px}
+.dashboard-status-columns h3{font-size:15px;margin:0 0 12px}.dashboard-status-columns p{font-size:11px;color:#51677e;line-height:1.5;margin:0 0 12px}
+.dashboard-status-columns table,.dashboard-activity-table table,.dashboard-detail-panel table{width:100%;border-collapse:collapse;font-size:12px}
+.dashboard-status-columns th,.dashboard-status-columns td,.dashboard-activity-table th,.dashboard-activity-table td,.dashboard-detail-panel th,.dashboard-detail-panel td{padding:12px 8px;border-bottom:1px solid #e0e8f1;text-align:right;vertical-align:top}
+.dashboard-status-columns th:first-child,.dashboard-activity-table th:first-child,.dashboard-activity-table td:last-child,.dashboard-detail-panel th,.dashboard-detail-panel td{text-align:left}
+.dashboard-status-columns thead th,.dashboard-activity-table thead th,.dashboard-detail-panel thead th{font-size:10px;font-weight:600;color:#51677e;background:#f3f7fb}
+.dashboard-status-columns tbody th,.dashboard-activity-table tbody th{font-weight:500}
+.dashboard-page .dashboard-text-link{padding:0;background:none;border:0;border-radius:2px;color:#2852c8;font:inherit;text-align:inherit;line-height:1.5;cursor:pointer}
+.dashboard-page .dashboard-text-link:hover{text-decoration:underline;text-underline-offset:3px}.dashboard-page .dashboard-text-link:disabled{color:#657b96;cursor:default;text-decoration:none}
+.dashboard-page td{font-variant-numeric:tabular-nums}.dashboard-status-columns td{white-space:nowrap}.dashboard-status-columns td:last-child{color:#51677e}
+.dashboard-activity-table th:first-child{min-width:205px}.dashboard-activity-table td:last-child{font-size:11px;color:#51677e;max-width:360px}.dashboard-activity-table td:nth-child(2),.dashboard-activity-table td:nth-child(3){white-space:nowrap}
+.dashboard-payment-summary{margin-top:18px}.dashboard-payment-summary header,.dashboard-detail-panel>header{display:flex;justify-content:space-between;align-items:start;gap:18px}
+.dashboard-payment-summary h3{font-size:15px;margin:0}.dashboard-payment-summary dl{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:20px 0}.dashboard-payment-summary dt{font-size:11px;color:#51677e;line-height:1.5}.dashboard-payment-summary dd{font-size:18px;font-weight:700;margin:8px 0 0;font-variant-numeric:tabular-nums}
+.dashboard-detail-panel{scroll-margin-top:20px;margin-bottom:25px}.dashboard-detail-panel>header{margin-bottom:18px}.dashboard-detail-panel small{display:block;font-size:10px;color:#51677e;margin-top:5px}.dashboard-detail-panel td{min-width:135px}.dashboard-detail-panel td:first-child{min-width:180px}
+.dashboard-detail-pagination{display:flex;align-items:center;gap:10px;margin-top:14px}.dashboard-detail-pagination span{margin-right:auto;font-size:11px;color:#51677e}
+@media(max-width:1250px){.dashboard-status-columns{grid-template-columns:1fr}.dashboard-status-columns table{font-size:12px}.dashboard-payment-summary dl{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.dashboard-title{align-items:start;gap:10px}.dashboard-title button{font-size:10px;padding:9px}.dashboard-view-tabs{gap:5px}.dashboard-view-tabs button{padding:10px;font-size:11px}.dashboard-period-filters{padding:13px}.dashboard-date-controls{display:grid;grid-template-columns:1fr 1fr}.dashboard-date-controls label:first-child,.dashboard-presets{grid-column:1/-1}.dashboard-period-filters label{min-width:0}.dashboard-scope-controls label,.dashboard-scope-controls label:nth-child(2){width:100%;max-width:none;min-width:0}.dashboard-scope-controls p{min-width:0}.dashboard-closing-total{gap:10px}.dashboard-closing-total>span{width:100%}.dashboard-closing-total>strong,.dashboard-closing-total>b{font-size:19px}.dashboard-closing-total>button{margin-left:0}.dashboard-section-heading{flex-wrap:wrap}.dashboard-period-balances .dashboard-section-heading>span{text-align:left}.dashboard-payment-summary dd{font-size:15px}.dashboard-detail-panel{padding:14px}.dashboard-detail-panel>header{flex-wrap:wrap}.dashboard-detail-pagination{flex-wrap:wrap}}
+.dashboard-status-columns tbody th,.dashboard-activity-table tbody th{font-size:12px}
+.dashboard-page .dashboard-title{margin-bottom:14px}.dashboard-view-tabs{margin-bottom:16px}
+.dashboard-closing-total{padding:10px 0 16px}
+@media(min-width:1100px){
+ .dashboard-period-filters{display:grid;grid-template-columns:minmax(440px,1.15fr) minmax(350px,1fr);gap:22px;padding:15px 18px;margin-bottom:22px}
+ .dashboard-date-controls{display:grid;grid-template-columns:110px minmax(125px,1fr) minmax(125px,1fr);gap:10px}
+ .dashboard-date-controls label{min-width:0}.dashboard-presets{grid-column:1/-1}
+ .dashboard-scope-controls{display:grid;grid-template-columns:155px minmax(180px,1fr);gap:10px;margin:0;padding:0;border:0}
+ .dashboard-scope-controls label,.dashboard-scope-controls label:nth-child(2){min-width:0;max-width:none}
+ .dashboard-scope-controls p{grid-column:1/-1;min-width:0;max-width:none;font-size:10px}
+}

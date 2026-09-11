@@ -1,5 +1,15 @@
 # Checklist ตรวจรับตามสเปก
 
+## Dashboard scope update — 12 September 2026
+
+- [x] Single-day/inclusive range filters; closing-date positive invoices and dated activity remain distinct
+- [x] Current-only Aging compares Account Types/Account Nos acrossTSK/KAT/Total, source percentages/credits and invoice drilldown
+- [x] Past Due date is distinct from OPERA age; billed/unbilled/Not Required/age/stages include counts and monetary basis
+- [x] Reports contains External billing only; old routes, external scope and Back navigation are preserved
+- [x] Source uncertainty/classification/mapping gaps never become verified zero; known-cleared zeros do not invalidate positive debt
+- [x] Bounded history, role protection, actual source refresh/capture and portable SQL replay verified
+- [ ] Cloudflare final UI deployment/browser validation and CI-green merge for this scope
+
 ผลตรวจรับ 11 กันยายน 2026 อยู่ใน [FINAL_ACCEPTANCE_20260911.md](FINAL_ACCEPTANCE_20260911.md) และ PROJECT_STATUS.md เครื่องหมายผ่านหมายถึงตรวจตามขอบเขตและหลักฐานที่ระบุ ไม่ใช่การรับรองทุกข้อมูล/ทุก API ของผู้ให้บริการ การทดสอบที่ต้องเปลี่ยนรหัสผ่านจริงและ production restore ไม่ได้ทำ
 
 รอบล่าสุดรวม source-history ทั้ง KAT/TSK, payment/application แยกยอด, daily observations, By System, hold/reopen, Operations, private retention และ disposable acceptance. ข้อมูลที่ API ไม่ยืนยันยังแสดง unavailable/unknown พร้อมขอบเขต coverage

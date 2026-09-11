@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic Current Aging</title></head><body><div id="root"></div><script type="module">
+import React,{useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import CurrentAging from '/src/dashboard/CurrentAging.tsx';
+import {currentAgingAccounts,currentAgingManyAccounts} from '/tests/browser/fixtures/current-aging.ts';
+import '/src/styles.css';
+import '/src/dashboard/dashboard.css';
+import '@fontsource/plus-jakarta-sans/400.css';
+import '@fontsource/plus-jakarta-sans/500.css';
+import '@fontsource/plus-jakarta-sans/600.css';
+import '@fontsource/plus-jakarta-sans/700.css';
+const accounts=new URLSearchParams(location.search).has('large')?currentAgingManyAccounts:currentAgingAccounts;
+function Harness(){const [hotel,setHotel]=useState('All'),[opened,setOpened]=useState(''),[detail,setDetail]=useState(false);const context=React.useRef();return React.createElement('main',{className:'page dashboard-page'},
+ React.createElement('header',null,React.createElement('h1',null,'Current Aging · Synthetic test data'),React.createElement('label',null,'Global hotel',React.createElement('select',{'aria-label':'Global hotel',value:hotel,onChange:e=>setHotel(e.target.value)},['All','KAT','TSK'].map(h=>React.createElement('option',{key:h},h))))),
+ detail?React.createElement('button',{onClick:()=>setDetail(false)},'Return from Account Detail'):React.createElement(CurrentAging,{token:'synthetic-aging-session',hotel,accounts,initialContext:context.current,onContextChange:value=>{context.current=value;},refresh:{running:false,hotels:['KAT','TSK'].map(h=>({hotel:h,status:'succeeded',last_success_at:'2026-09-12T00:03:00Z'}))},onOpenInvoice:(hotel,account,id)=>{setOpened(JSON.stringify([hotel,account,id]));setDetail(true);}}),
+ React.createElement('output',{'aria-label':'Opened invoice'},opened));}
+createRoot(document.getElementById('root')).render(React.createElement(Harness));
+</script></body></html>

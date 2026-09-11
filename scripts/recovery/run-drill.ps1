@@ -124,6 +124,8 @@ try {
     if($AdditionalMigrationNames -contains 'ar_document_queue_isolation'){$fixtures+='document-queue-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_retained_zero_verification'){$fixtures+='retained-zero-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_acceptance_closeout'){$fixtures+='acceptance-closeout-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_dashboard_period_balances'){$fixtures+='dashboard-balances-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_dashboard_confirmed_nonpositive'){$fixtures+='dashboard-membership-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture

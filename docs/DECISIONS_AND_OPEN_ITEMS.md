@@ -1,5 +1,16 @@
 # ข้อสรุปล่าสุด ข้อเสนอ และเรื่องที่ต้องยืนยัน
 
+## ยืนยันล่าสุด — Dashboard และ Reports (12 กันยายน 2026)
+
+- Reports เหลือ External billing activity เท่านั้น; ตัดหน้า Current receivables, Verified sent activity, OPERA financial history และ AR history & timing. ข้อมูลหลังบ้านยังใช้ทำสถิติและ Drill Down ใน Dashboard; ไม่ลบประวัติธุรกิจ
+- Dashboard เลือกวันเดียวหรือช่วงวันแบบรวมต้น/ปลายตามปฏิทินไทย. กิจกรรมใช้วันที่เกิดจริงของแหล่งข้อมูลในช่วง; Invoices ทั้งหมดหมายถึงบิลค้างทั้งหมด ณวันที่สิ้นสุดช่วง โดยแสดงเวลาที่บันทึกและเวลาแหล่งข้อมูล. วันเก่าที่ไม่ได้เก็บรายInvoiceไม่ใช้ข้อมูลล่าสุดแทน
+- Aging ดูเฉพาะปัจจุบัน ไม่ขึ้นกับช่วงวัน. Account Type และ Account ที่จับคู่ได้ต้องอยู่แถวเดียว เปรียบเทียบTSK/KAT/Total; ใช้Account No.และการตรวจชื่อซ้ำเดิม ไม่รวมledgerต่างโรงแรม. แสดงครบsource bucketsพร้อมยอดและเปอร์เซ็นต์ และเปิดถึงInvoiceได้
+- คำว่าเลยกำหนดใช้ Past Due date ใน UIอังกฤษ (เลย Due date); แยกจากอายุInvoiceในOPERAเกิน60วัน
+- แยก Billing Required ที่วางแล้ว/ยังไม่วาง และ Not Required; แสดงจำนวนและยอดค้าง, Past Due date, อายุเกิน60, เกิน60และยังไม่วาง, latest actual Friendly/Follow-Up1/2/3/Final โดยไม่สะสมรอบซ้ำต่อบิล
+- กิจกรรมแยกInvoiceเข้าใหม่, วางครั้งแรก/วางซ้ำ, ส่งทวงแต่ละรอบ, และInvoiceที่มีPaymentลงวันที่ในช่วง. จ่ายบางส่วนก็นับบิลไม่ซ้ำเมื่อmappingยืนยันได้; ยอดPaymentและยอดallocatedคนละฐาน ไม่ใช้ยอดInvoiceเต็มหรือวันที่เว็บตรวจพบศูนย์แทนเงินรับ
+- ไม่มีวันที่เหตุการณ์allocationจากOPERAในข้อมูลที่มี จึงเรียกยอดcurrent allocationของpayment-date cohort. Unknown mappings/source dates/classificationsไม่แสดงเป็นศูนย์. การวางบิลที่จำแนกครั้งแรก/ซ้ำไม่ได้ต้องเห็นแยก
+- เก็บhistorical invoice projectionsแบบprivateและมีเพดาน64MiB/200000rows/3660hotel-daycaptures ร่วมกับbudgetฐานข้อมูลเดิม; เมื่อถึงเพดานหยุดเก็บหลักฐานใหม่พร้อมสถานะ ไม่ลบประวัติเก่าหรือบล็อกcurrent OPERA publication. ไม่เพิ่มpaid services/add-ons
+
 ## ยืนยันล่าสุด — พิมพ์และไหลต่อแบบ Word (11 กันยายน 2026)
 
 - เจ้าของขอพิมพ์แก้บนเอกสารโดยตรง, เพิ่มบรรทัด/แถวแล้วข้อความและยอดด้านล่างเลื่อนตาม และต่อหน้าใหม่เมื่อเต็ม. แทนข้อจำกัด fixed-page insertion จากรอบก่อน

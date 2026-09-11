@@ -1,5 +1,18 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Dashboard period analysis and current Aging — 12 กันยายน 2026
+
+- Implemented: ReportsแสดงExternal billing activityหน้าเดียว; old financial/observation bookmarksไปDashboardอย่างปลอดภัย. Dashboardมีวันเดียว/ช่วงวัน/presets, scopeตามโรงแรม/Account Type/Account, จำนวนและยอดค้างณวันสิ้นสุดช่วง, latest actual Follow-Up stages และกิจกรรม/เงินรับของช่วง. ใช้คำPast Due dateแยกOPERA age
+- Current Agingไม่รับdate filter. Matrixครบ6source bucketsพร้อมTSK/KAT/TotalในแถวAccount Type/Accountเดียวกันและ%ของsource net. เจาะAccount/Invoice, pagination/sort/search, sourceเครดิตและparent-child, exact bucket-schema guard, owner isolation และกลับจากAccount Detailโดยคงcontext. Sourceกับinvoice evidenceที่ไม่ตรงกันแสดงชัด
+- Period/detailมีpaginationโดยsummaryไม่ถูกจำกัดด้วยpage, unknown/date/source/classificationไม่เป็น0, billing classification unavailableมีแถวแยก. Source refreshแบ่งช่วงไม่เกิน365วันต่อคำขอ; retryเก็บconfirmed receiptของทุกsubrequestจนทั้งชุดยืนยันแล้ว; หยุดdispatchเมื่อออกหน้า/เปลี่ยนtoken. Poll global runningจนงานเก่าที่อยู่นอกlatest10runsจบ
+- Supabase applied:20260911185831_ar_dashboard_period_balances และ20260911190946_ar_dashboard_confirmed_nonpositive บนproject jmyvpurzmoiecpydjrci. เพิ่มprivate daily captures/invoices/capture_state, protected read RPCsและpublisher/workflow/SENT hooks; follow-upviewแยกknown-cleared nonpositiveจากpositive-debt scopeโดยคงunknown/missing-is-not-zero guard. Localfilenamesตรงservice-assigned versions; ไม่แก้applied migrationย้อนหลัง
+- Hosted ACL/RLSตรวจแล้ว:3newprivate tablesไม่ให้anon/authenticatedอ่าน; namedRPCsเฉพาะservice_roleและตรวจactor. Unauthorized actorปฏิเสธ. Security advisorมีINFOเฉพาะprivate RLS/no client policy ไม่พบWARN/ERROR
+- Live verification: genuine whole-hotel OPERA refreshสำเร็จทั้งKAT/TSK, actualcurrentRPC complete=true/unverified=0 และcapturedtodayครบ. TSK recaptureเฉพาะวันนี้จากlatest genuine publicationหลังแก้view โดยคงsource timestampและใช้capture timeจริง; ไม่เขียนย้อนหลังหรือแก้OPERA. Historical31Augไม่มีcaptureและคืนunavailableตามจริง. ตารางประวัติใหม่ประมาณ0.38MiB ณตอนตรวจ; capและdatabase headroomทำงาน
+- Tested: Typecheck/Buildผ่าน; Vitest867tests/96files; portable PostgreSQL63migrations +5rollbackfixturesผ่าน, providerRequests0และserverหยุดแล้ว. Scoped Aging/backendและbroad source reviewsแก้findingsแล้ว รวมSENT finalization timing, missing-account false zero, source/classification gaps และmulti-hotel retries
+- Local browser55casesผ่านในfinalmixedrun; live-onlyhealthcaseที่ถูกส่งไปViteตอบHTMLจึงไม่นับผ่านและจะรันบนCloudflare. เพิ่มvisualconfirm5casesผ่านที่1440x900/1280x800/390. Publicevidenceเป็นsyntheticเท่านั้น: dashboard-period-*และdashboard-aging-*; เก็บข้อมูลจริง/SQLรายละเอียดส่วนตัวนอกGit. Detector26advisoryจากincumbenttokens/typography ไม่มีhigher findings
+- ไม่มีemail sends, OPERA accounting writes, customerfiledeletion, DNSchanges หรือpaid add-ons. Retained original design PNGsและPDF/editor regressions
+- UI deployment / CI / merge: pending final rollout
+
 ## Checkpoint Direct typing, content flow and whole-page Preview — 11 กันยายน 2026
 
 - Implemented: พิมพ์แก้บนหน้าเอกสารโดยตรงด้วย caret/selection และ Enter; กล่องด้านขวาเป็นตัวเลือกสำรอง. รักษาการวาด glyph ของต้นฉบับบน canvas และใช้ Unicode caret metrics ที่ปรับให้สอดคล้องกัน. ข้อความ/แถวเพิ่มแล้วดันเนื้อหาถัดไป รวมถึงส่วนท้ายลง พร้อมหน้าต่อเมื่อเกิน sheet เดิม. ตัว editor เก็บ logical source section; Preview แสดงจำนวนหน้าที่ออกจริง
