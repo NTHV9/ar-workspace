@@ -1,4 +1,11 @@
 import {test,expect,type Page} from '@playwright/test';
+import {assertButtonVisibility} from './fixtures/button-visibility';
+test('remittance actions stay readable in list, editor and review without saving',async({page})=>{
+ const {calls,unexpected}=await setup(page);await page.goto('/?remittances=1');await expect(page.getByRole('button',{name:'Record remittance',exact:true})).toBeVisible();await assertButtonVisibility(page,page.locator('.remittance-page'));
+ await page.getByRole('button',{name:'Open SYNTH-REMIT-001',exact:true}).click();await page.getByRole('button',{name:'Correct notice',exact:true}).click();await page.getByLabel('Correction reason').fill('Synthetic visibility check');await assertButtonVisibility(page,page.locator('.remittance-editor'));
+ await page.getByRole('button',{name:'Review remittance',exact:true}).click();await expect(page.getByRole('heading',{name:'Review remittance',exact:true})).toBeVisible();await assertButtonVisibility(page,page.locator('.remittance-editor'));
+ expect(calls.filter(c=>c.method!=='GET').every(c=>c.path==='/api/refresh')).toBe(true);expect(unexpected).toEqual([]);
+});
 import {policyFixture} from './fixtures/collection-policy';
 async function capture(page:Page,surface:string,width:number){await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));await page.screenshot({path:`evidence/remittance-${surface}-${width}.png`,fullPage:false,animations:'disabled'});await page.screenshot({path:`.tmp/remittance-${surface}-${width}-full.png`,fullPage:true,animations:'disabled'});}
 const id='10000000-0000-4000-8000-000000000001',account={hotel:'KAT',id:'SYNTH-REMIT',name:'Azure Travel · Synthetic',type:'OTA',open:30000,over90:0,items:3};

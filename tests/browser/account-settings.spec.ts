@@ -1,5 +1,6 @@
 import {policyFixture} from './fixtures/collection-policy';
 import {test,expect} from '@playwright/test';
+import {assertButtonVisibility} from './fixtures/button-visibility';
 const user={id:'synthetic-settings-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
 async function setup(page:any,conflict=false){
  const writes:any[]=[];const empty={to:[],cc:[],bcc:[]};let settings={revision:0,billing_required:null as boolean|null,credit_term:null as number|null,billing_recipients:empty,collection_recipients:empty};
@@ -19,6 +20,10 @@ async function setup(page:any,conflict=false){
  return route.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});
  });return writes;
 }
+test('account setting actions remain readable in their form context',async({page})=>{
+ const writes=await setup(page);await page.goto('/?account=example&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();await expect(page.getByLabel('Credit term (calendar days)')).toBeVisible();await assertButtonVisibility(page,page.locator('.account-config'));
+ await page.getByLabel('Billing requirement').selectOption('not_required');await page.getByLabel('Credit term (calendar days)').fill('30');await assertButtonVisibility(page,page.locator('.account-config'));expect(writes).toEqual([]);
+});
 for(const width of [1440,1280])test(`settings ${width}: blank defaults, zero term and explicit recipients`,async({page})=>{
  await page.setViewportSize({width,height:width===1440?900:800});const writes=await setup(page);await page.goto('/?account=example&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();
  await expect(page.getByLabel('Billing requirement')).toHaveValue('unset');await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('');

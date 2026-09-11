@@ -1,5 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 import {policyFixture} from './fixtures/collection-policy';
+import {assertButtonVisibility} from './fixtures/button-visibility';
 const buckets=['Up to 30','31 - 60','61 - 90','91 - 120','121 - 150','151 and Over'].map((label,i)=>({label,start:i?i*30+1:0,end:i===5?null:(i+1)*30,sequence:i,amount:100,debit:100,credit:0}));
 const workflow={revision:1,billing_required:true,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:null};
 const entries=[
@@ -37,6 +38,10 @@ test('Aging uses source days/ranges in both directions and missing ages stay las
  await expect.poll(order,{timeout:1500}).toEqual(['SYN-1','SYN-2','SYN-6','SYN-3','SYN-8','SYN-4','SYN-5','SYN-7']);
  await page.getByRole('button',{name:'Aging',exact:true}).click();await expect.poll(order).toEqual(['SYN-5','SYN-4','SYN-8','SYN-3','SYN-6','SYN-2','SYN-1','SYN-7']);
  await page.getByLabel('Select SYN-2',{exact:true}).check();await page.getByPlaceholder('Search guest / invoice / folio').fill('B Billed');await expect(page.locator('.selection-bar')).toContainText('1 items selected');expect(errors).toEqual([]);
+});
+test('invoice action and history buttons stay readable without changing records',async({page})=>{
+ const errors=await setup(page);await page.goto('/?account=SYN-A&property=KAT');await expect(page.getByLabel('Select SYN-1',{exact:true})).toBeVisible();await assertButtonVisibility(page,page.locator('.selection-bar'));await page.getByLabel('Select SYN-1',{exact:true}).check();await assertButtonVisibility(page,page.locator('.selection-bar'));
+ await page.locator('.history-editor summary').click();await assertButtonVisibility(page,page.locator('.history-editor'));expect(errors).toEqual([]);
 });
 
 for(const [width,height] of [[1440,900],[1100,800],[390,844]])test(`selected actions stay above an 84-invoice ledger while scrolling at ${width}`,async({page})=>{

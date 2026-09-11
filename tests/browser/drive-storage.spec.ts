@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {assertButtonVisibility} from './fixtures/button-visibility';
 import type {DriveArchiveView,DriveStatus} from '../../src/drive/model';
 
 const jobId='a1000000-0000-4000-8000-000000000001';
@@ -35,6 +36,12 @@ async function setup(page:Page){
  });
  return controls;
 }
+
+test('storage and reviewed-document action labels stay readable without provider writes',async({page})=>{
+ const controls=await setup(page);await page.goto('/?storage=1');await expect(page.getByRole('heading',{name:'Storage',exact:true})).toBeVisible();await assertButtonVisibility(page,page.locator('.drive-storage'));
+ await page.goto('/?documentJob='+jobId);await expect(page.getByRole('button',{name:'Prepare email',exact:true})).toBeVisible();await assertButtonVisibility(page,page.locator('.document-jobs'));
+ expect(controls.archiveWrites).toEqual([]);expect(controls.testWrites).toEqual([]);expect(controls.folderWrites).toEqual([]);
+});
 
 async function mockPicker(page:Page){
  await page.addInitScript(()=>{
