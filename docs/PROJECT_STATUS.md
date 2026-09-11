@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Modern Dashboard and current Aging — 12 กันยายน 2026
+
+- Implemented: ปรับ Dashboard ให้เห็นจำนวนบิลและยอดค้าง/ยังไม่วางบิล/Past Due date/อายุเกิน60วันทันที พร้อมกราฟสัดส่วนวางบิลและlatest Follow-Up. กิจกรรมตามช่วงวันอยู่คนละส่วนกับยอดค้างณวันสิ้นสุด; รายละเอียดจำนวน/ยอด/%และdrilldownยังครบ
+- Current Aging: ภาพรวมNet openและ6ช่วงอายุ เทียบTSK/KAT/Totalจากข้อมูลปัจจุบัน. คงmatrixครบเป็นdefault; ปุ่มColumnsเลือกSummary/All aging/ซ่อนแสดงช่วง/Net open/% ได้. ตัวเลือกคงอยู่หลังเจาะAccount/Invoiceและย้อนกลับ ไม่มีTop Nหรือรวมledgerข้ามโรงแรม
+- Fixed: current totalsไม่ถูกทำให้unavailableเพราะlatest refreshกำลังqueued/runningหรือfailedเมื่อมีpublicationที่ยืนยันแล้ว. Same-scope Reloadคงresponseเดิมพร้อมสถานะ; เปลี่ยนวัน/hotel/account/userไม่ใช้ค่าค้างจากscopeเดิม. ไม่เปลี่ยนunknownเป็นzeroหรือสร้างประวัติย้อนหลัง
+- Tested locally: Typecheck/Buildผ่าน, Vitest869tests/96files, portable PostgreSQL64migrations+22rollbackfixturesผ่าน, browser39casesผ่าน. Red reproductionยืนยันทั้งSQL queued-refreshและbrowserReloadก่อนแก้. Synthetic screenshots1440/1280/390และcolumn/drill/contextทดสอบแล้ว. ชุดconfirmครั้งหนึ่งล้มเพราะshareddevserverถูกหยุด; rerunกับserverแยก39casesผ่าน ไม่ใช่productfailure
+- Review: scoped period reviewแก้accessible count/amount descriptionsและhotel captionเมื่อเลือกAccount; integrated backend/Aging reviewผ่าน ไม่มีข้อค้าง. Supabase apply20260911201752_ar_dashboard_publication_freshnessสำเร็จ (แก้readerfunctionเท่านั้น); actual read complete=true/unverified0/freshness arraysว่างในรอบsucceeded, anon/authenticatedไม่มีRPCEXECUTE. Database61951123bytes. Deploy/mergeกำลังดำเนินการ
+- No email sends, OPERA accounting writes, customer-file cleanup, paid add-ons or new stored history tables in this change.
+
+
 ## Checkpoint Dashboard period analysis and current Aging — 12 กันยายน 2026
 
 - Implemented: ReportsแสดงExternal billing activityหน้าเดียว; old financial/observation bookmarksไปDashboardอย่างปลอดภัย. Dashboardมีวันเดียว/ช่วงวัน/presets, scopeตามโรงแรม/Account Type/Account, จำนวนและยอดค้างณวันสิ้นสุดช่วง, latest actual Follow-Up stages และกิจกรรม/เงินรับของช่วง. ใช้คำPast Due dateแยกOPERA age

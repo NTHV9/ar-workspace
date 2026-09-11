@@ -26,10 +26,19 @@ export function queueResult(value:unknown):DashboardQueueRow[] {
  return value.rows as DashboardQueueRow[];
 }
 async function read(path:string,token:string,signal:AbortSignal):Promise<unknown>{const r=await fetch(path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.any([signal,AbortSignal.timeout(30000)])});if(!r.ok)throw Error('dashboard_unavailable');return r.json();}
-export function useSource<T>(path:string|null,token:string,revision:number,check:(value:unknown)=>T):Source<T>{
- const [source,setSource]=useState<Source<T>>({state:path?'loading':'idle'});const checker=useRef(check);checker.current=check;
- useEffect(()=>{const controller=new AbortController();setSource({state:path?'loading':'idle'});if(path)void read(path,token,controller.signal).then(value=>checker.current(value)).then(data=>{if(!controller.signal.aborted)setSource({state:'ready',data});}).catch(()=>{if(!controller.signal.aborted)setSource({state:'error'});});return()=>controller.abort();},[path,token,revision]);
- return source;
+export function useSource<T>(path:string|null,token:string,revision:number,check:(value:unknown)=>T,retain=false):Source<T>{
+ // A response belongs to one exact request and authenticated session. Retention never crosses that boundary.
+ const key=JSON.stringify([path,token]),[stored,setStored]=useState<Source<T>&{key:string}>({key,state:path?'loading':'idle'});
+ const checker=useRef(check);checker.current=check;
+ useEffect(()=>{
+  const controller=new AbortController();
+  setStored(previous=>({key,state:path?'loading':'idle',data:retain&&path&&previous.key===key?previous.data:undefined}));
+  if(path)void read(path,token,controller.signal).then(value=>checker.current(value)).then(data=>{
+   if(!controller.signal.aborted)setStored({key,state:'ready',data});
+  }).catch(()=>{if(!controller.signal.aborted)setStored(previous=>({key,state:'error',data:retain&&previous.key===key?previous.data:undefined}));});
+  return()=>controller.abort();
+ },[path,token,revision,key,retain]);
+ return stored.key===key?stored:{state:path?'loading':'idle'};
 }
 export async function readDashboardOptions(token:string,signal:AbortSignal):Promise<AccountOption[]>{
  const all:AccountOption[]=[],seen=new Set<string>();let total:number|undefined;

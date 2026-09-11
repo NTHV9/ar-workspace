@@ -46,6 +46,11 @@ export function agingComparison(catalog:Account[],hotel:string,type?:string):Agi
  const columns=agingColumns(catalog);
  return aggregateAccounts(scoped,type===undefined,catalog).map(row=>({key:row.key,name:row.name,members:row.members,net:cells(row.members,hotel),cells:columns.map(bucket=>cells(row.members,hotel,bucket))}));
 }
+/** Overview uses every filtered ledger, independent of table pagination and column visibility. */
+export function agingOverview(catalog:Account[],hotel:string,members:Account[]){
+ const scoped=members.filter(a=>hotel==='All'||a.hotel===hotel);
+ return {members:scoped,net:cells(scoped,hotel),cells:agingColumns(catalog).map(bucket=>cells(scoped,hotel,bucket))};
+}
 export function agingPercentage(amount:number|null,denominator:number|null):number|null{
  return amount!==null&&denominator!==null&&Number.isFinite(amount)&&Number.isFinite(denominator)&&denominator>0?amount/denominator*100:null;
 }

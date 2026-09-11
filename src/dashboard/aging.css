@@ -1,4 +1,57 @@
-.current-aging{--aging-muted:#51677e;--aging-link:#2852c8;margin-top:24px;padding:20px;background:#fff;border:1px solid var(--line);border-radius:16px;min-width:0;color:#10253f}
+.current-aging{--aging-muted:#51677e;--aging-link:#2852c8;--aging-ink:#10253f;--aging-tsk:#16897d;--aging-kat:#426cd0;margin-top:24px;padding:24px;background:#fff;border:1px solid var(--line);border-radius:16px;min-width:0;color:var(--aging-ink);font-variant-numeric:tabular-nums}
+.current-aging ::selection{background:#dce7ff;color:var(--aging-ink)}
+.current-aging input{caret-color:var(--aging-link)}
+.current-aging :is(button,input,select,summary):focus-visible{outline:3px solid #7699ff;outline-offset:3px}
+.aging-overview{display:grid;grid-template-columns:minmax(240px,.85fr) minmax(0,2fr);gap:32px;margin:24px 0 30px;padding:26px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.aging-overview h3,.aging-table-toolbar h3{font-size:15px;line-height:1.5;letter-spacing:-.02em;margin:0;font-weight:700}
+.aging-overview-total{padding:24px;background:#f0f5fc;border-radius:12px;min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.aging-overview-amount{display:block;font-size:clamp(21px,2.25vw,32px);font-weight:700;letter-spacing:-.03em;line-height:1.4;margin:13px 0 4px;overflow-wrap:anywhere;max-width:100%}
+.aging-overview-amount small{display:block;font-size:11px;letter-spacing:0;font-weight:500;color:var(--aging-muted);margin-top:2px}
+.aging-overview-total>p{color:var(--aging-muted);font-size:11px;line-height:1.7;margin:8px 0 0;overflow-wrap:anywhere}
+.aging-overview-total .aging-overview-caption{margin-top:auto;padding-top:25px;font-size:11px}
+.aging-hotel-totals{width:100%;margin:22px 0 12px;display:grid;gap:17px}
+.aging-hotel-totals>div{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:5px 8px}
+.aging-hotel-totals strong{text-align:right;font-size:16px;overflow-wrap:anywhere;min-width:0}
+.aging-hotel-totals small{grid-column:2;text-align:right;color:var(--aging-muted);font-size:10px}
+.aging-hotel-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap}
+.aging-hotel-label i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.aging-hotel-tsk{color:var(--aging-tsk)}.aging-hotel-kat{color:var(--aging-kat)}
+.aging-profile-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:19px}
+.aging-profile-heading>span,.aging-chart-note{color:var(--aging-muted);font-size:11px;line-height:1.7}
+.aging-bucket-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 22px}
+.aging-bucket-summary{min-width:0}
+.aging-bucket-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.aging-bucket-heading h4{font-size:13px;margin:0;line-height:1.5;font-weight:600}
+.aging-bucket-heading h4 span{font-size:10px;font-weight:400;color:var(--aging-muted)}
+.aging-bucket-heading>span{font-size:11px;color:var(--aging-muted)}
+.aging-bucket-amount{display:block;font-size:20px;line-height:1.5;letter-spacing:-.025em;margin:5px 0 11px;overflow-wrap:anywhere}
+.aging-bucket-series{display:grid;gap:9px}
+.aging-series-label{display:flex;justify-content:space-between;gap:5px;font-size:12px;min-width:0}
+.aging-series-label>span:last-child{overflow-wrap:anywhere;min-width:0;text-align:right}
+.aging-series-track{position:relative;height:5px;background:#edf2f7;margin-top:5px;border-radius:2px}
+.aging-series-bar{position:absolute;height:100%;border-radius:2px}
+.aging-series-tsk{background:var(--aging-tsk)}.aging-series-kat{background:var(--aging-kat)}
+.aging-series-track.is-signed::after{content:'';position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#a5b6c7}
+.aging-bucket-series small{display:block;font-size:10px;color:var(--aging-muted);line-height:1.5;margin-top:4px}
+.aging-chart-note{margin:18px 0 0}
+.aging-table-toolbar{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;position:relative;flex-wrap:wrap}
+.aging-table-toolbar>div>p{font-size:11px;line-height:1.7;color:var(--aging-muted);margin:4px 0 0}
+.aging-column-controls{position:relative;flex:none;z-index:5}
+.aging-column-controls summary{display:flex;align-items:center;gap:8px;min-height:38px;cursor:pointer;list-style:none;border:1px solid var(--line);padding:8px 11px;border-radius:9px;font-size:11px;background:#fff}
+.aging-column-controls summary::-webkit-details-marker{display:none}.aging-column-controls summary:hover{background:#f0f5fc}
+.aging-column-controls summary>span{color:var(--aging-muted);border-left:1px solid var(--line);padding-left:8px}
+.aging-column-controls[open] summary{background:#f0f5fc;border-color:#a4b8e2}
+.aging-column-panel{position:absolute;top:calc(100% + 8px);right:0;width:350px;max-width:calc(100vw - 62px);padding:18px;background:#fff;border:1px solid #b9c9dd;border-radius:12px}
+.aging-column-presets{display:flex;gap:6px;padding:4px;background:#f0f5fc;border-radius:8px}
+.aging-column-presets button{border:0;flex:1;background:transparent;color:var(--aging-muted);font-size:11px;min-height:34px}
+.aging-column-presets button[aria-pressed=true]{background:#fff;color:var(--aging-link)}
+.aging-column-panel fieldset{border:0;padding:0;margin:17px 0 0;min-width:0}
+.aging-column-panel legend{font-size:11px;font-weight:600;margin-bottom:9px}
+.aging-column-panel label{display:flex;gap:8px;align-items:center;min-height:32px;font-size:11px;cursor:pointer}
+.aging-column-panel input{width:15px;height:15px;accent-color:var(--aging-link);margin:0;flex:none}
+.aging-column-panel input:disabled{cursor:not-allowed}
+.aging-bucket-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+.aging-column-panel>p{font-size:10px;line-height:1.7;color:var(--aging-muted);margin:15px 0 0}
 .aging-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
 .aging-heading h2,.aging-heading h3{font-size:16px;line-height:1.5;letter-spacing:-.02em;margin:0}
 .aging-heading p,.current-aging .aging-explanation,.current-aging .aging-footnote{font-size:11px;line-height:1.7;color:var(--aging-muted);margin-top:6px;max-width:100ch}
@@ -35,4 +88,5 @@
 .aging-invoice-drill{margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}.aging-heading>button{font-size:11px;display:flex;align-items:center;gap:7px;white-space:nowrap}
 .aging-reconciliation{margin-top:18px}.aging-reconciliation>div{display:flex;align-items:baseline;gap:8px 24px;flex-wrap:wrap;padding:13px 0;border-bottom:1px solid var(--line);font-size:11px}.aging-reconciliation strong{flex:1 0 100%}.aging-reconciliation small{flex:1 0 100%;font-size:10px;color:var(--aging-muted);line-height:1.7}
 .current-aging .aging-invoices{min-width:950px;font-size:11px}.current-aging .aging-invoices th,.current-aging .aging-invoices td{padding:12px;white-space:nowrap;text-align:left}.current-aging .aging-invoices td:last-child,.current-aging .aging-invoices th:last-child{text-align:right}.aging-invoices th button{border:0;background:transparent;padding:0;font-size:inherit}.aging-invoice-link{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--aging-link);font-size:inherit;padding:0}.aging-invoice-link:hover{background:transparent;text-decoration:underline}
-@media(max-width:600px){.current-aging{padding:15px;margin-top:18px}.aging-heading{flex-wrap:wrap;gap:8px}.aging-controls label,.aging-controls .aging-search{flex:1 1 100%;min-width:0;max-width:none}.aging-controls input,.aging-controls select{height:44px;font-size:16px}.aging-controls>span{padding:0}.current-aging .aging-matrix .aging-identity{min-width:160px;width:160px;max-width:160px}.current-aging .aging-matrix th,.current-aging .aging-matrix td{padding:9px}.aging-breadcrumbs button,.aging-back,.aging-pagination button,.aging-heading>button{min-height:44px}.aging-cell-button,.aging-row-link{min-height:44px}.aging-pagination{flex-wrap:wrap}.aging-pagination>span{flex:1 0 100%}.current-aging .aging-explanation,.current-aging .aging-footnote{font-size:11px}.aging-reconciliation>div{gap:8px}.aging-reconciliation>div>span{flex-basis:100%}.aging-reconciliation small{font-size:11px}.aging-table-scroll{max-height:500px}}
+@media(max-width:1000px){.aging-overview{grid-template-columns:minmax(0,1fr);gap:24px}.aging-overview-total{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px}.aging-overview-total h3,.aging-overview-amount,.aging-overview-total>p{grid-column:1}.aging-hotel-totals{grid-column:2;grid-row:1/5;margin:0;align-self:center}.aging-overview-total .aging-overview-caption{grid-column:1/-1;padding-top:16px}.aging-bucket-overview{gap:26px}.aging-overview-amount{font-size:28px}}
+@media(max-width:600px){.current-aging{padding:15px;margin-top:18px}.aging-heading{flex-wrap:wrap;gap:8px}.aging-controls label,.aging-controls .aging-search{flex:1 1 100%;min-width:0;max-width:none}.aging-controls input,.aging-controls select{height:44px;font-size:16px}.aging-controls>span{padding:0}.current-aging .aging-matrix .aging-identity{min-width:160px;width:160px;max-width:160px}.current-aging .aging-matrix th,.current-aging .aging-matrix td{padding:9px}.aging-breadcrumbs button,.aging-back,.aging-pagination button,.aging-heading>button{min-height:44px}.aging-cell-button,.aging-row-link{min-height:44px}.aging-pagination{flex-wrap:wrap}.aging-pagination>span{flex:1 0 100%}.current-aging .aging-explanation,.current-aging .aging-footnote{font-size:11px}.aging-reconciliation>div{gap:8px}.aging-reconciliation>div>span{flex-basis:100%}.aging-reconciliation small{font-size:11px}.aging-table-scroll{max-height:500px}.aging-overview{padding:20px 0;margin:20px 0 24px}.aging-overview-total{padding:20px;display:flex}.aging-overview-amount{font-size:29px}.aging-hotel-totals{margin-top:20px}.aging-bucket-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 20px}.aging-bucket-amount{font-size:19px}.aging-profile-heading{flex-wrap:wrap;gap:4px}.aging-column-controls{width:100%}.aging-column-controls summary{min-height:44px}.aging-column-controls summary>span{margin-left:auto}.aging-column-panel{position:static;max-width:none;width:auto;margin-top:8px;padding:14px}.aging-column-panel label{min-height:44px}.aging-column-panel input{width:18px;height:18px}.aging-column-presets button{min-height:44px}}

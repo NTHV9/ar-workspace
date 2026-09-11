@@ -209,7 +209,20 @@ The selected-invoice count, amount and actions sit above the Account Detail ledg
 - **Don't** replace the comparative workspace with a new visual identity.
 - **Don't** present unknown source values as zero or sum overlapping action counts into debt.
 - **Don't** merge Hotel + Account identity through filters, selections or source links.
-- **Don't** hide financial columns to fit a narrow viewport; retain controlled scrolling.
+- **Don't** hide financial columns automatically to fit a narrow viewport. Aging may use explicit user-selected visibility; keep All aging and controlled scrolling available.
 - **Don't** treat synthetic review captures as live-service validation.
 
 Not canonized: the test-only synthetic-capture badge is evidence scaffolding, not production interface design. Incumbent uppercase metric kickers and the miniature text brand mark are carried by the build but are not reusable typography or identity rules for new surfaces.
+
+
+## Modern Dashboard update — 12 September 2026
+
+The owner replaced the table-led Dashboard presentation with an at-a-glance operational design. This overrides earlier Dashboard-specific compositions above; Portfolio, Account Detail and PDF retain their approved visual structure.
+
+The period surface starts with compact date/scope controls and four closing-balance measures. A navy total panel anchors blue unbilled, rose Past Due date and amber invoice-age panels; every panel includes the invoice count, exact THB amount, scope and a matching detail action. The required-billing completion ring uses billed / (billed + unbilled) invoice counts, never Not Required or overlapping review groups. Latest-stage bars encode share of the closing open amount. All counts, amounts and percentages remain available in an expandable breakdown. Period activity is a separate section with new invoices, first billing and payment-linked invoices emphasized, plus exact send and payment details.
+
+Current Aging adds a net-open hotel comparison and all source ranges on a shared hotel-amount scale. TSK teal #16897d and KAT blue #426cd0 remain consistent across overview and matrix. The full matrix is the default; Columns offers Summary, All aging and individual range/net/percentage choices. User choices persist through drill/back; no bucket or matched account is silently removed. Negative credits extend left of the chart zero line when present.
+
+Dashboard-specific type steps: 30px page title, 34px principal count, 28–32px aging net, 20px aging bucket amounts, 18px exact KPI amounts, 16–17px section titles, 11–13px controls and comparison labels. Cool navy #172e51, blue #4169dd, teal #087f80, rose #ad3e61 and amber #986914 carry meaning. Surfaces use 12–14px corners. Retained app typography is Plus Jakarta Sans. Color/type detector differences are intentional extensions for this approved Dashboard scope, not a global style replacement.
+
+Availability is separate from freshness: a verified publication remains visible during a new attempt, with source timestamps and an explicit refreshing/failed note. Same-scope browser reloads retain prior loaded data with a notice; changing date, hotel, account or authenticated session clears it. Unverified data and uncaptured historical dates stay unavailable.

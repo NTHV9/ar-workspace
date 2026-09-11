@@ -1,12 +1,26 @@
 import {describe,expect,it} from 'vitest';
 import type {Account,AgingBucket} from '../src/domain/portfolio';
-import {agingColumns,agingComparison,agingInvoiceEvidence,agingPercentage,parseAgingInvoices} from '../src/dashboard/aging-model';
+import {agingColumns,agingComparison,agingInvoiceEvidence,agingOverview,agingPercentage,parseAgingInvoices} from '../src/dashboard/aging-model';
 
 const bucket=(amount:number,start=0,end:number|null=30):AgingBucket=>({label:end===null?`${start}+`:`${start}–${end}`,start,end,sequence:start,amount,debit:Math.max(0,amount),credit:Math.min(0,amount)});
 const account=(hotel:string,id:string,amount:number,extra:Partial<Account>={}):Account=>({hotel,id,name:id,type:'Agent',account_no:'PAIR',open:amount,over90:0,items:1,verification_state:'verified',agingBuckets:[bucket(amount),bucket(0,31,null)],...extra});
 const raw=(id:string,extra:Record<string,unknown>={})=>({id,hotel:'KAT',account_id:'a',invoice_no:id,folio_no:'folio',guest:'Synthetic guest',transaction_date:'2026-09-01',open:100,original:100,age:10,collection_role:'standalone',verification_state:'verified',...extra});
 
 describe('current aging comparison',()=>{
+ it('builds an overview from the complete filtered members with signed credit shares and exact hotel totals',()=>{
+  const catalog=[account('KAT','a',80,{agingBuckets:[bucket(100),bucket(-20,31,null)]}),account('TSK','b',50)];
+  const overview=agingOverview(catalog,'All',catalog);
+  expect(overview.net).toMatchObject({KAT:{amount:80},TSK:{amount:50},Total:{amount:130}});
+  expect(overview.cells[1].Total.amount).toBe(-20);
+  expect(agingOverview(catalog,'KAT',catalog).net.Total.amount).toBe(80);
+  expect(agingOverview(catalog,'All',[]).net.Total.amount).toBeNull();
+ });
+ it('leaves overview evidence unavailable for an unknown ledger or incompatible bucket schema',()=>{
+  const catalog=[account('KAT','a',100),account('TSK','b',50,{agingBuckets:[bucket(50,0,60)]})];
+  expect(agingOverview(catalog,'All',catalog).cells[0].Total.amount).toBeNull();
+  const unverified=[catalog[0],{...catalog[1],verification_state:'missing'}];
+  expect(agingOverview(unverified,'All',unverified).net.Total.amount).toBeNull();
+ });
  it('pairs account numbers while keeping exact hotel ledgers and every source bucket',()=>{
   const catalog=[account('KAT','a',100),account('TSK','b',50)];
   const rows=agingComparison(catalog,'All','Agent');
