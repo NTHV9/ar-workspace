@@ -1,3 +1,4 @@
+import { pageCanvasHeight, MAX_FLOW_HEIGHT } from './flow';
 import type { PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument } from './types';
 
 /** Reject untrusted persisted edit data before it can reach the canvas or image loader. */
@@ -53,9 +54,17 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
         sourceText = { sourceId, sourcePage, runIndex };
       }
       const tableRow=l.tableRow===undefined?undefined:string(l.tableRow,200);if(tableRow!==undefined&&!tableRow)return fail();
+      let textFlow:PdfLayer['textFlow'];
+      if(l.textFlow!==undefined){
+        if(!l.textFlow||typeof l.textFlow!=='object')return fail();
+        const flow=l.textFlow as Record<string,unknown>;textFlow={at:number(flow.at,0,MAX_FLOW_HEIGHT),height:number(flow.height,.1,MAX_FLOW_HEIGHT)};
+        if(textFlow.at+textFlow.height>MAX_FLOW_HEIGHT)return fail();
+      }
       if (l.maskOriginal !== undefined && (l.maskOriginal !== false || !sourceText)) return fail();
-      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, .1, 1440), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}), ...(sourceText ? { sourceText } : {}), ...(l.maskOriginal === false ? { maskOriginal: false } : {}),...(tableRow?{tableRow}:{}) };
+      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, .1, 1440), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}), ...(sourceText ? { sourceText } : {}), ...(l.maskOriginal === false ? { maskOriginal: false } : {}),...(tableRow?{tableRow}:{}),...(textFlow?{textFlow}:{}) };
     });
+    const flowHeight=p.flowHeight===undefined?undefined:number(p.flowHeight,height,MAX_FLOW_HEIGHT);
+    let extent=height;
     let rowEdits: PdfProjectPage['rowEdits'];
     if (p.rowEdits !== undefined) {
       if (!Array.isArray(p.rowEdits) || p.rowEdits.length > 500) return fail();
@@ -65,17 +74,19 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
         const r = raw as Record<string, unknown>, rowId = string(r.id, 200);
         if (!rowId || rowIds.has(rowId) || !['insert','delete','move'].includes(String(r.kind))) return fail();
         rowIds.add(rowId);
-        const y = number(r.y, 0, height), rowHeight = number(r.height, .1, height);
-        if (y + rowHeight > height) return fail();
+        const y = number(r.y, 0, extent), rowHeight = number(r.height, .1, MAX_FLOW_HEIGHT);
+        if (r.kind!=='insert' && y + rowHeight > extent) return fail();
         if (r.kind === 'move') {
-          const x=number(r.x,0,width), areaWidth=number(r.width,.1,width),dx=number(r.dx,-width,width),dy=number(r.dy,-height,height);
-          if(x+areaWidth>width || x+dx<0 || x+dx+areaWidth>width || y+dy<0 || y+dy+rowHeight>height)return fail();
+          const x=number(r.x,0,width), areaWidth=number(r.width,.1,width),dx=number(r.dx,-width,width),dy=number(r.dy,-extent,extent);
+          if(x+areaWidth>width || x+dx<0 || x+dx+areaWidth>width || y+dy<0 || y+dy+rowHeight>extent)return fail();
           return {id:rowId,kind:'move' as const,x,y,width:areaWidth,height:rowHeight,dx,dy};
         }
+        extent=Math.max(height,extent+(r.kind==='insert'?rowHeight:-rowHeight));if(extent>MAX_FLOW_HEIGHT)return fail();
         return { id: rowId, kind: r.kind as 'insert' | 'delete', y, height: rowHeight };
       });
     }
-    return { id, sourceId, sourcePage, width, height, layers, ...(rowEdits ? { rowEdits } : {}) };
+    const page={ id, sourceId, sourcePage, width, height, layers, ...(rowEdits ? { rowEdits } : {}),...(flowHeight===undefined?{}:{flowHeight}) };
+    const canvasHeight=pageCanvasHeight(page);if(layers.some(l=>l.textFlow&&l.textFlow.at+l.textFlow.height>canvasHeight+.01))return fail();return page;
   });
   return { version: 1, content: saved.content as PdfProject['content'], delivery: saved.delivery as PdfProject['delivery'], pages };
 }

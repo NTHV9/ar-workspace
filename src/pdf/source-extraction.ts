@@ -1,7 +1,21 @@
 import { OPS, Util, type PDFPageProxy } from 'pdfjs-dist';
 import type { DetectedText, PdfProjectPage } from './types';
 import { registerSourceStyle, type SourceGlyph, type SourceStyle } from './source-text';
+import { StandardFontEmbedder, StandardFonts } from 'pdf-lib';
 type Font = {composite?:boolean;toUnicode?:{_map?:string[]};toFontChar?:number[];widths?:Record<number,number>;defaultWidth?:number;loadedName?:string;fallbackName?:string;name?:string;bold?:boolean;black?:boolean;italic?:boolean;disableFontFace?:boolean;isType3Font?:boolean;vertical?:boolean;systemFontInfo?:{css?:string}};
+export async function extractSourceImages(pdfPage:PDFPageProxy){
+ const ops=await pdfPage.getOperatorList(),viewport=pdfPage.getViewport({scale:1}),stack:number[][]=[],rects:{x:number;y:number;width:number;height:number}[]=[];
+ let ctm=[1,0,0,1,0,0];
+ for(let i=0;i<ops.fnArray.length;i++){
+  const op=ops.fnArray[i],a=ops.argsArray[i];
+  if(op===OPS.save)stack.push([...ctm]);else if(op===OPS.restore)ctm=stack.pop()??ctm;else if(op===OPS.transform)ctm=Util.transform(ctm,a);
+  else if(op===OPS.paintImageXObject||op===OPS.paintInlineImageXObject||op===OPS.paintImageMaskXObject){
+   const m=Util.transform(viewport.transform,ctm),points=[[0,0],[1,0],[0,1],[1,1]].map(([x,y])=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]]);
+   const x=Math.min(...points.map(p=>p[0])),y=Math.min(...points.map(p=>p[1]));rects.push({x,y,width:Math.max(...points.map(p=>p[0]))-x,height:Math.max(...points.map(p=>p[1]))-y});
+  }
+ }
+ return rects;
+}
 export async function extractSourceText(page: PdfProjectPage,pdfPage: PDFPageProxy,scope: string): Promise<DetectedText[]> {
  const viewport=pdfPage.getViewport({scale:1}),content=await pdfPage.getTextContent(),ops=await pdfPage.getOperatorList();
  let state={fontId:'',fontSize:0,ctm:[1,0,0,1,0,0],tm:[1,0,0,1,0,0],x:0,y:0,lineX:0,lineY:0,leading:0,rise:0,color:'#000000',charSpacing:0,wordSpacing:0,hScale:1,mode:0,simpleFill:true,alpha:1};const stack:typeof state[]=[];
@@ -55,6 +69,18 @@ export async function extractSourceText(page: PdfProjectPage,pdfPage: PDFPagePro
   }
   let font:Font={};try{font=pdfPage.commonObjs.get(item.fontName) as Font;}catch{/* Unsupported fonts remain unavailable. */}
   const glyphMap=fontGlyphs.get(item.fontName)??new Map<string,SourceGlyph>();
+  // Base14 WinAnsi is an authoritative encoding, including glyphs not yet used
+  // on this page. Never infer a custom embedded/subset font's character map.
+  if(!font.composite && /^(Helvetica|Times|Courier)(-|$)/.test(font.name??'') && Object.values(StandardFonts).includes(font.name as StandardFonts)){
+    const standard=StandardFontEmbedder.for(font.name as Parameters<typeof StandardFontEmbedder.for>[0]);
+    for(const unicode of standard.encoding.supportedCodePoints){
+      const value=String.fromCodePoint(unicode),code=standard.encoding.encodeUnicodeCodePoint(unicode).code;
+      const mapped=font.toFontChar?.[code];
+      const explicit=font.toUnicode?._map?.[code];
+      const width=font.widths?.[code]??standard.widthOfTextAtSize(value,1000);
+      if((explicit===undefined||explicit===value) && !glyphMap.has(value) && Number.isInteger(mapped) && mapped!>=0 && mapped!<=0x10ffff && Number.isFinite(width) && width>=0 && width<100000) glyphMap.set(value,{unicode:value,fontChar:String.fromCodePoint(mapped!),width,isSpace:code===32,isInFont:true});
+    }
+  }
   // Non-composite fonts expose direct character-code widths and Unicode mapping.
   // Composite CID widths need CMap resolution, so their unobserved glyphs remain unavailable.
   if(!font.composite && font.toUnicode?._map && font.toFontChar) {

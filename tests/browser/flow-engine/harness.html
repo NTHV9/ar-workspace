@@ -1,0 +1,19 @@
+<!doctype html><script type="module">
+import {PDFDocument,PDFName,StandardFonts} from 'pdf-lib';
+import * as source from '/src/pdf/source-text.ts';
+import * as engine from '/src/pdf/engine.ts';
+import * as flow from '/src/pdf/flow.ts';
+const pdf=await PDFDocument.create(),page=pdf.addPage([400,300]),font=await pdf.embedFont(StandardFonts.Helvetica);
+page.drawText('AR0069',{x:40,y:260,size:9,font});page.drawText('BOTTOM TOTAL',{x:40,y:15,size:9,font});
+const sources=[{id:'synthetic',name:'Synthetic',kind:'statement',bytes:await pdf.save()}];
+window.fixture={...engine,...source,...flow,sources,PDFDocument,PDFName};
+</script>
+
+<script type="module">
+import {PDFDocument,rgb} from 'pdf-lib';
+const pdf=await PDFDocument.create(),page=pdf.addPage([400,300]);
+page.drawLine({start:{x:20,y:20},end:{x:20,y:280},thickness:1,color:rgb(0,0,0)});
+const canvas=document.createElement('canvas');canvas.width=canvas.height=40;const ctx=canvas.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,40,40);
+page.drawImage(await pdf.embedPng(canvas.toDataURL()),{x:120,y:10,width:40,height:40});
+window.imageSources=[{id:'image',name:'Image and grid',kind:'statement',bytes:await pdf.save()}];
+</script>
