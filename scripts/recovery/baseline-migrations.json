@@ -1,0 +1,138 @@
+{
+  "observedAt": "2026-09-10T13:35:00Z",
+  "purpose": "Local replay of 33 verified deployed migration names in actual applied order; filename timestamps may be aligned independently.",
+  "migrations": [
+    {
+      "name": "ar_foundation",
+      "version": "20260908132012"
+    },
+    {
+      "name": "ar_durable_refresh",
+      "version": "20260908144712"
+    },
+    {
+      "name": "ar_refresh_failure_recovery",
+      "version": "20260908145545"
+    },
+    {
+      "name": "ar_history_quality",
+      "version": "20260908161054"
+    },
+    {
+      "name": "ar_compression_context",
+      "version": "20260908170335"
+    },
+    {
+      "name": "ar_collection_selection_guard",
+      "version": "20260908170529"
+    },
+    {
+      "name": "ar_document_jobs",
+      "version": "20260908185317"
+    },
+    {
+      "name": "ar_document_interrupted_fence",
+      "version": "20260908194840"
+    },
+    {
+      "name": "ar_workspace_statement",
+      "version": "20260909134301"
+    },
+    {
+      "name": "ar_account_workflow",
+      "version": "20260909154442"
+    },
+    {
+      "name": "ar_email_workspace",
+      "version": "20260909163151"
+    },
+    {
+      "name": "ar_gmail_connection",
+      "version": "20260909165030"
+    },
+    {
+      "name": "ar_email_save_guard",
+      "version": "20260909165532"
+    },
+    {
+      "name": "ar_gmail_claim_guard",
+      "version": "20260909165840"
+    },
+    {
+      "name": "ar_mail_delivery",
+      "version": "20260909172444"
+    },
+    {
+      "name": "ar_mail_revision_guard",
+      "version": "20260909173137"
+    },
+    {
+      "name": "ar_mail_receipt_provenance",
+      "version": "20260909174523"
+    },
+    {
+      "name": "ar_mail_reconcile_schedule",
+      "version": "20260909180437"
+    },
+    {
+      "name": "ar_collection_queue",
+      "version": "20260909180533"
+    },
+    {
+      "name": "ar_mail_reconcile_fence",
+      "version": "20260909182000"
+    },
+    {
+      "name": "ar_supplemental_attachments",
+      "version": "20260909185507"
+    },
+    {
+      "name": "ar_test_supplemental_snapshot",
+      "version": "20260909195210"
+    },
+    {
+      "name": "ar_test_command_guard",
+      "version": "20260909195329"
+    },
+    {
+      "name": "ar_email_templates_rich",
+      "version": "20260909210404"
+    },
+    {
+      "name": "ar_activity_reports",
+      "version": "20260909210438"
+    },
+    {
+      "name": "ar_sent_evidence_immutability",
+      "version": "20260909211037"
+    },
+    {
+      "name": "ar_billing_channel",
+      "version": "20260910064154"
+    },
+    {
+      "name": "ar_drive_archive",
+      "version": "20260910100854"
+    },
+    {
+      "name": "ar_email_threads",
+      "version": "20260910112014"
+    },
+    {
+      "name": "ar_remittance_core",
+      "version": "20260910125100"
+    },
+    {
+      "name": "ar_remittance_commands",
+      "version": "20260910125102"
+    },
+    {
+      "name": "ar_remittance_evidence",
+      "version": "20260910125104"
+    },
+    {
+      "name": "ar_remittance_diagnostic",
+      "version": "20260910125107"
+    }
+  ]
+}

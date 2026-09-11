@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic rich message editor test</title><style>body{margin:0;background:#e8f1f6;color:#102c4b;font-family:'Plus Jakarta Sans',sans-serif}main{max-width:760px;margin:32px auto;padding:24px}h1{font-size:20px}header p{font-size:12px;line-height:1.7;color:#536b85}.harness-paper{background:white;border:1px solid #dce6ef;border-radius:14px;overflow:hidden}.harness-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.harness-controls button{font:inherit;font-size:12px;border:1px solid #c8d7e6;border-radius:8px;background:#fff;color:#21405f;padding:10px}output{display:block;font-size:12px;white-space:pre-wrap;margin-top:20px;overflow-wrap:anywhere}@media(max-width:640px){main{margin:0;padding:16px}}</style></head><body><div id="root"></div><script type="module">
+import React, {useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {RichMessageEditor} from '/src/email/RichMessageEditor.tsx';
+import {plainMessage, parseRichMessage, richText, richHtml} from '/src/email/rich-message.ts';
+import '@fontsource/plus-jakarta-sans/400.css';
+import '@fontsource/plus-jakarta-sans/600.css';
+const initial=plainMessage('Dear recipient,\n\nPlease review the selected billing documents.\n\nKind regards,\nAccounts Receivable');
+window.messageTest={value:initial,saved:null};
+function Harness(){
+ const [value,setValue]=useState(initial),[disabled,setDisabled]=useState(false),[revision,setRevision]=useState(0);
+ const change=message=>{window.messageTest.value=message;setValue(message);};
+ window.messageTest.set=message=>change(parseRichMessage(message));
+ window.messageTest.text=()=>richText(window.messageTest.value);
+ window.messageTest.html=()=>richHtml(window.messageTest.value);
+ return React.createElement('main',null,
+  React.createElement('header',null,React.createElement('h1',null,'Message draft'),React.createElement('p',null,'Synthetic test content · No accounts, providers or sends')),
+  React.createElement('div',{className:'harness-paper'},React.createElement(RichMessageEditor,{key:revision,value,onChange:change,disabled})),
+  React.createElement('div',{className:'harness-controls'},
+   React.createElement('button',{onClick:()=>{window.messageTest.saved=JSON.parse(JSON.stringify(value));}},'Save synthetic message'),
+   React.createElement('button',{onClick:()=>{if(window.messageTest.saved)change(window.messageTest.saved);setRevision(n=>n+1);}},'Reload saved message'),
+   React.createElement('button',{onClick:()=>setDisabled(!disabled)},disabled?'Enable editing':'Disable editing')),
+  React.createElement('output',{'aria-label':'Plain message output'},richText(value))
+ );
+}
+createRoot(document.getElementById('root')).render(React.createElement(Harness));
+</script></body></html>

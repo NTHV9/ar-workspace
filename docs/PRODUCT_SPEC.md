@@ -1,8 +1,12 @@
 # สเปกผลิตภัณฑ์ฉบับส่งต่อ — Katathani AR Clean Rebuild
 
+> ใช้ร่วมกับคำยืนยันล่าสุดใน DECISIONS_AND_OPEN_ITEMS.md. ข้อความ handoff เรื่อง native Statement/renderer สำรองถูกแทนแล้ว: Statement ใช้ renderer ของระบบเท่านั้น ส่วน Invoice/Folio ใช้ OPERA API. ผลพัฒนาและขอบเขตที่ทดสอบจริงอยู่ใน FINAL_ACCEPTANCE_20260911.md
+
 เวอร์ชัน handoff: 2026-09-08 / 1.0
 ฐาน: ข้อตกลงล่าสุดในบทสนทนา ChatGPT ที่ผู้ใช้ต้องการนำไปทำต่อใน Codex
 สถานะ: สรุปข้อกำหนด ไม่ใช่คำรับรองว่าพัฒนา/เชื่อมต่อ/Deploy แล้ว
+
+**คำยืนยันแทนข้อเก่า 10 กันยายน 2026:** Statement ใช้ renderer ระบบเราเท่านั้น ส่วน Invoice/Folio ใช้ OPERA API. แสดง OPERA receipts และ invoice applications แยกกันตามหลักฐานวันที่จริง. บิล verified-zero ที่กลับมาค้างคงประวัติและขึ้น Needs review. ไฟล์ Supabase/Drive เก็บหนึ่งเดือนหลังงานเสร็จและคุมไม่ให้เกินโควต้า/เพิ่มค่าใช้จ่าย; เกณฑ์ลบที่ต้องยืนยันและสถานะเปิดใช้ดู [DECISIONS_AND_OPEN_ITEMS](DECISIONS_AND_OPEN_ITEMS.md). ข้อความ native Statement เป็นหลัก/renderer เป็น fallback ด้านล่างเป็นข้อกำหนด handoff เดิมที่ถูกแทนแล้ว.
 
 ## 1. เป้าหมายและหลักการ
 

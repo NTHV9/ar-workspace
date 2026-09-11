@@ -12,6 +12,14 @@ coverage/
 test-results/
 playwright-report/
 private/
+.cache/
 *.log
 *.pem
 *.key
+supabase/.temp/
+__pycache__/
+*.pyc
+
+.tmp/
+test-results-*/
+

@@ -3,7 +3,8 @@ import { mkdirSync } from 'node:fs';
 
 test('Cloudflare public health verifies database and protects live data',async({request})=>{
   const health=await request.get('/api/health'); expect(health.status()).toBe(200);
-  expect(await health.json()).toMatchObject({supabase:'database_verified',opera:'not_connected'});
+  const status=await health.json();expect(status).toMatchObject({supabase:'database_verified'});
+  expect(['connected','not_connected']).toContain(status.opera);
   expect((await request.get('/api/portfolio')).status()).toBe(401);
   expect((await request.get('/api/portfolio',{headers:{Authorization:'Bearer invalid'}})).status()).toBe(401);
 });

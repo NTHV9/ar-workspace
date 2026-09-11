@@ -1,0 +1,18 @@
+# Financial history: bounded durable steps
+
+Live KAT failure on source84b32af is reproducible on a large Account: one step handled1536 invoices,7 payments and1455 application links. It ran past its configured20-minute timeout; its retry then hit the Cloudflare subrequest ceiling. Full TSK70-account publication already passed. Do not treat this failure as an OPERA balance or zero result.
+
+Implement a new run version with independent durable work:
+
+1. Persist complete paginated invoice/payment history and Account context in private SQL staging; the step returns counts only.
+2. Read the exact eligible source invoices from staged data in batches of10. Each mapping step corroborates those invoices, persists exact verified links or explicit failure reasons and returns counts only. A replay reads its saved batch receipt instead of re-reading completed API work.
+3. Finalize each Account in SQL by validating complete contiguous batches, exact source invoice identities, unique links and monetary reconciliation. Reuse the existing full Account validator and immutable staging contracts.
+4. Rediscover every Account and atomically publish the Hotel/date range, retaining the previous publication on failure. Delete temporary mapping batches after a terminal publication/failure; retain lightweight run/coverage/history receipts.
+5. Existing runs retain run version1; new requests use version2. Record failures inside a durable step. Unknown/error responses never become zero and mapping failures do not suppress independent receipt observations.
+6. Use an explicit50,000 subrequest ceiling for this existing paid Worker, well below the provider maximum. This is a runtime ceiling, not a plan upgrade or automatic request target. Keep the CPU limit and existing document/current-refresh Workflow concurrency unchanged. Use one separate financial-history Workflow queue (`ar-workspace-financial`, concurrency1) within the same Worker and the same shared implementation, so long imports cannot occupy both interactive processing slots. No additional backend or paid plan/add-on is created. This prevents the complete account population from being silently truncated. New per-batch work and the already tested explicit-zero proof reduce duplicate provider reads.
+
+Current official references: [Workflows limits](https://developers.cloudflare.com/workflows/reference/limits/), [granular steps and idempotency](https://developers.cloudflare.com/workflows/build/rules-of-workflows/), [Wrangler runtime limits](https://developers.cloudflare.com/workers/wrangler/configuration/#limits). Paid default subrequests are10,000 per instance; granular steps are still needed to keep individual retries bounded.
+
+Acceptance: many-invoice synthetic run produces several bounded mapping steps; exact replay does not repeat completed source work; changed batch identities/amounts conflict; unknown mappings stay unknown; only full discovery publishes. Test SQL rollback, then run real KAT and verify counts, coverage, errors, quota footprint, and browser-backed reports.
+
+Applied `20260910200740_ar_financial_granular_steps` after pausing new financial dispatch and verifying no active history runs. Local PostgreSQL48 migrations/13 fixtures and hosted granular/history rollback checks passed. New run version2 has private durable batches of10; old runs retain version1. Worker tests verify bounded batches, saved-step replay, failed-checkpoint resume and queue isolation. Full root Typecheck/Build and738 unit tests passed; real version2 publication is pending deployment. Re-enable financial ingestion with the new binding after the staged rollout.

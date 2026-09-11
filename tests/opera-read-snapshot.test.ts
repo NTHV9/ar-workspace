@@ -1,0 +1,164 @@
+import { describe, expect, it } from 'vitest';
+import { OperaReader } from '../worker/opera/client';
+import { readVerifiedAccount } from '../worker/refresh/read-snapshot';
+
+const money = (amount: number) => ({ amount, currencyCode: 'THB' });
+function invoice(transactionNo = 123, open = 60) {
+  return { transactionNo, hotelId: 'KAT', transactionDate: '2026-05-01', originalAmount: money(100), amount: money(100),
+    payments: money(100 - open), balance: money(open), age: 130, guestName: 'Synthetic guest', invoiceNo: '456' };
+}
+function current(invoices = [invoice()], net = 60) {
+  const summary = { debit: money(60), credit: money(60 - net), total: money(net) };
+  return { accountDetails: {
+    hotelId: 'KAT', accountId: { id: 'account-1' }, accountName: 'Synthetic account', accountNo: 'A1', type: 'TA',
+    balance: { amount: net }, summary,
+    agingInfo: { aging: [{ agingBucketRange: '91+', agingStartDay: 91, sequence: 1, balanceInfo: summary }] },
+    invoices, payments: [],
+  } };
+}
+function history(invoices: ReturnType<typeof invoice>[]) {
+  return { details: invoices.length ? [{ hotelId: 'KAT', accountId: { id: 'account-1' }, invoices, payments: [] }] : [],
+    totalResults: invoices.length, hasMore: false, offset: invoices.length ? 20 : 0, limit: 20 };
+}
+function harness(raw = current(), open = history([invoice()]), closed = history([]), closedStatus = 200) {
+  const requests: URL[] = [];
+  const reader = new OperaReader({ origin: 'https://synthetic.example.invalid', appKey: 'synthetic-app-key', hotelId: 'KAT' },
+    async () => 'synthetic-token', async (request) => {
+      const url = new URL(request.url); requests.push(url);
+      if (url.pathname === '/ars/v1/hotels/KAT/accounts/account-1') return Response.json(raw);
+      if (url.pathname !== '/ars/v1/invoicePayments/accounts/account-1') throw new Error('Unexpected synthetic route');
+      return url.searchParams.get('inclZeroBalance') === 'false' ? Response.json(open) : Response.json(closed, { status: closedStatus });
+    });
+  return { reader, requests };
+}
+
+describe('verified OPERA snapshot reads', () => {
+  it('uses verified history parent links so an existing child is not counted again when restoring a printed root',async()=>{
+    const parent={...invoice(120,0),invoiceNo:'900',compressed:true};
+    const child={...invoice(121,30),parentInvoiceNo:'900',compressed:false};
+    const printed={...invoice(123,60),printed:true,compressed:false};
+    const rows={...history([parent,child,printed]),totalResults:2};
+    const reader=new OperaReader({origin:'https://synthetic.example.invalid',appKey:'synthetic',hotelId:'KAT'},async()=> 'synthetic',async request=>{
+      const u=new URL(request.url);if(!u.pathname.includes('invoicePayments'))return Response.json(current([invoice(121,30)],60));
+      return Response.json(u.searchParams.has('invoiceNo')?history([printed]):rows);
+    });
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-09');
+    expect(result.invoices.find(i=>i.id==='121')).toMatchObject({collection_role:'child',parent_open:0,open:30});
+    expect(result.invoices.find(i=>i.id==='123')).toMatchObject({collection_role:'standalone',open:60});
+  });
+  it.each([
+    {label:'unknown printed state',extra:{}},
+    {label:'explicitly unprinted',extra:{printed:false,compressed:false}},
+    {label:'unknown parent role',extra:{printed:true}},
+  ])('rejects missing history rows with $label',async({extra})=>{
+    const row={...invoice(),...extra};const {reader}=harness(current([],60),history([row]),history([row]));
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09')).rejects.toMatchObject({stage:'current_history_membership'});
+  });
+  it('does not restore printed history when the complete ledger total disagrees with Account',async()=>{
+    const row={...invoice(),printed:true,compressed:false};const {reader}=harness(current([],61),history([row]),history([row]));
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09')).rejects.toMatchObject({stage:'current_history_membership'});
+  });
+  it('rejects a printed invoice whose amount changes at final history confirmation',async()=>{
+    const row={...invoice(),printed:true,compressed:false};
+    const reader=new OperaReader({origin:'https://synthetic.example.invalid',appKey:'synthetic',hotelId:'KAT'},async()=> 'synthetic',async request=>{
+      const u=new URL(request.url);if(u.pathname.endsWith('/accounts/account-1')&&!u.pathname.includes('invoicePayments'))return Response.json(current([],60));
+      return Response.json(history([u.searchParams.has('invoiceNo')?{...row,balance:money(59)}:row]));
+    });
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-09')).rejects.toMatchObject({stage:'printed_history_changed'});
+  });
+  it('restores a printed open invoice only after complete history and stable confirmation',async()=>{
+    const printed={...invoice(),printed:true,compressed:false};
+    const {reader}=harness(current([],60),history([printed]),history([printed]));
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-09',[{id:'123',invoice_no:'456',open:60}]);
+    expect(result.invoices).toHaveLength(1);expect(result.invoices[0]).toMatchObject({id:'123',open:60,collection_role:'standalone'});
+  });
+  it('reconciles compressed detail rows without a false history count warning',async()=>{
+    const parent={...invoice(120,0),invoiceNo:'900',compressed:true};
+    const children=[{...invoice(123,60),parentInvoiceNo:'900'},{...invoice(124,-60),parentInvoiceNo:'900'}];
+    const audit={...history([parent,...children]),totalResults:1};
+    const {reader}=harness(current(children,0),history([]),audit);
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08');
+    expect(result.invoices.map(i=>i.id)).toEqual(['123','124']);
+    expect(result.account.sourceWarnings).toBeUndefined();
+  });
+  it('retains an understated history warning only after current open membership matches', async () => {
+    const audit = { ...history([invoice(), invoice(124, 0), invoice(125, 0)]), totalResults: 1 };
+    const { reader } = harness(current(), audit);
+    const result = await readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08');
+    expect(result.invoices.map(i => i.id)).toEqual(['123']);
+    expect(result.account.sourceWarnings).toEqual([{ code: 'history_total_understated', reported: 1, observed: 3, includeZero: false }]);
+  });
+  it('does not use understated totals to excuse an extra open invoice', async () => {
+    const audit = { ...history([invoice(), invoice(124, 20)]), totalResults: 1 };
+    const { reader } = harness(current(), audit, audit);
+    await expect(readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08')).rejects.toMatchObject({ stage: 'current_history_membership' });
+  });
+  it('accepts explicitly empty final open history without inferring individual invoice zero', async () => {
+    const { reader, requests } = harness(current([], 0), history([]));
+    const snapshot = await readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08');
+    expect(snapshot.account.open).toBe(0);
+    expect(snapshot.invoices).toEqual([]);
+    expect(requests).toHaveLength(2);
+    expect(requests[1].searchParams.get('offset')).toBe('0');
+  });
+  it('rejects empty open history for a net-zero account that still contains positive invoices', async () => {
+    const { reader } = harness(current([invoice()], 0), history([]));
+    await expect(readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08')).rejects.toMatchObject({ code: 'pagination_changed', stage: 'current_history_membership' });
+  });
+  it('accepts matching transaction IDs and partial-payment balances', async () => {
+    const { reader } = harness();
+    const snapshot = await readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08');
+    expect(snapshot.invoices).toHaveLength(1);
+    expect(snapshot.invoices[0]).toMatchObject({ id: '123', open: 60, original: 100, applied_amount: 40 });
+  });
+  it('verifies offsetting nonzero invoices through zero-inclusive history when open-only hides the pair',async()=>{
+    const pair=[invoice(123,60),invoice(124,-60)];
+    const {reader,requests}=harness(current(pair,0),history([]),history([...pair,invoice(125,0)]));
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08');
+    expect(result.invoices.map(i=>i.open)).toEqual([60,-60]);
+    expect(result.account.items).toBe(2);
+    expect(requests[2].searchParams.get('inclZeroBalance')).toBe('true');
+  });
+  it.each([
+    { label: 'same total with a different transaction ID', rows: [invoice(999)] },
+    { label: 'same ID with a changed balance', rows: [invoice(123, 59)] },
+    { label: 'an extra transaction', rows: [invoice(), invoice(999)] },
+  ])('rejects $label', async ({ rows }) => {
+    const { reader } = harness(current(), history(rows));
+    await expect(readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08')).rejects.toMatchObject({ code: 'pagination_changed', stage: 'current_history_membership' });
+  });
+  it('appends a missing previous invoice only after exact transaction identity has an explicit zero', async () => {
+    const { reader, requests } = harness(current([], 0), history([]), history([invoice(123, 0)]));
+    const snapshot = await readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08', [{ id: '123', invoice_no: '456', open: 60 }]);
+    expect(snapshot.invoices).toHaveLength(1);
+    expect(snapshot.invoices[0]).toMatchObject({ id: '123', invoice_no: '456', open: 0, original: 100 });
+    expect(snapshot.account.items).toBe(0);
+    expect(requests[2].searchParams.get('inclZeroBalance')).toBe('true');
+    expect(requests[2].searchParams.getAll('invoiceNo')).toEqual(['456']);
+    expect(requests[2].searchParams.getAll('fetchInstructions')).toEqual(['Invoices']);
+  });
+  it('retains standalone relationship proof and rechecks a tracked previous zero',async()=>{
+    const closed=Object.assign(invoice(123,0),{compressed:false});const {reader}=harness(current([],0),history([]),history([closed]));
+    const snapshot=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'123',invoice_no:'456',open:0}]);
+    expect(snapshot.invoices[0]).toMatchObject({id:'123',open:0,collection_role:'standalone'});expect(snapshot.unconfirmedInvoiceIds).toBeUndefined();
+  });
+  it('does not preserve current zero confidence when the tracked record is no longer confirmed',async()=>{
+    const {reader}=harness(current([],0),history([]),history([]));const snapshot=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'123',invoice_no:'456',open:0}]);
+    expect(snapshot.invoices).toEqual([]);expect(snapshot.unconfirmedInvoiceIds).toEqual(['123']);
+  });
+  it.each([
+    { label: 'empty history', rows: [] },
+    { label: 'a different transaction with the same invoice number and zero', rows: [invoice(999, 0)] },
+    { label: 'matching identity that is still positive', rows: [invoice(123, 60)] },
+  ])('does not fabricate zero from $label', async ({ rows }) => {
+    const previous = [{ id: '123', invoice_no: '456', open: 60 }];
+    const { reader } = harness(current([], 0), history([]), history(rows));
+    const snapshot = await readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08', previous);
+    expect(snapshot.invoices).toEqual([]);
+    expect(previous[0].open).toBe(60);
+  });
+  it('propagates a history provider error instead of publishing a zero balance', async () => {
+    const { reader } = harness(current([], 0), history([]), history([]), 503);
+    await expect(readVerifiedAccount(reader, 'KAT', 'account-1', '2026-09-08', [{ id: '123', invoice_no: '456', open: 60 }])).rejects.toMatchObject({ code: 'provider_unavailable' });
+  });
+});

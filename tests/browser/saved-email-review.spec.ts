@@ -1,0 +1,32 @@
+import {test,expect,type Page} from '@playwright/test';
+const user={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-10T00:00:00Z'};
+const jobId='00000000-0000-4000-8000-000000000002',draftId='00000000-0000-4000-8000-000000000003';
+async function setup(page:Page){
+ const requests:{path:string;method:string;query:URLSearchParams}[]=[];
+ await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
+ await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
+ await page.route('**/api/**',route=>{
+  const u=new URL(route.request().url()),path=u.pathname;requests.push({path,method:route.request().method(),query:u.searchParams});
+  if(path==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+  if(path==='/api/refresh')return route.fulfill({json:{running:false,hotels:[],jobs:[]}});
+  if(path==='/api/portfolio')return route.fulfill({json:{accounts:[{id:'A',name:'Synthetic Evidence Account',hotel:'TSK',type:'Agent',items:0,open:0,over90:0}],status:'connected',refresh:{running:false,hotels:[]}}});
+  if(path==='/api/accounts/TSK/A')return route.fulfill({json:{invoices:[]}});
+  if(path==='/api/account-workspace/TSK/A/documents')return route.fulfill({json:{total:21,rows:[{id:jobId,created_at:'2026-09-09T12:00:00Z',content:'both',layout:'statement_bundle',purpose:'billing',state:'ready',revision:5,acknowledged:false,statement_source:'workspace',invoice_count:2,draft_id:draftId,subject:'Saved original subject',delivery_state:'awaiting_evidence',delivery_reason:'provider_result_unconfirmed',sent_at:null,has_thread:true}]}});
+  if(path===`/api/account-workspace/TSK/A/email/${draftId}`)return route.fulfill({json:{id:draftId,hotel:'TSK',accountId:'A',documentJobId:jobId,documentRevision:1,draftRevision:2,subject:'Saved original subject',body:'This is the original saved message.\nIts document package was revised later.',purpose:'billing',recipients:{to:['billing@example.test'],cc:['copy@example.test'],bcc:[]},packageChanged:true,hasThread:true,delivery:{state:'awaiting_evidence',mode:'send',sentAt:null,recorded:false},gmailHandoff:'awaiting_evidence'}});
+  if(path===`/api/account-workspace/TSK/A/email/${draftId}/thread`){const offset=Number(u.searchParams.get('offset')??0);return route.fulfill({json:{thread:{threadId:'saved-thread',parentMessageId:'m0',subject:'Saved original subject',participants:['ar@katathani.com','billing@example.test'],latestAt:'2026-09-10T12:00:00Z',messageCount:51},historyId:'900',messages:[{id:'m'+offset,date:'2026-09-10T12:00:00Z',from:'billing@example.test',to:['ar@katathani.com'],subject:'Saved original subject',snippet:offset?'Last saved conversation message':'First saved conversation message',direction:'incoming',matchesReply:true}],nextMessageOffset:offset?null:50,checkedAt:'2026-09-10T12:01:00Z'}});}
+  return route.fulfill({status:501,json:{error:'unmocked_endpoint'}});
+ });return requests;
+}
+for(const width of [1440,390])test(`saved email stays on its original draft after document revision ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:width===390?844:900});const requests=await setup(page);await page.goto('/?account=A&property=TSK&accountSection=Documents+%26+Gmail');
+ await page.getByRole('button',{name:'Next records',exact:true}).click();await expect.poll(()=>requests.some(r=>r.path.endsWith('/documents')&&r.query.get('page')==='1')).toBe(true);
+ await page.getByRole('button',{name:'Open email & conversation',exact:true}).click();const review=page.getByRole('region',{name:'Saved email review'});
+ await expect(review).toContainText('Saved original subject');await expect(review).toContainText('Document revision 1');await expect(review).toContainText('Draft revision 2');await expect(review).toContainText('original saved message');await expect(review).toContainText('awaiting evidence');await expect(review).toContainText('Document package has changed');
+ await review.getByRole('button',{name:'Load linked conversation',exact:true}).click();await expect(review).toContainText('First saved conversation message');await review.getByRole('button',{name:'Next conversation messages',exact:true}).click();await expect(review).toContainText('Last saved conversation message');await review.getByRole('button',{name:'Previous conversation messages',exact:true}).click();await expect.poll(()=>requests.filter(r=>r.path.endsWith('/thread')).at(-1)?.query.get('historyId')).toBe('900');
+ await page.screenshot({path:`evidence/saved-email-review-${width}.png`});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await review.getByRole('button',{name:'Back to documents & Gmail',exact:true}).click();await expect(page.getByText('Page 2',{exact:true})).toBeVisible();expect(requests.some(r=>r.path==='/api/email/open'||r.path.startsWith('/api/documents/'))).toBe(false);expect(requests.filter(r=>r.path.includes(`/email/${draftId}`)).every(r=>r.method==='GET')).toBe(true);
+});
+test('a changed conversation remains explicit and can be refreshed without discarding the saved message',async({page})=>{
+ await setup(page);let changed=true;await page.route(`**/api/account-workspace/TSK/A/email/${draftId}/thread*`,route=>{if(changed)return route.fulfill({status:409,json:{error:'email_thread_changed'}});return route.fulfill({json:{thread:{threadId:'saved-thread',parentMessageId:'m0',subject:'Saved original subject',participants:[],latestAt:'2026-09-10T12:00:00Z',messageCount:1},historyId:'901',messages:[],nextMessageOffset:null,checkedAt:'2026-09-10T12:01:00Z'}});});
+ await page.goto('/?account=A&property=TSK&accountSection=Documents+%26+Gmail');await page.getByRole('button',{name:'Open email & conversation',exact:true}).click();await page.getByRole('button',{name:'Load linked conversation',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Conversation changed');await expect(page.getByText('This is the original saved message.',{exact:false})).toBeVisible();changed=false;await page.getByRole('button',{name:'Refresh linked conversation',exact:true}).click();await expect(page.getByRole('alert')).toHaveCount(0);
+});

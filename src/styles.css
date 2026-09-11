@@ -9,3 +9,102 @@
 @media(max-width:900px){body{padding:8px}.app-shell{border-radius:20px;min-height:calc(100vh - 16px)}.app-header{height:auto;min-height:65px;flex-wrap:wrap;gap:10px;padding:12px 18px}.main-nav{order:3;width:100%;justify-content:space-between}.brand{min-width:0}.header-right{margin-left:auto}.portfolio-overview{grid-template-columns:1fr 1fr}.aging-summary{grid-column:1/-1}.account-metrics{grid-template-columns:repeat(3,1fr)}.account-aging{overflow-x:auto}.aging-value{min-width:105px}.account-context{display:none}.comparison td:first-child{min-width:210px}.page-title h1{font-size:24px}.filters{flex-wrap:wrap}.search{min-width:185px}.filter-count{display:none}}
 @media(max-width:600px){.brand b{font-size:10px}.brand>span>small{font-size:7px}.brand-mark{width:30px;height:30px}.header-right .hotel-switch button{padding:7px 8px;font-size:9px}.main-nav span,.main-nav button{font-size:9px;padding:8px}.page{padding:16px 13px}.page-title{align-items:flex-start}.page-title h1{font-size:22px}.page-title p{font-size:9px;line-height:1.7}.freshness{font-size:7px;padding:6px 8px}.portfolio-overview{grid-template-columns:1fr}.aging-summary{grid-column:auto}.total-summary strong{font-size:33px}.contributions{padding-bottom:15px}.search{width:100%;margin-top:4px}.panel-heading h2 small,.panel-heading>small{display:none}.account-metrics{grid-template-columns:1fr 1fr}.metric{padding:13px 10px}.metric strong{font-size:18px}.account-tabs{gap:13px}.account-tabs span{font-size:8px}.ledger-panel .panel-heading{height:auto;flex-wrap:wrap;padding:12px}.selection-bar{gap:10px;flex-wrap:wrap}.selection-hint{display:none}.invoice-detail.drawer-open{width:calc(100vw - 30px)}.login-panel{margin:45px 20px;padding:25px}.review-strip{font-size:7px;padding:5px 14px}.review-strip a{font-size:8px}.group-dialog{width:calc(100vw - 40px)}.aging-values{overflow-x:auto}.aging-values>span{min-width:95px}.live-status{gap:10px;padding:10px 15px}.live-status button{white-space:nowrap}}
 @media(prefers-reduced-motion:no-preference){.page{animation:arrive .2s ease-out}@keyframes arrive{from{opacity:.65}to{opacity:1}}}
+
+.live-status{flex-wrap:wrap;gap:10px}.live-status>span{flex:1;min-width:250px}.freshness{max-width:450px;white-space:normal;line-height:1.6}.account-aging{overflow-x:auto}.aging-values{overflow-x:auto}.aging-values>span{min-width:95px}
+
+.compression-label { display:block; font-size:9px; color:#66748c; margin-top:3px; }
+.ledger input:disabled { cursor:not-allowed; opacity:.4; }
+
+.native-pdf-pages { margin:24px auto; max-width:850px; }
+.native-pdf-pages canvas { display:block; width:100%; height:auto; margin-bottom:20px; background:white; box-shadow:0 2px 12px #172b4d20; }
+
+/* Keep the comparative tables intact, with an explicit keyboard/touch scroll surface. */
+.table-scroll:focus-visible,.account-aging:focus-visible{outline:3px solid #7699ff;outline-offset:-3px}
+.table-scroll-hint{display:none}
+.main-nav button{background:transparent}.main-nav button.active{background:white}
+.ledger-choice{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+dialog.invoice-detail{margin:0;width:auto;min-width:0;color:inherit}
+dialog.invoice-detail:not([open]){display:none}
+.group-dialog::backdrop,.invoice-detail::backdrop{background:#13243d66}
+.group-dialog{max-height:calc(100dvh - 32px);overflow:auto;color:inherit}
+.group-dialog h2,.detail-head h2{overflow-wrap:anywhere}
+.detail-head{padding-right:32px}
+@media(max-width:1200px){
+  dialog.invoice-detail.drawer-open{margin:0;max-height:none;max-width:none}
+}
+@media(max-width:600px){
+  .app-header{gap:10px;padding:14px 13px}
+  .brand{flex:1 0 calc(100% - 56px)}
+  .brand b{font-size:12px}.brand>span>small{font-size:9px}
+  .header-right{width:100%;gap:10px}
+  .hotel-switch{flex:1}.hotel-switch button{flex:1}
+  .header-right .hotel-switch button{font-size:12px;min-height:44px}
+  .header-right .icon-button{min-width:44px;min-height:44px}
+  .main-nav{gap:0;overflow-x:auto;justify-content:flex-start}
+  .main-nav button,.main-nav span{flex:1;font-size:11px;min-height:44px;padding:13px 7px;text-align:center}
+  .review-exit{position:static;padding:7px 13px 0;font-size:10px;text-align:right}
+  .page-title{flex-wrap:wrap;gap:8px}.page-title>div{min-width:0}
+  .page-title h1{font-size:24px;overflow-wrap:anywhere}
+  .page-title p{font-size:12px;line-height:1.6}
+  .account-context{display:flex;flex-wrap:wrap;gap:8px}
+  .freshness{font-size:11px;padding:6px 10px}
+  .portfolio-overview>.panel{max-height:none}
+  .total-summary{min-height:150px;background:#3d65ff;color:white}
+  .total-summary .metric-label,.total-summary small{color:#fff}
+  .total-summary .orb{background:#ffffff18}
+  .metric-label{font-size:10px}.total-summary small{font-size:12px}
+  .contributions h2,.aging-summary h2,.panel-heading h2{font-size:14px}
+  .contributions h2 span{font-size:10px}
+  .property-pair small{font-size:11px}.property-pair strong{font-size:18px}
+  .aging-summary{display:flow-root}.aging-row{font-size:11px;gap:9px}
+  .aging-row>b:last-child{width:82px}.aging-legend{font-size:9px;margin-right:91px;margin-left:36px;gap:4px}
+  .aging-toggle{min-width:44px;min-height:44px;font-size:12px;margin-top:2px}
+  .filters{gap:10px}.filters .filter{font-size:11px;flex:1 1 100%;border-radius:12px;padding:0 12px;min-height:44px}
+  .filters .filter select{flex:1;min-width:0;max-width:none;min-height:44px;font-size:16px}
+  .filters button.filter{flex:0 0 auto;padding:10px 14px;font-size:12px}
+  .filters .search{order:-1}
+  .portfolio .search,.account-page .search{min-height:44px;border-radius:12px;min-width:0}
+  .portfolio .search input,.account-page .search input{font-size:16px;min-width:0}
+  .panel-heading{height:auto;min-height:50px;padding:12px;flex-wrap:wrap}
+  .property-key{font-size:10px}.badge{font-size:10px}
+  .table-scroll-hint{display:block;padding:0 12px 10px;font-size:11px;line-height:1.5;color:#536d8b}
+  .comparison{font-size:12px}.comparison td:first-child{min-width:195px}
+  .comparison td{padding:4px 10px}.comparison .name-link,.comparison .amount-link{min-height:44px;min-width:44px}
+  .comparison .sort-button,.ledger .sort-button{min-height:44px;font-size:10px;letter-spacing:0}
+  .accounts-panel .table-scroll{max-height:350px}
+  .table-foot{font-size:11px;line-height:1.6;padding:12px}
+  .breadcrumb{font-size:11px;min-height:44px;flex-wrap:wrap;text-align:left;line-height:1.5}
+  .breadcrumb b{overflow-wrap:anywhere}
+  .account-metrics{gap:8px}.account-metrics .metric:first-child{grid-column:1/-1}
+  .account-metrics .metric:first-child strong{font-size:28px}
+  .metric .metric-label{font-size:10px}.metric small{font-size:11px;line-height:1.5}
+  .metric strong{line-height:1.3}.metric{min-width:0;min-height:95px}
+  .account-aging{flex-wrap:wrap;overflow:visible;gap:8px}
+  .account-aging>b{flex:1 0 100%;font-size:12px}
+  .account-aging>b small{font-size:10px;margin-top:5px}
+  .account-aging .aging-value{flex:1 0 28%;min-width:0;padding:9px 6px}
+  .aging-value small{font-size:10px}.aging-value strong{font-size:11px}
+  .account-aging .small-button{min-height:44px;font-size:12px;width:100%}
+  .account-tabs{overflow-x:auto;gap:18px;height:auto;min-height:48px;white-space:nowrap}
+  .account-tabs button{font-size:12px;min-height:44px;flex-shrink:0}.account-tabs span{font-size:11px}
+  .ledger td{font-size:12px;padding:4px 8px}.ledger th{padding:0 8px}
+  .ledger td:nth-child(2){min-width:176px}.ledger .name-link{min-height:44px}
+  .ledger-choice{min-width:44px;min-height:44px}.ledger input{width:18px;height:18px}
+  .ledger .aging-badge{font-size:11px}
+  .selection-bar{margin:10px;padding:12px;gap:12px;align-items:flex-start}
+  .selection-bar>div{flex:1 1 40%;min-width:0}
+  .selection-bar strong{font-size:13px}.selection-bar small{font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+  .selection-bar button{min-height:44px;font-size:12px;flex:1 1 auto;margin-left:0}
+  .back-bottom{font-size:12px;min-height:44px}
+  dialog.invoice-detail.drawer-open{inset:16px 15px max(16px,env(safe-area-inset-bottom));width:auto;padding:18px;max-height:calc(100dvh - 32px)}
+  .detail-head{padding-right:42px}.detail-head h2{font-size:16px;line-height:1.5}
+  .detail-head small,.detail-balance small,.detail-fields dt{font-size:11px}
+  .detail-fields dd{font-size:13px}.invoice-detail h3{font-size:13px}
+  .drawer-close{min-width:44px;min-height:44px;right:9px;top:9px}
+  .document-placeholder b{font-size:12px}.document-placeholder small,.invoice-detail .information-note{font-size:11px}
+  .group-dialog{padding:20px}.group-dialog p{font-size:13px;line-height:1.6}
+  .group-dialog button{min-height:44px;font-size:13px}
+  .live-status{font-size:11px;line-height:1.6}
+  .live-status>span{min-width:0;flex-basis:100%}
+  .live-status button{min-height:44px;font-size:11px}
+}
