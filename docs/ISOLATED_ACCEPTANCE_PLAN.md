@@ -1,5 +1,7 @@
 # Isolated final acceptance plan
 
+> Completed on 11 September 2026. This is the original plan; actual results, provider boundaries and cleanup proof are in FINAL_ACCEPTANCE_20260911.md. The one Account/three Invoices and both temporary namespaces have been removed.
+
 Owner-authorized Goal: create one synthetic AR Account with three Invoices, exercise the full app, fix defects, then remove only that scenario and its artifacts. This is additional final acceptance; it does not authorize OPERA ledger writes or real-customer test sends.
 
 ## Isolation decision (proposed implementation, not created yet)

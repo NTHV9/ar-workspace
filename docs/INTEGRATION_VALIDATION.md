@@ -1,5 +1,7 @@
 # Integration validation — สิ่งที่ต้องพิสูจน์บนระบบใหม่
 
+> แผนการทดลองต้นฉบับด้านล่างเป็นประวัติ. Native Statement research ถูกยกเลิกตามคำสั่งเจ้าของ; ไม่ต้องเรียก getARStatements/postStatements หรือ R&A เพื่อปิดงานนี้. ผลบริการจริงล่าสุดและข้อจำกัดอยู่ใน [FINAL_ACCEPTANCE_20260911.md](FINAL_ACCEPTANCE_20260911.md)
+
 เอกสารนี้บอกขอบเขตการทดลอง ไม่ได้ยืนยันว่า endpoint ใช้ได้ทุก environment ไม่ใส่ Secret หรือข้อมูลลูกค้าจริง ตรวจ official docs ปัจจุบันของ Oracle, Cloudflare, Supabase, Google ก่อนเขียน integration
 
 ## 1. OPERA request map

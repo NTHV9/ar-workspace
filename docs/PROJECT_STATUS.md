@@ -1,5 +1,20 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ส่งมอบ — 11 กันยายน 2026: งานหลักและ acceptance ครบตามขอบเขต
+
+รายงานละเอียด: [FINAL_ACCEPTANCE_20260911.md](FINAL_ACCEPTANCE_20260911.md). ข้อจำกัดของ native Invoice บางชนิด, fixed-page PDF, password-reset completion และ production restore ระบุแยก ไม่ใช้คำว่า verified ครอบคลุมสิ่งที่ไม่ได้ทดสอบ
+
+- Runtime ที่เปิด retention: source755e3dda1e6c178f3877fb75148dc49b807bf55a, Worker ae0576ce-fc97-44bc-8648-27d69fbe918a, ar-workspace.ar-c82.workers.dev; healthตรงSHA/database_verified และ GitHub CI success. Budget/Retention=true, Acceptance=false
+- ทดสอบเอกสารจริงชุดที่เคยแจ้งอีกครั้ง: generated Statement + native Invoice API3ไฟล์พร้อมครบใน20.115708วินาทีจากcreatedถึงready เปิดStatementหนึ่งหน้าได้จริง ไม่ส่งอีเมลในขั้นตอนนี้ ข้อมูล/PDF/ภาพจริงเก็บprivate
+- ปิดscenarioหนึ่งAccount/สามInvoices: actualGmailสองฉบับ, editedPDFสามarrangements, BySystem/hold/reopen/Remittance/report/retentionผ่าน. ลบ20Supabaseobjects/3Drivefilesแล้วตรวจabsent, ลบemptytestbucket/folderและถอนสองnamespace. Mainbusinesscontactsไม่มีผู้รับทดสอบ; mainSentEvents/Remittancesยัง0 ไม่ได้แก้ประวัติของลูกค้าเพื่อทดลอง
+- Apply20260911014928_ar_acceptance_closeout,20260911015853_ar_retire_acceptance_workspace,20260911020036_ar_disable_retired_acceptance_rpc. ทั้ง60migrationnames/versionsตรงhosted; rename20ไฟล์เดิมโดยไม่เปลี่ยนSQLbytesหรือแก้servermigrationhistory
+- Actualretentionhookหลังfullrefresh09:12ทั้งสองโรงแรม: checked78/blocked78เพราะsourceopen/deleted0/uncertain0/errors0. Filesจริง92รายการรวมtemplate/configและPDFทดสอบใหม่ยังคงครบ. ตัวเลขไฟล์ที่ไม่มีความสัมพันธ์รองรับไม่ถูกบังคับลบ
+- SENTauditจริงวันที่10–11กันยายนอ่านจบ37messages พบ7ARmatches:5receiptsเดิมและ2sealedisolated-testreceipts ไม่มีmissing/conflictและไม่มีการส่งซ้ำ. เก็บเฉพาะIDs/timestampsของtestเมื่อถอนข้อมูลscenarioแล้ว
+- Typecheck/buildผ่าน, unit793/85files. Browser203casesผ่านรวม23casesที่แก้fixtureGETcollection-policyโดยคงassertions. ภาพ1440/1280/390ใช้ข้อมูลสมมติ; references/designทั้ง7ภาพไม่เปลี่ยน
+- Latestlogicalrestore59migrations/19fixturesผ่าน พร้อมpg_dump/pg_restoreจริงและserverหยุด;60migrations/19fixtureSchemaReplayผ่านหลังถอนretiredRPC. ไม่ใช่productionphysicalrestore. Securityadvisorไม่มีWARN/ERROR เหลือINFO49privateRLS-without-policyตามเจตนา
+- Quotaหลังทดสอบประมาณworkingfiles11.7MiB/DB48.3MiB, reserveของscenariofinished/overrunfalse. ตั้งเพดานแอป1GiBfiles/2GiBmanagedegress/256MiBDBพร้อม20%headroom; ไม่มีpaidaddon/upgrade/PITR
+- หน้าเว็บพร้อมให้เจ้าของตรวจงานจริง. ไม่เพิ่มauto-send, ไม่แก้ledgerOPERAหรือบริการARDBเดิม. เอกสาร/หลักฐานส่งมอบที่จะPushต่อจากsourceข้างต้นไม่มีruntimechange
+
 ## Checkpoint ระหว่างงาน — 11 กันยายน 2026 08:51 ICT: ทดสอบวงจรงานและ retention จริง
 
 - บัญชีสมมติหนึ่งบัญชี/สามบิลทำงานใน namespace และ private bucket แยกจากธุรกิจจริง; OPERA เป็น fixture transport ที่ผ่าน reader เดิม ส่วน Cloudflare, Supabase, Gmail และ Drive ใช้บริการจริง ไม่มีการสร้างหรือแก้ ledger ใน OPERA

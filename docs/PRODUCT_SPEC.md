@@ -1,5 +1,7 @@
 # สเปกผลิตภัณฑ์ฉบับส่งต่อ — Katathani AR Clean Rebuild
 
+> ใช้ร่วมกับคำยืนยันล่าสุดใน DECISIONS_AND_OPEN_ITEMS.md. ข้อความ handoff เรื่อง native Statement/renderer สำรองถูกแทนแล้ว: Statement ใช้ renderer ของระบบเท่านั้น ส่วน Invoice/Folio ใช้ OPERA API. ผลพัฒนาและขอบเขตที่ทดสอบจริงอยู่ใน FINAL_ACCEPTANCE_20260911.md
+
 เวอร์ชัน handoff: 2026-09-08 / 1.0
 ฐาน: ข้อตกลงล่าสุดในบทสนทนา ChatGPT ที่ผู้ใช้ต้องการนำไปทำต่อใน Codex
 สถานะ: สรุปข้อกำหนด ไม่ใช่คำรับรองว่าพัฒนา/เชื่อมต่อ/Deploy แล้ว
