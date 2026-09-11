@@ -27,6 +27,6 @@ test('compressed children and unverified rows cannot enter selection or its tota
  await expect(page.locator('.invoice-detail')).toContainText('cannot collect separately');
  await expect(page.locator('.invoice-detail')).toContainText('Parent open balance: THB 0.00');
  await page.screenshot({path:'evidence/compression-1440.png',animations:'disabled'});
- await page.setViewportSize({width:1100,height:760});
+ await page.setViewportSize({width:900,height:760});
  await expect(page.locator('.invoice-detail.drawer-open')).toBeVisible();
 });

@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Account panel presentation — 11 กันยายน 2026
+
+- เจ้าของย้ำว่าภาพก่อนแก้ PDF ต่างจากแผงลอยปัจจุบัน จึง reconstruct source ก่อน PDF clarity (`1c938970^`, `a9feb61`) และ source ก่อนปรับรอบนี้ (`8779266`) ด้วย synthetic fixture เดียวกัน 84 rows, เวลา/scroll/viewport เท่ากัน แทนการสรุปจากรายชื่อไฟล์ที่แก้เพียงอย่างเดียว
+- ผล 1440×900: ทั้งสองรุ่นเป็น inline panel ที่ x=1061.75, width=336.25, height=600, ไม่มี modal; Notes/History มีอยู่ทั้งคู่. ผล 1100×900: ทั้งสองรุ่นเปิด modal; ก่อน PDF อยู่ x=0 และรุ่นปัจจุบัน x=745 จาก right-edge fix รอบก่อน. นี่คือ local reconstruction ไม่ใช่ screenshot ของ Cloudflare deployment ในอดีต และยังไม่ยืนยันการตั้งค่า zoom/viewport ของ Edge ที่เจ้าของใช้อยู่
+- ปรับ Account Detail ให้คงแผงแนบขวาบนพื้นที่เว็บกว้างกว่า 1000 CSS px (เดิม 1200) เพื่อให้ Laptop 1024/1100/1200 ใช้การจัดวางแบบจอกว้าง. ต่ำกว่านั้นยังเป็น right drawer; mobile/focus/selection คงเดิม. เพิ่มคำแนะนำเลื่อนตารางแนวนอนในช่วง Laptop โดยไม่ซ่อนคอลัมน์
+- Regression ใหม่ล้มเหลวก่อนแก้ทั้งสาม Laptop widths และผ่านหลังแก้; ตรวจ inline geometry, ไม่มี modal/backdrop, เลือกบิลขณะเปิดรายละเอียด และ resize 900↔Laptop โดยไม่สูญเสีย selection. Typecheck/build และ local regression 19 cases ผ่าน กำลังตรวจ Cloudflare
+- ไม่เปลี่ยนเนื้อหาแผง, timeline, ประวัติ, Aging/Latest Sent, PDF/editor หรือบัญชี OPERA. ไม่มี migration, credential หรือ resource ใหม่. Development servers ที่ใช้เทียบประวัติหยุดแล้ว
+
 ## Checkpoint Account Detail corrections — 11 กันยายน 2026
 
 - แก้ drawer Selected guest/item ในจอ 601–1200px โดยล้าง browser dialog `left` ให้ยึดขอบขวา 15px. Desktop ยังเป็นคอลัมน์ขวา; mobile คงระยะขอบทั้งสองด้าน. Native modal/focus/Escape/selection เดิมคงทำงาน
