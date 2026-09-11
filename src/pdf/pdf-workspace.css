@@ -62,3 +62,5 @@
 .pdf-preview-controls .pdf-preview-zoom{padding:0;flex-shrink:0}
 .pdf-preview-actions .pdf-primary{padding:10px}
 @media(max-width:700px){.pdf-preview-controls{flex-wrap:wrap;gap:6px}.pdf-preview-controls .pdf-preview-files{flex-basis:100%}}
+
+.pdf-layer-target.empty-cell::after{font-size:inherit;line-height:1}

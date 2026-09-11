@@ -3,7 +3,7 @@ import {loadSources,renderPage} from './engine';
 import {displayScale} from './display';
 import type {PdfExportFile} from './types';
 
-export type PreviewZoom='fit-page'|'fit-width'|number;
+export type PreviewZoom='fit-width'|number;
 type Loaded=Awaited<ReturnType<typeof loadSources>>;
 export function FinalPdfPreview({file,zoom,onRendered,onRendering}:{file:PdfExportFile;zoom:PreviewZoom;onRendered:()=>void;onRendering:()=>void}){
  const viewport=useRef<HTMLDivElement>(null),canvasHost=useRef<HTMLDivElement>(null);
@@ -19,8 +19,7 @@ export function FinalPdfPreview({file,zoom,onRendered,onRendering}:{file:PdfExpo
  },[file]);
  const page=loadedFile===file?loaded?.project.pages[index]:undefined;
  const isCurrent=rendered&&drawn?.file===file&&drawn.index===index;
- const fit=page?Math.min(size.width/page.width,size.height/page.height):1;
- const factor=page?(zoom==='fit-page'?fit:zoom==='fit-width'?size.width/page.width:zoom/100*96/72):1;
+ const factor=page?(zoom==='fit-width'?size.width/page.width:zoom/100*96/72):1;
  const width=page?page.width*factor:0,height=page?page.height*factor:0;
  useEffect(()=>{
   if(!loaded||!page||!size.width||!size.height)return;
