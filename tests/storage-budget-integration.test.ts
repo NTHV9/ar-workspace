@@ -1,5 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {readManagedStorage,writeManagedStorage} from '../worker/operations/storage';
+import {readManagedStorage,writeManagedStorage,StorageWriteNotDispatched} from '../worker/operations/storage';
 const owner='00000000-0000-4000-8000-000000000001',key='jobs/00000000-0000-4000-8000-000000000002/originals/00000000-0000-4000-8000-000000000003.pdf';
 const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic',OPERATIONS_BUDGET_ENABLED:'true'};
 const bytes=new TextEncoder().encode('synthetic bytes');
@@ -10,3 +10,8 @@ it('an uncertain upload is reconciled by exact bytes without another POST',async
 it('a quota denial stops transfers before contacting Storage',async()=>{const calls=setup({deny:true});await expect(writeManagedStorage(env,key,bytes,'application/pdf')).rejects.toThrow('budget_storage_exceeded');await expect(readManagedStorage(env,key,bytes.length)).rejects.toThrow('budget_egress_exceeded');expect(calls.some(c=>c.name.endsWith('.pdf'))).toBe(false);});
 it('each read is separately precharged and remains byte bounded',async()=>{const calls=setup();for(let n=0;n<2;n++)expect(new Uint8Array(await(await readManagedStorage(env,key,bytes.length)).arrayBuffer())).toEqual(bytes);const charges=calls.filter(c=>c.name==='ar_storage_read_budget');expect(charges).toHaveLength(2);expect(charges[0].body.p_id).not.toBe(charges[1].body.p_id);});
 it('rejects traversal and arbitrary URLs before any credentialed request',async()=>{const f=vi.fn();vi.stubGlobal('fetch',f);for(const bad of ['https://unapproved.test/file','jobs/00000000-0000-4000-8000-000000000002/../secret','jobs/00000000-0000-4000-8000-000000000002/%2e%2e/file'])await expect(readManagedStorage(env,bad,100)).rejects.toThrow('storage_path_invalid');expect(f).not.toHaveBeenCalled();});
+
+it('marks only failures before provider dispatch as safe intent cancellation',async()=>{
+ setup({deny:true});await expect(writeManagedStorage(env,key,bytes,'application/pdf')).rejects.toBeInstanceOf(StorageWriteNotDispatched);
+ setup({lost:true});try{await writeManagedStorage(env,key,bytes,'application/pdf');throw Error('expected transport failure');}catch(error){expect(error).not.toBeInstanceOf(StorageWriteNotDispatched);expect(error).toHaveProperty('message','synthetic uncertain transport');}
+});

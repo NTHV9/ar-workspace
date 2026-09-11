@@ -3,6 +3,7 @@ import {assertWritesEnabled} from './write-hold';
 import {boundedBody} from '../email/shared';
 import type {RetentionEnvironment} from './retention';
 import {operationBudgetLimits,type BudgetEnvironment} from './budget';
+export class StorageWriteNotDispatched extends Error {}
 export interface StorageBudgetEnv extends BudgetEnvironment,RetentionEnvironment{}
 const uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 function base(env:StorageBudgetEnv,requireKey=true){if(!env.SUPABASE_URL||requireKey&&!env.SUPABASE_SECRET_KEY)throw Error('storage_not_configured');const u=new URL(env.SUPABASE_URL);if(u.protocol!=='https:'||u.username||u.password||u.pathname!=='/'||u.search||u.hash)throw Error('storage_not_configured');return u.origin;}
@@ -27,14 +28,14 @@ export async function readManagedStorage(env:StorageBudgetEnv,key:string,ceiling
  return new Response(body,{status:response.status,headers:response.headers});
 }
 export async function writeManagedStorage(env:StorageBudgetEnv,key:string,bytes:Uint8Array,mime:string):Promise<void>{
- assertWritesEnabled(env);
- path(key);if(bytes.length<1||bytes.length>104857600)throw Error('storage_size_invalid');
- const enabled=env.OPERATIONS_BUDGET_ENABLED==='true';let owner='',id='';const digest=await sha(bytes);
+ const enabled=env.OPERATIONS_BUDGET_ENABLED==='true';let owner='',id='',digest='';
+ try{
+ assertWritesEnabled(env);path(key);base(env);if(bytes.length<1||bytes.length>104857600)throw Error('storage_size_invalid');digest=await sha(bytes);
  if(enabled){owner=await actor(env);id=await uploadId(owner,key);const receipt=await rpc<{id:string;proceed:boolean;verified:boolean}>(env,'ar_storage_write_begin',{p_actor:owner,p_id:id,p_key:key,p_bytes:bytes.length,p_sha256:digest,p_mime:mime,p_limits:operationBudgetLimits(acceptanceLimits(env))});
   if(receipt.id!==id||typeof receipt.proceed!=='boolean'||typeof receipt.verified!=='boolean')throw Error('storage_budget_unavailable');
   if(receipt.verified)return;
   if(!receipt.proceed){const existing=await readManagedStorage(env,key,bytes.length);if(!existing.ok){await existing.body?.cancel();throw Error('storage_upload_uncertain');}const copy=await boundedBody(existing,bytes.length);if(copy.length!==bytes.length||await sha(copy)!==digest)throw Error('storage_object_changed');await rpc(env,'ar_storage_write_finish',{p_actor:owner,p_id:id,p_verified:true});return;}
- }
+ }}catch(error){throw new StorageWriteNotDispatched(error instanceof Error?error.message:'storage_budget_unavailable');}
  try{
   const response=await fetch(base(env)+'/storage/v1/object/'+workingBucket(env)+'/'+key,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY!,'Content-Type':mime,'x-upsert':'false'},body:new Uint8Array(bytes).buffer,redirect:'manual',signal:AbortSignal.timeout(30000)});
   if(!response.ok){const status=response.status;await response.body?.cancel();if(status!==400&&status!==409)throw Error('storage_write_unconfirmed');const existing=await readManagedStorage(env,key,bytes.length);if(!existing.ok){await existing.body?.cancel();throw Error('storage_upload_uncertain');}const copy=await boundedBody(existing,bytes.length);if(copy.length!==bytes.length||await sha(copy)!==digest)throw Error('storage_object_changed');}else await response.body?.cancel();

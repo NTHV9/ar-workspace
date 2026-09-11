@@ -7,14 +7,14 @@ const fileId = 'b0000000-0000-4000-8000-000000000001';
 const user = { id: 'synthetic-document-user', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
 function session(token: string) { return { access_token: token, refresh_token: 'synthetic-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user }; }
 
-async function mockApplication(page: Page, requestedLayout='combined') {
+async function mockApplication(page: Page, requestedLayout='combined', lifecycle:'legacy'|'transient'='legacy') {
   const source = await PDFDocument.create();
   const font = await source.embedFont(StandardFonts.Helvetica);
   source.addPage([595, 842]).drawText('SYNTHETIC INVOICE A', { x: 45, y: 740, font, size: 18 });
   const bytes = Buffer.from(await source.save());
-  const job = { id: jobId, owner: user.id, hotel: 'KAT', account_id: 'synthetic-account', account_name: 'Synthetic Document Account', content: 'invoices', layout: requestedLayout, purpose: 'billing', invoice_ids: ['A'], manifest: [{ id: 'A', invoice_no: 'INVOICE-A' }], state: 'ready', revision: 0, project_key: null as string | null, exports: [] as {name:string;storage_key:string;byte_count:number;sha256:string}[], acknowledged: false, files: [{ id: fileId, kind: 'invoice', invoice_id: 'A', ordinal: 0, state: 'ready', storage_key: `jobs/${jobId}/originals/${fileId}.pdf`, error_code: null, byte_count: bytes.length, sha256: 'synthetic' }], created_at: '2026-09-09T00:00:00Z' };
+  const job = { lifecycle,closed_at:null as string|null,closed_reason:null as string|null,id: jobId, owner: user.id, hotel: 'KAT', account_id: 'synthetic-account', account_name: 'Synthetic Document Account', content: 'invoices', layout: requestedLayout, purpose: 'billing', invoice_ids: ['A'], manifest: [{ id: 'A', invoice_no: 'INVOICE-A' }], state: 'ready', revision: 0, project_key: null as string | null, exports: [] as {name:string;storage_key:string;byte_count:number;sha256:string}[], acknowledged: false, files: [{ id: fileId, kind: 'invoice', invoice_id: 'A', ordinal: 0, state: 'ready', storage_key: `jobs/${jobId}/originals/${fileId}.pdf`, error_code: null, byte_count: bytes.length, sha256: 'synthetic' }], created_at: '2026-09-09T00:00:00Z' };
   const controls = {
-    portfolioRequests: [] as string[], documentReads: 0, sourceReads: 0, emailOpens:[] as any[],outboundRequests:[] as string[],
+    job, reviewRequests:[] as any[], exportUploads:0, discards:0, portfolioRequests: [] as string[], documentReads: 0, sourceReads: 0, emailOpens:[] as any[],outboundRequests:[] as string[],
     saveRequests: [] as { token: string; body: Record<string, unknown> }[],
     uploadRequests: [] as { token: string; project: any }[], createRequests: [] as any[],
     holdPortfolio: false, pendingPortfolio: [] as (() => void)[],
@@ -42,9 +42,12 @@ async function mockApplication(page: Page, requestedLayout='combined') {
     if (url.pathname === '/api/gmail/status')return route.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
     if (url.pathname === '/api/email/open') {controls.emailOpens.push(request.postDataJSON());return route.fulfill({json:{id:'synthetic-draft',document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic message',body:'Synthetic only',exports:job.exports,attachments:[],revision:0,package_changed:false}});}
     if (url.pathname === `/api/documents/${jobId}/upload`) {
+      if (url.searchParams.get('kind') === 'export') controls.exportUploads++;
       if (url.searchParams.get('kind') === 'project') controls.uploadRequests.push({ token, project: request.postDataJSON() });
       return route.fulfill({ json: { storage_key: `jobs/${jobId}/${url.searchParams.get('kind')==='project'?'drafts/synthetic-project.json':'exports/synthetic-export.pdf'}`, byte_count: request.postDataBuffer()?.length || 0, sha256: 'synthetic' } });
     }
+    if (url.pathname === `/api/documents/${jobId}/review`) {const body=request.postDataJSON();controls.reviewRequests.push(body);job.revision=body.revision+1;job.exports=body.exports;job.acknowledged=true;return route.fulfill({json:job});}
+    if (url.pathname === `/api/documents/${jobId}/discard`) {controls.discards++;job.closed_at='2026-09-11T10:30:00Z';job.closed_reason='discarded';return route.fulfill({json:job});}
     if (url.pathname === `/api/documents/${jobId}/save`) {
       const body = request.postDataJSON(); controls.saveRequests.push({ token, body }); job.revision++; job.project_key = String(body.projectKey);job.exports=body.exports;job.acknowledged=body.acknowledged;
       return route.fulfill({ json: job });
@@ -172,4 +175,70 @@ test('desktop PDF edits survive a resize to the mobile companion and can be save
  const controls=await mockApplication(page);await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('Synthetic desktop edit survives resize');
  await page.setViewportSize({width:390,height:844});await expect(page.getByRole('heading',{name:'Continue editing on desktop',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Note',exact:true})).not.toBeVisible();
  await page.getByRole('button',{name:'Save draft for desktop',exact:true}).click();await expect.poll(()=>controls.uploadRequests.length).toBe(1);expect(controls.uploadRequests[0].project.pages[0].layers[0].text).toBe('Synthetic desktop edit survives resize');
+});
+for(const width of [1440,1280])test(`transient review goes directly to email without a saved PDF project at ${width}`,async({page})=>{
+ test.setTimeout(60000);await page.setViewportSize({width,height:width===1440?900:800});
+ const controls=await mockApplication(page,'combined','transient');await page.goto(`/?documentJob=${jobId}`);
+ await expect(page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Documents',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Save draft',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC TEMPORARY REVIEW');
+ await page.getByRole('button',{name:'Continue to email',exact:true}).click();
+ const preview=page.getByRole('dialog',{name:'Final PDF preview'});
+ await expect(preview.getByRole('button',{name:'Continue to email',exact:true})).toBeDisabled();
+ await expect(preview.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
+ await expect(preview.getByRole('button',{name:'Save reviewed PDFs privately'})).toHaveCount(0);
+ await preview.getByRole('checkbox').check();
+ await assertButtonVisibility(page,preview);
+ await page.screenshot({path:`evidence/transient-review-${width}.png`,animations:'disabled'});
+ await preview.getByRole('button',{name:'Continue to email',exact:true}).click();
+ await expect.poll(()=>controls.emailOpens.length).toBeGreaterThan(0);
+ expect(controls.reviewRequests).toHaveLength(1);expect(controls.exportUploads).toBe(1);expect(controls.uploadRequests).toHaveLength(0);expect(controls.saveRequests).toHaveLength(0);expect(controls.job.project_key).toBeNull();expect(controls.outboundRequests).toEqual([]);
+ await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();
+});
+
+test('transient review retry retains uploaded receipts and never opens email before confirmation',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient');let lost=true;const attempts:any[]=[];
+ await page.route(`**/api/documents/${jobId}/review`,r=>{attempts.push(r.request().postDataJSON());if(lost){lost=false;return r.fulfill({status:503,json:{error:'document_unavailable'}});}return r.fallback();});
+ await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Continue to email',exact:true}).click();
+ const preview=page.getByRole('dialog',{name:'Final PDF preview'});await preview.getByRole('checkbox').check();await preview.getByRole('button',{name:'Continue to email',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('document unavailable');expect(controls.emailOpens).toHaveLength(0);
+ await preview.getByRole('button',{name:'Continue to email',exact:true}).click();await expect.poll(()=>controls.emailOpens.length).toBeGreaterThan(0);
+ expect(controls.exportUploads).toBe(1);expect(attempts[1]).toEqual(attempts[0]);expect(controls.outboundRequests).toEqual([]);
+});
+
+test('download-only review stays temporary; explicit discard closes it and prevents reopening',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient');await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ const preview=page.getByRole('dialog',{name:'Final PDF preview'});await preview.getByRole('checkbox').check();
+ const download=page.waitForEvent('download');await preview.getByRole('button',{name:'Download reviewed PDFs',exact:true}).click();expect((await download).suggestedFilename()).toContain('.pdf');
+ expect(controls.emailOpens).toHaveLength(0);expect(controls.discards).toBe(0);
+ await page.getByRole('button',{name:'Close final preview',exact:true}).click();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeVisible();
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Discard preparation',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation discarded',exact:true})).toBeVisible();expect(controls.discards).toBe(1);
+ await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toHaveCount(0);expect(controls.uploadRequests).toHaveLength(0);
+});
+
+test('transient edits survive resize but cannot be saved as a project',async({page})=>{
+ await mockApplication(page,'combined','transient');await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC TAB-ONLY EDIT');
+ await page.setViewportSize({width:390,height:844});await expect(page.getByText('Your edits stay in this tab.',{exact:false})).toBeVisible();await expect(page.getByRole('button',{name:'Save draft for desktop',exact:true})).toHaveCount(0);
+ await page.setViewportSize({width:1280,height:800});await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC TAB-ONLY EDIT');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
+ await expect(page.getByRole('alertdialog',{name:'Unsaved PDF changes'})).toContainText('PDF edits only live in this tab');await page.getByRole('button',{name:'Discard changes and close',exact:true}).click();await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();
+});
+test('browser Back warns before discarding tab-only PDF edits',async({page})=>{
+ await mockApplication(page,'combined','transient');await page.goto(`/?documentJob=${jobId}`);
+ // Give this isolated fixture the same same-document history shape as opening
+ // an Account from Portfolio and replacing its URL with document preparation.
+ await page.evaluate(()=>{const current=location.href;history.replaceState(null,'','/');history.pushState(null,'',current);});
+ await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC KEEP ON BACK');
+ const prompt=page.waitForEvent('dialog');await page.evaluate(()=>history.back());const dialog=await prompt;expect(dialog.message()).toContain('tab-only PDF edits');await dialog.dismiss();
+ await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC KEEP ON BACK');await expect(page).toHaveURL(new RegExp('documentJob='+jobId));
+});
+
+test('a review in flight locks editing and keeps email closed until confirmed',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient');let release!:()=>void,started=false;const pending=new Promise<void>(resolve=>{release=resolve;});
+ await page.route(`**/api/documents/${jobId}/review`,async route=>{started=true;await pending;await route.fallback();});
+ await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Continue to email',exact:true}).click();
+ const preview=page.getByRole('dialog',{name:'Final PDF preview'});await preview.getByRole('checkbox').check();await preview.getByRole('button',{name:'Continue to email',exact:true}).click();await expect.poll(()=>started).toBe(true);
+ await expect(page.locator('.pdf-layout')).toHaveAttribute('inert','');await expect(page.getByRole('button',{name:'Close final preview',exact:true})).toBeDisabled();expect(controls.emailOpens).toHaveLength(0);
+ release();await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();expect(controls.reviewRequests).toHaveLength(1);expect(controls.outboundRequests).toEqual([]);
 });

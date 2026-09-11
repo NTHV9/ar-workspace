@@ -35,7 +35,7 @@ for(const [width,height] of [[1440,900],[1280,800],[390,844]])test(`account hist
  await expect(page.getByText('Linked conversation available in email work')).toBeVisible();
  await page.screenshot({path:`evidence/account-documents-${width}.png`});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- await page.getByRole('button',{name:'Open documents',exact:true}).click();await expect(page).toHaveURL(new RegExp('documentJob='+jobId));
+ await page.getByRole('button',{name:'Open earlier preparation',exact:true}).click();await expect(page).toHaveURL(new RegExp('documentJob='+jobId));
  await page.getByRole('button',{name:'Back to account',exact:true}).click();await expect(page.getByRole('region',{name:'Document history table'})).toBeVisible();
  expect(requests.every(r=>r.includes('/TSK/A/'))).toBe(true);
 });
@@ -43,5 +43,5 @@ test('service failure remains unavailable instead of empty history',async({page}
  await setup(page,{failed:true});await page.goto('/?account=A&property=TSK&accountSection=Collection+History');await expect(page.getByRole('alert')).toContainText('Account evidence is unavailable');await expect(page.getByText('No recorded collection history',{exact:true})).toHaveCount(0);
 });
 test('empty account evidence is honest and scoped',async({page})=>{
- await setup(page,{empty:true});await page.goto('/?account=A&property=TSK&accountSection=Documents+%26+Gmail');await expect(page.getByText('No saved document packages',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Next records',exact:true})).toBeDisabled();
+ await setup(page,{empty:true});await page.goto('/?account=A&property=TSK&accountSection=Documents+%26+Gmail');await expect(page.getByText('No document or email work yet',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Next records',exact:true})).toBeDisabled();
 });

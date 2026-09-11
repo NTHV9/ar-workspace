@@ -117,5 +117,6 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
   const data=JSON.parse(new TextDecoder().decode(await boundedBody(r,18*1024*1024))) as {data?:string};if(typeof data.data!=='string')throw Error();return decodeUrl64(data.data);
  });
  if(result.status!=='verified'){if(result.status==='review_required')await record(env,actor,d,'review_required',messageId,null,result.reason??'message_content_unverified');return {...deliveryView(d),state:result.status==='not_sent'?d.state:'review_required',reason:result.status};}
- return {id:d.id,mode:d.mode,...await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt})};
+ const confirmed=await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt});
+ return {id:d.id,mode:d.mode,...confirmed};
 }

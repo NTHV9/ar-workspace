@@ -1,6 +1,6 @@
 import {acceptanceRows} from '../acceptance/context';
 import {acceptanceRpc} from '../acceptance/routing';
-import {readManagedStorage} from '../operations/storage';
+import {readManagedStorage,StorageWriteNotDispatched} from '../operations/storage';
 import type {RefreshEnv} from '../refresh/backend';
 import {documentSource} from './source-policy';
 import {PDFDocument} from 'pdf-lib';
@@ -36,10 +36,17 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    input.statementSource=documentSource({content:String(input.content),statementSource:input.statementSource,ids:input.ids});
    return json(await createDocumentJob(env,owner,input as unknown as DocumentCreateInput),202);
   }
-  const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
+  const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch|review|discard)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
   if(!match||!uuidPattern.test(match[1]))return json({error:'not_found'},404);
   const [,id,action,child]=match,job=await documentJob(env,id);if(!job)return json({error:'document_job_missing'},404);if(job.owner!==owner)return json({error:'forbidden'},403);
   if(!action&&request.method==='GET')return json(await reconcileDocumentStatus(env,job));
+  if(action==='discard'&&request.method==='POST')return json(await rpc(env,'ar_document_discard',{p_actor:owner,p_job_id:id}));
+  if(job.closed_at)return json({error:'document_closed'},410);
+  if(job.lifecycle==='transient'&&(['project','save'].includes(action)||action==='upload'&&url.searchParams.get('kind')==='project'))return json({error:'document_project_retired'},409);
+  if(action==='review'&&request.method==='POST'){
+   const input=await bodyJson(request,4*1024*1024);if(!Number.isSafeInteger(input.revision)||Number(input.revision)<0||!Array.isArray(input.exports)||input.acknowledged!==true||Object.keys(input).some(k=>!['revision','exports','acknowledged'].includes(k)))return json({error:'document_request_invalid'},400);
+   return json(await rpc(env,'ar_document_review',{p_actor:owner,p_job_id:id,p_revision:input.revision,p_exports:input.exports,p_acknowledged:true}));
+  }
   if(action==='dispatch'&&request.method==='POST')return json(await dispatchDocumentJob(env,job));
   if(request.method==='GET'&&['project','files','exports'].includes(action)){
    const file=action==='files'?job.files.find(f=>f.id===child&&f.state==='ready'):null;
@@ -64,7 +71,8 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    }
    const key=`jobs/${id}/${kind==='project'?'projects':'exports'}/${crypto.randomUUID()}.${kind==='project'?'json':'pdf'}`;
    const digest=await crypto.subtle.digest('SHA-256',bytes);const sha256=[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('');
-   await uploadPrivate(env,key,bytes,type);
+   const intent=job.lifecycle==='transient'?await rpc(env,'ar_document_begin_upload',{p_actor:owner,p_job_id:id,p_storage_key:key,p_bytes:bytes.length,p_sha256:sha256}) as {created:boolean}:null;
+   try{await uploadPrivate(env,key,bytes,type);}catch(error){if(intent?.created&&error instanceof StorageWriteNotDispatched)await rpc(env,'ar_document_cancel_undispatched_upload',{p_actor:owner,p_job_id:id,p_key:key,p_sha256:sha256});throw error;}
    await rpc(env,'ar_document_register_upload',{p_job_id:id,p_storage_key:key,p_bytes:bytes.length,p_sha256:sha256,p_mime:type});
    return json({storage_key:key,byte_count:bytes.length,sha256},201);
   }
@@ -75,6 +83,6 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
   return json({error:'method_not_allowed'},405);
  }catch(error){
   const code=error instanceof Error&&/^(document|storage|budget|retention)_[a-z_]+$/.test(error.message)?error.message:'document_service_unavailable';
-  const status=code==='storage_file_expired'?410:code==='document_upload_too_large'?413:/conflict|selection_invalid|sources_unavailable/.test(code)?409:/invalid|source_retired/.test(code)?400:503;return json({error:code},status);
+  const status=code==='document_forbidden'?403:code==='storage_file_expired'||code==='document_closed'?410:code==='document_upload_too_large'?413:/conflict|selection_invalid|sources_unavailable|pending|project_retired|archive_retired|busy/.test(code)?409:/invalid|source_retired/.test(code)?400:503;return json({error:code},status);
  }
 }
