@@ -21,6 +21,8 @@ Implementation/evidence status is maintained in PROJECT_STATUS.md; this directio
 
 ## Verification — 11 September 2026
 
+Final runtime source: `e89bbc2d33fa391c01c4c296a0902359a63a3a2b`, Worker version `c4b45f5d-018f-47b0-a88e-5ecc3154cff4`. PR #2 merged into `codex/first-increment` with merge commit `75410ce196364382ebe6fd38be449308318000b5`; the merge tree matches the verified head. The latest full unit run passed806tests/87files. No database migration or new provider service was needed.
+
 - Cloudflare source `f00a1f00a88e30fcfbc1623e546b9d06f9c1c8e4`, Worker version `e8d0d01f-88dd-49f1-b640-266cfd15f2cb`, passed public health and authenticated page checks. Final deployment metadata is also available in `/api/health`.
 - The actual signed-in Dashboard loaded all source sections for both hotels. Selecting10September changed daily financial values; the linked payment report retained that exact date and matched the displayed credit total and record count. Returning retained the Dashboard date.11September correctly displayed its saved empty activity without substituting sample data.
 - Allocation amounts preserve OPERA debit/credit signs; they are not silently converted to positive values. Manual history corrections do not create new Gmail send activity.

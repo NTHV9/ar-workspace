@@ -2,6 +2,8 @@
 
 ## Checkpoint Dashboard — 11 กันยายน 2026: เพิ่มหน้ารวมกิจกรรมและงานค้าง
 
+ส่งมอบแล้ว: [Dashboard](https://ar-workspace.ar-c82.workers.dev/?dashboard=1), source `e89bbc2d33fa391c01c4c296a0902359a63a3a2b`, Worker version `c4b45f5d-018f-47b0-a88e-5ecc3154cff4`. HealthตรงSHAและdatabase_verified. [PR #2](https://github.com/NTHV9/ar-workspace/pull/2) Mergeเข้า `codex/first-increment` แล้วด้วย `75410ce196364382ebe6fd38be449308318000b5`; CIผ่านก่อนMergeและtreeตรงกับheadที่ตรวจ. ผลล่าสุดunit806/87filesผ่าน, browser31casesบนCloudflareผ่าน. ไม่มี migration หรือบริการใหม่
+
 - เจ้าของขอ Dashboard กลางเพิ่มเติมหลังตรวจรับระบบชุดก่อน. เพิ่มเมนู Dashboard ที่ `/?dashboard=1` โดยคง Portfolio แบบ comparative matrix เดิม
 - กิจกรรมวันที่เลือก: Invoice entries จาก OPERA invoice date, จำนวน first billing จาก Gmail/external records, actual follow-up sends, OPERA payment credits. แสดง applied/unallocated เป็นสถานะปัจจุบันของ payment cohort ไม่ใช่เหตุการณ์ตัดยอดในวันนั้น
 - งานค้างใช้ข้อมูลล่าสุด ไม่ถูกกรองเป็นยอดย้อนหลังตาม activity date. แสดง Net AR แยก KAT/TSK, queue actions และ Remittance pending. Urgent กับ Hold/Needs review อาจเป็น invoice เดียวกัน จึงระบุว่าไม่ให้นำยอดแต่ละมุมมาบวกเป็น grand total
