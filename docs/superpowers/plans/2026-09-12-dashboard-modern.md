@@ -15,4 +15,6 @@ Goal: finish, test and deploy the owner's requested modern Dashboard. Existing a
 - [x] Aging: modern current overview plus hide/show columns, presets, retained context and accessible responsive comparisons. Own CurrentAging.tsx, aging-model.ts, aging.css and related unit/browser fixtures/tests.
 - [x] Root: modern period summaries, status charts, date filters, current-scope response retention and regression tests. Preserve counts/amounts/details and source semantics.
 - [x] Review: scoped implementation and integrated final review; meaningful behavioral tests and synthetic screenshots at desktop/laptop/narrow widths.
-- [ ] Delivery: hosted metadata preflight, reviewed migration, actual data/auth checks, public-file audit, push, CI, deploy exact source SHA with --keep-vars, verify production, expected-head merge and PROJECT_STATUS.
+- [x] Delivery: hosted metadata preflight, reviewed migration, actual data/auth checks, public-file audit, push, CI, deploy exact source SHA with --keep-vars, verify production, expected-head merge and PROJECT_STATUS.
+
+Completed: source9733c85, migration20260911201752, Worker e293a829, PR15 merged934d491. Actual verified totals remained available during the genuine KAT/TSK refresh; both publications succeeded. See PROJECT_STATUS for tests and historical-data limits.
