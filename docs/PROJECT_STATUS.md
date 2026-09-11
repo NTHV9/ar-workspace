@@ -1,4 +1,18 @@
-#
+# สถานะโครงการใหม่
+
+## Checkpoint PDF source editing and native objects — 11 กันยายน 2026
+
+- Implemented: เอาข้อความเตรียมเอกสาร/Statement สองย่อหน้าที่เจ้าของระบุออก. PDF Workspace คลิกข้อความต้นฉบับได้โดยตรงและโฟกัสช่องแก้ไข, + Line / − Line, กรอบขยายตามข้อความโดยไม่ย่อฟอนต์, Restore original formatting และแยก Position & size ไว้ใน disclosure
+- Source text ใช้ font/glyph mapping, size, RGB color, baseline, spacing และ weight/italic จาก PDF.js. ไม่ใช้ Arial/navy/padding เป็นค่าแทนข้อความต้นฉบับโดยเงียบ ๆ. Embedded subset ใช้ fontChar ที่ตรง glyph; non-composite fonts รองรับตัวอักษรเพิ่มเติมจาก mapping ที่ตรวจได้. References ที่เปิดใหม่ผูกกับ source/current loader; ไม่รับ arbitrary CSS/font URLs จาก editor JSON และล้าง private runtime font state เมื่อปิดเอกสาร
+- เพิ่ม Add row below / Delete row: แถวว่างมีเซลล์ที่แก้ได้, source/layers ด้านล่างเลื่อนตาม, รักษาเส้นแนวตั้งที่ผ่านรอยต่อจริง. ไม่คำนวณ totals ใหม่. ตรวจ source text และ editable-layer intersections ก่อนเปลี่ยนหน้า และปฏิเสธ insertion ที่จะตัดเนื้อหาด้านล่างทิ้ง. Row membership คงอยู่หลังเลือกฟอนต์ใหม่; เพิ่มแถวซ้ำ/Undo ได้
+- เพิ่ม Move lines สำหรับเส้นแนวนอน/แนวตั้งที่ตรวจได้ และ Move table / area ให้ลากครอบแล้วลากทั้งพื้นที่; ลูกศรคีย์บอร์ดย้ายพื้นที่ที่เลือกได้. การเปลี่ยนแก้ pixels/source geometry เฉพาะ PDF และเก็บ Undo; ไม่แก้ OPERA หรือ ledger. หากเส้นตรวจแยกไม่ได้ ใช้การเลือกพื้นที่โดยผู้ใช้
+- Edited pages รวมหน้าที่มีแต่การย้ายเส้น/แถวถูก flatten และไม่มี hidden source text ใน output; หน้าที่ไม่แก้ยัง copy native. Preview/acknowledgment, selected-only scope, transient storage และ exact reviewed-byte email handoff คงเดิม. ปรับ legacy async tests ให้ตรวจการล็อก editor ขณะ export/save ตาม behavior ที่เปิดใช้แล้ว
+- Tested local: Typecheck/Build ผ่าน; Vitest **840 tests / 93 files**, Playwright **46 cases** ผ่าน. รวม original RGB/bold/italic/embedded fonts, appended digits/new letters, multiline, replay/reload/disposal, row-boundary protection, repeated rows after custom font, vertical rules, native move pixels/flatten, three-column layout และ email handoff
+- Private KAT/TSK native Invoice samples: supported same-text replacement แตกต่าง0.10–0.72%ของ source ink pixels ในการเปรียบเทียบ; supported numeric runs รับเลขเพิ่มได้ทุกตัวที่ตรวจ. Unsupported ลดเหลือ7/209และ4/108ในสองตัวอย่างหลัก หลังแก้ physical text-position matching สำหรับ repeated/trimmed chunks. ไม่ Commit PDF/text/raster ลูกค้าจริง
+- Limits: combined/unmatched groups, missing subset/CID glyphs, rotated/path-only/unsupported text styles แสดงว่าไม่สามารถคงต้นฉบับอัตโนมัติ ต้องเลือกฟอนต์แทนเองเมื่อจำเป็น. Source mask ยังเป็นสีทึบตาม editor ไม่สร้างภาพพื้นหลังกลับ. เพิ่มแถวได้เมื่อหน้ามีพื้นที่ ไม่ใช่ Word-style pagination หรือ auto-total recalculation; ไม่อ้างเหมือนทุก PDF100%
+- ภาพ synthetic editor1440×900และ1280×800ตรวจแล้ว; detector มี existing palette advisories และ font warning ซึ่งใช้รูปแบบ/ฟอนต์ที่เจ้าของอนุมัติ. ตรวจ independent review และแก้ทั้ง3 findings แล้ว. ซ่อมหัวข้อ Markdown ใน status/spec/decisions ที่แยกบรรทัดผิดจากครั้งก่อน
+- Deployment / merge: pending final Cloudflare verification. รอบนี้ไม่มี database migration, Gmail send หรือการเปลี่ยน integration
+
 ## Checkpoint Transient document preparation — 11 กันยายน 2026
 
 - Implemented: นำเมนู/หน้ารวม Documents ออก เริ่มงานจาก Account/Collections. งานใหม่ไม่บันทึก editor JSON; Preview + acknowledgment แล้ว Continue to email ในขั้นเดียว หรือ Download reviewed PDFs สำหรับ By System. ปุ่ม Back/ปิดแท็บเตือนเมื่อมี PDF edits; กำลัง handoff จะล็อก editor. Legacy job/draft recovery และ Account email history ยังเข้าถึงได้
@@ -11,7 +25,6 @@
 - Deployed source `a5d6d63c23d93e0c53818c60b28261bfd3fdc855`, Worker `50c55b0b-c09c-4fbb-9bb1-c0428a06a929` ที่ https://ar-workspace.ar-c82.workers.dev . `/api/health` ยืนยัน `database_verified` และ SHA ตรง; document read/review/discard ที่ไม่มี Login ได้ 401 ทั้งสามกรณี
 - Cloudflare browser tests **23 cases ผ่าน** รวม transient/legacy preparation, direct email handoff, no project upload, upload-receipt retry, Preview acknowledgment, download/discard, browser Back, in-flight editing lock และ Account history ที่ 1440/1280/390. API/PDF data ใน browser tests เป็น synthetic ทั้งหมด. ภาพ `evidence/transient-review-1440.png` (1440×900) และ `evidence/transient-review-1280.png` (1280×800) จับจาก deployed assets แล้ว ตรวจภาพและ contrast ผ่าน ไม่เปลี่ยน reference PNG
 - [PR #10](https://github.com/NTHV9/ar-workspace/pull/10) Merge แล้ว `b2d0ba206acfbfe0eb443bf4d68a0b8ff891db37` หลัง [CI ผ่าน](https://github.com/NTHV9/ar-workspace/actions/runs/34591152380). Merge tree ตรงกับ source ที่ deploy/test. คง cron/Worker bindings เดิม ใช้ --keep-vars; ไม่มีบริการหรือ add-on เสียเงินเพิ่ม
- สถานะโครงการใหม่
 
 ## Checkpoint Button visibility — 11 กันยายน 2026
 

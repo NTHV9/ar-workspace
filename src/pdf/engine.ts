@@ -1,45 +1,43 @@
-import { getDocument, GlobalWorkerOptions, Util, type PDFDocumentProxy } from 'pdfjs-dist';
+import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { PDFDocument } from 'pdf-lib';
 import type { DetectedText, PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument, PdfExportFile } from './types';
 import { deliveryGroups, wrapText } from './model';
+import { applySourceRowEdits, mapSourceRect } from './row-layout';
+import { extractSourceText } from './source-extraction';
+import { drawSourceText, releaseSourceStyles } from './source-text';
 GlobalWorkerOptions.workerSrc = workerUrl;
+const documentScopes = new WeakMap<Map<string, PDFDocumentProxy>, string>();
 
 export async function loadSources(sources: PdfSourceDocument[]): Promise<{ documents: Map<string, PDFDocumentProxy>; project: PdfProject; dispose: () => void }> {
   const documents = new Map<string, PDFDocumentProxy>();
+  const scope = crypto.randomUUID(); documentScopes.set(documents, scope);
   const tasks: { destroy: () => Promise<void> }[] = [];
   const pages: PdfProjectPage[] = [];
   try {
     for (const source of sources) {
       if (documents.has(source.id)) throw new Error('Duplicate document identity. Reopen this job.');
-      const task = getDocument({ data: source.bytes.slice() }); tasks.push(task); const doc = await task.promise;
+      const task = getDocument({ data: source.bytes.slice(), fontExtraProperties: true }); tasks.push(task); const doc = await task.promise;
       documents.set(source.id, doc);
       for (let n = 1; n <= doc.numPages; n++) {
         const viewport = (await doc.getPage(n)).getViewport({ scale: 1 });
         pages.push({ id: `${source.id}:${n}`, sourceId: source.id, sourcePage: n, width: viewport.width, height: viewport.height, layers: [] });
       }
     }
-    return { documents, dispose: () => { for (const task of tasks) void task.destroy(); }, project: { version: 1, pages, content: sources.some(s => s.kind === 'statement') ? (sources.some(s => s.kind === 'invoice') ? 'both' : 'statement') : 'invoices', delivery: 'combined' } };
+    return { documents, dispose: () => { releaseSourceStyles(scope); for (const task of tasks) void task.destroy(); }, project: { version: 1, pages, content: sources.some(s => s.kind === 'statement') ? (sources.some(s => s.kind === 'invoice') ? 'both' : 'statement') : 'invoices', delivery: 'combined' } };
   } catch (error) { for (const task of tasks) void task.destroy(); throw error; }
 }
 
 export async function detectText(page: PdfProjectPage, documents: Map<string, PDFDocumentProxy>): Promise<DetectedText[]> {
   if (!page.sourcePage) return [];
   const pdfPage = await documents.get(page.sourceId)!.getPage(page.sourcePage);
-  const viewport = pdfPage.getViewport({ scale: 1 });
-  const content = await pdfPage.getTextContent();
-  return content.items.flatMap(item => {
-    if (!('str' in item) || !item.str.trim()) return [];
-    const tx = Util.transform(viewport.transform, item.transform);
-    const height = Math.hypot(tx[2], tx[3]);
-    const style = content.styles[item.fontName];
-    return [{ text: item.str, x: tx[4], y: tx[5] - height * (style?.ascent ?? 0.85), width: Math.max(item.width, 2), height: height * 1.15, fontSize: height, rotated: Math.abs(tx[1]) > 0.1 || Math.abs(tx[2]) > 0.1 }];
-  });
+  return extractSourceText(page, pdfPage, documentScopes.get(documents) ?? 'unregistered');
 }
 
-async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer) {
+async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer, page: PdfProjectPage) {
   ctx.save();
-  if (layer.original) { const o = layer.original; ctx.fillStyle = layer.fill; ctx.fillRect(o.x - 1, o.y - 1, o.width + 2, o.height + 2); }
+  const mask = layer.original && layer.maskOriginal !== false ? mapSourceRect(layer.original, page.rowEdits ?? []) : null;
+  if (mask) { const o = mask; ctx.fillStyle = layer.fill; ctx.fillRect(o.x - 1, o.y - 1, o.width + 2, o.height + 2); }
   const { x, y, width, height } = layer;
   if (['shape', 'whiteout', 'note', 'stamp'].includes(layer.kind)) {
     ctx.fillStyle = layer.fill; ctx.fillRect(x, y, width, height);
@@ -48,6 +46,7 @@ async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer) {
   if (layer.kind === 'image' && layer.image) {
     const img = new Image(); img.src = layer.image; await img.decode(); ctx.drawImage(img, x, y, width, height);
   } else if (!['shape', 'whiteout'].includes(layer.kind)) {
+    if (drawSourceText(ctx, layer)) { ctx.restore(); return; }
     ctx.beginPath(); ctx.rect(x, y, width, height); ctx.clip();
     ctx.font = `${layer.italic ? 'italic ' : ''}${layer.bold ? 'bold ' : ''}${layer.fontSize}px ${layer.font}`;
     ctx.fillStyle = layer.color; ctx.textBaseline = 'top';
@@ -66,8 +65,17 @@ export async function renderPage(page: PdfProjectPage, documents: Map<string, PD
     const source = await documents.get(page.sourceId)!.getPage(page.sourcePage);
     await source.render({ canvas, canvasContext: ctx, viewport: source.getViewport({ scale }), background: '#ffffff' }).promise;
   }
+  applySourceRowEdits(canvas, page.rowEdits ?? [], scale);
+  if (page.layers.some(layer => layer.sourceText)) {
+    const runs = await detectText(page, documents);
+    for (const layer of page.layers) if (layer.sourceText) {
+      const run = runs.find(r => r.sourceText?.runIndex === layer.sourceText?.runIndex);
+      if (layer.sourceText.sourceId !== page.sourceId || layer.sourceText.sourcePage !== page.sourcePage || !run || !layer.original || run.text !== layer.original.text || Math.abs(run.x-layer.original.x)>.01 || Math.abs(run.y-layer.original.y)>.01) throw new Error('Source text no longer matches this document. Reopen the original.');
+      layer.sourceText = { ...run.sourceText! };
+    }
+  }
   ctx.save(); ctx.scale(scale, scale);
-  for (const layer of page.layers) await drawLayer(ctx, layer);
+  for (const layer of page.layers) await drawLayer(ctx, layer, page);
   ctx.restore();
 }
 
@@ -79,7 +87,7 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
   for (const [index, group] of groups.entries()) {
     const output = await PDFDocument.create();
     for (const page of group.pages) {
-      if (page.layers.length || page.sourcePage === null) {
+      if (page.layers.length || page.rowEdits?.length || page.sourcePage === null) {
         // Only a new opaque bitmap is copied into edited pages. No source streams,
         // hidden OCR/text, annotations or attachments are retained on those pages.
         const canvas = document.createElement('canvas');

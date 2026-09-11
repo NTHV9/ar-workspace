@@ -44,9 +44,38 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
         source = { text: string(o.text), x: number(o.x), y: number(o.y), width: number(o.width, 0), height: number(o.height, 0) };
       }
       if (l.kind === 'replacement' && !source) return fail();
-      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, 6, 144), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}) };
+      let sourceText: PdfLayer['sourceText'];
+      if (l.sourceText !== undefined) {
+        if (!l.sourceText || typeof l.sourceText !== 'object' || l.kind !== 'replacement') return fail();
+        const r = l.sourceText as Record<string, unknown>;
+        const runIndex = number(r.runIndex, 0, 1000000);
+        if (r.sourceId !== sourceId || r.sourcePage !== sourcePage || sourcePage === null || !Number.isInteger(runIndex)) return fail();
+        sourceText = { sourceId, sourcePage, runIndex };
+      }
+      const tableRow=l.tableRow===undefined?undefined:string(l.tableRow,200);if(tableRow!==undefined&&!tableRow)return fail();
+      if (l.maskOriginal !== undefined && (l.maskOriginal !== false || !sourceText)) return fail();
+      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, .1, 1440), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}), ...(sourceText ? { sourceText } : {}), ...(l.maskOriginal === false ? { maskOriginal: false } : {}),...(tableRow?{tableRow}:{}) };
     });
-    return { id, sourceId, sourcePage, width, height, layers };
+    let rowEdits: PdfProjectPage['rowEdits'];
+    if (p.rowEdits !== undefined) {
+      if (!Array.isArray(p.rowEdits) || p.rowEdits.length > 500) return fail();
+      const rowIds = new Set<string>();
+      rowEdits = p.rowEdits.map(raw => {
+        if (!raw || typeof raw !== 'object') return fail();
+        const r = raw as Record<string, unknown>, rowId = string(r.id, 200);
+        if (!rowId || rowIds.has(rowId) || !['insert','delete','move'].includes(String(r.kind))) return fail();
+        rowIds.add(rowId);
+        const y = number(r.y, 0, height), rowHeight = number(r.height, .1, height);
+        if (y + rowHeight > height) return fail();
+        if (r.kind === 'move') {
+          const x=number(r.x,0,width), areaWidth=number(r.width,.1,width),dx=number(r.dx,-width,width),dy=number(r.dy,-height,height);
+          if(x+areaWidth>width || x+dx<0 || x+dx+areaWidth>width || y+dy<0 || y+dy+rowHeight>height)return fail();
+          return {id:rowId,kind:'move' as const,x,y,width:areaWidth,height:rowHeight,dx,dy};
+        }
+        return { id: rowId, kind: r.kind as 'insert' | 'delete', y, height: rowHeight };
+      });
+    }
+    return { id, sourceId, sourcePage, width, height, layers, ...(rowEdits ? { rowEdits } : {}) };
   });
   return { version: 1, content: saved.content as PdfProject['content'], delivery: saved.delivery as PdfProject['delivery'], pages };
 }

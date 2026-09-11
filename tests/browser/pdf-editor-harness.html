@@ -3,14 +3,15 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { PDFDocument, PDFName, StandardFonts, rgb } from 'pdf-lib';
 import { PdfWorkspace } from '/src/pdf/PdfWorkspace.tsx';
-import { loadSources, exportProject } from '/src/pdf/engine.ts';
+import { applySourceRowEdits } from '/src/pdf/row-layout.ts';
+import { renderPage, loadSources, exportProject } from '/src/pdf/engine.ts';
 import { getDocument } from 'pdfjs-dist';
 import '@fontsource/plus-jakarta-sans/400.css';
 import '@fontsource/plus-jakarta-sans/600.css';
-async function source(id,kind,count){const pdf=await PDFDocument.create();const font=await pdf.embedFont(StandardFonts.Helvetica);for(let n=0;n<count;n++){const p=pdf.addPage([595,842]);p.drawText(kind==='statement'?'Billing statement':'Invoice / Folio',{x:42,y:770,size:24,font,color:rgb(.06,.17,.29)});p.drawText('SYNTHETIC TEST DOCUMENT',{x:42,y:740,size:10,font});p.drawText('CONFIDENTIAL ORIGINAL WORDING',{x:42,y:690,size:13,font});p.drawText(`Page ${n+1} of ${count} - ${id}`,{x:42,y:660,size:12,font});p.drawLine({start:{x:42,y:640},end:{x:550,y:640},thickness:1,color:rgb(.8,.85,.9)});p.drawText('Selected invoice amount: THB 100.00',{x:42,y:610,size:12,font});}return{id,name:id+'.pdf',kind,invoiceId:kind==='invoice'?id:undefined,bytes:await pdf.save()};}
+async function source(id,kind,count){const pdf=await PDFDocument.create();const font=await pdf.embedFont(StandardFonts.Helvetica);for(let n=0;n<count;n++){const p=pdf.addPage([595,842]);p.drawText(kind==='statement'?'Billing statement':'Invoice / Folio',{x:42,y:770,size:24,font,color:rgb(.06,.17,.29)});p.drawText('SYNTHETIC TEST DOCUMENT',{x:42,y:740,size:10,font});p.drawText('CONFIDENTIAL ORIGINAL WORDING',{x:42,y:690,size:13,font});p.drawText(`Page ${n+1} of ${count} - ${id}`,{x:42,y:660,size:12,font});p.drawLine({start:{x:42,y:640},end:{x:550,y:640},thickness:1,color:rgb(.8,.85,.9)});p.drawText('Selected invoice amount: THB 100.00',{x:42,y:610,size:12,font});p.drawText('Date',{x:42,y:550,size:10,font});p.drawText('Description',{x:160,y:550,size:10,font});p.drawText('Amount',{x:420,y:550,size:10,font});p.drawLine({start:{x:42,y:540},end:{x:550,y:540},thickness:1});for(let r=0;r<3;r++){p.drawText('01/09/26',{x:42,y:526-r*18,size:10,font});p.drawText('SYNTHETIC ROW '+String.fromCharCode(65+r),{x:160,y:526-r*18,size:10,font});p.drawText('100.00',{x:420,y:526-r*18,size:10,font});}p.drawLine({start:{x:42,y:478},end:{x:550,y:478},thickness:1});for(const x of [42,140,410,550])p.drawLine({start:{x,y:478},end:{x,y:540},thickness:1});}return{id,name:id+'.pdf',kind,invoiceId:kind==='invoice'?id:undefined,bytes:await pdf.save()};}
 const sources=await Promise.all([source('Statement','statement',1),source('Invoice-A','invoice',2),source('Invoice-B','invoice',1)]);
 const root=createRoot(document.getElementById('root'));
 const mount=(initialProject,documents=sources)=>root.render(React.createElement(PdfWorkspace,{documents,initialProject,accountName:'Synthetic Account',hotel:'KAT',selectedCount:2,onClose:()=>{window.pdfTest.closed=true;},onSaveDraft:async(project)=>{if(window.pdfTest.draftWait)await window.pdfTest.draftWait;window.pdfTest.draft=project;},onSave:async(files,project)=>{if(window.pdfTest.saveWait)await window.pdfTest.saveWait;window.pdfTest.saved={files,project};}}));
-window.pdfTest={sources,loadSources,exportProject,getDocument,PDFDocument,PDFName,mount,saved:null};
+window.pdfTest={sources,applySourceRowEdits,renderPage,loadSources,exportProject,getDocument,PDFDocument,PDFName,mount,saved:null};
 mount();
 </script></body></html>
