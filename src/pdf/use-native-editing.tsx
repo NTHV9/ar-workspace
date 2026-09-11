@@ -11,6 +11,8 @@ type Props={page?:PdfProjectPage;documents:Map<string,PDFDocumentProxy>;runs:Det
 export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,setBusy,onChange,onError}:Props){
  const [lines,setLines]=useState<GraphicTarget[]>([]),[area,setArea]=useState<Area|null>(null);
  const [moving,setMoving]=useState(false);
+ const ownedEdits=useRef(page?.rowEdits);
+ useEffect(()=>{if(page?.rowEdits!==ownedEdits.current)setArea(null);ownedEdits.current=page?.rowEdits;},[page?.rowEdits]);
  const gesture=useRef<{start:{x:number;y:number};before:Area;pick:boolean;current:Area}|null>(null),alive=useRef(true),currentPage=useRef(page?.id);currentPage.current=page?.id;
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
  useEffect(()=>{let current=true;setArea(null);gesture.current=null;setLines([]);if(page)detectLines(page,documents).then(value=>{if(current)setLines(value);}).catch(()=>{if(current)onError('Line selection is unavailable. Use Move table / area to select a region.');});return()=>{current=false;};},[page?.id,documents]);
@@ -34,7 +36,7 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
    if(changed.layers.some(l=>l.x<0||l.y<0||l.x+l.width>before.width+.5||l.y+l.height>before.height+.5))throw Error('There is not enough space on this page. Move the text boxes or use another page.');
    const probe=document.createElement('canvas');try{await renderPage(changed,documents,probe,1);}finally{probe.width=probe.height=0;}
    if(!alive.current||currentPage.current!==before.id||scope.current!==before)return false;
-   onChange(changed);return true;
+   ownedEdits.current=changed.rowEdits;onChange(changed);return true;
   }catch(error){if(alive.current)onError(error instanceof Error?error.message:'The page edit could not be applied.');return false;}
   finally{if(alive.current)setBusy(false);}
  }
