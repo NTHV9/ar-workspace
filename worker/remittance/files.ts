@@ -1,3 +1,4 @@
+import {acceptanceRpc} from '../acceptance/routing';
 import type {BudgetEnvironment} from '../operations/budget';
 import {readManagedStorage,writeManagedStorage} from '../operations/storage';
 import type {RemittanceConfig,RemittanceFile,RemittanceRecord,RemittanceRow} from '../../src/remittance/model';
@@ -36,8 +37,8 @@ async function bodyBytes(response:Request|Response,max:number,tooLarge:string){
 /** Fixed RPC names and configured HTTPS origin only; never expose provider error bodies. */
 export async function remittanceFileRpc<T=unknown>(env:RemittanceFilesEnv,name:string,args:Record<string,unknown>):Promise<T>{
  if(!/^ar_remittance_[a-z_]+$/.test(name))throw Error('remittance_invalid');
- const service=remittanceService(env);let response:Response;
- try{response=await fetch(`${service.origin}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:service.key,'Content-Type':'application/json'},body:JSON.stringify(args),redirect:'manual',signal:AbortSignal.timeout(30000)});}catch{throw Error('remittance_unavailable');}
+ const routed=acceptanceRpc(env,name,args);const service=remittanceService(env);let response:Response;
+ try{response=await fetch(`${service.origin}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:service.key,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(30000)});}catch{throw Error('remittance_unavailable');}
  if(!response.ok){await response.body?.cancel();throw Error('remittance_unavailable');}
  let value:unknown;
  const bytes=await bodyBytes(response,32*MiB,'remittance_response_too_large');

@@ -16,7 +16,7 @@ export async function sweepRetention(env:RetentionProviderEnv){
    try{
     let item=row.itemId?await retentionStatus(env,actor,row.itemId):await enrollRetention(env,actor,row.store,row.objectId);
     counts.checked++;
-    if(item.state==='claimed'||item.state==='uncertain'||item.dueAt&&Date.parse(item.dueAt)<=Date.now()){
+    if(item.state==='claimed'||item.state==='uncertain'||item.dueAt&&Date.parse(item.dueAt)<=Date.now()+(env.ACCEPTANCE?.clockOffsetDays??0)*86400000){
      const claim=crypto.randomUUID();item=await runRetentionItem(env,actor,item.id,claim,retentionProviders(env,actor,item.id,claim));
     }
     if(item.state==='deleted')counts.deleted++;if(item.state==='blocked')counts.blocked++;if(item.state==='uncertain'||item.state==='claimed')counts.uncertain++;

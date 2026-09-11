@@ -1,3 +1,5 @@
+import {acceptanceRpc} from '../acceptance/routing';
+import type {AcceptanceEnv} from '../acceptance/routing';
 import {boundedBody} from '../email/shared';
 
 export interface BudgetBytes {storedBytes:number;egressBytes:number;databaseBytes:number}
@@ -5,7 +7,7 @@ export interface MeasuredBudgetBytes {storedBytes:number|null;egressBytes:number
 export interface BudgetMeasurement {observedAt:{storedBytes:string|null;egressBytes:string|null;databaseBytes:string|null};periodStart:string;periodEnd:string;used:MeasuredBudgetBytes;headroom:MeasuredBudgetBytes}
 export interface BudgetLimits extends BudgetBytes {safetyPercent:number;maxConcurrent:number;measurementMaxAgeSeconds:number}
 export interface BudgetReservation {id:string;resource:string;state:'reserved'|'started'|'finished'|'released';reserved:BudgetBytes;actual:BudgetBytes|null;overrun:boolean}
-export interface BudgetEnvironment {
+export interface BudgetEnvironment extends AcceptanceEnv {
  OPERATIONS_WRITE_HOLD?:string;
  SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;OPERATIONS_BUDGET_ENABLED?:string;
  OPS_BUDGET_STORED_BYTES?:string;OPS_BUDGET_EGRESS_BYTES?:string;OPS_BUDGET_DATABASE_BYTES?:string;
@@ -71,11 +73,11 @@ function checkedReservation(value:unknown):BudgetReservation {
 }
 function identity(actor:string,id?:string){if(!uuid.test(actor))throw Error('budget_forbidden');if(id!==undefined&&!uuid.test(id))throw Error('budget_invalid');}
 function enabled(env:BudgetEnvironment){if(env.OPERATIONS_BUDGET_ENABLED!=='true')throw Error('budget_not_enabled');}
-async function rpc(env:BudgetEnvironment,name:string,args:Record<string,unknown>):Promise<unknown>{
+async function rpc(env:BudgetEnvironment,name:string,args:Record<string,unknown>):Promise<unknown>{const routed=acceptanceRpc(env,name,args);
  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('budget_not_configured');let base:URL;
  try{base=new URL(env.SUPABASE_URL);}catch{throw Error('budget_not_configured');}
  if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw Error('budget_not_configured');
- let response:Response;try{response=await fetch(base.origin+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(args),redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{throw Error('budget_unavailable');}
+ let response:Response;try{response=await fetch(base.origin+'/rest/v1/rpc/'+routed.name,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{throw Error('budget_unavailable');}
  if(!response.ok){await response.body?.cancel();throw Error('budget_unavailable');}
  let raw:Uint8Array;try{raw=await boundedBody(response,65536);}catch(e){throw Error(e instanceof Error&&e.message==='email_too_large'?'budget_response_too_large':'budget_unavailable');}
  let value:unknown;try{value=JSON.parse(new TextDecoder().decode(raw));}catch{throw Error('budget_unavailable');}

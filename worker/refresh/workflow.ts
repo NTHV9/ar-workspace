@@ -1,3 +1,4 @@
+import {acceptanceEnvironment} from '../acceptance/context';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {sweepRetention} from '../operations/retention-sweep';
 import type {DriveEnv} from '../drive/shared';
@@ -17,37 +18,38 @@ import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './rea
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
-    assertWritesEnabled(this.env);
     const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
+  const runtime=payload.acceptanceId?await acceptanceEnvironment(this.env,payload.actorId??'',payload.acceptanceId):this.env;
+  assertWritesEnabled(runtime);
     const {runId,hotel,accountId}=payload as RefreshParams;
     assertStatementWorkflowPolicy(payload);
-    if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(this.env,runId,step);}
+    if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
-    if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');return runFinancialHistory(this.env,{actor:payload.actorId,runId},step);}
-    if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(this.env,hotel as 'KAT'|'TSK'));
-    if(payload.documentJob)return runDocumentJob(this.env,runId,step);
-    if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(this.env,hotel,accountId,async(bytes,expected)=>{
-      if(!this.env.SUPABASE_URL||!this.env.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
+    if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');return runFinancialHistory(runtime,{actor:payload.actorId,runId},step);}
+    if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(runtime,hotel as 'KAT'|'TSK'));
+    if(payload.documentJob)return runDocumentJob(runtime,runId,step);
+    if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(runtime,hotel,accountId,async(bytes,expected)=>{
+      if(!runtime.SUPABASE_URL||!runtime.SUPABASE_SECRET_KEY)throw new Error('private_storage_unavailable');
       for(const [extension,body,type]of [['pdf',new Uint8Array(bytes).buffer,'application/pdf'],['json',JSON.stringify(expected),'application/json']] as const){
-        await writeManagedStorage(this.env,`validation/${runId}/${hotel}.${extension}`,typeof body==='string'?new TextEncoder().encode(body):new Uint8Array(body),type);
+        await writeManagedStorage(runtime,`validation/${runId}/${hotel}.${extension}`,typeof body==='string'?new TextEncoder().encode(body):new Uint8Array(body),type);
       }
     })));
     if(payload.historyAudit){
       if(!accountId)throw new Error('audit_account_required');
-      if(payload.historyAuditOffset!==undefined){const offset=payload.historyAuditOffset;return step.do('history-window-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistoryWindow(makeReader(this.env,hotel),hotel,accountId,offset));}
-      return step.do('history-count-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistory(makeReader(this.env,hotel),hotel,accountId,payload.historyAuditLimit));
+      if(payload.historyAuditOffset!==undefined){const offset=payload.historyAuditOffset;return step.do('history-window-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistoryWindow(makeReader(runtime,hotel),hotel,accountId,offset));}
+      return step.do('history-count-audit',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>auditHistory(makeReader(runtime,hotel),hotel,accountId,payload.historyAuditLimit));
     }
     try {
-      const reader=makeReader(this.env,hotel);
+      const reader=makeReader(runtime,hotel);
       let acquired=false;
       for(let attempt=0;attempt<120&&!acquired;attempt++){
         acquired=await step.do(`claim-${attempt}`,async()=>{
-          const ok=await backendRpc<boolean>(this.env,'ar_claim_refresh',{p_run_id:runId});
+          const ok=await backendRpc<boolean>(runtime,'ar_claim_refresh',{p_run_id:runId});
           if(ok)return true;
           // Cloudflare enforces one instance for runId. Resume after an ambiguous claim
           // response may renew only this instance's own still-active database lease.
-          const job=await backendRpc<{status:string}>(this.env,'ar_refresh_job',{p_run_id:runId});
-          if(job.status==='running')return backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId});
+          const job=await backendRpc<{status:string}>(runtime,'ar_refresh_job',{p_run_id:runId});
+          if(job.status==='running')return backendRpc<boolean>(runtime,'ar_renew_refresh',{p_run_id:runId});
           if(job.status==='succeeded')return false;
           if(job.status==='failed')throw new Error('refresh_run_failed');
           return false;
@@ -63,11 +65,11 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
       let invalidAccounts=0;
       for(let index=0;index<ids.length;index++){
         const outcome=await step.do(`account-${index}`,{retries:{limit:3,delay:'5 seconds',backoff:'exponential'},timeout:'8 minutes'},async()=>{
-          if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
+          if(!await backendRpc<boolean>(runtime,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
           try {
-            const previous=await previousInvoices(this.env,hotel,ids[index]);
+            const previous=await previousInvoices(runtime,hotel,ids[index]);
             const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate,previous);
-            await backendRpc(this.env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
+            await backendRpc(runtime,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
             // Financial payloads remain only in private Supabase staging, not step output.
             return {ok:true,invoices:snapshot.invoices.length,code:'',stage:'',diagnostics:null};
           }catch(error){
@@ -78,33 +80,33 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(!outcome.ok)invalidAccounts++;
       }
       if(payload.validateOnly){
-        await step.do('finish-validation-only',async()=>{await backendRpc(this.env,'ar_fail_refresh',{p_run_id:runId,p_error_code:'validation_only_finished'});return {validated:invalidAccounts===0};});
+        await step.do('finish-validation-only',async()=>{await backendRpc(runtime,'ar_fail_refresh',{p_run_id:runId,p_error_code:'validation_only_finished'});return {validated:invalidAccounts===0};});
         return {hotel,status:invalidAccounts?'validation_failed':'validated',accounts:ids.length};
       }
       if(invalidAccounts)throw new OperaError('invalid_response',undefined,'account_validation');
       await step.do('verify-membership-and-publish',{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'5 minutes'},async()=>{
-        const job=await backendRpc<{status:string}>(this.env,'ar_refresh_job',{p_run_id:runId});
+        const job=await backendRpc<{status:string}>(runtime,'ar_refresh_job',{p_run_id:runId});
         if(job.status==='succeeded')return {accounts:ids.length};
-        if(!await backendRpc<boolean>(this.env,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
+        if(!await backendRpc<boolean>(runtime,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
         if(!accountId){const after=await discoverAccountIds(reader,hotel);const expected=new Set(ids);if(after.length!==ids.length||after.some(id=>!expected.has(id)))throw new OperaError('pagination_changed');}
-        await backendRpc(this.env,'ar_publish_refresh',{p_run_id:runId,p_expected_accounts:ids.length});return {accounts:ids.length};
+        await backendRpc(runtime,'ar_publish_refresh',{p_run_id:runId,p_expected_accounts:ids.length});return {accounts:ids.length};
       });
-      if(payload.refreshReason==='scheduled'&&!accountId&&this.env.FINANCIAL_HISTORY_ENABLED==='true')await step.do('enqueue-financial-history',{retries:{limit:1,delay:'5 seconds'},timeout:'2 minutes'},async()=>{
-        try{const actor=await backendRpc<string|null>(this.env,'ar_financial_service_actor',{});if(!actor)return {status:'actor_unavailable'};
-          const next=await requestFinancialHistory(this.env,actor,{commandId:runId,hotel:hotel as 'KAT'|'TSK',reason:'scheduled'});
-          const workflow=financialWorkflow(this.env,next.stepsVersion);
+      if(payload.refreshReason==='scheduled'&&!accountId&&runtime.FINANCIAL_HISTORY_ENABLED==='true')await step.do('enqueue-financial-history',{retries:{limit:1,delay:'5 seconds'},timeout:'2 minutes'},async()=>{
+        try{const actor=await backendRpc<string|null>(runtime,'ar_financial_service_actor',{});if(!actor)return {status:'actor_unavailable'};
+          const next=await requestFinancialHistory(runtime,actor,{commandId:runId,hotel:hotel as 'KAT'|'TSK',reason:'scheduled'});
+          const workflow=financialWorkflow(runtime,next.stepsVersion);
           if(next.id&&['queued','running'].includes(next.status)&&workflow){try{await workflow.create({id:next.id,params:{runId:next.id,hotel,actorId:actor,financialHistory:true}});}catch{await(await workflow.get(next.id)).status();}}
           return {status:next.status};
         }catch{return {status:'financial_queue_unavailable'};}
       });
-      if(!accountId&&this.env.RETENTION_ENABLED==='true')await step.do('completed-file-retention',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},async()=>{
-        try{return await sweepRetention(this.env);}catch{return {enabled:true,error:'retention_unavailable'};}
+      if(!accountId&&runtime.RETENTION_ENABLED==='true')await step.do('completed-file-retention',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},async()=>{
+        try{return await sweepRetention(runtime);}catch{return {enabled:true,error:'retention_unavailable'};}
       });
       return {hotel,status:'succeeded',accounts:ids.length};
     }catch(error){
       const serialized=error instanceof Error?error.message.match(/^OperaError: ([a-z_]+)(?::([a-z_]+))?$/):null;
       const code=error instanceof OperaError?`${error.code}${error.stage?'_'+error.stage:''}`:serialized?`${serialized[1]}${serialized[2]?'_'+serialized[2]:''}`:'refresh_failed';
-      await step.do('record-failure',async()=>{await backendRpc(this.env,'ar_fail_refresh',{p_run_id:runId,p_error_code:code});return {status:'failed'};});
+      await step.do('record-failure',async()=>{await backendRpc(runtime,'ar_fail_refresh',{p_run_id:runId,p_error_code:code});return {status:'failed'};});
       throw new Error(code);
     }
   }

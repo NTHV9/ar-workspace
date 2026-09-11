@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 11 กันยายน 2026 07:23 ICT: พื้นที่ Acceptance และการตรวจยอดศูนย์
+
+- คิวเอกสารเฉพาะ Deployจริงในsource0dca42a82209f92f1f86bf62df6702003772faf7, Worker370f2c48-2a95-4d66-b292-444f01c322f8; healthตรงและdatabase_verified. งานใหม่ใช้ar-workspace-documents ส่วนงานเดิมคงคิวเดิม;ยังรอวัดงานจริงของscenario.
+- พบและแก้source bugระหว่างfixture: บิลที่ยืนยันศูนย์จากHistoryต้องนำหลักฐานcompressed/parentไปresolveด้วย. เพิ่มการอ่านซ้ำเฉพาะzeroInvoicesที่ยังมีไฟล์Supabase/Driveผูกอยู่,แบ่งinvoiceNo20ต่อคำขอ. หากยืนยันไม่ได้เป็นmissingโดยไม่เปลี่ยนยอด และreplayเก่าไม่ทับverificationใหม่. Apply20260911000150_ar_retained_zero_verification;hostedrollbackผ่านหลังรอcronจริงจบ (ไม่ได้ปิดuniquenessguardเพื่อทดสอบ).
+- สำรองทรัพยากรสำหรับscenarioในglobalbudgetก่อนสร้างพื้นที่:40MiBfiles/80MiBegress/24MiBDB. Reservationยังstartedจนกว่าจะพิสูจน์cleanup/settlement. ไม่เพิ่มplanหรือpaidaddon.
+- Apply20260911001933_ar_isolated_acceptance: temporaryschemasแยกจากbusinessจริง,servicegatewayมีactorbound,RLSยังเปิดและไม่มีdirectschemausageของclient. โครงสร้างคัดจากแอปที่สร้างใหม่นี้เท่านั้น;ไม่copycustomer/credentialrows. DBหลังโครงสร้าง47,148,179bytes;ยังไม่มีAccountสมมติในตารางธุรกิจจริง.
+- Registeredscenarioแบบpreparedแล้ว;Bucket/folderยังไม่สร้างและยังไม่ส่งอีเมลของscenario. โค้ดCookie/scopedRPC/fixturetransport/recipientguard/provisionกำลังDeploy. Sourceadapterไม่มีnetworkfallbackไปOPERAและPDFInvoiceตัวอย่างติดSYNTHETICชัดเจน. ActualInvoiceAPIproofแยกจากsimulation.
+- Typecheck/build/fullunit781/82filesผ่าน,localbrowser15casesผ่านรวมexistingPDFflowและacceptancecontrols. LocalSQLreplayผ่านscopeFK/defaults/threeInvoice-trigger isolationและtypedgateway;หลักฐานนี้ไม่ใช่actualproviderproofของscenario. Goalยังactive.
+
+
 ## Checkpoint ระหว่างงาน — 11 กันยายน 2026 06:04 ICT: SENT audit และคิว PDF เฉพาะ
 
 - Operations source838acca555e75c208d666abc0e9a6cb18affc34b DeployบนWorker1f89a280-dbe2-42d2-bc9b-10e1024582ac และผ่านCloudflarebrowser5cases. แก้auditเพิ่มprovider-ID matchingและSENTที่ยังอยู่ในTrashในsource225f8aba7049d710e744d34d8ee52a4a5b582f8f, Worker c9887cee-9980-4501-bda1-648f2a761ab5. HealthตรงSHAและdatabase_verified.

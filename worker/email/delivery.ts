@@ -1,3 +1,4 @@
+import {assertAcceptanceRecipient} from '../acceptance/recipient';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {readPolicyForHandoff} from '../collection/policy-api';
 import {isCollectionStageKey} from '../../src/domain/collection-policy';
@@ -47,6 +48,7 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
 export interface TestSupplementals {draftId:string;revision:number;ids:string[]}
 const testSourceKey=(s?:TestSupplementals)=>JSON.stringify(s?[s.draftId,s.revision,s.ids]:null);
 export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false,replyToDeliveryId?:string){
+ await assertAcceptanceRecipient(env,{to:[recipient],cc:[],bcc:[]});
  assertWritesEnabled(env);
  if(replyToDeliveryId&&supplementals)throw Error('email_invalid');
  const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');

@@ -1,3 +1,4 @@
+import {acceptanceRpc} from '../acceptance/routing';
 import type {EmailEnv} from '../email/shared';
 import type {Cipher} from '../email/crypto';
 export interface DriveEnv extends EmailEnv {GOOGLE_PICKER_BROWSER_KEY?:string;GOOGLE_PROJECT_NUMBER?:string}
@@ -17,9 +18,10 @@ export async function boundedBytes(r:Request|Response,max:number){
 export async function readJson(r:Request|Response,max=262144):Promise<Record<string,unknown>>{const v:unknown=JSON.parse(new TextDecoder().decode(await boundedBytes(r,max)));if(!v||typeof v!=='object'||Array.isArray(v))throw Error('drive_invalid');return v as Record<string,unknown>;}
 export async function requestJson(r:Request){if(!r.headers.get('Content-Type')?.includes('application/json'))throw Error('drive_invalid');return readJson(r,16384);}
 export async function driveRpc<T>(env:DriveEnv,name:string,args:Record<string,unknown>):Promise<T>{
+ const routed=acceptanceRpc(env,name,args);
  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('drive_not_configured');
  const url=new URL(env.SUPABASE_URL);if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw Error('drive_not_configured');
- const response=await fetch(url.origin+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(args),redirect:'manual',signal:AbortSignal.timeout(20000)});
+ const response=await fetch(url.origin+'/rest/v1/rpc/'+routed.name,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
  if(!response.ok){await response.body?.cancel();throw Error('drive_unavailable');}
  const value:unknown=JSON.parse(new TextDecoder().decode(await boundedBytes(response,16*1024*1024)));
  if(value&&typeof value==='object'&&'error' in value)throw Error(safeError(value.error));return value as T;

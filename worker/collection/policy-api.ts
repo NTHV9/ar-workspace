@@ -1,3 +1,4 @@
+import {acceptanceRpc} from '../acceptance/routing';
 import type {RefreshEnv} from '../refresh/backend';
 import {boundedBody} from '../email/shared';
 import {exceptionId,exceptionPage} from './exceptions';
@@ -7,7 +8,7 @@ const json=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Contr
 const unavailable=():never=>{throw Error('policy_unavailable');};
 const object=(v:unknown)=>{if(!v||typeof v!=='object'||Array.isArray(v))return unavailable();return v as Record<string,unknown>;};
 const count=(v:unknown,min=0)=>{if(!Number.isSafeInteger(v)||Number(v)<min)return unavailable();return Number(v);};
-async function rpc(env:RefreshEnv,name:string,args:Record<string,unknown>){if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)return unavailable();const base=new URL(env.SUPABASE_URL);if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)return unavailable();const r=await fetch(`${base.origin}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(args),redirect:'manual',signal:AbortSignal.timeout(20000)});if(!r.ok){await r.body?.cancel();return unavailable();}const v=JSON.parse(new TextDecoder().decode(await boundedBody(r,8*1024*1024)));if(v&&typeof v==='object'&&typeof v.error==='string')throw Error(Object.hasOwn(errors,v.error)?v.error:'policy_unavailable');return v as unknown;}
+async function rpc(env:RefreshEnv,name:string,args:Record<string,unknown>){const routed=acceptanceRpc(env,name,args);if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)return unavailable();const base=new URL(env.SUPABASE_URL);if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)return unavailable();const r=await fetch(`${base.origin}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});if(!r.ok){await r.body?.cancel();return unavailable();}const v=JSON.parse(new TextDecoder().decode(await boundedBody(r,8*1024*1024)));if(v&&typeof v==='object'&&typeof v.error==='string')throw Error(Object.hasOwn(errors,v.error)?v.error:'policy_unavailable');return v as unknown;}
 function checked(v:unknown):CollectionPolicy{try{return parseCollectionPolicy(v);}catch{return unavailable();}}
 export async function readCollectionPolicy(env:RefreshEnv,actor:string,version:number|null=null):Promise<CollectionPolicy>{return checked(await rpc(env,'ar_collection_policy_get',{p_actor:exceptionId(actor),p_version:version}));}
 /** Preflight only. Atomic SQL claim repeats version/stage validation under the policy-head lock. */

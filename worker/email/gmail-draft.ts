@@ -1,3 +1,4 @@
+import {assertAcceptanceRecipient} from '../acceptance/recipient';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {readManagedStorage} from '../operations/storage';
 import {emailRpc,boundedBody,googleJson,type EmailEnv,type EmailDraft} from './shared';
@@ -21,7 +22,7 @@ export async function readMailFile(env:EmailEnv,draft:EmailDraft,file:{name:stri
 export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revision:number){
  assertWritesEnabled(env);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:owner,p_id:id});
- if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
+ if(!draft)throw Error('email_missing');await assertAcceptanceRecipient(env,draft.recipients);if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  const existing=await emailRpc<Attempt|null>(env,'ar_gmail_attempt_get',{p_owner:owner,p_draft:id,p_revision:revision});
  if(existing)return {state:existing.state,created:existing.state==='created',alreadyRequested:true};
  // Retained legacy helper has no expected-choice claim. Thread handoffs use deliverMessage.
@@ -43,6 +44,7 @@ export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revis
 }
 
 export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,messageId:string){
+ await assertAcceptanceRecipient(env,draft.recipients);
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');
  const job=await documentJob(env,draft.document_job_id);if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');

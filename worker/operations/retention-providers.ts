@@ -1,3 +1,4 @@
+import {workingBucket} from '../acceptance/routing';
 import {backendRpc} from '../refresh/backend';
 import {driveToken} from '../drive/oauth';
 import {google,identity,metadata,verifyFolder,type Metadata} from '../drive/provider';
@@ -14,7 +15,7 @@ function driveMatches(m:Metadata,t:DriveTarget){
 export function retentionProviders(env:RetentionProviderEnv,actor:string,itemId:string,claimId:string):{supabase:RetentionProvider;drive:RetentionProvider}{
  const state=()=>backendRpc<{state?:string;identityVerified?:boolean;deleteAcknowledged?:boolean}>(env,'ar_retention_inspect',{p_actor:actor,p_id:itemId});
  const ack=async()=>{const result=await backendRpc<{acknowledged?:boolean}>(env,'ar_retention_delete_ack',{p_actor:actor,p_id:itemId,p_claim:claimId});if(result.acknowledged!==true)throw Error('retention_outcome_unknown');};
- const checkOwner=(target:RetentionTarget)=>{if(target.owner!==actor)throw Error('retention_forbidden');};
+ const checkOwner=(target:RetentionTarget)=>{if(target.owner!==actor||target.store==='supabase'&&target.bucket!==workingBucket(env)||target.store==='drive'&&env.ACCEPTANCE&&target.parentId!==env.ACCEPTANCE.driveFolderId)throw Error('retention_forbidden');};
  let tokenPromise:Promise<string>|undefined;
  const token=()=>tokenPromise??=(async()=>{const t=await driveToken(env,actor);await identity(t);return t;})();
  const supabase:RetentionProvider={
@@ -28,7 +29,7 @@ export function retentionProviders(env:RetentionProviderEnv,actor:string,itemId:
   async remove(target){
    checkOwner(target);if(target.store!=='supabase')throw Error('retention_invalid');const s=await state();if(s.state!=='present'||s.identityVerified!==true)throw Error('retention_identity_mismatch');
    if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('retention_not_configured');const u=new URL(env.SUPABASE_URL);if(u.protocol!=='https:'||u.pathname!=='/'||u.username||u.password||u.search||u.hash)throw Error('retention_not_configured');
-   const r=await fetch(u.origin+'/storage/v1/object/ar-working-files',{method:'DELETE',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify({prefixes:[target.key]}),redirect:'manual',signal:AbortSignal.timeout(30000)});await r.body?.cancel();if(!r.ok)throw Error('retention_outcome_unknown');await ack();
+   const r=await fetch(u.origin+'/storage/v1/object/'+workingBucket(env),{method:'DELETE',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify({prefixes:[target.key]}),redirect:'manual',signal:AbortSignal.timeout(30000)});await r.body?.cancel();if(!r.ok)throw Error('retention_outcome_unknown');await ack();
   }
  };
  const drive:RetentionProvider={

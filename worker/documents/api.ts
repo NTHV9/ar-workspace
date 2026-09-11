@@ -1,3 +1,5 @@
+import {acceptanceRows} from '../acceptance/context';
+import {acceptanceRpc} from '../acceptance/routing';
 import {readManagedStorage} from '../operations/storage';
 import type {RefreshEnv} from '../refresh/backend';
 import {documentSource} from './source-policy';
@@ -14,8 +16,8 @@ async function bodyJson(request:Request,max=65536):Promise<Record<string,unknown
  if(!request.headers.get('Content-Type')?.includes('application/json'))throw new Error('document_request_invalid');
  const value:unknown=JSON.parse(new TextDecoder().decode(await bodyBytes(request,max)));if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('document_request_invalid');return value as Record<string,unknown>;
 }
-async function rpc(env:RefreshEnv,name:string,args:Record<string,unknown>){
- const response=await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY!,'Content-Type':'application/json'},body:JSON.stringify(args),redirect:'manual',signal:AbortSignal.timeout(20000)});
+async function rpc(env:RefreshEnv,name:string,args:Record<string,unknown>){const routed=acceptanceRpc(env,name,args);
+ const response=await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY!,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
  const value:unknown=await response.json();if(!response.ok){const message=value&&typeof value==='object'&&'message'in value?value.message:null;throw new Error(typeof message==='string'&&/^(document|storage|budget|retention)_[a-z_]+$/.test(message)?message:'document_service_unavailable');}return value;
 }
 export async function documentApi(request:Request,env:RefreshEnv,owner:string,headers:Record<string,string>):Promise<Response>{
@@ -25,6 +27,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
   if(url.pathname==='/api/documents'){
    if(request.method==='GET'){
     const offset=Number(url.searchParams.get('offset')??0);if(!Number.isSafeInteger(offset)||offset<0)return json({error:'document_request_invalid'},400);
+    if(env.ACCEPTANCE){const rows=await acceptanceRows(env,'ar_document_jobs','select=id,account_name,hotel,state,created_at,revision,purpose,content,layout&order=created_at.desc',21,offset);return json({jobs:rows.slice(0,20),hasMore:rows.length>20});}
     const response=await fetch(`${env.SUPABASE_URL}/rest/v1/ar_document_jobs?select=id,account_name,hotel,state,created_at,revision,purpose,content,layout&order=created_at.desc&limit=21&offset=${offset}`,{headers,redirect:'manual',signal:AbortSignal.timeout(15000)});
     if(!response.ok)return json({error:'document_service_unavailable'},503);const rows=await response.json();if(!Array.isArray(rows))throw new Error('document_service_unavailable');return json({jobs:rows.slice(0,20),hasMore:rows.length>20});
    }

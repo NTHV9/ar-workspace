@@ -1,3 +1,6 @@
+import {acceptanceApi} from './acceptance/api';
+import {acceptanceCookie} from './acceptance/routing';
+import {acceptanceEnvironment,acceptanceRows} from './acceptance/context';
 import {writesHeld} from './operations/write-hold';
 import {operationsApi} from './operations/api';
 import {readManagedStorage} from './operations/storage';
@@ -37,6 +40,7 @@ async function upstream(url: string, options: RequestInit) {
 export async function handleApi(request: Request, env: Env): Promise<Response> {
   const path = new URL(request.url).pathname;
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
+  const acceptanceRequest=path.startsWith('/api/acceptance/');
   const operationsRequest=path.startsWith('/api/operations/');
   const observationsRequest=path.startsWith('/api/observations/');
   const billingRequest=path==='/api/external-billing'||path.startsWith('/api/external-billing/');
@@ -55,7 +59,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   const collectionValidation=path==='/api/collection/validate-selection'&&request.method==='POST';
   const documentRequest=path==='/api/documents'||path.startsWith('/api/documents/');
   const pdfValidation=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/(KAT|TSK)\/(pdf|json)$/.exec(path);
-  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest&&!billingRequest&&!operationsRequest) return json({ error: 'method_not_allowed' }, 405);
+  if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest&&!billingRequest&&!operationsRequest&&!acceptanceRequest) return json({ error: 'method_not_allowed' }, 405);
   if (path === '/api/config') {
     let googleEnabled = false;
     if (env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY) {
@@ -65,7 +69,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       } catch { /* Configuration stays fail-closed; no provider error details reach the client. */ }
     }
     const configuredBudget=Number(env.DOC_EDITOR_MAX_BYTES??67108864);
-    return json({ writeHold:writesHeld(env),supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null, googleEnabled,documentEditorMaxBytes:Number.isSafeInteger(configuredBudget)&&configuredBudget>0&&configuredBudget<=536870912?configuredBudget:67108864 });
+    return json({ acceptanceSelected:!!request.headers.get('Cookie')?.includes('__Host-ar-acceptance='),writeHold:writesHeld(env),supabaseUrl: env.SUPABASE_URL ?? null, publishableKey: env.SUPABASE_PUBLISHABLE_KEY ?? null, googleEnabled,documentEditorMaxBytes:Number.isSafeInteger(configuredBudget)&&configuredBudget>0&&configuredBudget<=536870912?configuredBudget:67108864 });
   }
   if (path === '/api/health') {
     if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ status: 'unavailable', supabase: 'not_configured', opera: 'not_connected', commit: env.COMMIT_SHA ?? 'development' }, 503);
@@ -77,7 +81,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: connected?'connected':'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
     } catch { return json({ status: 'unavailable', supabase: 'unavailable', opera: 'not_connected' }, 503); }
   }
-  if (!operationsRequest && !observationsRequest && !billingRequest && !financialRequest && !policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
+  if (!acceptanceRequest && !operationsRequest && !observationsRequest && !billingRequest && !financialRequest && !policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
   if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ error: 'supabase_unavailable' }, 503);
@@ -87,7 +91,10 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if (!auth.ok) return json({ error: auth.status >= 500 ? 'auth_unavailable' : 'unauthorized' }, auth.status >= 500 ? 503 : 401);
     const user = await auth.json() as { id?:string;email?: string; email_confirmed_at?: string; is_anonymous?: boolean };
     if (user.email?.toLowerCase() !== 'ar@katathani.com' || !user.email_confirmed_at || user.is_anonymous) return json({ error: 'forbidden' }, 403);
+    if(acceptanceRequest&&path==='/api/acceptance/exit'&&user.id)return acceptanceApi(request,env,user.id);
     if(writesHeld(env)&&request.method!=='GET'&&!/^\/api\/email\/deliveries\/[0-9a-f-]{36}\/check$/.test(path))return json({error:'operations_write_hold',message:'New work is paused for recovery review. Saved data remains readable.'},503);
+    if(acceptanceRequest){if(!user.id)return json({error:'unauthorized'},401);return acceptanceApi(request,env,user.id);}
+    const acceptanceId=acceptanceCookie(request);if(acceptanceId){if(!user.id)return json({error:'unauthorized'},401);env=await acceptanceEnvironment(env,user.id,acceptanceId);if(operaProbe||path==='/api/gmail/connect'||path==='/api/drive/connect'||path==='/api/operations/recovery-sent')return json({error:'acceptance_action_unavailable'},409);}
     if(path==='/api/mail-reconciliation'){if(request.method==='GET')return json({...await backendRpc<Record<string,unknown>>(env,'ar_mail_reconcile_status',{}),enabled:env.GMAIL_RECONCILE_ENABLED==='true',intervalMinutes:15});if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);return json(await requestMailReconcile(env,'manual'));}return json({error:'method_not_allowed'},405);}
     if(operationsRequest){if(!user.id)return json({error:'unauthorized'},401);return operationsApi(request,env,user.id);}
     if(driveRequest){if(!user.id)return json({error:'unauthorized'},401);return driveApi(request,env,user.id);}
@@ -117,7 +124,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       let input;try{input=JSON.parse(body);}catch{return json({error:'invalid_request'},400);}
       if(!input||!['KAT','TSK'].includes(input.hotel)||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>2000||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>100||input.ids.some((id:unknown)=>typeof id!=='string'||!id||id.length>2000)||new Set(input.ids).size!==input.ids.length)return json({error:'invalid_request'},400);
       // Ignore client-supplied roles/balances/eligibility. Recheck authoritative rows with user RLS.
-      const r=await upstream(`${env.SUPABASE_URL}/rest/v1/rpc/ar_validate_collection_selection`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids})});
+      const r=await upstream(`${env.SUPABASE_URL}/rest/v1/rpc/${env.ACCEPTANCE?'ar_acceptance_selection':'ar_validate_collection_selection'}`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({...env.ACCEPTANCE?{p_id:env.ACCEPTANCE.id}:{},p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids})});
       if(!r.ok)return json({error:'selection_verification_unavailable'},503);
       const valid=await r.json()===true;return json({valid,...(!valid?{error:'selection_not_collectible'}:{})},valid?200:409);
     }
@@ -145,9 +152,10 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     const allRows = async (table: string, query: string) => {
       const result: unknown[] = [];
       for (let offset = 0; ; offset += 500) {
-        const response = await upstream(`${env.SUPABASE_URL}/rest/v1/${table}?${query}&limit=500&offset=${offset}`, { headers });
-        if (!response.ok) throw new Error('database_unavailable');
-        const page = await response.json();
+        let page:unknown;
+        if(env.ACCEPTANCE)page=await acceptanceRows(env,table,query,500,offset);
+        else{const response=await upstream(`${env.SUPABASE_URL}/rest/v1/${table}?${query}&limit=500&offset=${offset}`,{headers});if(!response.ok)throw Error('database_unavailable');page=await response.json();}
+
         if (!Array.isArray(page)) throw new Error('invalid_response');
         result.push(...page); if (page.length < 500) return result;
       }
@@ -171,7 +179,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if(invoices.length)try{workflows=await allRows('ar_invoice_workflow',`select=*&${query}&order=invoice_id`);}catch{workflowStatus='unavailable';}
     const byId=new Map(workflows.map(w=>{const row=w as {invoice_id:string};return [row.invoice_id,row];}));
     return json({invoices:await attachExceptions(invoices.map(v=>{const row=v as {id:string};return {...row,workflow:byId.get(row.id)??null};}),'&'+query),source:'opera',workflow_source:'ar_workspace',workflow_status:workflowStatus,status:'connected'});
-  } catch { return json({ error: 'supabase_unavailable' }, 503); }
+  } catch(e) { if(e instanceof Error&&/^acceptance_[a-z_]+$/.test(e.message))return json({error:e.message},409);return json({ error: 'supabase_unavailable' }, 503); }
 }
 export default {
   async fetch(request: Request, env: Env) {

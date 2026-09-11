@@ -79,23 +79,28 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
     throw new OperaError('pagination_changed',undefined,'current_history_membership',undefined,{currentCount:expected.size,historyCount:actual.size,currentOnly:currentOnly.length,currentOnlyNegative:currentOnly.filter(([,n])=>n<0).length,historyOnly:historyOnly.length,historyOnlyNegative:historyOnly.filter(([,n])=>n<0).length,sharedBalanceMismatch:[...expected].filter(([id,n])=>actual.has(id)&&actual.get(id)!==n).length});
   }
   const present=new Set(snapshot.invoices.map(i=>i.id));
-  const missing=previous.filter(i=>i.open!==0&&!present.has(i.id));
+  const missing=previous.filter(i=>!present.has(i.id));
   if(missing.length){
     const numbers=missing.every(i=>i.invoice_no&&/^\d+$/.test(i.invoice_no))?[...new Set(missing.map(i=>i.invoice_no!))]:[];
-    const closedCandidates=await collectPages(async(offset,limit)=>{
-      const page=asObject(await reader.invoiceHistory(accountId,numbers,offset,limit));
-      if(!Array.isArray(page.details))throw new OperaError('invalid_response');
-      const rows:Row[]=[];
-      for(const raw of page.details){const group=asObject(raw);if(group.hotelId!==hotel||id(group.accountId)!==accountId)throw new OperaError('invalid_response');if(group.invoices!==undefined&&!Array.isArray(group.invoices))throw new OperaError('invalid_response');for(const row of (group.invoices??[]) as unknown[])rows.push(asObject(row));}
-      return {rows,hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
-    },r=>String(r.transactionNo??''),20);
+    const closedCandidates:Row[]=[];
+    const groups=numbers.length?Array.from({length:Math.ceil(numbers.length/20)},(_,i)=>numbers.slice(i*20,i*20+20)):[[]];
+    const seenClosed=new Map<string,Row>();
+    for(const group of groups)for(const row of await readScopedInvoiceHistory(reader,hotel,accountId,group)){
+      const key=transactionId(row),existing=seenClosed.get(key);if(existing&&invoiceFingerprint(existing)!==invoiceFingerprint(row))throw new OperaError('pagination_changed',undefined,'closed_history_changed');
+      if(!existing){seenClosed.set(key,row);closedCandidates.push(row);}
+    }
     const wanted=new Set(missing.map(i=>i.id));
     const closed=closedCandidates.filter(row=>wanted.has(String(row.transactionNo))&&amountCents(row.balance,'THB')===0);
     if(closed.length){
       const currentAccount=asObject(asObject(current).accountDetails);
       const normalized=normalizeAccount({accountDetails:{...currentAccount,invoices:closed}},hotel,businessDate);
       snapshot.invoices.push(...normalized.invoices);
+      // Keep the exact closed-history relationship evidence as well as its zero.
+      // Otherwise a genuinely cleared standalone/parent becomes "unverified".
+      for(const row of closed){const existing=history.find(r=>r.kind==='invoice'&&transactionId(r.value)===transactionId(row));if(existing&&invoiceFingerprint(existing.value)!==invoiceFingerprint(row))throw new OperaError('pagination_changed',undefined,'closed_history_changed');if(!existing)history.push({kind:'invoice',value:row});}
     }
+    const confirmed=new Set(closed.map(row=>transactionId(row)));
+    const unconfirmed=missing.filter(i=>i.open===0&&!confirmed.has(i.id)).map(i=>i.id);if(unconfirmed.length)snapshot.unconfirmedInvoiceIds=unconfirmed;
     // No match/error is never zero. Unmatched old rows remain missing with their old balance.
   }
   resolveCollectionRelationships(snapshot,history.filter(r=>r.kind==='invoice').map(r=>r.value));

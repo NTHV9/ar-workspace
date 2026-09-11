@@ -1,9 +1,10 @@
+import {acceptanceRpc} from '../acceptance/routing';
 import type {RetentionEnvironment} from '../operations/retention';
 import {boundedBody} from '../email/shared';
 import type {BudgetEnvironment} from '../operations/budget';
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
-export interface RefreshParams { financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean; mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
+export interface RefreshParams { acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean; mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
@@ -18,7 +19,8 @@ export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<strin
   if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw new OperaError('invalid_configuration',undefined,'database');
   const url=new URL(env.SUPABASE_URL);
   if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw new OperaError('invalid_configuration');
-  const response=await fetch(`${url.origin}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(20000)});
+  const routed=acceptanceRpc(env,name,body);
+  const response=await fetch(`${url.origin}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
   if(!response.ok){
     let message:unknown;try{message=(JSON.parse(new TextDecoder().decode(await boundedBody(response,8192))) as {message?:unknown}).message;}catch{await response.body?.cancel().catch(()=>{});}
     if(message==='budget_database_exceeded'||message==='retention_busy')throw Error(message);
@@ -32,10 +34,8 @@ export async function previousInvoices(env:RefreshEnv,hotel:string,accountId:str
   if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw new OperaError('invalid_configuration');
   const results:PreviousInvoice[]=[];
   for(let offset=0;;offset+=500){
-    const query=new URLSearchParams({select:'id,invoice_no,open',hotel:`eq.${hotel}`,account_id:`eq.${accountId}`,open:'neq.0',order:'id',limit:'500',offset:String(offset)});
-    const response=await fetch(`${env.SUPABASE_URL}/rest/v1/ar_invoices?${query}`,{headers:{apikey:env.SUPABASE_SECRET_KEY},redirect:'manual',signal:AbortSignal.timeout(20000)});
-    if(!response.ok){await response.body?.cancel();throw new OperaError('provider_unavailable',response.status,'database_previous_invoices');}
-    const rows=await response.json() as PreviousInvoice[];if(!Array.isArray(rows))throw new OperaError('invalid_response');results.push(...rows);if(rows.length<500)return results;
+    const rows=await backendRpc<PreviousInvoice[]>(env,'ar_refresh_previous_invoices',{p_hotel:hotel,p_account_id:accountId,p_offset:offset});
+if(!Array.isArray(rows))throw new OperaError('invalid_response');results.push(...rows);if(rows.length<500)return results;
   }
 }
 export async function requestRefresh(env:RefreshEnv,hotel:string,accountId:string|null,reason:string,recovery=0):Promise<RefreshJob> {

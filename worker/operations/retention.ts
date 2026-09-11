@@ -1,11 +1,13 @@
+import type {AcceptanceEnv} from '../acceptance/routing';
+import {acceptanceRpc} from '../acceptance/routing';
 import {boundedBody} from '../email/shared';
 
-export interface RetentionEnvironment {SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;RETENTION_ENABLED?:string;RETENTION_SOURCE_MAX_AGE_SECONDS?:string;RETENTION_MAX_CONCURRENT?:string;RETENTION_LEASE_SECONDS?:string}
+export interface RetentionEnvironment extends AcceptanceEnv {SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;RETENTION_ENABLED?:string;RETENTION_SOURCE_MAX_AGE_SECONDS?:string;RETENTION_MAX_CONCURRENT?:string;RETENTION_LEASE_SECONDS?:string}
 export interface RetentionInvoice {hotel:string;accountId:string;invoiceId:string;open:string|null;verified:boolean;collectionRole:string;verifiedAt:string|null;zeroSince:string|null;held:boolean;disputed:boolean;needsReview:boolean}
 export interface RetentionSnapshot {owned:boolean;knownReferences:boolean;minimumEligibleAt:string;eligibleSince:string|null;pendingDocuments:boolean;pendingMail:boolean;links:RetentionInvoice[]}
 export interface RetentionDecision {complete:boolean;due:boolean;reason:string;eligibleSince:string|null;dueAt:string|null}
 interface TargetBase {objectId:string;owner:string;byteCount:number;sha256:string}
-export type RetentionTarget=(TargetBase&{store:'supabase';bucket:'ar-working-files';key:string;updatedAt:string;etag:string|null})|(TargetBase&{store:'drive';parentId:string;archiveId:string;jobId:string;documentRevision:number;ordinal:number});
+export type RetentionTarget=(TargetBase&{store:'supabase';bucket:'ar-working-files'|'ar-acceptance-files';key:string;updatedAt:string;etag:string|null})|(TargetBase&{store:'drive';parentId:string;archiveId:string;jobId:string;documentRevision:number;ordinal:number});
 export interface RetentionItem {id:string;revision:number;state:'waiting'|'blocked'|'claimed'|'uncertain'|'deleted';reason:string|null;eligibleSince:string|null;dueAt:string|null;claimId:string|null;target:RetentionTarget}
 export type RetentionInspection={state:'present';identityVerified:boolean}|{state:'absent'}|{state:'unknown'};
 /** Adapters must prove exact object ID, ownership, byte receipt/hash and provider identity.
@@ -53,7 +55,7 @@ function nullableTime(v:unknown){if(v===null)return null;timestamp(v,'retention_
 function checkedTarget(value:unknown,actor:string):RetentionTarget {
  const v=object(value),base={objectId:text(v.objectId),owner:text(v.owner),byteCount:integer(v.byteCount,1,104857600),sha256:text(v.sha256)};
  if(base.owner!==actor||!uuid.test(base.owner)||!/^[0-9a-f]{64}$/.test(base.sha256))throw Error('retention_invalid_response');
- if(v.store==='supabase'){const key=text(v.key),updatedAt=text(v.updatedAt),etag=v.etag===null?null:text(v.etag);timestamp(updatedAt,'retention_invalid_response');if(!uuid.test(base.objectId)||v.bucket!=='ar-working-files'||!storageKey.test(key)||etag!==null&&!/^[A-Za-z0-9._"-]{1,200}$/.test(etag))throw Error('retention_invalid_response');return {...base,store:'supabase',bucket:'ar-working-files',key,updatedAt,etag};}
+ if(v.store==='supabase'){const key=text(v.key),updatedAt=text(v.updatedAt),etag=v.etag===null?null:text(v.etag);timestamp(updatedAt,'retention_invalid_response');if(!uuid.test(base.objectId)||!['ar-working-files','ar-acceptance-files'].includes(String(v.bucket))||!storageKey.test(key)||etag!==null&&!/^[A-Za-z0-9._"-]{1,200}$/.test(etag))throw Error('retention_invalid_response');return {...base,store:'supabase',bucket:v.bucket as 'ar-working-files'|'ar-acceptance-files',key,updatedAt,etag};}
  if(v.store==='drive'){
   const parentId=text(v.parentId),archiveId=text(v.archiveId),jobId=text(v.jobId);if(!driveId.test(base.objectId)||!driveId.test(parentId)||!uuid.test(archiveId)||!uuid.test(jobId))throw Error('retention_invalid_response');
   return {...base,store:'drive',parentId,archiveId,jobId,documentRevision:integer(v.documentRevision,1,2147483647),ordinal:integer(v.ordinal,0,4000)};
@@ -67,10 +69,10 @@ function checkedItem(value:unknown,actor:string,id?:string):RetentionItem {
  return {id:itemId,revision:integer(v.revision,1,2147483647),state:v.state as RetentionItem['state'],reason:reason===null?null:errorCodes.has(reason)?reason:'retention_blocked',eligibleSince:nullableTime(v.eligibleSince),dueAt:nullableTime(v.dueAt),claimId,target:checkedTarget(v.target,actor)};
 }
 function identity(actor:string,id?:string,claim?:string){if(!uuid.test(actor))throw Error('retention_forbidden');if(id!==undefined&&!uuid.test(id)||claim!==undefined&&!uuid.test(claim))throw Error('retention_invalid');}
-async function rpc(env:RetentionEnvironment,name:string,args:Record<string,unknown>):Promise<unknown>{
+async function rpc(env:RetentionEnvironment,name:string,args:Record<string,unknown>):Promise<unknown>{const routed=acceptanceRpc(env,name,args);
  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('retention_not_configured');let base:URL;try{base=new URL(env.SUPABASE_URL);}catch{throw Error('retention_not_configured');}
  if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw Error('retention_not_configured');
- let response:Response;try{response=await fetch(base.origin+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(args),redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{throw Error('retention_unavailable');}
+ let response:Response;try{response=await fetch(base.origin+'/rest/v1/rpc/'+routed.name,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{throw Error('retention_unavailable');}
  if(!response.ok){await response.body?.cancel();throw Error('retention_unavailable');}
  let v:unknown;try{v=JSON.parse(new TextDecoder().decode(await boundedBody(response,65536)));}catch{throw Error('retention_unavailable');}
  if(v&&typeof v==='object'&&'error'in v)throw Error(typeof v.error==='string'&&errorCodes.has(v.error)?v.error:'retention_unavailable');return v;

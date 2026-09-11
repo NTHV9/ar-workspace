@@ -9,7 +9,7 @@ export interface NormalizedInvoice {
   compressed: boolean | null; parent_invoice_no: string | null;
   collection_role: 'unverified'|'standalone'|'parent'|'child'; parent_invoice_id: string | null; parent_open: number | null;
 }
-export interface AccountSnapshot {
+export interface AccountSnapshot { unconfirmedInvoiceIds?:string[];
   account: { hotel: string; id: string; name: string; type: string; account_no: string | null; open: number;
     over90: number; items: number; currency: 'THB'; creditLimit: number | null; oldest: number | null;
     agingBuckets: AgingBucket[]; business_date: string; sourceWarnings?:{code:string;reported:number;observed:number;includeZero:boolean}[] };

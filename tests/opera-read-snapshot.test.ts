@@ -137,6 +137,15 @@ describe('verified OPERA snapshot reads', () => {
     expect(requests[2].searchParams.getAll('invoiceNo')).toEqual(['456']);
     expect(requests[2].searchParams.getAll('fetchInstructions')).toEqual(['Invoices']);
   });
+  it('retains standalone relationship proof and rechecks a tracked previous zero',async()=>{
+    const closed=Object.assign(invoice(123,0),{compressed:false});const {reader}=harness(current([],0),history([]),history([closed]));
+    const snapshot=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'123',invoice_no:'456',open:0}]);
+    expect(snapshot.invoices[0]).toMatchObject({id:'123',open:0,collection_role:'standalone'});expect(snapshot.unconfirmedInvoiceIds).toBeUndefined();
+  });
+  it('does not preserve current zero confidence when the tracked record is no longer confirmed',async()=>{
+    const {reader}=harness(current([],0),history([]),history([]));const snapshot=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'123',invoice_no:'456',open:0}]);
+    expect(snapshot.invoices).toEqual([]);expect(snapshot.unconfirmedInvoiceIds).toEqual(['123']);
+  });
   it.each([
     { label: 'empty history', rows: [] },
     { label: 'a different transaction with the same invoice number and zero', rows: [invoice(999, 0)] },
