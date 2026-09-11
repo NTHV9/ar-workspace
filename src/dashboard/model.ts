@@ -2,7 +2,7 @@ import {thaiToday,nextCollectionAction,type QueueInvoice} from '../domain/collec
 import type {CollectionPolicy} from '../domain/collection-policy';
 import {amountToSatang,satangToAmount} from '../remittance/money';
 
-export interface DashboardScope {hotel:string;day:string;type:string;account:string}
+export interface DashboardScope {hotel:string;day:string;from:string;to:string;type:string;account:string}
 export interface AccountOption {hotel:string;account_id:string;account_name:string;account_type:string}
 export interface ActivityKind {kind:string;invoices:number;amount:number|null;stage_label?:string|null}
 export interface ActivitySummary {kinds:ActivityKind[];invoices:number;messages:number;missingAmounts:number}
@@ -15,12 +15,13 @@ export function accountIdentity(value:string):[string,string]|null {
 }
 export function dashboardScope(params:URLSearchParams,hotel:string,today=thaiToday()):DashboardScope {
  const identity=accountIdentity(params.get('dashboardAccount')??'');
- return {hotel:['KAT','TSK'].includes(hotel)?hotel:'All',day:params.get('dashboardDay')??today,type:(params.get('dashboardType')??'').slice(0,200),account:identity&&(hotel==='All'||identity[0]===hotel)?JSON.stringify(identity):''};
+ const to=params.get('dashboardTo')??params.get('dashboardDay')??today,from=params.get('dashboardFrom')??params.get('dashboardDay')??to;
+ return {hotel:['KAT','TSK'].includes(hotel)?hotel:'All',day:to,from,to,type:(params.get('dashboardType')??'').slice(0,200),account:identity&&(hotel==='All'||identity[0]===hotel)?JSON.stringify(identity):''};
 }
 export function scopeQuery(scope:DashboardScope,dated=false){
  const q=new URLSearchParams(),identity=accountIdentity(scope.account);
  if(identity){q.set('hotel',identity[0]);q.set('account',identity[1]);}else if(scope.hotel!=='All')q.set('hotel',scope.hotel);
- if(scope.type)q.set('type',scope.type);if(dated){q.set('from',scope.day);q.set('to',scope.day);}return q;
+ if(scope.type)q.set('type',scope.type);if(dated){q.set('from',scope.from);q.set('to',scope.to);}return q;
 }
 export function count(value:unknown):number|null{return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;}
 export function decimal(value:unknown):string|null {
@@ -60,4 +61,18 @@ export function queueTotals(rows:DashboardQueueRow[]|undefined,scope:DashboardSc
   for(const key of keys){const value=decimal(row.open);if(value===null)throw Error('dashboard_invalid_amount');totals[key].count++;totals[key].amount+=amountToSatang(value);}
  }
  return Object.fromEntries(workKinds.map(k=>[k,{count:totals[k].count,amount:satangToAmount(totals[k].amount)}])) as Record<WorkKind,{count:number;amount:string}>;
+}
+
+export function validPeriod(scope:Pick<DashboardScope,'from'|'to'>,today=thaiToday()){return validDay(scope.from)&&validDay(scope.to)&&scope.from<=scope.to&&scope.to<=today&&Date.parse(scope.to)-Date.parse(scope.from)<=3660*86400000;}
+export function periodPreset(key:'today'|'yesterday'|'month'|'previous-month',today=thaiToday()){
+ const d=new Date(today+'T00:00:00Z'),ymd=(date:Date)=>date.toISOString().slice(0,10);
+ if(key==='today')return{from:today,to:today};if(key==='yesterday'){d.setUTCDate(d.getUTCDate()-1);return{from:ymd(d),to:ymd(d)};}
+ if(key==='month')return{from:today.slice(0,8)+'01',to:today};d.setUTCDate(0);return{from:ymd(d).slice(0,8)+'01',to:ymd(d)};
+}
+
+export function historyChunks(from:string,to:string){
+ if(!validDay(from)||!validDay(to)||from>to||Date.parse(to)-Date.parse(from)>3660*86400000)return[];
+ const result:{from:string;to:string}[]=[];let day=from;
+ while(day<=to){const end=new Date(Date.parse(day)+364*86400000).toISOString().slice(0,10),last=end<to?end:to;result.push({from:day,to:last});day=new Date(Date.parse(last)+86400000).toISOString().slice(0,10);}
+ return result;
 }

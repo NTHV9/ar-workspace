@@ -1,13 +1,13 @@
 import {describe,expect,it} from 'vitest';
-import {activityTotals,addAmounts,dashboardScope,queueTotals,scopeQuery,validDay,type DashboardQueueRow} from '../src/dashboard/model';
-import {dashboardLink,dashboardReturn,dashboardReportContext} from '../src/dashboard/links';
+import {activityTotals,addAmounts,dashboardScope,queueTotals,scopeQuery,validDay,validPeriod,periodPreset,historyChunks,type DashboardQueueRow} from '../src/dashboard/model';
+import {dashboardLink,dashboardReturn,dashboardReportContext,normalizedDashboardParams} from '../src/dashboard/links';
 import {defaultCollectionPolicy} from '../src/domain/collection-policy';
-const scope={hotel:'All',day:'2026-09-10',type:'Agent',account:''};
+const scope={hotel:'All',day:'2026-09-10',from:'2026-09-10',to:'2026-09-10',type:'Agent',account:''};
 const row:DashboardQueueRow={hotel:'KAT',account_id:'synthetic',id:'1',account_name:'Synthetic account',account_type:'Agent',guest:'Synthetic guest',invoice_no:'1',folio_no:'2',open:100,collection_role:'standalone',collection_selectable:true,verification_state:'verified',transaction_date:'2026-08-01',workflow:{revision:0,billing_required:false,credit_term:30,first_billing_date:null,last_reminder_stage:'Final',last_reminder_date:'2026-09-11',due_date:'2026-09-01'}};
 describe('dashboard scope and dates',()=>{
  it('uses a Thai-day default and leaves an invalid selected day visible for correction',()=>{expect(dashboardScope(new URLSearchParams(),'All','2026-09-11').day).toBe('2026-09-11');expect(dashboardScope(new URLSearchParams('dashboardDay='),'All').day).toBe('');expect(validDay('2026-02-30')).toBe(false);});
  it('clears an account from another hotel without mixing identities',()=>{expect(dashboardScope(new URLSearchParams({dashboardAccount:'["KAT","same-id"]'}),'TSK').account).toBe('');expect(scopeQuery({...scope,account:'["KAT","same-id"]'},true).get('hotel')).toBe('KAT');});
- it('preserves source-day filters and the original dashboard when following a money link',()=>{const url=new URL(dashboardLink({...scope,account:'["KAT","same-id"]'},'payments'),'https://example.test');expect(url.searchParams.get('financial')).toBe('1');expect(url.searchParams.get('hotel')).toBe('KAT');const back=new URL(dashboardReturn(url.searchParams),'https://example.test');expect(back.searchParams.get('hotel')).toBe('All');expect(back.searchParams.get('dashboardDay')).toBe(scope.day);expect(back.searchParams.get('dashboardAccount')).toBe('["KAT","same-id"]');});
+ it('preserves source-day filters and the original dashboard when following a money link',()=>{const url=new URL(dashboardLink({...scope,account:'["KAT","same-id"]'},'payments'),'https://example.test');expect(url.searchParams.get('dashboard')).toBe('1');expect(url.searchParams.get('hotel')).toBe('KAT');const back=new URL(dashboardReturn(url.searchParams),'https://example.test');expect(back.searchParams.get('hotel')).toBe('All');expect(back.searchParams.get('dashboardTo')).toBe(scope.day);expect(back.searchParams.get('dashboardAccount')).toBe('["KAT","same-id"]');});
  it('retains custom reminder keys for exact activity drilldown',()=>{const q=new URL(dashboardLink(scope,'sent','custom-round'),'https://example.test').searchParams;expect(dashboardReportContext(q,'All')).toMatchObject({kind:'custom-round',mode:'activity',from:scope.day,to:scope.day,type:'Agent'});});
 });
 describe('daily counts do not change current work',()=>{
@@ -22,3 +22,11 @@ describe('billing channels, reminders and money',()=>{
  it('preserves unknown amounts and exact decimal satang',()=>{expect(addAmounts(['0.10','0.20'])).toBe('0.30');expect(addAmounts(['0.10',null])).toBeNull();expect(activityTotals({...activity,kinds:[{kind:'Follow 1',invoices:1,amount:null}]},external).reminderAmount).toBeNull();});
  it('retains OPERA credit/debit signs instead of flipping an allocation into a different accounting value',()=>{expect(addAmounts(['-1234.56','0.00'])).toBe('-1234.56');});
 });
+
+describe('inclusive ranges and retired report routes',()=>{
+ it('preserves a selected range and uses its end date for closing stock',()=>{const q=new URLSearchParams({dashboardFrom:'2026-08-01',dashboardTo:'2026-08-31'}),s=dashboardScope(q,'All','2026-09-12');expect(s).toMatchObject({from:'2026-08-01',to:'2026-08-31',day:'2026-08-31'});expect(scopeQuery(s,true).get('from')).toBe('2026-08-01');expect(validPeriod(s,'2026-09-12')).toBe(true);expect(validPeriod({...s,from:'2026-09-01'},'2026-09-12')).toBe(false);});
+ it('handles calendar-month presets and rejects malformed or future periods',()=>{expect(periodPreset('previous-month','2024-03-31')).toEqual({from:'2024-02-01',to:'2024-02-29'});expect(periodPreset('yesterday','2026-01-01')).toEqual({from:'2025-12-31',to:'2025-12-31'});expect(validPeriod({from:'2026-02-30',to:'2026-03-01'},'2026-09-12')).toBe(false);expect(validPeriod({from:'2026-09-12',to:'2026-09-13'},'2026-09-12')).toBe(false);});
+ it('retired financial and observation pages route to Dashboard while Reports stays external',()=>{const q=normalizedDashboardParams(new URLSearchParams('financial=1&reports=1&dashboardDay=2026-08-31'));expect(q.has('financial')).toBe(false);expect(q.has('reports')).toBe(false);expect(q.get('dashboardDetail')).toBe('payments');expect(normalizedDashboardParams(new URLSearchParams('reports=1')).get('reports')).toBe('1');expect(normalizedDashboardParams(new URLSearchParams('observations=1')).get('dashboard')).toBe('1');});
+});
+
+it('splits long OPERA refresh periods into bounded nonoverlapping calendar requests',()=>{const chunks=historyChunks('2024-01-01','2026-09-12');expect(chunks[0].from).toBe('2024-01-01');expect(chunks.at(-1)?.to).toBe('2026-09-12');for(const [i,c]of chunks.entries()){expect((Date.parse(c.to)-Date.parse(c.from))/86400000).toBeLessThan(366);if(i)expect(Date.parse(c.from)-Date.parse(chunks[i-1].to)).toBe(86400000);}expect(historyChunks('2026-02-30','2026-03-01')).toEqual([]);});

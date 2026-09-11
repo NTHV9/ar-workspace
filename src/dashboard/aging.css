@@ -1,0 +1,38 @@
+.current-aging{--aging-muted:#51677e;--aging-link:#2852c8;margin-top:24px;padding:20px;background:#fff;border:1px solid var(--line);border-radius:16px;min-width:0;color:#10253f}
+.aging-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.aging-heading h2,.aging-heading h3{font-size:16px;line-height:1.5;letter-spacing:-.02em;margin:0}
+.aging-heading p,.current-aging .aging-explanation,.current-aging .aging-footnote{font-size:11px;line-height:1.7;color:var(--aging-muted);margin-top:6px;max-width:100ch}
+.aging-scope{font-size:11px;white-space:nowrap;color:var(--aging-muted);padding-top:4px}
+.aging-publications{display:flex;gap:8px 20px;flex-wrap:wrap;margin-top:12px;color:var(--aging-muted);font-size:10px;line-height:1.7}
+.aging-publications i{display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%}.aging-publications .kat{background:#5584ed}.aging-publications .tsk{background:#20a798}
+.aging-breadcrumbs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:20px 0 14px;font-size:11px}
+.aging-breadcrumbs button{padding:4px 0;border:0;background:transparent;color:var(--aging-link)}.aging-breadcrumbs button:disabled{opacity:1;color:#10253f}.aging-breadcrumbs span{overflow-wrap:anywhere}
+.aging-controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:16px 0}
+.aging-controls label{display:flex;flex-direction:column;gap:7px;min-width:170px;font-size:11px;color:var(--aging-muted)}
+.aging-controls input,.aging-controls select{height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:white;color:#10253f;width:100%;min-width:0}
+.aging-controls input::placeholder{color:var(--aging-muted)}.aging-controls .aging-search{flex:1;max-width:360px}.aging-controls>span{font-size:11px;color:var(--aging-muted);padding:10px 0}
+.aging-back{display:inline-flex;align-items:center;gap:6px;font-size:11px;margin:0 0 8px}
+.aging-table-scroll{overflow:auto;max-width:100%;max-height:590px;isolation:isolate;margin:16px 0 0;scrollbar-color:#b9c9da #f0f5fa;border:1px solid var(--line);border-radius:10px}
+.aging-table-scroll:focus-visible{outline:3px solid #7699ff;outline-offset:3px}
+.current-aging .aging-matrix{width:max-content;min-width:100%;font-size:11px;border-collapse:separate;border-spacing:0}
+.current-aging .aging-matrix th,.current-aging .aging-matrix td{min-width:125px;padding:10px 12px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle;white-space:nowrap}
+.current-aging .aging-matrix thead th{font-size:10px;line-height:1.5;background:#f0f5f9;color:var(--aging-muted);text-align:center}
+.current-aging .aging-matrix thead tr:first-child th{border-right:1px solid var(--line)}
+.current-aging .aging-matrix .aging-identity{position:sticky;left:0;z-index:2;width:225px;min-width:225px;max-width:225px;text-align:left;white-space:normal;background:#fff;border-right:1px solid var(--line)}
+.current-aging .aging-matrix thead .aging-identity{background:#f0f5f9;z-index:3}
+.current-aging .aging-matrix tbody th{font-size:11px}
+.current-aging .aging-matrix td.aging-tsk{background:#eaf8f6}.current-aging .aging-matrix td.aging-kat{background:#f1f5ff}.current-aging .aging-matrix .aging-total{border-right:1px solid var(--line)}
+.current-aging .aging-matrix small{display:block;max-width:200px;font-size:10px;color:var(--aging-muted);line-height:1.5;font-weight:400;white-space:normal;margin-top:4px}
+.current-aging .aging-matrix .aging-identity small{font-size:10px;overflow-wrap:anywhere}
+.aging-matrix th button{padding:4px 0;border:0;border-radius:3px;background:transparent;font-size:inherit;white-space:normal;text-align:inherit}
+.aging-row-link{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;font-weight:600;color:var(--aging-link)}.aging-row-link svg{flex:none}
+.aging-cell-button{display:block;min-width:100%;padding:3px 0;border:0;border-radius:3px;background:transparent;text-align:right;color:var(--aging-link);font-size:inherit}
+.aging-cell-button:disabled{opacity:1;color:var(--aging-muted)}.aging-cell-button:hover:where(:not(:disabled)),.aging-row-link:hover{background:transparent;text-decoration:underline;text-underline-offset:3px}
+.current-aging .aging-matrix .aging-cell-button small{color:var(--aging-muted)}
+.aging-pagination{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 0 4px;font-size:11px}.aging-pagination>span{margin-right:auto;color:var(--aging-muted)}.aging-pagination button{font-size:11px;padding:7px 12px}
+.current-aging .aging-empty{padding:24px 16px;color:var(--aging-muted);font-size:12px;line-height:1.6}
+.current-aging .aging-notice{margin:14px 0;padding:11px 13px;border:1px solid #ebd29d;border-radius:9px;background:#fff7e8;color:#795410;font-size:11px;line-height:1.7}.aging-notice button{margin-left:8px}
+.aging-invoice-drill{margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}.aging-heading>button{font-size:11px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.aging-reconciliation{margin-top:18px}.aging-reconciliation>div{display:flex;align-items:baseline;gap:8px 24px;flex-wrap:wrap;padding:13px 0;border-bottom:1px solid var(--line);font-size:11px}.aging-reconciliation strong{flex:1 0 100%}.aging-reconciliation small{flex:1 0 100%;font-size:10px;color:var(--aging-muted);line-height:1.7}
+.current-aging .aging-invoices{min-width:950px;font-size:11px}.current-aging .aging-invoices th,.current-aging .aging-invoices td{padding:12px;white-space:nowrap;text-align:left}.current-aging .aging-invoices td:last-child,.current-aging .aging-invoices th:last-child{text-align:right}.aging-invoices th button{border:0;background:transparent;padding:0;font-size:inherit}.aging-invoice-link{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--aging-link);font-size:inherit;padding:0}.aging-invoice-link:hover{background:transparent;text-decoration:underline}
+@media(max-width:600px){.current-aging{padding:15px;margin-top:18px}.aging-heading{flex-wrap:wrap;gap:8px}.aging-controls label,.aging-controls .aging-search{flex:1 1 100%;min-width:0;max-width:none}.aging-controls input,.aging-controls select{height:44px;font-size:16px}.aging-controls>span{padding:0}.current-aging .aging-matrix .aging-identity{min-width:160px;width:160px;max-width:160px}.current-aging .aging-matrix th,.current-aging .aging-matrix td{padding:9px}.aging-breadcrumbs button,.aging-back,.aging-pagination button,.aging-heading>button{min-height:44px}.aging-cell-button,.aging-row-link{min-height:44px}.aging-pagination{flex-wrap:wrap}.aging-pagination>span{flex:1 0 100%}.current-aging .aging-explanation,.current-aging .aging-footnote{font-size:11px}.aging-reconciliation>div{gap:8px}.aging-reconciliation>div>span{flex-basis:100%}.aging-reconciliation small{font-size:11px}.aging-table-scroll{max-height:500px}}

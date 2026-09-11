@@ -1,3 +1,4 @@
+import {dashboardBalancesApi,dashboardPaymentInvoicesApi} from './dashboard/api';
 import {sweepTransientDocuments} from './operations/retention-sweep';
 import {acceptanceApi} from './acceptance/api';
 import {acceptanceCookie} from './acceptance/routing';
@@ -51,6 +52,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   const exceptionRequest=path.startsWith('/api/invoice-exceptions/');
   const accountWorkspaceRequest=path.startsWith('/api/account-workspace/');
   const remittanceRequest=path==='/api/remittances'||path.startsWith('/api/remittances/');
+  const dashboardRequest=path.startsWith('/api/dashboard/');
   const reportsRequest=path.startsWith('/api/reports/');
   const emailRequest=path.startsWith('/api/email/')||path.startsWith('/api/gmail/')||path==='/api/mail-reconciliation';
   const settingsRequest=path.startsWith('/api/account-settings/')||path.startsWith('/api/invoice-history/');
@@ -82,7 +84,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ status: healthy ? 'ok' : 'unavailable', supabase: healthy ? 'database_verified' : 'unavailable', opera: connected?'connected':'not_connected', commit: env.COMMIT_SHA ?? 'development' }, healthy ? 200 : 503);
     } catch { return json({ status: 'unavailable', supabase: 'unavailable', opera: 'not_connected' }, 503); }
   }
-  if (!acceptanceRequest && !operationsRequest && !observationsRequest && !billingRequest && !financialRequest && !policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
+  if (!acceptanceRequest && !operationsRequest && !observationsRequest && !billingRequest && !financialRequest && !policyRequest && !exceptionRequest && !accountWorkspaceRequest && !remittanceRequest && !driveRequest && !dashboardRequest && !reportsRequest && !emailRequest && !settingsRequest && !rendererCheck && !operaProbe && !refreshRequest && !collectionValidation && !pdfValidation && !documentRequest && path !== '/api/collection-queue' && path !== '/api/portfolio' && !/^\/api\/accounts\/[^/]+\/[^/]+$/.test(path)) return json({ error: 'not_found' }, 404);
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
   if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return json({ error: 'supabase_unavailable' }, 503);
@@ -106,6 +108,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if(exceptionRequest){if(!user.id)return json({error:'unauthorized'},401);return invoiceExceptionsApi(request,env,user.id);}
     if(accountWorkspaceRequest){if(!user.id)return json({error:'unauthorized'},401);return accountWorkspaceApi(request,env,user.id);}
     if(remittanceRequest){if(!user.id)return json({error:'unauthorized'},401);return remittanceApi(request,env,user.id);}
+    if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
     if(path.startsWith('/api/reports/')){if(!user.id)return json({error:'unauthorized'},401);return reportsApi(request,env,user.id);}
     if(emailRequest){if(!user.id)return json({error:'unauthorized'},401);return emailApi(request,env,user.id);}
     if(settingsRequest){if(!user.id)return json({error:'unauthorized'},401);return settingsApi(request,env,user.id);}
