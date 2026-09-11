@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ระหว่างงาน — 11 กันยายน 2026 08:51 ICT: ทดสอบวงจรงานและ retention จริง
+
+- บัญชีสมมติหนึ่งบัญชี/สามบิลทำงานใน namespace และ private bucket แยกจากธุรกิจจริง; OPERA เป็น fixture transport ที่ผ่าน reader เดิม ส่วน Cloudflare, Supabase, Gmail และ Drive ใช้บริการจริง ไม่มีการสร้างหรือแก้ ledger ใน OPERA
+- งาน Selected-only A/C พร้อม Statement และ Invoice fixtures พร้อมครบใน 7.72 วินาทีบนคิวเอกสารเฉพาะ; Balance Due 4,000 และ Aging ทั้งบัญชี 6,000 ตรงกติกา ทดสอบ editor/save/reopen/preview/ack และไฟล์รวม, Statement+bundle, แยกแต่ละใบแล้ว
+- ส่งอีเมลสมมติสองฉบับตามการอนุญาต: Draft ส่งจาก Gmail และ Send Now จากเว็บ โดยมี SENT receipts สองรายการในพื้นที่ทดสอบ ไม่เพิ่ม business Sent events. Gmail เปลี่ยน ID/ตัด header/ตัดบรรทัดข้อความ จึงเพิ่ม reviewed Sent matching พร้อมตรวจเนื้อหา ผู้รับและ SHA ไฟล์ก่อนบันทึก ห้ามส่งซ้ำเพื่อแก้ receipt
+- ทดสอบ By System, วันวางบิล/credit term, Final→Urgent, dispute/hold/release และ zero→reopen→Needs review ผ่าน โดยเก็บ Due Date และประวัติเดิม บิลมี Remittance ยังไม่ถูกเคลียร์จน source refresh ยืนยันศูนย์ทั้งสามใบ
+- Remittance รวมสามบิลนับยอด 6,000 ครั้งเดียว; อัปโหลดหลักฐานจริงใน test bucket, remove link และ restore ผ่าน รายงานการเงินทดสอบแยก payment 6,000 กับ invoice applications 6,000 (สามรายการ) ไม่ตีความวันตรวจพบศูนย์เป็นวันรับเงิน
+- Retention provider proof: ก่อนงานเสร็จ 23 รายการ blocked; หลังศูนย์ครบและไม่มีงานค้างเป็น waiting ครบ 23 รายการ วันครบกำหนดหนึ่งเดือนปฏิทิน. เลื่อนเฉพาะ test clock 31 วันแล้ว production adapters ลบ Supabase 20 objects และ Drive 3 files พร้อมตรวจ authenticated absence; ประวัติ SENT ยังสองรายการและไฟล์ main bucket ยัง 88 รายการ
+- Source 42ddba82342b73cf173333612cb8efe3647973c3/Worker bc9182eb-6c0d-42b9-847c-df7ef9a5cb11 ใช้ในการทดสอบข้างต้น. Closeout กำลัง Deploy: seal scenario, เก็บ receipt IDs/timestamps แบบไม่เก็บผู้รับ/เนื้อหา, ลบเฉพาะ container ที่ยืนยันว่า empty แล้ว จึงถอน namespace ภายหลัง
+- Apply 20260911014928_ar_acceptance_closeout และ hosted rollback ผ่าน. Full unit 793 tests/85 files, typecheck/build ผ่าน. Local synthetic pg_dump/pg_restore รุ่น 58 migrations/20 fixtures ผ่านและ server หยุดแล้ว; dump SHA f089a763971fdd95c1f26a7e6941d3681c419e3a5cdb7e3555ce494130c8ead3. ไม่ใช่ production restore
+- ยังไม่ปิด Goal: เหลือ closeout/settle reserve, เปิด retention จริง, final acceptance/privacy/runbook และยืนยัน deployment รอบส่งมอบ
+
 ## Checkpoint ระหว่างงาน — 11 กันยายน 2026 07:23 ICT: พื้นที่ Acceptance และการตรวจยอดศูนย์
 
 - คิวเอกสารเฉพาะ Deployจริงในsource0dca42a82209f92f1f86bf62df6702003772faf7, Worker370f2c48-2a95-4d66-b292-444f01c322f8; healthตรงและdatabase_verified. งานใหม่ใช้ar-workspace-documents ส่วนงานเดิมคงคิวเดิม;ยังรอวัดงานจริงของscenario.

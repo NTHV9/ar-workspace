@@ -123,6 +123,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_recovery_provider_identity'){$fixtures+='recovery-provider-identity-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_document_queue_isolation'){$fixtures+='document-queue-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_retained_zero_verification'){$fixtures+='retained-zero-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_acceptance_closeout'){$fixtures+='acceptance-closeout-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture
