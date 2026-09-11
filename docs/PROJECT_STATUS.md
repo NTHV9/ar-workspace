@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Dashboard — 11 กันยายน 2026: เพิ่มหน้ารวมกิจกรรมและงานค้าง
+
+- เจ้าของขอ Dashboard กลางเพิ่มเติมหลังตรวจรับระบบชุดก่อน. เพิ่มเมนู Dashboard ที่ `/?dashboard=1` โดยคง Portfolio แบบ comparative matrix เดิม
+- กิจกรรมวันที่เลือก: Invoice entries จาก OPERA invoice date, จำนวน first billing จาก Gmail/external records, actual follow-up sends, OPERA payment credits. แสดง applied/unallocated เป็นสถานะปัจจุบันของ payment cohort ไม่ใช่เหตุการณ์ตัดยอดในวันนั้น
+- งานค้างใช้ข้อมูลล่าสุด ไม่ถูกกรองเป็นยอดย้อนหลังตาม activity date. แสดง Net AR แยก KAT/TSK, queue actions และ Remittance pending. Urgent กับ Hold/Needs review อาจเป็น invoice เดียวกัน จึงระบุว่าไม่ให้นำยอดแต่ละมุมมาบวกเป็น grand total
+- Scope Hotel/type/Account/date ส่งต่อไปยังรายงานและกลับ Dashboard ได้; Invoice identity แยก Hotel. API ที่ล้มเหลวหรือ coverage ไม่ครบแสดง unavailable แยกส่วน ไม่มีข้อมูลตัวอย่างแทนผลจริง
+- ใช้ read APIs ที่มีอยู่ ไม่มี migration/credential/service เพิ่ม. App-level on-open refresh เดิมยังทำงาน; Dashboard อ่านสรุปใหม่เมื่อ snapshot ของ OPERA เผยแพร่เสร็จ
+- Typecheck/build และ unit805 tests/87files ผ่าน. Dashboard browser cases12ผ่านใน local test runs รวมการเปลี่ยนวัน, cross-hotel identity, drilldown/back, failure/coverage, mobile disclosure และ new publication. กำลังตรวจบน Cloudflareก่อนส่งมอบ
+- Impeccable reviewer ให้ fix สองเรื่อง: mobile first viewport และ synthetic provenance. แก้แล้วและ reviewer ให้ ship สำหรับสองรายการนั้น; ภาพ1440/1280/390ใช้ข้อมูลสมมติพร้อมป้ายชัด ภาพ referenceเดิมไม่เปลี่ยน
+
 ## Checkpoint GitHub — 11 กันยายน 2026: Merge งานเข้าสาขาหลักแล้ว
 
 - [PR #1](https://github.com/NTHV9/ar-workspace/pull/1) เปลี่ยนจาก Draft และ Merge เข้า default branch `codex/first-increment` แล้ว ด้วย merge commit `ce027110538732864232f045cf2c5e1071c8588e` โดยคงประวัติเดิม
