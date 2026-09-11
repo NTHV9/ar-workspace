@@ -1,3 +1,4 @@
+import {sentCandidates,reviewSentMatch} from './sent-review';
 import {operationMessages} from '../operations/messages';
 import {emailRpc,emailJson,jsonBody,type EmailEnv,type EmailDraft} from './shared';
 import {parseEmailDraft} from './validation';
@@ -35,6 +36,8 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
    if(v.replyToDeliveryId!==undefined&&(typeof v.replyToDeliveryId!=='string'||!uuidPattern.test(v.replyToDeliveryId)||supplemental))return emailJson({error:'email_invalid'},400);
    return emailJson(await sendDiagnostic(env,actor,v.commandId,v.recipient,supplemental,v.rich===true,v.replyToDeliveryId as string|undefined));
   }
+  const candidate=/^\/api\/email\/deliveries\/([0-9a-f-]{36})\/(candidates|reviewed-match)$/.exec(path);
+  if(candidate){if(candidate[2]==='candidates'&&request.method==='GET')return emailJson(await sentCandidates(env,actor,candidate[1],new URL(request.url).searchParams.get('pageToken')??''));if(candidate[2]==='reviewed-match'&&request.method==='POST'){const v=await jsonBody(request);return emailJson(await reviewSentMatch(env,actor,candidate[1],{gmailId:String(v.gmailId??''),proof:String(v.proof??''),reason:String(v.reason??''),confirmed:v.confirmed===true}));}return emailJson({error:'method_not_allowed'},405);}
   const check=/^\/api\/email\/deliveries\/([0-9a-f-]{36})\/check$/.exec(path);
   if(check&&request.method==='POST')return emailJson(await checkDelivery(env,actor,check[1]));
   const send=/^\/api\/email\/([0-9a-f-]{36})\/send$/.exec(path);
