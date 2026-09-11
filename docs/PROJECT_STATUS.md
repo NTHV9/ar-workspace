@@ -6,7 +6,9 @@
 - Aging sort ใช้ OPERA `age` เป็นตัวเลข; หากขาด age ใช้ start day ของ source bucket ที่ตรงกัน ไม่เรียงข้อความอย่าง Up to 30. ค่าไม่ทราบอยู่ท้ายทั้ง asc/desc. Demo เพิ่ม source age สมมติที่ตรงกับช่วงเดิม ไม่ seed business data
 - Latest Sent ใช้ workflow แยก No billing sent/Billed/No reminders sent/Billing setup needed/Not available และคง actual reminder stage/Final urgency. ใช้กฎเดียวกันใน Account Detail และคิวงาน; Billing status ฝั่งรายละเอียดของ Not Required แสดง Not required
 - ก่อนแก้ browser regression ล้มเหลว 4 cases ตรงอาการ (sort, status และ right-edge ที่ 1100/1200). หลังแก้ 5 cases ผ่านรวม mobile; full unit 817/88 files, typecheck/build และ local regression 21 cases ผ่าน (selection/filter/back, queue, focus). หลักฐาน synthetic เท่านั้น
-- ตรวจบัญชีที่เจ้าของแจ้งแบบ read-only: open invoice workflows 84 รายการเป็น Billing Required และยังไม่มีวันวางบิลหรือ reminder stage ในระบบ จึงควรขึ้น No billing sent ตามคำยืนยัน. ไม่ได้แก้ฐานข้อมูลหรือเดาประวัติวางบิลเก่า. กำลัง Push/Deploy และตรวจผลจริง
+- ตรวจบัญชีที่เจ้าของแจ้งแบบ read-only: open invoice workflows 84 รายการเป็น Billing Required และยังไม่มีวันวางบิลหรือ reminder stage ในระบบ จึงควรขึ้น No billing sent ตามคำยืนยัน. ไม่ได้แก้ฐานข้อมูลหรือเดาประวัติวางบิลเก่า
+- Deployed source `b66f9b5c95cb0c8f8771eb2bb254b07f6740b8ee`, Worker `6e60652c-73d4-41f6-8212-df8fabc41a9d`; health ตรง SHA/database_verified. Cloudflare browser 25 cases ผ่าน รวม regression ทั้งสามจุด, responsive/selection/back/focus, compressed child restrictions และ real unauthenticated API rejection. [PR #6](https://github.com/NTHV9/ar-workspace/pull/6) Merge แล้ว `40bf6edb5fc6751932dd9cc5c6d9098b88ead39f` หลัง CI ผ่าน; merge tree ตรง tested source
+- ข้อจำกัดการตรวจครั้งนี้: แท็บ browser ของผู้ช่วยสำหรับข้อมูลจริงแจ้ง session expired จึงยังไม่ได้ตรวจ visual ด้วย customer rows หลัง deploy. ใช้ compiled Cloudflare UI กับ synthetic fixtures และตรวจ workflow จริงผ่าน read-only Supabase แยกกัน ไม่ลดสิทธิ์เพื่อให้ทดสอบผ่าน และไม่อ้างว่า live customer visual ผ่านแล้ว
 
 ## Checkpoint PDF clarity and Email handoff — 11 กันยายน 2026
 
