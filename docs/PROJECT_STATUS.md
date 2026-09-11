@@ -11,7 +11,10 @@
 - Tested: Typecheck/Buildผ่าน; Vitest867tests/96files; portable PostgreSQL63migrations +5rollbackfixturesผ่าน, providerRequests0และserverหยุดแล้ว. Scoped Aging/backendและbroad source reviewsแก้findingsแล้ว รวมSENT finalization timing, missing-account false zero, source/classification gaps และmulti-hotel retries
 - Local browser55casesผ่านในfinalmixedrun; live-onlyhealthcaseที่ถูกส่งไปViteตอบHTMLจึงไม่นับผ่านและจะรันบนCloudflare. เพิ่มvisualconfirm5casesผ่านที่1440x900/1280x800/390. Publicevidenceเป็นsyntheticเท่านั้น: dashboard-period-*และdashboard-aging-*; เก็บข้อมูลจริง/SQLรายละเอียดส่วนตัวนอกGit. Detector26advisoryจากincumbenttokens/typography ไม่มีhigher findings
 - ไม่มีemail sends, OPERA accounting writes, customerfiledeletion, DNSchanges หรือpaid add-ons. Retained original design PNGsและPDF/editor regressions
-- UI deployment / CI / merge: pending final rollout
+- Deployed source `d1b7d6e4b63d62912ff42bf176b6136dbc592f41`, Worker `b7ffb653-af32-41db-8574-d00b81c95e7d` ที่ https://ar-workspace.ar-c82.workers.dev . HealthยืนยันSHAตรง/database_verified/OPERA connected. NewDashboardAPIทั้งสองปฏิเสธunauthenticatedด้วย401
+- Cloudflare browser **51casesผ่าน** รวมdate ranges/current Aging/drill/back/Reports/partial retry/cancellation/source gaps และPDF/Account regressions. Live-onlyhealthcaseผ่านบนCloudflareแล้ว. ภาพหลักฐานใหม่ใช้syntheticfixturesและตรงกับdeployedassets
+- ตรวจผ่านในbrowserที่ลงชื่อเข้าใช้จริงด้วยGoogleflowเดิม: Dashboardแสดงconfirmedclosingtotalและปุ่มdetail, Agingแสดงcomparisonrowsจากข้อมูลจริง, ReportsมีExternalbillingและไม่มีcontrolsที่ตัดออก. ไม่เก็บcustomerpagecontentหรือauthcodeลงGit; ไม่ได้อ้างการทดสอบPasswordใหม่ในรอบนี้
+- [PR #14](https://github.com/NTHV9/ar-workspace/pull/14) Mergeแล้ว `6ec82c459b56af6ae3db1f9cf4284bc1fe9f16b5` หลัง [CIผ่าน](https://github.com/NTHV9/ar-workspace/actions/runs/34639068905); mergetreeตรงtested/deployedsource. โค้ดscopeนี้พร้อมให้เจ้าของตรวจหน้าตาและนิยามตัวเลข; วันก่อนเริ่มเก็บรายInvoiceยังunavailableตามจริง
 
 ## Checkpoint Direct typing, content flow and whole-page Preview — 11 กันยายน 2026
 
