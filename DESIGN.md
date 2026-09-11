@@ -137,7 +137,7 @@ The hierarchy is compact and numerical. Shared page titles lead with a bold head
 
 ## Layout
 
-The application has a centered frame with maximum width (1800px), a top navigation shell and a desktop page gutter (24px). Larger screens expand the gutter; small screens reduce it. Preserve the incumbent Portfolio composition at 1440×900: three overview panels and two full-width comparative tables. Account retains five summary panels, an aging band, tabs, a wide ledger and a narrower right detail panel. Narrow laptops preserve the ledger using a detail drawer and controlled horizontal scrolling.
+The application has a centered frame with maximum width (1800px), a top navigation shell and a desktop page gutter (24px). Larger screens expand the gutter; small screens reduce it. Preserve the incumbent Portfolio composition at 1440×900: three overview panels and two full-width comparative tables. Account retains five summary panels, an aging band, tabs, a wide ledger and a narrower right detail panel. Account Detail keeps the ledger and right panel side by side above 1000 CSS pixels, including 1024/1100/1200 laptop widths. At 1000px and below, use the right modal drawer. Keep horizontal table scrolling and preserve selection when changing between these layouts.
 
 Dashboard places a compact date/account filter row above a four-measure divided white strip. A wider current-AR comparison sits beside a narrower current-action list, followed by evidence sections. This arrangement is a Dashboard pattern, not a requirement to turn every page into summary tiles.
 
