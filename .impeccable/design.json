@@ -1,0 +1,397 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-11T05:21:48.022Z",
+  "title": "Design System: Luminous AR interface",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Primary",
+        "tonalRamp": [
+          "oklch(15% 0.2325 267.21)",
+          "oklch(26.43% 0.2325 267.21)",
+          "oklch(37.86% 0.2325 267.21)",
+          "oklch(49.29% 0.2325 267.21)",
+          "oklch(60.71% 0.2325 267.21)",
+          "oklch(72.14% 0.2325 267.21)",
+          "oklch(83.57% 0.2325 267.21)",
+          "oklch(95% 0.2325 267.21)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "Primary Hover",
+        "tonalRamp": [
+          "oklch(15% 0.2112 266.61)",
+          "oklch(26.43% 0.2112 266.61)",
+          "oklch(37.86% 0.2112 266.61)",
+          "oklch(49.29% 0.2112 266.61)",
+          "oklch(60.71% 0.2112 266.61)",
+          "oklch(72.14% 0.2112 266.61)",
+          "oklch(83.57% 0.2112 266.61)",
+          "oklch(95% 0.2112 266.61)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "tonalRamp": [
+          "oklch(15% 0.0109 234.82)",
+          "oklch(26.43% 0.0109 234.82)",
+          "oklch(37.86% 0.0109 234.82)",
+          "oklch(49.29% 0.0109 234.82)",
+          "oklch(60.71% 0.0109 234.82)",
+          "oklch(72.14% 0.0109 234.82)",
+          "oklch(83.57% 0.0109 234.82)",
+          "oklch(95% 0.0109 234.82)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0042 236.50)",
+          "oklch(26.43% 0.0042 236.50)",
+          "oklch(37.86% 0.0042 236.50)",
+          "oklch(49.29% 0.0042 236.50)",
+          "oklch(60.71% 0.0042 236.50)",
+          "oklch(72.14% 0.0042 236.50)",
+          "oklch(83.57% 0.0042 236.50)",
+          "oklch(95% 0.0042 236.50)"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(26.43% 0.0000 89.88)",
+          "oklch(37.86% 0.0000 89.88)",
+          "oklch(49.29% 0.0000 89.88)",
+          "oklch(60.71% 0.0000 89.88)",
+          "oklch(72.14% 0.0000 89.88)",
+          "oklch(83.57% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0561 254.86)",
+          "oklch(26.43% 0.0561 254.86)",
+          "oklch(37.86% 0.0561 254.86)",
+          "oklch(49.29% 0.0561 254.86)",
+          "oklch(60.71% 0.0561 254.86)",
+          "oklch(72.14% 0.0561 254.86)",
+          "oklch(83.57% 0.0561 254.86)",
+          "oklch(95% 0.0561 254.86)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0492 253.78)",
+          "oklch(26.43% 0.0492 253.78)",
+          "oklch(37.86% 0.0492 253.78)",
+          "oklch(49.29% 0.0492 253.78)",
+          "oklch(60.71% 0.0492 253.78)",
+          "oklch(72.14% 0.0492 253.78)",
+          "oklch(83.57% 0.0492 253.78)",
+          "oklch(95% 0.0492 253.78)"
+        ]
+      },
+      "dashboard-muted": {
+        "role": "neutral",
+        "displayName": "Dashboard Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0453 249.87)",
+          "oklch(26.43% 0.0453 249.87)",
+          "oklch(37.86% 0.0453 249.87)",
+          "oklch(49.29% 0.0453 249.87)",
+          "oklch(60.71% 0.0453 249.87)",
+          "oklch(72.14% 0.0453 249.87)",
+          "oklch(83.57% 0.0453 249.87)",
+          "oklch(95% 0.0453 249.87)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "tonalRamp": [
+          "oklch(15% 0.0167 250.85)",
+          "oklch(26.43% 0.0167 250.85)",
+          "oklch(37.86% 0.0167 250.85)",
+          "oklch(49.29% 0.0167 250.85)",
+          "oklch(60.71% 0.0167 250.85)",
+          "oklch(72.14% 0.0167 250.85)",
+          "oklch(83.57% 0.0167 250.85)",
+          "oklch(95% 0.0167 250.85)"
+        ]
+      },
+      "dashboard-link": {
+        "role": "primary",
+        "displayName": "Dashboard Link",
+        "tonalRamp": [
+          "oklch(15% 0.1897 264.99)",
+          "oklch(26.43% 0.1897 264.99)",
+          "oklch(37.86% 0.1897 264.99)",
+          "oklch(49.29% 0.1897 264.99)",
+          "oklch(60.71% 0.1897 264.99)",
+          "oklch(72.14% 0.1897 264.99)",
+          "oklch(83.57% 0.1897 264.99)",
+          "oklch(95% 0.1897 264.99)"
+        ]
+      },
+      "dashboard-kat": {
+        "role": "secondary",
+        "displayName": "Dashboard Kat",
+        "tonalRamp": [
+          "oklch(15% 0.1659 264.09)",
+          "oklch(26.43% 0.1659 264.09)",
+          "oklch(37.86% 0.1659 264.09)",
+          "oklch(49.29% 0.1659 264.09)",
+          "oklch(60.71% 0.1659 264.09)",
+          "oklch(72.14% 0.1659 264.09)",
+          "oklch(83.57% 0.1659 264.09)",
+          "oklch(95% 0.1659 264.09)"
+        ]
+      },
+      "dashboard-tsk": {
+        "role": "secondary",
+        "displayName": "Dashboard Tsk",
+        "tonalRamp": [
+          "oklch(15% 0.1106 183.28)",
+          "oklch(26.43% 0.1106 183.28)",
+          "oklch(37.86% 0.1106 183.28)",
+          "oklch(49.29% 0.1106 183.28)",
+          "oklch(60.71% 0.1106 183.28)",
+          "oklch(72.14% 0.1106 183.28)",
+          "oklch(83.57% 0.1106 183.28)",
+          "oklch(95% 0.1106 183.28)"
+        ]
+      },
+      "urgent": {
+        "role": "secondary",
+        "displayName": "Urgent",
+        "tonalRamp": [
+          "oklch(15% 0.1602 10.21)",
+          "oklch(26.43% 0.1602 10.21)",
+          "oklch(37.86% 0.1602 10.21)",
+          "oklch(49.29% 0.1602 10.21)",
+          "oklch(60.71% 0.1602 10.21)",
+          "oklch(72.14% 0.1602 10.21)",
+          "oklch(83.57% 0.1602 10.21)",
+          "oklch(95% 0.1602 10.21)"
+        ]
+      },
+      "review": {
+        "role": "secondary",
+        "displayName": "Review",
+        "tonalRamp": [
+          "oklch(15% 0.1113 75.24)",
+          "oklch(26.43% 0.1113 75.24)",
+          "oklch(37.86% 0.1113 75.24)",
+          "oklch(49.29% 0.1113 75.24)",
+          "oklch(60.71% 0.1113 75.24)",
+          "oklch(72.14% 0.1113 75.24)",
+          "oklch(83.57% 0.1113 75.24)",
+          "oklch(95% 0.1113 75.24)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Page headline",
+        "purpose": "Application page identity."
+      },
+      "dashboard-title": {
+        "displayName": "Dashboard section",
+        "purpose": "Distinguishes date activity, current work and evidence."
+      },
+      "body": {
+        "displayName": "Application body",
+        "purpose": "Shared compact reading text."
+      },
+      "dashboard-label": {
+        "displayName": "Dashboard label",
+        "purpose": "Control labels and supporting details."
+      },
+      "dashboard-measure": {
+        "displayName": "Daily measure",
+        "purpose": "Dominant count in the divided daily strip."
+      }
+    },
+    "shadows": [
+      {
+        "name": "frame",
+        "value": "0 20px 60px #284d6e10",
+        "purpose": "Ambient application frame."
+      },
+      {
+        "name": "panel",
+        "value": "0 7px 18px #27486603",
+        "purpose": "Incumbent shared panel lift; Dashboard surfaces have no added shadow."
+      },
+      {
+        "name": "active-navigation",
+        "value": "0 2px 6px #233f5810",
+        "purpose": "Selected navigation item."
+      }
+    ],
+    "motion": [
+      {
+        "name": "page-arrival",
+        "value": "arrive .2s ease-out",
+        "purpose": "Opacity .65 to 1, only under prefers-reduced-motion: no-preference."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide-page",
+        "value": "1500px"
+      },
+      {
+        "name": "account-drawer",
+        "value": "1200px"
+      },
+      {
+        "name": "dashboard-tight-columns",
+        "value": "1100px"
+      },
+      {
+        "name": "shell-wrap",
+        "value": "900px"
+      },
+      {
+        "name": "dashboard-stack",
+        "value": "800px"
+      },
+      {
+        "name": "mobile-account-disclosure",
+        "value": "600px"
+      },
+      {
+        "name": "dashboard-smallest",
+        "value": "480px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Shared filled primary action.",
+      "html": "<button class=\"ds-primary\">Sign in</button>",
+      "css": ".ds-primary{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:500;background:var(--blue,#3d65ff);color:white;width:100%;padding:12px;border:0;border-radius:9px;cursor:pointer}.ds-primary:hover{background:#3157df}.ds-primary:focus-visible{outline:3px solid #7699ff;outline-offset:3px}.ds-primary:disabled{opacity:.55;cursor:not-allowed}"
+    },
+    {
+      "name": "Default button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Dashboard reload and ordinary actions.",
+      "html": "<button class=\"ds-button\">Reload dashboard</button>",
+      "css": ".ds-button{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:500;padding:9px 13px;border:1px solid var(--line,#dce5ef);border-radius:9px;background:white;color:#10253f;cursor:pointer}.ds-button:hover{border-color:#a9bcda;background:#f0f5ff}.ds-button:focus-visible{outline:3px solid #7699ff;outline-offset:3px}.ds-button:disabled{opacity:.55;cursor:not-allowed}"
+    },
+    {
+      "name": "Dashboard date field",
+      "kind": "input",
+      "refersTo": "dashboard-field",
+      "description": "Visible date label and consistent outlined control.",
+      "html": "<label class=\"ds-label\">Activity date · Thailand<input class=\"ds-field\" type=\"date\" /></label>",
+      "css": ".ds-label{font-family:'Plus Jakarta Sans',sans-serif;display:flex;flex-direction:column;gap:7px;color:#51677e;font-size:11px;font-weight:500}.ds-field{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;width:100%;min-width:0;height:38px;border:1px solid var(--line,#dce5ef);border-radius:9px;background:white;padding:8px 10px;color:#10253f}.ds-field:focus-visible{outline:3px solid #7699ff;outline-offset:3px}"
+    },
+    {
+      "name": "Application navigation",
+      "kind": "nav",
+      "description": "Pale track with a white current destination.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Application\"><button class=\"ds-active\" aria-current=\"page\">Dashboard</button><button>Portfolio</button></nav>",
+      "css": ".ds-nav{display:flex;border-radius:12px;background:#ecf3f8;padding:4px;align-items:center;gap:3px;overflow-x:auto;white-space:nowrap}.ds-nav button{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:500;padding:9px 15px;border:0;border-radius:9px;background:white;color:#6e839e;cursor:pointer;flex-shrink:0}.ds-nav button:hover{background:#f0f5ff}.ds-nav button.ds-active{color:#112944;background:white;box-shadow:0 2px 6px #233f5810}.ds-nav button:focus-visible{outline:3px solid #7699ff;outline-offset:3px}"
+    },
+    {
+      "name": "Count badge",
+      "kind": "chip",
+      "description": "Incumbent compact supporting count.",
+      "html": "<span class=\"ds-badge\">12 accounts</span>",
+      "css": ".ds-badge{font-family:'Plus Jakarta Sans',sans-serif;display:inline-block;padding:4px 7px;font-size:8px;border-radius:14px;background:#eaf0ff;color:#3559ce;font-weight:600}"
+    },
+    {
+      "name": "Dashboard evidence surface",
+      "kind": "card",
+      "refersTo": "dashboard-surface",
+      "description": "Bordered white evidence section without added shadow.",
+      "html": "<section class=\"ds-surface\"><h2>Receivables now</h2><p>Latest saved balances · includes invoices from every date</p></section>",
+      "css": ".ds-surface{font-family:'Plus Jakarta Sans',sans-serif;border:1px solid var(--line,#dce5ef);border-radius:16px;padding:20px;background:white;min-width:0;color:#10253f}.ds-surface h2{font-size:16px;letter-spacing:-.02em;line-height:1.5;margin:0}.ds-surface p{font-size:11px;color:#51677e;line-height:1.7;margin:6px 0 0;max-width:72ch}"
+    },
+    {
+      "name": "Daily measurement strip",
+      "kind": "custom",
+      "description": "Four related daily values share one divided container. Example values are illustrative.",
+      "html": "<section class=\"ds-strip\"><article class=\"ds-cell\"><h3>Invoice entries</h3><strong>12</strong><p>original value</p><small>Illustrative source note</small><a href=\"#source\">View evidence <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M7 7h10v10M7 17 17 7\"/></svg></a></article><article class=\"ds-cell\"><h3>First billed</h3><strong>8</strong><p>Email 6 · External 2</p><small>Illustrative source note</small><a href=\"#source\">View evidence <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M7 7h10v10M7 17 17 7\"/></svg></a></article><article class=\"ds-cell\"><h3>Follow-up sends</h3><strong>5</strong><p>confirmed SENT</p><small>Illustrative source note</small><a href=\"#source\">View evidence <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M7 7h10v10M7 17 17 7\"/></svg></a></article><article class=\"ds-cell\"><h3>OPERA payment credits</h3><strong>10,000</strong><p>payment records</p><small>Illustrative source note</small><a href=\"#source\">View evidence <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M7 7h10v10M7 17 17 7\"/></svg></a></article></section>",
+      "css": ".ds-strip{font-family:'Plus Jakarta Sans',sans-serif;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line,#dce5ef);border-radius:16px;background:white;overflow:hidden;color:#10253f}.ds-cell{padding:19px 21px;display:flex;flex-direction:column;gap:9px;min-width:0}.ds-cell+.ds-cell{border-left:1px solid var(--line,#dce5ef)}.ds-cell h3{font-size:12px;font-weight:600;margin:0}.ds-cell strong{font-size:34px;letter-spacing:-.03em;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ds-cell:last-child strong{font-size:28px;color:#08766b}.ds-cell p{font-size:11px;line-height:1.6;margin:0}.ds-cell small{font-size:10px;color:#51677e;line-height:1.6;min-height:32px}.ds-cell a{font-size:11px;margin-top:auto;padding-top:4px;color:#2852c8;text-decoration:none;text-underline-offset:3px}.ds-cell a:hover{text-decoration:underline}.ds-cell a:focus-visible{outline:3px solid #7699ff;outline-offset:3px}.ds-cell svg{vertical-align:middle}@media(max-width:800px){.ds-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.ds-cell:nth-child(3){border-left:0}.ds-cell:nth-child(n+3){border-top:1px solid var(--line,#dce5ef)}}"
+    },
+    {
+      "name": "Current action row",
+      "kind": "custom",
+      "description": "Current work label, amount, count and matching source.",
+      "html": "<a class=\"ds-work\" href=\"#source\"><span>Urgent after Final<small>Illustrative amount</small></span><strong>3</strong><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M7 7h10v10M7 17 17 7\"/></svg></a>",
+      "css": ".ds-work{font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;gap:13px;color:#10253f;padding:11px 0;border-bottom:1px solid #e4ecf4;text-decoration:none}.ds-work>span{flex:1;font-size:12px;font-weight:600}.ds-work small{display:block;font-size:10px;color:#51677e;line-height:1.6;font-weight:400;margin-top:3px}.ds-work strong{font-size:22px;font-variant-numeric:tabular-nums;min-width:26px;text-align:right;color:#b33755}.ds-work:hover>span{text-decoration:underline;text-decoration-color:#a9bdd6;text-underline-offset:4px}.ds-work:focus-visible{outline:3px solid #7699ff;outline-offset:3px}"
+    },
+    {
+      "name": "Mobile account-filter disclosure",
+      "kind": "custom",
+      "description": "Native compact disclosure keeps active count visible while filters are closed.",
+      "html": "<details class=\"ds-disclosure\"><summary><span>Account filters</span><small>0 active</small></summary><label>Account type<select><option>All account types</option></select></label></details>",
+      "css": ".ds-disclosure{font-family:'Plus Jakarta Sans',sans-serif;color:#10253f;font-size:12px}.ds-disclosure summary{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:10px 12px;border:1px solid var(--line,#dce5ef);border-radius:9px;background:white;cursor:pointer;font-weight:600}.ds-disclosure summary::after{content:'+';font-size:16px}.ds-disclosure[open] summary::after{content:'−'}.ds-disclosure summary small{margin-left:auto;font-size:10px;color:#51677e;font-weight:500}.ds-disclosure summary:focus-visible{outline:3px solid #7699ff;outline-offset:3px}.ds-disclosure label{display:flex;flex-direction:column;gap:7px;padding-top:12px;font-size:11px;color:#51677e}.ds-disclosure select{font-family:'Plus Jakarta Sans',sans-serif;height:38px;border:1px solid var(--line,#dce5ef);border-radius:9px;background:white;padding:8px 10px;color:#10253f}.ds-disclosure select:focus-visible{outline:3px solid #7699ff;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Luminous AR",
+    "overview": "Visual authority remains `references/design/luminous-v4.png` and `account-detail-v2.png`; supporting reference pages remain unchanged. Mode: Operate. Preserve the light blue-gray canvas, white surfaces, navy text, blue and teal property indicators, fine borders, restrained shadows and rounded application frame.\n\nTables are the main workspace. Dashboard extends this existing world with a legible distinction between dated activity and current work; it does not replace the Portfolio comparison matrix. This document records implemented source patterns from `src/styles.css`, `src/dashboard/dashboard.css` and `src/dashboard/Dashboard.tsx`. It is not evidence of deployment or live-source validation.",
+    "keyCharacteristics": [
+      "Calm white surfaces on a cool canvas, bounded by fine lines.",
+      "Compact self-hosted sans typography and aligned tabular amounts.",
+      "Hotel identity remains visible in comparisons and source navigation.",
+      "Date context, current-state context and unavailable evidence remain explicit."
+    ],
+    "rules": [
+      {
+        "name": "The Hotel Identity Rule",
+        "body": "Preserve distinct hotel labels and blue/teal indicators. A shared Account ID does not erase its Hotel context.",
+        "section": "colors"
+      },
+      {
+        "name": "The Aligned Amount Rule",
+        "body": "Right-align financial columns and use tabular numerals; keep descriptive row labels left-aligned.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Time Contexts Rule",
+        "body": "Place the selected Thailand calendar day in the activity heading. Label current balances and current queue separately so changing the activity day cannot imply a historical balance snapshot.",
+        "section": "layout"
+      },
+      {
+        "name": "The Evidence Boundary Rule",
+        "body": "Keep unavailable evidence visually distinct from a verified zero. Explain coverage and source failures beside the affected data, and preserve the path to its source.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** preserve original reference files and record approved business changes separately from visual mismatches.",
+      "**Do** retain the Portfolio matrix and Account ledger compositions when extending the application.",
+      "**Do** label selected-day activity and current work independently.",
+      "**Do** keep amounts aligned, hotels identifiable and source links matched to their evidence.",
+      "**Do** preserve unavailable states per source and keyboard-visible focus.",
+      "**Do** use compact mobile disclosure for optional Account filters while keeping the activity date visible."
+    ],
+    "donts": [
+      "**Don't** replace the comparative workspace with a new visual identity.",
+      "**Don't** present unknown source values as zero or sum overlapping action counts into debt.",
+      "**Don't** merge Hotel + Account identity through filters, selections or source links.",
+      "**Don't** hide financial columns to fit a narrow viewport; retain controlled scrolling.",
+      "**Don't** treat synthetic review captures as live-service validation."
+    ]
+  }
+}
