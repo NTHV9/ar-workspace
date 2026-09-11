@@ -50,7 +50,7 @@ HTML/CSS ยังเป็นพื้นฐานของ UI แม้ใช�
 - Invoice identity ต้องมี Hotel + Account + stable OPERA item identity ไม่ใช้ตำแหน่งใน array และไม่ใช้ชื่อแขก/ยอดเงินอย่างเดียว
 - Account Type ใช้ค่าจาก OPERA ไม่เปลี่ยนชื่อกลุ่มโดยเดา มี filter/drilldown ทุกสถิติ
 - Agent เดียวกัน เช่น Agoda แสดงยอด KAT, TSK และ Total ได้ แต่ยังแสดงแยก Hotel เสมอ ไม่รวม ledger/สถานะ/Invoice ข้ามโรงแรม
-- การเป็นกลุ่มรายงานเดียวกันต้องยืนยัน mapping ไม่เดาว่าชื่อหรือเลขเหมือนกันข้ามโรงแรมแปลว่าเป็น entity เดียวเสมอ
+- Portfolio: ตามคำยืนยันเจ้าของ 11 กันยายน 2026 ให้ Account เดียวกันอยู่แถวเดียวเพื่อเทียบ KAT/TSK. ใช้ Account No. ที่ตรงกัน (trim/case-insensitive) และไม่ซ้ำภายในโรงแรมเป็น reporting mapping โดยคง explicit group เดิมหากมี. เลขขาด/กำกวมยังแยก Hotel + Account ID; ไม่จับคู่ด้วยชื่อหรือ internal ID อย่างเดียว. ข้อนี้ใช้แสดงผลเท่านั้น ไม่รวม operational identity
 - Billing, Credit Term, ผู้รับ และเอกสารยังผูกกับ Hotel + Account ไม่ใช้ grouping เพื่อส่ง Statement รวมข้ามโรงแรม
 - THB เท่านั้น หากพบสกุลอื่นให้แจ้งข้อมูลผิดขอบเขต ไม่แปลง/ติดป้าย THB ให้เอง
 

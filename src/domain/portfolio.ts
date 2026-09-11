@@ -2,7 +2,7 @@ import type {StageSnapshot} from './collection-policy';
 export interface Account {
   hotel: string; id: string; name: string; type: string; open: number; over90: number; items: number;
   group?: string; aging?: number[]; creditLimit?: number | null; oldest?: number;
-  account_no?: string; verification_state?: string; agingBuckets?: AgingBucket[];
+  account_no?: string | null; verification_state?: string; agingBuckets?: AgingBucket[];
   sourceWarnings?: { code: 'history_total_understated'; reported: number; observed: number; includeZero: boolean }[];
 }
 export interface AgingBucket { label: string; start: number | null; end: number | null; sequence: number; amount: number; debit: number; credit: number }
@@ -40,10 +40,23 @@ export function selectionReason(invoice:Invoice){
 export function filterAccounts(rows: Account[], filters: { hotel: string; type: string; search: string }) {
   return rows.filter(row => (filters.hotel === 'All' || row.hotel === filters.hotel) && (filters.type === 'All' || row.type === filters.type) && `${row.name} ${row.id}`.toLowerCase().includes(filters.search.toLowerCase()));
 }
-export function aggregateAccounts(rows: Account[], byType = false): Comparison[] {
+export function aggregateAccounts(rows: Account[], byType = false, identityRows: Account[] = rows): Comparison[] {
+  // Account No. pairs reporting rows only. Hotel + ID remains the ledger identity.
+  // Check the complete catalog so a filter cannot conceal an ambiguous number.
+  const numberOf = (row:Account) => row.account_no?.trim().toUpperCase() || '';
+  const seen = new Set<string>(), ambiguous = new Set<string>();
+  if(!byType)for(const row of identityRows){
+    const number=numberOf(row);
+    if(!number)continue;
+    const key=JSON.stringify([row.hotel,number]);
+    if(seen.has(key))ambiguous.add(number);
+    seen.add(key);
+  }
   const groups = new Map<string, Comparison>();
   for (const row of rows) {
-    const key = byType ? row.type : row.group ? `group:${row.group}` : `${row.hotel}:${row.id}`;
+    const number=numberOf(row);
+    const key = byType ? row.type : row.group ? `group:${row.group}`
+      : number && !ambiguous.has(number) ? `number:${number}` : `${row.hotel}:${row.id}`;
     const value = groups.get(key) ?? { key, name: byType ? row.type : row.name, kat: 0, tsk: 0, total: 0, over90: 0, share: 0, items: 0, accounts: 0, members: [] };
     if (row.hotel === 'KAT') value.kat += row.open;
     if (row.hotel === 'TSK') value.tsk += row.open;

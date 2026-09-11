@@ -109,3 +109,4 @@ dialog.invoice-detail:not([open]){display:none}
   .live-status>span{min-width:0;flex-basis:100%}
   .live-status button{min-height:44px;font-size:11px}
 }
+.hotel-choice>span{min-width:0;flex:1;text-align:left}.hotel-choice small{display:block;white-space:normal;overflow-wrap:anywhere;margin-top:4px}.hotel-choice strong{white-space:nowrap}
