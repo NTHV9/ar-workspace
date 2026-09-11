@@ -46,7 +46,9 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    const index=Number(child);const exported=action==='exports'&&Number.isSafeInteger(index)&&index>=0?job.exports[index]:null;
    const key=action==='project'?job.project_key:file?.storage_key??exported?.storage_key;
    if(!key||!key.startsWith(`jobs/${id}/`))return json({error:'document_file_missing'},404);
-   const response=await readManagedStorage(env,key,action==='project'?67108864:file?.byte_count??exported?.byte_count??104857600,{headers});
+   // The disposable bucket deliberately has no direct member policy. Its files
+   // pass the same job-owner check above before the server reads their bytes.
+   const response=await readManagedStorage(env,key,action==='project'?67108864:file?.byte_count??exported?.byte_count??104857600,env.ACCEPTANCE?{}:{headers});
    if(!response.ok){await response.body?.cancel();return json({error:'document_file_unavailable'},503);}
    return new Response(response.body,{headers:{'Content-Type':action==='project'?'application/json':'application/pdf','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
   }
