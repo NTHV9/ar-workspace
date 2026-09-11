@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Financial range status — 11 กันยายน 2026
+
+- เจ้าของสั่ง backfill 1–31 สิงหาคมแล้วทั้ง KAT/TSK เวลา 13:41 ICT; ตรวจ Supabase และ Cloudflare ตรงกันว่า queued หลังงานช่วงอื่น. รอบก่อนหน้ามีบัญชีที่ต้องตรวจ payment links จำนวนมาก; ตรวจ step ใหม่เดินต่อและบันทึก mapping batches เพิ่ม ไม่ใช่ workflow หยุด. ยังไม่อ้างว่า August coverage ครบ
+- พบ UI bug: report จะ reload หลัง status เปลี่ยนเมื่อ global queue ว่างเท่านั้น ทำให้ publication ของช่วงที่เลือกอาจไม่ขึ้นขณะที่ช่วงอื่นยังทำงาน. แก้ให้โหลดใหม่เมื่อมี run สิ้นสุดโดยไม่รอ global queue; คง server-side coverage gate และ unknown totals เป็น —
+- เพิ่มสถานะตามช่วงวันที่และโรงแรม แยก Queued/Reading OPERA/Finished/Failed กับงานช่วงอื่น; ป้องกันกดซ้ำเมื่อทั้ง scope มีงานอยู่แล้ว. Notice ระบุวันที่ที่ส่งจริงและล้างเมื่อเปลี่ยนช่วง. แสดง recent runs ครบที่ API คืนมา และบอกให้เลือกวันก่อนกด refresh
+- Regression สองกรณีล้มเหลวก่อนแก้และผ่านหลังแก้. Full unit 811/87 files และ typecheck/build ผ่าน; local browser Financial Reports + Dashboard 19 cases ผ่าน รวม date payload, other-range queue, publication ขณะคิวยังไม่ว่าง, missing coverage, unavailable API, 1440/1280/390. ภาพทดสอบ synthetic เท่านั้น
+- กำลัง Push/Deploy UI fix; ไม่มี migration, queue restart, เพิ่ม concurrency, OPERA accounting write หรือการสร้างคำขอ backfill ซ้ำจากการตรวจครั้งนี้
+
 ## Checkpoint Account comparison — 11 กันยายน 2026
 
 - แก้ Portfolio ที่แยก Account เดียวกันเป็นคนละแถว KAT/TSK: live source มี Account No. ตรงกันแต่ไม่มี explicit group จึงเคยตกไปใช้ Hotel + internal ID. ข้อมูลตรวจแบบ read-only มี 175 operational accounts, 69 คู่ที่ Account No. ตรงกัน และไม่พบเลขซ้ำภายในโรงแรม
