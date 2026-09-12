@@ -6,7 +6,12 @@
 - ภาพรวมเปลี่ยนเป็นพื้นมิ้นต์อ่อน/ขาวอมม่วงกับกราฟหลายสีตามคำยืนยันล่าสุดที่ไม่ต้องการพื้นกรมท่าเข้ม. Donutใช้เฉพาะsourceที่ยืนยัน/nonnegative/รวมตรงnet; creditหรือยอดไม่ตรงใช้signedprofile และแยก0กับunavailable. ไม่เปลี่ยนการคำนวณยอดเงินจริง
 - Sort hotel/header และจอแคบ Sort by/direction ทำงาน; default Total net descending. เลือกช่วงบนกราฟเป็นhighlight/Invoice target ไม่ซ่อนช่วงอื่น ไม่ทำpageเดิมหาย. Columns/Show all ranges, exact amount, account grouping, source-schema/child exclusion และdrill/backคงอยู่
 - Tested locally: Typecheck/Buildผ่าน,880unit tests/98files,51browser regressionsผ่าน รวม15Agingcases และการคงDashboard/Hotel breakdownsเดิม. เพิ่ม4fit/mobile-sort checks และ3app all-range/drill casesผ่าน. ภาพsynthetic1440/1280/390ตรวจจริง; desktopamount stringsไม่wrap/truncate และtable/pageไม่มีhorizontaloverflow. Independentreviewแก้mobile sortingแล้วไม่มีข้อค้าง
-- ไม่มีmigration/backend/provider/auth/retention changes, ไม่มีemail sends/OPERA writes/paid resources. ภาพใหม่aging-all-ranges-*และaging-all-app-*เป็นข้อมูลสมมติ; baselineเดิมไม่แก้. Deploy/live verificationและMergeกำลังดำเนินการ
+- ไม่มีmigration/backend/provider/auth/retention changes, ไม่มีemail sends/OPERA writes/paid resources. ภาพใหม่aging-all-ranges-*และaging-all-app-*เป็นข้อมูลสมมติ; baselineเดิมไม่แก้. Deploy/live verificationและMergeเสร็จแล้วตามหลักฐานด้านล่าง
+- Deployed source `963b33df50a0a55ff13923c871b4f5659c46562f`, Worker `9fa3d38d-a23a-4323-ae4f-9e59190df94a` ที่ https://ar-workspace.ar-c82.workers.dev . HealthยืนยันexactSHA/database_verified/OPERAconnected. Cloudflare browser71casesผ่าน รวมall-range/no-horizontal-scrollที่1440/1280/390, propertyInvoice drill และDashboard/Portfolio/Account/PDF regressions
+- Live signed-in UIตรวจแล้ว: 11Account Type groups,6range columnsครบและtableไม่มีhorizontaloverflow. เลือกช่วง31–60แล้วยังแสดงทุกช่วง; เจาะAccount Typeและกลับทำงานตามจริง. เก็บเฉพาะboolean validationในผลตรวจ ไม่Pushข้อมูลลูกค้า. ภาพaging-all-dashboard-*เป็นsyntheticcapturesจากdeployedassets
+- [PR #17](https://github.com/NTHV9/ar-workspace/pull/17) merged `e06abed9a67031496360df2ccf37190d94ee9093` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34678316969) และpushCIผ่าน. Mergedtreeตรงtested/deployedsource; closeoutเพิ่มเฉพาะเอกสารและภาพสังเคราะห์
+- Limits: ยังคงเลื่อนหน้าแนวตั้ง/paginationเพื่อดูAccountทั้งหมด; ส่วนInvoice evidenceเป็นledgerแยกจากตารางเปรียบเทียบAging. ค่าเงินไม่ย่อหรือตัด; ตารางมือถือใช้10pxเพื่อให้ตัวเลขครบ. ข้อมูลย้อนหลังที่ไม่มีsnapshotไม่ได้เพิ่มในรอบนี้
+
 
 
 ## Checkpoint Dashboard แยกยอดโรงแรมและ Aging แบบเลือกช่วง — 12 กันยายน 2026

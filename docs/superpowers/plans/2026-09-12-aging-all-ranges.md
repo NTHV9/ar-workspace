@@ -13,4 +13,6 @@ Owner rejects the previous look and asks to see every range at once without scro
 - [x] Independent overview implementer: new AgingOverview component/style with existing props; root integrates. No CurrentAging.tsx or shared styles changes.
 - [x] Root: grouped all-range table, mobile transpose, context/sort/columns and regression/browser tests.
 - [x] Independent integrated review; typecheck/build/unit/browser; synthetic1440/1280/narrow evidence with exact-money fit assertions.
-- [ ] Public audit, push/CI/deploy/live verify/expected-head merge and PROJECT_STATUS. No paid additions, business data mutations or email sends.
+- [x] Public audit, push/CI/deploy/live verify/expected-head merge and PROJECT_STATUS. No paid additions, business data mutations or email sends.
+
+Completed: source963b33d, Worker9fa3d38d, PR17mergede06abed. 880unit /51localbrowser +4fit +3appcases /71deployedbrowser passed. ActualsignedinUI all6ranges/nohorizontaloverflow anddrillverified.
