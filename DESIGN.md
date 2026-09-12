@@ -237,3 +237,14 @@ Billing, latest Follow-Up, period activity and payment measures retain Total wit
 Current Aging replaces the six small chart grid with a chronological selectable distribution on one shared signed THB scale. Selecting a range focuses the comparison on TSK / KAT / Total; Full matrix and Columns retain all ranges and user visibility choices. A compact all-age net header remains distinct from the selected-range table. Bars, labels and exact amounts explain the selection without invented trends. Current Aging page, filters, visible sort and range survive invoice drill and return.
 
 The palette remains the approved light navy/blue/teal family. Blue, pale blue, rose and amber status surfaces add semantic contrast; source money uses tabular numerals, 21px primary amounts and 12–13px property values. Lower activity tables retain controlled horizontal scrolling on narrow screens. Existing reference PNGs, Portfolio, Account Detail and PDF design are not replaced.
+
+
+## Aging all-range layout — 12 September 2026
+
+Latest owner direction replaces the selected-range-first layout. Every source range is visible simultaneously. Desktop uses one column per range (plus optional net) and TSK/KAT/Total subrows within a single Account Type or matched Account group. At narrow widths, each group transposes to range rows and hotel columns, keeping every exact amount without horizontal scrolling. Account pagination remains explicit; invoice evidence is a separate ledger.
+
+Default order is Total net descending. Sort hotel selects the comparison basis; all amount/name headers sort. Narrow/transposed views expose Sort by and direction controls. Selecting an overview range highlights it and chooses the invoice drill target without hiding other columns or resetting the comparison page. Explicit column choices and Show all ranges remain available.
+
+The owner requested a blend of light and colorful and rejected large dark navy fields. A light mint net/property summary meets a white/lavender age distribution with teal, sky, indigo, lavender, amber and coral ranges. Donut shares require verified nonnegative source ranges that reconcile to positive net in cents; credits or source/net differences use a signed profile, while zero and unavailable are distinct. Net and every range keep exact THB values.
+
+The all-range table uses 11–12px desktop values and a dense 10px narrow comparison with complete numeric strings. TSK/KAT labels retain property colors; negative credits use rose and Total subrows have a pale blue background. No reference PNG was edited and unrelated Dashboard/Portfolio/PDF styles are preserved.

@@ -1,8 +1,10 @@
 import {useEffect,useMemo,useState} from 'react';
-import {ArrowLeft,ArrowUpRight,Check,ChevronDown,ChevronRight,Columns3,RefreshCw} from 'lucide-react';
+import {ArrowLeft,ArrowUpRight,ChevronDown,ChevronRight,Columns3,RefreshCw} from 'lucide-react';
 import {sourceAging,type Account,type AgingBucket,type RefreshState} from '../domain/portfolio';
-import {agingAmountScale,agingBucketKey,agingColumns,agingComparison,agingHotels,agingInvoiceEvidence,agingOverview,agingPercentage,parseAgingInvoices,type AgingCell,type AgingComparisonRow,type AgingHotel,type AgingInvoice} from './aging-model';
+import {agingBucketKey,agingColumns,agingComparison,agingHotels,agingInvoiceEvidence,agingOverview,parseAgingInvoices,type AgingCell,type AgingComparisonRow,type AgingHotel,type AgingInvoice} from './aging-model';
 import './aging.css';
+import AgingAllTable from './AgingAllTable';
+import AgingOverview from './AgingOverview';
 
 interface AgingColumnVisibility {bucketKeys:string[]|null;net:boolean;percentages:boolean}
 export interface AgingContext {hotel:string;type?:string;accountKey?:string;search:string;page:number;sort:{key:string;hotel:AgingHotel;descending:boolean};bucketKey:string;invoiceHotel:AgingHotel;invoiceView:'bucket'|'unassigned';invoicePage:number;invoiceDescending:boolean;columnVisibility?:AgingColumnVisibility;comparisonView?:'range'|'matrix'}
@@ -17,20 +19,22 @@ function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,i
  const initial=initialContext?.hotel===hotel?initialContext:undefined;
  const columns=useMemo(()=>agingColumns(accounts),[accounts]);
  const [type,setType]=useState<string|undefined>(initial?.type),[accountKey,setAccountKey]=useState<string|undefined>(initial?.accountKey),[search,setSearch]=useState(initial?.search??''),[page,setPage]=useState(initial?.page??1);
- const [sort,setSort]=useState(initial?.sort??{key:columns[0]?agingBucketKey(columns[0]):'net',hotel:'Total' as AgingHotel,descending:true});
+ const [sort,setSort]=useState(initial?.sort??{key:'net',hotel:'Total' as AgingHotel,descending:true});
  const [bucketKey,setBucketKey]=useState(initial?.bucketKey??(columns[0]?agingBucketKey(columns[0]):'')),[invoiceHotel,setInvoiceHotel]=useState<AgingHotel>(initial?.invoiceHotel??'Total');
  const [invoiceView,setInvoiceView]=useState<'bucket'|'unassigned'>(initial?.invoiceView??'bucket'),[invoicePage,setInvoicePage]=useState(initial?.invoicePage??1),[invoiceDescending,setInvoiceDescending]=useState(initial?.invoiceDescending??true);
  const [columnVisibility,setColumnVisibility]=useState<AgingColumnVisibility>(initial?.columnVisibility??{bucketKeys:null,net:true,percentages:true});
- const [comparisonView,setComparisonView]=useState<'range'|'matrix'>(initial?.comparisonView??(initial?.columnVisibility?'matrix':'range'));
+ const comparisonView='matrix' as const;
  const rows=useMemo(()=>agingComparison(accounts,hotel,type),[accounts,hotel,type]);
  const selected=rows.find(r=>r.key===accountKey),selectedBucket=columns.find(b=>agingBucketKey(b)===bucketKey)??columns[0];
  const effectiveBucketKey=selectedBucket?agingBucketKey(selectedBucket):'';
  const matrixColumns=columns.filter(b=>columnVisibility.bucketKeys===null||columnVisibility.bucketKeys.includes(agingBucketKey(b)));
- const visibleColumns=comparisonView==='range'?(selectedBucket?[selectedBucket]:[]):matrixColumns;
- const showNetOpen=comparisonView==='matrix'&&(columnVisibility.net||visibleColumns.length===0);
+ const visibleColumns=matrixColumns;
+ const showNetOpen=columnVisibility.net||visibleColumns.length===0;
  const sortVisible=sort.key==='name'||sort.key==='net'&&showNetOpen||visibleColumns.some(b=>agingBucketKey(b)===sort.key);
  const fallbackSort=visibleColumns.some(b=>agingBucketKey(b)===effectiveBucketKey)?effectiveBucketKey:showNetOpen?'net':visibleColumns[0]?agingBucketKey(visibleColumns[0]):'name';
- const activeSort=sortVisible?sort:{...sort,key:fallbackSort};
+ const sortHotelVisible=hotel==='All'||sort.hotel==='Total'||sort.hotel===hotel;
+ const activeSort={...sort,key:sortVisible?sort.key:fallbackSort,hotel:sortHotelVisible?sort.hotel:'Total' as AgingHotel};
+ useEffect(()=>{if(!sortHotelVisible)setSort(p=>({...p,hotel:'Total'}));},[sortHotelVisible]);
  useEffect(()=>{if(bucketKey!==effectiveBucketKey)setBucketKey(effectiveBucketKey);},[bucketKey,effectiveBucketKey]);
  useEffect(()=>{if(!sortVisible)setSort(previous=>({...previous,key:fallbackSort}));},[sortVisible,fallbackSort]);
  const context=useMemo<AgingContext>(()=>({hotel,type,accountKey,search,page,sort,bucketKey:effectiveBucketKey,invoiceHotel,invoiceView,invoicePage,invoiceDescending,columnVisibility,comparisonView}),[hotel,type,accountKey,search,page,sort,effectiveBucketKey,invoiceHotel,invoiceView,invoicePage,invoiceDescending,columnVisibility,comparisonView]);
@@ -48,10 +52,9 @@ function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,i
  const columnPreset=(columnVisibility.net||matrixColumns.length===0)&&matrixColumns.length===columns.length?'All aging':matrixColumns.length===0?'Summary':'Custom';
  const selectRange=(key:string)=>{
   setBucketKey(key);setInvoicePage(1);setInvoiceView('bucket');
-  // A range change leaves matrix rows and their sort intact, so keep the return page.
-  if(comparisonView==='range'){setPage(1);setSort(previous=>previous.key==='name'?previous:{...previous,key});}
+  // Range highlights and invoice drill targets do not change the all-range comparison page.
  };
- const toggleBucket=(key:string)=>{setComparisonView('matrix');setColumnVisibility(previous=>{
+ const toggleBucket=(key:string)=>{setColumnVisibility(previous=>{
   const keys=previous.bucketKeys??columns.map(agingBucketKey),next=keys.includes(key)?keys.filter(k=>k!==key):[...keys,key];
   return {...previous,bucketKeys:next,net:next.length===0?true:previous.net};
  });};
@@ -61,8 +64,6 @@ function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,i
   if(type===undefined)chooseType(row.key);else setAccountKey(row.key);
  };
  const changeSort=(key:string,h:AgingHotel='Total')=>{setSort({key,hotel:h,descending:activeSort.key===key&&activeSort.hotel===h?!activeSort.descending:true});setPage(1);};
- const sortState=(key:string,h:AgingHotel='Total')=>activeSort.key===key&&activeSort.hotel===h?(activeSort.descending?'descending':'ascending'):'none';
- const sortArrow=(key:string,h:AgingHotel='Total')=>activeSort.key===key&&activeSort.hotel===h?(activeSort.descending?' ↓':' ↑'):'';
  const types=[...new Set(accounts.filter(a=>hotel==='All'||a.hotel===hotel).map(a=>a.type))].sort();
  const published=(refresh?.hotels??[]).filter(h=>hotel==='All'||h.hotel===hotel);
  return <section className="current-aging" aria-labelledby="current-aging-title">
@@ -73,46 +74,20 @@ function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,i
   {!selected&&<div className="aging-controls"><label>Current Account Type<select aria-label="Current Account Type" value={type??''} onChange={e=>chooseType(e.target.value||undefined)}><option value="">All account types</option>{types.map(t=><option key={t}>{t}</option>)}</select></label><label className="aging-search">Search {type===undefined?'types or accounts':'matched accounts'}<input aria-label="Search current aging" type="search" value={search} placeholder="Name or Account No." onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label><span>{sorted.length} {type===undefined?'account types':'matched accounts'} · every row available</span></div>}
   {selected&&<button className="aging-back" onClick={()=>setAccountKey(undefined)}><ArrowLeft size={14}/> Back to {type} accounts</button>}
   {accountKey&&!selected&&<p className="aging-notice" role="status">The selected account is no longer in this current scope. Choose an account below.</p>}
-  <div className="aging-table-toolbar"><div><h3>{comparisonView==='range'&&selectedBucket?`${selectedBucket.label} days`:showNetOpen&&!visibleColumns.length?'Net open · all ages':'Aging comparison'} <span>· {selected?'account comparison':type===undefined?'by account type':'by matched account'}</span></h3><p>{comparisonView==='range'?'Compare the selected range across hotels.':`${visibleColumns.length} of ${columns.length} source ranges shown.`} Row names open {selectedBucket?.label??'selected'} day {type===undefined?'accounts':'invoices'}.</p></div>
-   <div className="aging-table-actions"><div className="aging-view-switch" aria-label="Aging comparison view"><button aria-pressed={comparisonView==='range'} onClick={()=>setComparisonView('range')}>Selected range</button><button aria-pressed={comparisonView==='matrix'} onClick={()=>{setComparisonView('matrix');setColumnVisibility(previous=>({...previous,net:true,bucketKeys:null}));}}>Full matrix</button></div>
+  <div className="aging-table-toolbar"><div><h3>All-range comparison <span>· {selected?'account':type===undefined?'account types':'matched accounts'}</span></h3><p>{visibleColumns.length} of {columns.length} source ranges shown. Click an amount to view its invoices.</p></div>
+   <div className="aging-table-actions aging-sort-controls"><label>Sort hotel<select aria-label="Sort hotel" value={activeSort.hotel} onChange={e=>{setSort(p=>({...p,hotel:e.target.value as AgingHotel}));setPage(1);}}>{agingHotels.filter(h=>hotel==='All'||h==='Total'||h===hotel).map(h=><option key={h}>{h}</option>)}</select></label><span className={'aging-mobile-sort'+(visibleColumns.length+(showNetOpen?1:0)>8?' is-required':'')}><label>Sort by<select aria-label="Sort measure" value={activeSort.key} onChange={e=>{setSort(p=>({...p,key:e.target.value}));setPage(1);}}><option value="name">Name</option>{showNetOpen&&<option value="net">Net open</option>}{visibleColumns.map(b=><option key={agingBucketKey(b)} value={agingBucketKey(b)}>{b.label} days</option>)}</select></label><button aria-label="Toggle sort direction" aria-pressed={activeSort.descending} onClick={()=>{setSort(p=>({...p,descending:!activeSort.descending}));setPage(1);}}>{activeSort.key==='name'?(activeSort.descending?'Z to A':'A to Z'):activeSort.descending?'High to low':'Low to high'}</button></span><button onClick={()=>setColumnVisibility(p=>({...p,net:true,bucketKeys:null}))}>Show all ranges</button>
    <details className="aging-column-controls"><summary><Columns3 size={15}/> Columns<ChevronDown size={14}/></summary><div className="aging-column-panel">
-    <div className="aging-column-presets" aria-label="Aging column presets"><button aria-pressed={comparisonView==='matrix'&&columnPreset==='Summary'} onClick={()=>{setComparisonView('matrix');setColumnVisibility(p=>({...p,net:true,bucketKeys:[]}));}}>Summary</button><button aria-pressed={comparisonView==='matrix'&&columnPreset==='All aging'} onClick={()=>{setComparisonView('matrix');setColumnVisibility(p=>({...p,net:true,bucketKeys:null}));}}>All aging</button></div>
-    <p className="aging-column-state">{comparisonView==='range'?'Selected range':columnPreset}</p>
-    <fieldset><legend>Comparison measures</legend><label><input type="checkbox" checked={columnVisibility.net||matrixColumns.length===0} disabled={matrixColumns.length===0} onChange={e=>{setComparisonView('matrix');setColumnVisibility(p=>({...p,net:e.target.checked}));}}/> Net open</label><label><input type="checkbox" checked={columnVisibility.percentages} onChange={e=>setColumnVisibility(p=>({...p,percentages:e.target.checked}))}/> Bucket percentages</label></fieldset>
-    <fieldset><legend>Source aging ranges</legend><div className="aging-bucket-options">{columns.map(bucket=><label key={agingBucketKey(bucket)}><input type="checkbox" checked={matrixColumns.includes(bucket)} onChange={()=>toggleBucket(agingBucketKey(bucket))}/> {bucket.label} days</label>)}</div></fieldset><p>Choose columns for the full matrix. The age distribution always includes every source range.</p>
+    <div className="aging-column-presets" aria-label="Aging column presets"><button aria-pressed={columnPreset==='Summary'} onClick={()=>{setColumnVisibility(p=>({...p,net:true,bucketKeys:[]}));}}>Summary</button><button aria-pressed={columnPreset==='All aging'} onClick={()=>{setColumnVisibility(p=>({...p,net:true,bucketKeys:null}));}}>All aging</button></div>
+    <p className="aging-column-state">{columnPreset}</p>
+    <fieldset><legend>Comparison measures</legend><label><input type="checkbox" checked={columnVisibility.net||matrixColumns.length===0} disabled={matrixColumns.length===0} onChange={e=>{setColumnVisibility(p=>({...p,net:e.target.checked}));}}/> Net open</label><label><input type="checkbox" checked={columnVisibility.percentages} onChange={e=>setColumnVisibility(p=>({...p,percentages:e.target.checked}))}/> Bucket percentages</label></fieldset>
+    <fieldset><legend>Source aging ranges</legend><div className="aging-bucket-options">{columns.map(bucket=><label key={agingBucketKey(bucket)}><input type="checkbox" checked={matrixColumns.includes(bucket)} onChange={()=>toggleBucket(agingBucketKey(bucket))}/> {bucket.label} days</label>)}</div></fieldset><p>Choose the ranges to show. The age distribution always includes every source range.</p>
    </div></details></div>
   </div>
-  {columns.length>0&&<p className="aging-scroll-hint">Swipe or scroll the table for TSK, KAT and Total.</p>}
-  {columns.length?<div className="aging-table-scroll" tabIndex={0} role="region" aria-label="Scroll all source aging buckets"><table className={'aging-matrix'+(comparisonView==='range'?' aging-focused':'')} aria-label="Current source aging comparison">
-   <thead><tr><th rowSpan={2} scope="col" className="aging-identity" aria-sort={sortState('name')}><button onClick={()=>changeSort('name')}>{type===undefined?'Account Type':'Matched Account'}{sortArrow('name')}</button></th>{showNetOpen&&<th colSpan={3} scope="colgroup">Net open · THB</th>}{visibleColumns.map(b=><th key={agingBucketKey(b)} colSpan={3} scope="colgroup">{b.label} days</th>)}</tr><tr>{[...(showNetOpen?['net']:[]),...visibleColumns.map(agingBucketKey)].flatMap(key=>agingHotels.map(h=><th key={key+h} scope="col" className={'aging-'+h.toLowerCase()} aria-sort={sortState(key,h)}><button aria-label={`Sort ${key==='net'?'net open':columns.find(b=>agingBucketKey(b)===key)?.label} ${h}`} onClick={()=>changeSort(key,h)}><i/>{h}{sortArrow(key,h)}</button></th>))}</tr></thead>
-   <tbody>{shown.map(row=><tr key={row.key}><th scope="row" className="aging-identity"><button className="aging-row-link" aria-label={type===undefined?`Open accounts in ${row.name}`:`Open invoices for ${row.name}`} onClick={()=>drill(row,invoiceHotel,selectedBucket)}>{row.name}<ChevronRight size={15}/></button><small>{type===undefined?`${row.members.length} hotel accounts`:row.members.map(a=>`${a.hotel} · ${a.account_no||a.id}`).join(' / ')}</small></th>{showNetOpen&&agingHotels.map(h=><td key={'net'+h} className={'aging-'+h.toLowerCase()}><strong>{amount(row.net[h].amount)}</strong>{row.net[h].state!=='verified'&&<small>{stateLabel[row.net[h].state]}</small>}</td>)}{visibleColumns.flatMap(bucket=>agingHotels.map(h=>{
-    const index=columns.indexOf(bucket),cell=row.cells[index][h],percentage=agingPercentage(cell.amount,row.net[h].amount);
-    return <td key={agingBucketKey(bucket)+h} className={'aging-'+h.toLowerCase()}><button className="aging-cell-button" aria-label={`${row.name} · ${h} · ${bucket.label}`} disabled={cell.state==='absent'||cell.state==='outside'} onClick={()=>drill(row,h,bucket)}><strong>{amount(cell.amount)}</strong>{(cell.state!=='verified'||columnVisibility.percentages)&&<small>{cell.state==='verified'?percentage===null?'% unavailable':`${percentage.toFixed(1)}%`:stateLabel[cell.state]}</small>}</button></td>;
-   }))}</tr>)}</tbody>
-  </table>{shown.length===0&&<p className="aging-empty">No current accounts match these filters.</p>}</div>:<p className="aging-notice" role="status">Source aging buckets are unavailable. Refresh OPERA data from the main refresh control, then return here.</p>}
+  {columns.length?<AgingAllTable rows={shown} columns={visibleColumns} allColumns={columns} showNet={showNetOpen} percentages={columnVisibility.percentages} hotel={hotel} type={type} selectedKey={effectiveBucketKey} sort={activeSort} onSort={key=>changeSort(key,activeSort.hotel)} onDrill={drill}/>:<p className="aging-notice" role="status">Source aging buckets are unavailable. Refresh OPERA data from the main refresh control, then return here.</p>}
   {!selected&&columns.length>0&&<Pagination page={currentPage} pages={maxPage} count={sorted.length} label={type===undefined?'account types':'matched accounts'} change={setPage}/>}
-  <p className="aging-footnote">All amounts in THB. “No matching account” is different from a verified 0.00.{comparisonView==='matrix'?' Scroll horizontally to compare all visible columns.':''}</p>
+  <p className="aging-footnote">All amounts in THB. “No matching account” is different from a verified 0.00. No account means no matching hotel ledger; Unverified means source data needs verification.</p>
   <details className="aging-definitions"><summary>How aging amounts and percentages work</summary><p className="aging-explanation">Amounts include credits. Each % is the bucket amount divided by net open for the same hotel, or Total. Zero or negative net open has no %. Credits can produce negative shares or shares above 100%. OPERA age is separate from Past Due date.</p></details>
   {selected&&selectedBucket&&<InvoiceDrill key={selected.key} externalRevision={revision} token={token} row={selected} bucket={selectedBucket} columns={columns} hotel={invoiceHotel} setHotel={setInvoiceHotel} setBucket={selectRange} refresh={refresh} onOpenInvoice={onOpenInvoice} view={invoiceView} setView={setInvoiceView} page={invoicePage} setPage={setInvoicePage} descending={invoiceDescending} setDescending={setInvoiceDescending}/>}
- </section>;
-}
-function AgingOverview({data,columns,label,selectedKey,onSelect}:{data:ReturnType<typeof agingOverview>;columns:AgingBucket[];label:string;selectedKey:string;onSelect:(key:string)=>void}){
- const hotels=agingHotels.filter((h):h is 'TSK'|'KAT'=>h!=='Total'&&data.net[h].state!=='outside');
- const scale=agingAmountScale(data.cells.map(group=>group.Total.amount));
- const share=(value:number|null,net:number|null)=>{const p=agingPercentage(value,net);return p===null?'% unavailable':`${p.toFixed(1)}%`;};
- return <section className="aging-overview" aria-label="Current aging overview">
-  <div className="aging-balance-context"><div className="aging-net-context"><h3>Net open · all ages</h3><strong className="aging-overview-amount">{amount(data.net.Total.amount)} <small>THB</small></strong></div><div className="aging-hotel-totals">{hotels.map(h=>{const cell=data.net[h];return <div key={h}><span className={`aging-hotel-label aging-hotel-${h.toLowerCase()}`}><i/>{h}</span><strong>{amount(cell.amount)}</strong>{cell.state!=='verified'&&<small>{stateLabel[cell.state]}</small>}</div>;})}</div><p className="aging-context-label">{label} · {data.members.length} hotel accounts{data.net.Total.state!=='verified'?` · ${stateLabel[data.net.Total.state]}`:''}</p></div>
-  <div className="aging-profile-heading"><h3>Age of open balances</h3><p>Select a range to compare hotels and open its invoices.</p></div>
-  <div className="aging-range-strip" aria-label="Select aging range">{columns.map((bucket,index)=>{
-   const key=agingBucketKey(bucket),cell=data.cells[index].Total,bar=scale.bars[index],active=key===selectedKey;
-   return <button className={'aging-range'+(active?' is-selected':'')} key={key} aria-label={`Compare ${bucket.label} days`} aria-pressed={active} onClick={()=>onSelect(key)}>
-    <span className="aging-range-title">{bucket.label} <span>days</span>{active&&<Check size={15}/>}</span>
-    <strong className="aging-range-amount">{amount(cell.amount)}</strong><span className="aging-range-share">{cell.state==='verified'?`${share(cell.amount,data.net.Total.amount)} of net`:stateLabel[cell.state]}</span>
-    <span className="aging-range-plot" aria-hidden="true"><span className="aging-range-zero" style={{bottom:`${scale.zero}%`}}/>{bar&&<span className={'aging-range-bar'+(cell.amount!==null&&cell.amount<0?' is-credit':'')} style={{bottom:`${bar.bottom}%`,height:`${bar.height}%`}}/>}</span>
-    <span className="aging-range-action">{active?'Comparing this range':'Compare range'}<ChevronRight size={13}/></span>
-   </button>;
-  })}</div>
-  <p className="aging-chart-note">Younger to older · bars use one THB scale.{scale.zero>0?' Credit amounts extend below the zero line.':''} Percentages use net open, including credits.</p>
  </section>;
 }
 function Pagination({page,pages,count,label,change}:{page:number;pages:number;count:number;label:string;change:(n:number)=>void}){return <div className="aging-pagination"><span>{count.toLocaleString()} {label} · page {page} of {pages}</span><button disabled={page===1} onClick={()=>change(page-1)}>Previous</button><button disabled={page>=pages} onClick={()=>change(page+1)}>Next</button></div>;}

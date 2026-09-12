@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Aging ครบทุกช่วงโดยไม่เลื่อนแนวนอน — 12 กันยายน 2026
+
+- Implemented: ตาราง Aging มีหนึ่งคอลัมน์ต่อช่วงอายุ พร้อม Net open และบรรทัด TSK/KAT/Total ในกลุ่ม Account Type/Account เดียว. แสดงทุกช่วงเป็นค่าเริ่มต้นที่1440/1280; จอแคบสลับช่วงเป็นแถวและโรงแรมเป็นคอลัมน์เพื่อให้ยอดครบโดยไม่เลื่อนแนวนอน. มี pagination สำหรับทุก Account ไม่ตัดTop N
+- ภาพรวมเปลี่ยนเป็นพื้นมิ้นต์อ่อน/ขาวอมม่วงกับกราฟหลายสีตามคำยืนยันล่าสุดที่ไม่ต้องการพื้นกรมท่าเข้ม. Donutใช้เฉพาะsourceที่ยืนยัน/nonnegative/รวมตรงnet; creditหรือยอดไม่ตรงใช้signedprofile และแยก0กับunavailable. ไม่เปลี่ยนการคำนวณยอดเงินจริง
+- Sort hotel/header และจอแคบ Sort by/direction ทำงาน; default Total net descending. เลือกช่วงบนกราฟเป็นhighlight/Invoice target ไม่ซ่อนช่วงอื่น ไม่ทำpageเดิมหาย. Columns/Show all ranges, exact amount, account grouping, source-schema/child exclusion และdrill/backคงอยู่
+- Tested locally: Typecheck/Buildผ่าน,880unit tests/98files,51browser regressionsผ่าน รวม15Agingcases และการคงDashboard/Hotel breakdownsเดิม. เพิ่ม4fit/mobile-sort checks และ3app all-range/drill casesผ่าน. ภาพsynthetic1440/1280/390ตรวจจริง; desktopamount stringsไม่wrap/truncate และtable/pageไม่มีhorizontaloverflow. Independentreviewแก้mobile sortingแล้วไม่มีข้อค้าง
+- ไม่มีmigration/backend/provider/auth/retention changes, ไม่มีemail sends/OPERA writes/paid resources. ภาพใหม่aging-all-ranges-*และaging-all-app-*เป็นข้อมูลสมมติ; baselineเดิมไม่แก้. Deploy/live verificationและMergeกำลังดำเนินการ
+
+
 ## Checkpoint Dashboard แยกยอดโรงแรมและ Aging แบบเลือกช่วง — 12 กันยายน 2026
 
 - Implemented: ทุกหัวข้อ Invoice ใน Dashboard มีจำนวนและยอด Total/KAT/TSK เมื่อเลือก All Hotels รวมยอดค้าง สถานะวางบิล latest Follow-Up กิจกรรมตามช่วงวันและเงินรับจาก OPERA. กดแถวโรงแรมเพื่อเปิดรายละเอียดที่ตรงกัน; กลับจาก Account Detail คงตัวกรองโรงแรมของรายละเอียดได้
