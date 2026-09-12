@@ -1,7 +1,7 @@
 import {aggregateAccounts,sourceAging,validSourceBucket,type Account,type AgingBucket} from '../domain/portfolio';
 
 export type AgingHotel='TSK'|'KAT'|'Total';
-export const agingHotels:AgingHotel[]=['TSK','KAT','Total'];
+export const agingHotels:AgingHotel[]=['KAT','TSK','Total'];
 export interface AgingCell {state:'verified'|'absent'|'outside'|'unavailable';amount:number|null;debit:number|null;credit:number|null}
 export interface AgingComparisonRow {key:string;name:string;members:Account[];cells:Record<AgingHotel,AgingCell>[];net:Record<AgingHotel,AgingCell>}
 export interface AgingInvoice {id:string;hotel:string;accountId:string;invoiceNo:string;folioNo:string;guest:string;date:string;open:number|null;age:number|null;role:string;verified:boolean;parentId:string|null}

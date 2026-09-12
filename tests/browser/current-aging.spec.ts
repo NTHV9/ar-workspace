@@ -144,9 +144,9 @@ test('column presets and toggles preserve hotel groups, exact amounts and drill-
  await columns.getByLabel('151+ days',{exact:true}).check();await columns.getByLabel('Net open',{exact:true}).uncheck();
  await expect(columns.locator('.aging-column-state')).toContainText('Custom');await expectMeasures(comparison,['151+']);
  const firstGroup=comparison.locator('tbody[data-aging-group]').first();
- await expect(firstGroup.locator('.aging-row-hotel')).toHaveText(['TSK','KAT','Total']);
- await expect(firstGroup.locator('td')).toHaveText(['100.0066.7%','200.0071.4%','300.0069.8%']);
- await columns.getByLabel('Bucket percentages',{exact:true}).uncheck();await expect(firstGroup.locator('td')).toHaveText(['100.00','200.00','300.00']);
+ await expect(firstGroup.locator('.aging-row-hotel')).toHaveText(['KAT','TSK','Total']);
+ await expect(firstGroup.locator('td')).toHaveText(['200.0071.4%','100.0066.7%','300.0069.8%']);
+ await columns.getByLabel('Bucket percentages',{exact:true}).uncheck();await expect(firstGroup.locator('td')).toHaveText(['200.00','100.00','300.00']);
  await columns.locator('summary').click();await comparison.getByRole('button',{name:'Open accounts in Agent',exact:true}).click();
  await comparison.getByRole('button',{name:'Azure Travel · Synthetic · KAT · 151+',exact:true}).click();
  await page.getByRole('button',{name:'Open invoice INV-kat-old',exact:true}).click();await page.getByRole('button',{name:'Return from Account Detail',exact:true}).click();
@@ -165,7 +165,7 @@ test('a retired saved bucket selection keeps net open visible after a source sch
  await setup(page);await page.goto(local+'?staleColumns=1');
  const comparison=page.getByRole('table',{name:'Current source aging comparison'});
  await expectMeasures(comparison,['net open']);
- await expect(comparison.locator('tbody[data-aging-group]').first().locator('td')).toHaveText(['150.00','280.00','430.00']);
+ await expect(comparison.locator('tbody[data-aging-group]').first().locator('td')).toHaveText(['280.00','150.00','430.00']);
  await page.locator('.aging-column-controls summary').click();await page.getByRole('button',{name:'All aging',exact:true}).click();
  await expectMeasures(comparison);
 });
@@ -178,10 +178,10 @@ for(const width of [1440,1280,390])test(`current Aging ${width} shows every rang
  await page.evaluate(()=>document.fonts.ready);
  if(process.env.AR_AGING_CAPTURE!=='0')await page.screenshot({path:`.superpowers/sdd/2026-09-12-aging-all-ranges/aging-regression-${width}.png`,fullPage:true,animations:'disabled'});
  if(width===390){
-  await expect(comparison.getByRole('columnheader')).toHaveText(['Range · THB','TSK','KAT','Total']);
+  await expect(comparison.getByRole('columnheader')).toHaveText(['Range · THB','KAT','TSK','Total']);
   const agent=comparison.locator('tbody[data-aging-group]').filter({has:page.getByRole('button',{name:'Open accounts in Agent',exact:true})});
   await expect(agent.locator('tr')).toHaveCount(8);
-  await expect(agent.locator('tr>th[scope="row"]')).toHaveText(['Net open',...ranges]);
+  await expect(agent.locator('tr>th[scope="row"]')).toHaveText([...ranges,'Net open']);
   for(const range of ranges)for(const hotel of ['TSK','KAT','Total'])await expect(agent.getByRole('button',{name:`Agent · ${hotel} · ${range}`,exact:true})).toBeVisible();
   const oldest=agent.getByRole('button',{name:'Agent · Total · 151+',exact:true});await oldest.scrollIntoViewIfNeeded();await expect(oldest).toBeInViewport();
  }else await expectMeasures(comparison);

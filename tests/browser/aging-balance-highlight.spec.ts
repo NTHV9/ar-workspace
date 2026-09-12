@@ -67,6 +67,14 @@ for(const width of [1440,1280,390])test(`positive aging balances above 90 days s
  await page.goto('/?dashboard=1&dashboardView=aging');
  const table=page.getByRole('table',{name:'Current source aging comparison'});
  await expect(table.locator('tbody[data-aging-group]')).toHaveCount(4);
+ if(width>1050){
+  await expect(table.locator('thead th').last()).toContainText('Net open');
+  await expect(table.locator('tbody').first().locator('.aging-row-hotel')).toHaveText(['KAT','TSK','Total']);
+ }else{
+  await expect(table.locator('thead .aging-property-label')).toHaveText(['KAT','TSK','Total']);
+  await expect(table.locator('tbody').first().locator('tr').last().locator('th')).toHaveText('Net open');
+ }
+
  for(const hotel of ['KAT','TSK','Total'])for(const range of ranges.slice(3))await highlighted(value(table,'Agent',hotel,range));
  for(const hotel of ['KAT','TSK','Total'])for(const range of ranges.slice(0,3))await notHighlighted(value(table,'Agent',hotel,range));
  await expect(table.locator('td.has-aged-balance .aging-net-value')).toHaveCount(0);
@@ -106,7 +114,7 @@ for(const width of [1440,1280,390])test(`positive aging balances above 90 days s
  await page.locator('.aging-comparison-frame').scrollIntoViewIfNeeded();
  // Account names label the clipped artifact as synthetic; the fixed test badge would cover a value.
  await page.getByLabel('Synthetic test data',{exact:true}).evaluate(element=>element.style.visibility='hidden');
- await page.locator('.aging-comparison-frame').screenshot({path:`evidence/aging-balance-highlight-${width}.png`,animations:'disabled'});
+ await page.locator('.aging-comparison-frame').screenshot({path:`evidence/aging-column-order-${width}.png`,animations:'disabled'});
 
  await value(table,'Azure Travel · Synthetic','TSK','151+').click();
  await page.mouse.move(0,0);

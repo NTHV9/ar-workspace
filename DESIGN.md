@@ -241,7 +241,7 @@ The palette remains the approved light navy/blue/teal family. Blue, pale blue, r
 
 ## Aging all-range layout — 12 September 2026
 
-Latest owner direction replaces the selected-range-first layout. Every source range is visible simultaneously. Desktop uses one column per range (plus optional net) and TSK/KAT/Total subrows within a single Account Type or matched Account group. At narrow widths, each group transposes to range rows and hotel columns, keeping every exact amount without horizontal scrolling. Account pagination remains explicit; invoice evidence is a separate ledger.
+Latest owner direction replaces the selected-range-first layout. Every source range is visible simultaneously. Desktop uses one column per range followed by optional Net open at the far right, with KAT/TSK/Total subrows within a single Account Type or matched Account group. In the transposed view, KAT precedes TSK and Net open is the final range row. At narrow widths, each group transposes to range rows and hotel columns, keeping every exact amount without horizontal scrolling. Account pagination remains explicit; invoice evidence is a separate ledger.
 
 Default order is Total net descending. Sort hotel selects the comparison basis; all amount/name headers sort. Narrow/transposed views expose Sort by and direction controls. Selecting an overview range highlights it and chooses the invoice drill target without hiding other columns or resetting the comparison page. Explicit column choices and Show all ranges remain available.
 

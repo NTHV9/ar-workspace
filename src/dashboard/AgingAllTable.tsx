@@ -1,14 +1,14 @@
 import {ChevronRight} from 'lucide-react';
 import type {AgingBucket} from '../domain/portfolio';
-import {agingBucketKey,agingPercentage,type AgingCell,type AgingComparisonRow,type AgingHotel} from './aging-model';
+import {agingBucketKey,agingHotels,agingPercentage,type AgingCell,type AgingComparisonRow,type AgingHotel} from './aging-model';
 import './aging-all-table.css';
 export interface AgingSort {key:string;hotel:AgingHotel;descending:boolean}
 interface Props {rows:AgingComparisonRow[];columns:AgingBucket[];allColumns:AgingBucket[];showNet:boolean;percentages:boolean;hotel:string;type?:string;selectedKey:string;sort:AgingSort;onSort:(key:string)=>void;onDrill:(row:AgingComparisonRow,hotel:AgingHotel,bucket?:AgingBucket)=>void}
 const amount=(n:number|null)=>n===null?'—':new Intl.NumberFormat('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
 const stateText:Record<AgingCell['state'],string>={verified:'',absent:'No account',outside:'Outside scope',unavailable:'Unverified'};
 export default function AgingAllTable({rows,columns,allColumns,showNet,percentages,hotel,type,selectedKey,sort,onSort,onDrill}:Props){
- const hotels:AgingHotel[]=hotel==='KAT'||hotel==='TSK'?[hotel]:['TSK','KAT','Total'];
- const measures=[...(showNet?[{key:'net',label:'Net open',bucket:undefined as AgingBucket|undefined}]:[]),...columns.map(bucket=>({key:agingBucketKey(bucket),label:bucket.label,bucket}))];
+ const hotels:AgingHotel[]=hotel==='KAT'||hotel==='TSK'?[hotel]:agingHotels;
+ const measures=[...columns.map(bucket=>({key:agingBucketKey(bucket),label:bucket.label,bucket})),...(showNet?[{key:'net',label:'Net open',bucket:undefined as AgingBucket|undefined}]:[])];
  const cell=(row:AgingComparisonRow,h:AgingHotel,key:string):AgingCell=>key==='net'?row.net[h]:row.cells[allColumns.findIndex(b=>agingBucketKey(b)===key)]?.[h]??{amount:null,state:'unavailable',debit:null,credit:null};
  const balanceClass=(row:AgingComparisonRow,h:AgingHotel,measure:typeof measures[number])=>{
   const c=cell(row,h,measure.key);
