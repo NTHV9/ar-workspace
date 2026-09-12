@@ -26,15 +26,15 @@ export function queueResult(value:unknown):DashboardQueueRow[] {
  return value.rows as DashboardQueueRow[];
 }
 async function read(path:string,token:string,signal:AbortSignal):Promise<unknown>{const r=await fetch(path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.any([signal,AbortSignal.timeout(30000)])});if(!r.ok)throw Error('dashboard_unavailable');return r.json();}
-export function useSource<T>(path:string|null,token:string,revision:number,check:(value:unknown)=>T,retain=false):Source<T>{
+export function useSource<T>(path:string|null,token:string,revision:number,check:(value:unknown)=>T,retain=false,merge?:(next:T,previous:T|undefined)=>T):Source<T>{
  // A response belongs to one exact request and authenticated session. Retention never crosses that boundary.
  const key=JSON.stringify([path,token]),[stored,setStored]=useState<Source<T>&{key:string}>({key,state:path?'loading':'idle'});
- const checker=useRef(check);checker.current=check;
+ const checker=useRef(check);checker.current=check;const merger=useRef(merge);merger.current=merge;
  useEffect(()=>{
   const controller=new AbortController();
   setStored(previous=>({key,state:path?'loading':'idle',data:retain&&path&&previous.key===key?previous.data:undefined}));
   if(path)void read(path,token,controller.signal).then(value=>checker.current(value)).then(data=>{
-   if(!controller.signal.aborted)setStored({key,state:'ready',data});
+   if(!controller.signal.aborted)setStored(previous=>({key,state:'ready',data:merger.current?merger.current(data,retain&&previous.key===key?previous.data:undefined):data}));
   }).catch(()=>{if(!controller.signal.aborted)setStored(previous=>({key,state:'error',data:retain&&previous.key===key?previous.data:undefined}));});
   return()=>controller.abort();
  },[path,token,revision,key,retain]);

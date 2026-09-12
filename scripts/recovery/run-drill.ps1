@@ -127,6 +127,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_dashboard_period_balances'){$fixtures+='dashboard-balances-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_dashboard_confirmed_nonpositive'){$fixtures+='dashboard-membership-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_dashboard_publication_freshness'){$fixtures+='dashboard-freshness-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_dashboard_hotel_overview'){$fixtures+='dashboard-hotel-overview-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture

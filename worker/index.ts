@@ -1,3 +1,4 @@
+import {dashboardHotelOverviewApi} from './dashboard/hotel-api';
 import {dashboardBalancesApi,dashboardPaymentInvoicesApi} from './dashboard/api';
 import {sweepTransientDocuments} from './operations/retention-sweep';
 import {acceptanceApi} from './acceptance/api';
@@ -108,7 +109,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if(exceptionRequest){if(!user.id)return json({error:'unauthorized'},401);return invoiceExceptionsApi(request,env,user.id);}
     if(accountWorkspaceRequest){if(!user.id)return json({error:'unauthorized'},401);return accountWorkspaceApi(request,env,user.id);}
     if(remittanceRequest){if(!user.id)return json({error:'unauthorized'},401);return remittanceApi(request,env,user.id);}
-    if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
+    if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/hotel-overview'?dashboardHotelOverviewApi(request,env,user.id):path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
     if(path.startsWith('/api/reports/')){if(!user.id)return json({error:'unauthorized'},401);return reportsApi(request,env,user.id);}
     if(emailRequest){if(!user.id)return json({error:'unauthorized'},401);return emailApi(request,env,user.id);}
     if(settingsRequest){if(!user.id)return json({error:'unauthorized'},401);return settingsApi(request,env,user.id);}

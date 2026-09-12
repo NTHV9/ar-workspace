@@ -3,7 +3,7 @@ import {setupDashboard} from './fixtures/dashboard-period';
 test('same-scope reload retains verified closing totals while pending and on failure',async({page})=>{
  await setupDashboard(page);await page.goto('/?dashboard=1');await expect(page.getByTestId('dashboard-closing-count')).toHaveText('2 invoices');
  let release!:()=>void;const gate=new Promise<void>(r=>{release=r;});
- await page.route('**/api/dashboard/balances?**',async route=>{await gate;await route.fulfill({status:503,json:{error:'synthetic_unavailable'}});});
+ await page.route(/\/api\/dashboard\/(?:balances|hotel-overview)\?/,async route=>{await gate;await route.fulfill({status:503,json:{error:'synthetic_unavailable'}});});
  await page.getByRole('button',{name:'Reload dashboard',exact:true}).click();
  await expect(page.getByTestId('dashboard-closing-count')).toHaveText('2 invoices');
  await expect(page.getByText('Updating dashboard. Showing the last loaded balances.',{exact:true})).toBeVisible();release();
@@ -11,7 +11,7 @@ test('same-scope reload retains verified closing totals while pending and on fai
 });
 test('changing date or hotel does not retain another scope closing total',async({page})=>{
  await setupDashboard(page);await page.goto('/?dashboard=1');await expect(page.getByTestId('dashboard-closing-count')).toHaveText('2 invoices');
- await page.route('**/api/dashboard/balances?**',route=>route.fulfill({status:503,json:{error:'synthetic_unavailable'}}));
+ await page.route(/\/api\/dashboard\/(?:balances|hotel-overview)\?/,route=>route.fulfill({status:503,json:{error:'synthetic_unavailable'}}));
  await page.getByRole('button',{name:'Yesterday',exact:true}).click();await expect(page.getByTestId('dashboard-closing-count')).toHaveText('— invoices');
  await page.getByRole('button',{name:'KAT',exact:true}).click();await expect(page.getByTestId('dashboard-closing-count')).toHaveText('— invoices');
 });
@@ -20,7 +20,7 @@ test('modern charts retain billing basis and exact details',async({page})=>{
  await setupDashboard(page);
  // Fixed synthetic source rows: one billed required invoice and one unbilled required invoice.
  await page.goto('/?dashboard=1');await expect(page.getByRole('img',{name:'50% of billing-required invoices billed'})).toBeVisible();
- await expect(page.getByRole('region',{name:'Closing-date follow-up stages'}).getByRole('button',{name:/Final/})).toContainText('66.7% of open');
+ await expect(page.getByRole('region',{name:'Closing-date follow-up stages'}).locator('.dashboard-stage-row').filter({hasText:'Final'})).toContainText('66.7% of open');
  await page.getByRole('button',{name:'View not yet billed',exact:true}).click();await expect(page.getByRole('region',{name:'Dashboard invoice details'})).toContainText('INV-kat-parent');
  await page.getByText('All status counts, amounts & percentages',{exact:true}).click();await expect(page.getByRole('region',{name:'Closing-date status breakdown'})).toContainText('Over 60 days · not billed');
 });

@@ -1,6 +1,6 @@
 import {useEffect,useRef} from 'react';
 import {useSource,checkedSummary} from './data';
-import {scopeQuery,type DashboardScope,validPeriod} from './model';
+import {accountIdentity,scopeQuery,type DashboardScope,validPeriod} from './model';
 import {amount,number,balancesResult,paidInvoicesResult,balanceLabels,rangeLabel} from './period-data';
 import type {PeriodDetail} from './PeriodBalances';
 type Row=Record<string,unknown>;
@@ -12,14 +12,15 @@ function decode(value:unknown,kind:PeriodDetail['kind']):DetailData{
  const v=checkedSummary(value),coverage=(value as {coverage?:{complete?:boolean}}).coverage;return {rows:v.rows as Row[],total:v.total,complete:kind==='sent'||coverage?.complete===true};
 }
 export function PeriodDetailPanel({scope,detail,page,token,revision,onPage,onClose,onOpenInvoice}:{scope:DashboardScope;detail:PeriodDetail;page:number;token:string;revision:number;onPage:(page:number)=>void;onClose:()=>void;onOpenInvoice:(hotel:string,accountId:string,invoiceId?:string)=>void}){
+ const displayedHotel=accountIdentity(scope.account)?.[0]??scope.hotel;
  const query=scopeQuery(scope,detail.kind!=='balance');query.set('page',String(page));query.set('limit','50');
  let endpoint='';if(detail.kind==='balance'){endpoint='/api/dashboard/balances';query.set('asOf',scope.to);if(detail.stage)query.set('stage',detail.stage);else query.set('metric',detail.metric??'open');}
  else if(detail.kind==='payment_invoices')endpoint='/api/dashboard/payment-invoices';else if(detail.kind==='sent'){endpoint='/api/reports/activity';if(detail.stage)query.set('kind',detail.stage);}else endpoint='/api/financial/'+detail.kind;
  const source=useSource(validPeriod(scope)?endpoint+'?'+query:null,token,revision,value=>decode(value,detail.kind));
- const host=useRef<HTMLElement>(null);useEffect(()=>{host.current?.scrollIntoView({block:'start',behavior:'instant'});},[detail.kind,detail.metric,detail.stage]);
+ const host=useRef<HTMLElement>(null);useEffect(()=>{host.current?.scrollIntoView({block:'start',behavior:'instant'});},[detail.kind,detail.metric,detail.stage,scope.hotel]);
  const title=detail.kind==='balance'?(detail.stage??balanceLabels[detail.metric??'open']):detail.kind==='sent'?(detail.stage??'All verified sends'):detail.kind==='invoice_entries'?'New invoices':detail.kind==='payment_invoices'?'Invoices with OPERA payments':'OPERA payment records';
  const rows=source.data?.rows??[],total=source.data?.total??0;
- return <section ref={host} className="dashboard-surface dashboard-detail-panel" aria-label="Dashboard invoice details"><header><div><h2>{title}</h2><p>{detail.kind==='balance'?'Open as of '+scope.to:rangeLabel(scope.from,scope.to)}</p></div><button onClick={onClose}>Close details</button></header>
+ return <section ref={host} className="dashboard-surface dashboard-detail-panel" aria-label="Dashboard invoice details"><header><div><h2>{title}</h2><p>{displayedHotel==='All'?'All hotels':displayedHotel} · {detail.kind==='balance'?'Open as of '+scope.to:rangeLabel(scope.from,scope.to)}</p></div><button onClick={onClose}>Close details</button></header>
   {source.state==='error'?<p role="alert">These details could not be loaded. Reload the Dashboard to retry.</p>:source.state==='loading'?<p role="status">Loading invoice details…</p>:!source.data?.complete&&<p className="dashboard-notice">Source coverage is incomplete. These are the available records for this selection.</p>}
   <div className="dashboard-table-scroll" tabIndex={0} role="region" aria-label="Detailed Dashboard records"><table><thead><tr><th>Hotel / Account</th><th>{detail.kind==='payments'?'Payment / date':'Invoice / Folio'}</th><th>{detail.kind==='balance'?'Guest / entry date':'Date / evidence'}</th><th>{detail.kind==='sent'?'Amount at send':detail.kind==='payments'?'Payment amounts':detail.kind==='payment_invoices'?'Currently allocated':'Invoice amounts'}</th>{detail.kind==='balance'&&<><th>Billing / Due date</th><th>Latest Follow-Up</th></>}<th>Account</th></tr></thead><tbody>{rows.map((row,index)=>{
    const hotel=text(row.hotel),accountId=text(row.accountId??row.account_id),invoiceId=text(row.invoiceId??row.invoice_id??row.transactionId??row.id),hasInvoice=detail.kind!=='payments'&&invoiceId!=='—';
