@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ไฮไลท์ยอด Aging เกิน 90 วัน — 12 กันยายน 2026
+
+- Implemented: ช่องตาราง Aging ที่มี source range เริ่มหลังวันที่ 90 และยอดคงค้างบวกที่ยืนยันแล้ว ใช้พื้นส้มอมชมพูอ่อนและตัวเลขเข้ม ครอบคลุม Account Type / matched Account และ KAT / TSK / Total ทั้ง desktop และ mobile
+- ช่อง Total ตัดสินจากยอดและสถานะของตัวเอง ไม่ตามสีของโรงแรมใดโรงแรมหนึ่ง; ยอดศูนย์ เครดิต ข้อมูลไม่ยืนยัน และ Net open คงรูปแบบเดิม ใช้ขอบเขตช่วงจริงจาก source ไม่ตีความจากชื่อหรืออันดับคอลัมน์
+- Tested locally: Typecheck / Build ผ่าน; Vitest ที่เกี่ยวกับ Aging 21 tests ผ่าน; browser regression เดิม 18 cases และกรณีใหม่ 3 cases ผ่านที่ 1440 / 1280 / 390 ตรวจ selected / hover / keyboard focus, contrast ≥4.5:1, unknown / absent / credit offset, ทุกช่วงไม่มี horizontal overflow และ drill ไป Invoice เฉพาะ Hotel / Account ที่เลือก
+- ตรวจภาพตาราง desktop / mobile แล้ว; ภาพใหม่ aging-balance-highlight-* ใช้ข้อมูลสมมติที่มีคำว่า Synthetic เท่านั้น คง reference และ runtime evidence เดิม ไม่มี API / database / OPERA / provider / retention changes หรือบริการเสียเงินเพิ่ม
+- Deploy และ CI / Merge: รอตรวจในขั้นส่งขึ้นระบบของ checkpoint นี้
+
 ## Checkpoint แสงเงาและ Typography ทั้งระบบ — 12 กันยายน 2026
 
 - Implemented: shared ui-depth.css ใช้แสงจากมุมบนซ้ายและเงา3ระดับสำหรับcontrols/cards/dialogs ครอบคลุมทุกหน้าหลักและหน้าsettings/policy/operations รวมEmail/PDF chrome. คงสีตามความหมายและAgingพื้นอ่อน; ตาราง/ลิงก์ข้อความ/ตัวเอกสารไม่ถูกทำให้เป็นการ์ดลอยทุกช่อง
