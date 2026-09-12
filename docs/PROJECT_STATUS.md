@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint แสงเงาและ Typography ทั้งระบบ — 12 กันยายน 2026
+
+- Implemented: shared ui-depth.css ใช้แสงจากมุมบนซ้ายและเงา3ระดับสำหรับcontrols/cards/dialogs ครอบคลุมทุกหน้าหลักและหน้าsettings/policy/operations รวมEmail/PDF chrome. คงสีตามความหมายและAgingพื้นอ่อน; ตาราง/ลิงก์ข้อความ/ตัวเอกสารไม่ถูกทำให้เป็นการ์ดลอยทุกช่อง
+- Typographyตามคำขอเพิ่ม: ui-typography.css คงPlus Jakarta Sans จัดลำดับpage30/26,dialog18,section16,panel14,body12,caption11,dense10pxแบบscoped. ยกข้อความเล็กในPortfolio/Account/Collectionsและเมนู/ฟอร์ม; รักษาexact Aging values/all-range fit. แก้128pxcardcapและfloatExpand Agingที่ชนfiltersเมื่อเพิ่มfont และbalancedwrapยอดDebit/Credit
+- Reviewแก้file-link exclusionsตามclassที่ใช้จริง, จำกัดlightบนbluewhitecaptionเหลือ1.5%เพื่อcontrastที่ตรวจ4.544:1, และanonymous test setupที่พึ่งลำดับinit scripts. Final reviewไม่มีข้อค้าง. ไม่ใช้styleกับPDFpaper/canvas/native/edit targetsหรือauthored emailbody
+- Tested locally: Typecheck/Buildและ880unit tests/98filesผ่าน; cross-page browser8testsผ่านรวม12page routesที่1440/1280, Emailreview/PDFPreview, normal-hover-focus-disabledbutton states, Login/recovery และ390Aging/Portfolio. Captioncontrast, actualsoftouter/insetshadow/gradient, flatdata/content, navbar/PDFtoolbarbounds และExpandAging/filters geometryตรวจแล้ว. ภาพdepth-*เป็นsynthetic22ไฟล์; ไม่แก้referencebaselines
+- ไม่มีbackend/migration/OPERA/accounting/retention/auth/providerchanges ไม่มีemail sends/Gmaildraftหรือpaidresourcesใหม่. ใช้CSS/ฟอนต์เดิมที่ติดตั้งอยู่; Deploy/productionregressionและMergeกำลังดำเนินการ
+
+
 ## Checkpoint Aging ครบทุกช่วงโดยไม่เลื่อนแนวนอน — 12 กันยายน 2026
 
 - Implemented: ตาราง Aging มีหนึ่งคอลัมน์ต่อช่วงอายุ พร้อม Net open และบรรทัด TSK/KAT/Total ในกลุ่ม Account Type/Account เดียว. แสดงทุกช่วงเป็นค่าเริ่มต้นที่1440/1280; จอแคบสลับช่วงเป็นแถวและโรงแรมเป็นคอลัมน์เพื่อให้ยอดครบโดยไม่เลื่อนแนวนอน. มี pagination สำหรับทุก Account ไม่ตัดTop N

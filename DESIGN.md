@@ -248,3 +248,14 @@ Default order is Total net descending. Sort hotel selects the comparison basis; 
 The owner requested a blend of light and colorful and rejected large dark navy fields. A light mint net/property summary meets a white/lavender age distribution with teal, sky, indigo, lavender, amber and coral ranges. Donut shares require verified nonnegative source ranges that reconcile to positive net in cents; credits or source/net differences use a signed profile, while zero and unavailable are distinct. Net and every range keep exact THB values.
 
 The all-range table uses 11–12px desktop values and a dense 10px narrow comparison with complete numeric strings. TSK/KAT labels retain property colors; negative credits use rose and Total subrows have a pale blue background. No reference PNG was edited and unrelated Dashboard/Portfolio/PDF styles are preserved.
+
+
+## Shared lighting, elevation and UI typography — 12 September 2026
+
+Owner requested the reference card's soft light/shadow across the whole application, then explicitly added Typography. The application now loads ui-depth.css and ui-typography.css eagerly after the existing styles. A narrow #root selector map keeps the shared system stable when route CSS loads later.
+
+Light comes from the upper left with restrained surface/colored/blue ramps. Content panels have soft downward shadows; summary cards have a stronger edge and cast shadow; controls are slightly raised; floating dialogs have the deepest cast. Inner subdivisions receive an inset highlight rather than a second floating shadow. Tables, text links and chart/data marks stay flat. Existing semantic colors and the recent light mint Aging direction remain; the teal Billing card has a darker tonal floor to keep its white captions readable. White-on-blue cards use at most1.5% white light; the checked lower bound was4.544:1. Opaque primary fills, visible focus outlines and disabled behavior are preserved.
+
+UI type roles retain self-hosted Plus Jakarta Sans: page30px/26px narrow, dialog18px, section16px, compact panel14px, ordinary body/control12px, caption11px and dense heading/badge10px. Portfolio/Account/Collections small labels and headings are lifted selectively. Exact Aging table figures retain their established fit; mobile inputs use16px in mapped forms. The obsolete Portfolio overview128px cap is removed so the readable labels and Expand Aging action remain contained. Account debit/credit metadata uses balanced wrapping.
+
+Coverage includes Dashboard/Aging, Portfolio, Collections, Account/settings, Reports, Remittances, Templates, Storage, operations/policy, Login/recovery, Email Composer and PDF workspace chrome. Authored email content, PDF paper/canvas/native text/edit overlays, output bytes, amounts, chart colors and business actions are outside these selector maps. No new font files or runtime dependencies are introduced.

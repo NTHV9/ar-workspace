@@ -1,0 +1,272 @@
+/* Compact application type roles. The existing self-hosted family remains authoritative.
+   Named chrome selectors intentionally exclude authored PDF and email content. */
+:root {
+  --ar-type-page: 30px;
+  --ar-type-dialog: 18px;
+  --ar-type-section: 16px;
+  --ar-type-panel: 14px;
+  --ar-type-body: 12px;
+  --ar-type-label: 12px;
+  --ar-type-caption: 11px;
+  --ar-type-compact: 10px;
+}
+
+/* Page identity, navigation, and context: one hierarchy across eager and lazy routes. */
+#root :where(.page-title h1, .queue-title h1, .dashboard-title h1, .remittance-title h1, .template-library > header h1, .collection-policy > header h1, .operations-page > h1, .document-jobs > h1, .login-panel h1) {
+  font-size: var(--ar-type-page);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+}
+#root :where(.page-title p, .queue-title p, .dashboard-title p, .remittance-title p, .collection-policy > header p, .operations-page > p) {
+  font-size: var(--ar-type-body);
+  line-height: 1.65;
+}
+#root :where(.main-nav button, .main-nav > span, .hotel-switch button, .breadcrumb, .back-bottom) {
+  font-size: var(--ar-type-caption);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+#root :where(.brand > span > small, .review-strip, .review-strip a, .review-exit) {
+  font-size: var(--ar-type-compact);
+  letter-spacing: 0;
+}
+#root :where(.freshness, .live-status, .live-status button) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.5;
+}
+#root :where(.account-tabs button, .account-tabs > span, .remittance-tabs button, .remittance-tabs > span) {
+  font-size: var(--ar-type-label);
+  letter-spacing: 0;
+}
+
+/* Portfolio and account tables retain their dense rows and existing scroll behavior. */
+#root :where(.contributions h2, .aging-summary h2, .panel-heading h2, .expanded-aging h2, .queue-work h2) {
+  font-size: var(--ar-type-panel);
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -.015em;
+}
+#root :where(.contributions h2 > span, .aging-summary h2 > span, .panel-heading h2 small, .panel-heading > small, .property-key) {
+  font-size: var(--ar-type-compact);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+#root :where(.total-summary .metric-label, .account-metrics .metric-label) {
+  font-size: var(--ar-type-compact);
+  font-weight: 700;
+  letter-spacing: .035em;
+  line-height: 1.4;
+}
+#root :where(.total-summary small, .property-pair small, .metric small, .selected-hotel small) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.5;
+}
+#root :where(.total-summary strong, .property-pair strong, .metric strong, .detail-balance strong) {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.025em;
+}
+#root :where(.aging-row, .aging-toggle, .expanded-aging p, .aging-values small, .account-aging > b, .aging-value strong, .account-aging .small-button) {
+  font-size: var(--ar-type-caption);
+}
+#root :where(.aging-legend, .account-aging > b small, .aging-value small) {
+  font-size: var(--ar-type-compact);
+}
+#root :where(.portfolio .filter, .account-page .filter, .filter-count) {
+  font-size: var(--ar-type-caption);
+}
+#root :where(.portfolio .filter select, .account-page .filter select, .portfolio .search input, .account-page .search input) {
+  font-size: var(--ar-type-body);
+}
+#root :where(.comparison td, .ledger td) {
+  font-size: var(--ar-type-caption);
+  font-variant-numeric: tabular-nums;
+}
+#root :where(.comparison th, .comparison .sort-button, .ledger th, .ledger .sort-button) {
+  font-size: var(--ar-type-compact);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: .015em;
+}
+#root :where(.portfolio .badge, .account-page .badge, .ledger .aging-badge, .compression-label) {
+  font-size: var(--ar-type-compact);
+  letter-spacing: 0;
+}
+#root :where(.table-foot, .empty-state p, .selection-bar small, .selection-hint, .document-placeholder small, .invoice-detail .information-note) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.6;
+}
+#root :where(.selection-bar strong, .selection-bar button, .document-placeholder b, .detail-fields dd) {
+  font-size: var(--ar-type-body);
+  line-height: 1.5;
+}
+#root :where(.detail-head small, .detail-balance small, .detail-fields dt) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.5;
+  letter-spacing: .015em;
+}
+#root :where(.detail-head h2, .invoice-detail h3) {
+  font-size: var(--ar-type-panel);
+  line-height: 1.5;
+  letter-spacing: -.015em;
+}
+#root :where(.overview-info h2, .account-evidence > header h2, .account-config > header h2, .policy-panel h2, .policy-confirm h2, .document-manifest h2, .document-dialog h2, .document-discard h2, .group-dialog h2) {
+  font-size: var(--ar-type-dialog);
+  line-height: 1.4;
+  letter-spacing: -.02em;
+}
+#root :where(.account-config-form h3, .history-editor h3, .overview-info h3) {
+  font-size: var(--ar-type-panel);
+  line-height: 1.5;
+  letter-spacing: -.015em;
+}
+
+/* Collection work: field labels, source details and stage badges remain distinct. */
+#root :where(.queue-metrics small, .queue-metrics span, .queue-purpose-note, .queue-filters label, .queue-work h2 small, .queue-work header > span, .queue-work td small, .queue-work footer, .queue-detail > small, .queue-detail-balance small, .queue-detail dt, .queue-invoice-list small, .queue-safety-note, .queue-sync p, .queue-sync small) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.5;
+}
+#root :where(.queue-filters select, .queue-filters input, .queue-filters > button, .queue-title > button, .queue-account, .queue-detail dd, .queue-invoice-list b, .queue-account-open, .queue-detail .primary-button, .queue-sync button) {
+  font-size: var(--ar-type-body);
+  line-height: 1.5;
+}
+#root :where(.queue-work th, .queue-work th button, .queue-hotel, .queue-purpose) {
+  font-size: var(--ar-type-compact);
+  font-weight: 600;
+  letter-spacing: .015em;
+}
+#root .queue-detail h2 {
+  font-size: var(--ar-type-dialog);
+  line-height: 1.4;
+  letter-spacing: -.02em;
+}
+#root :where(.queue-detail h3, .queue-sync strong) {
+  font-size: var(--ar-type-panel);
+  line-height: 1.5;
+}
+
+/* Dashboard and Aging retain the monetary scale and fixed-width all-range table. */
+#root :where(.dashboard-section-heading h2, .dashboard-insights header h3, .dashboard-payment-summary h3, .aging-table-toolbar h3) {
+  font-size: var(--ar-type-section);
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -.02em;
+}
+#root :where(.dashboard-detail-panel header h2, .current-aging .aging-heading h2) {
+  font-size: var(--ar-type-dialog);
+  line-height: 1.4;
+  letter-spacing: -.02em;
+}
+#root :where(.dashboard-kpi > small, .dashboard-kpi strong > span, .hotel-split small, .dashboard-billing-legend-row strong small, .dashboard-stage-name small, .dashboard-stage-value small, .dashboard-footnote, .dashboard-detail-panel small, .dashboard-period-balances .dashboard-section-heading small) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.5;
+}
+#root :where(.dashboard-status-columns thead th, .dashboard-activity-table thead th, .dashboard-detail-panel thead th) {
+  font-size: var(--ar-type-caption);
+  font-weight: 600;
+  line-height: 1.45;
+}
+#root :where(.aging-v4-balance-heading h3, .aging-v4-profile-heading h3) {
+  font-size: var(--ar-type-panel);
+  line-height: 1.5;
+  letter-spacing: -.015em;
+}
+#root :where(.aging-publications, .aging-footnote, .aging-column-panel > p, .aging-v4-balance-heading > span, .aging-v4-hotel > small, .aging-v4-scope, .aging-v4-profile-heading > span, .aging-v4-ring-label span, .aging-v4-chart-note) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.6;
+}
+/* No .aging-all-table descendants are remapped: exact THB strings keep their fit. */
+
+/* Operational pages already have readable body copy; align their heading roles. */
+#root :where(.remittance-page h2, .template-layout > aside > h2, .template-editor-title > h2, .drive-section-heading h2, .drive-archive h2, .operations-section h2, .storage-controls > h2) {
+  font-size: var(--ar-type-section);
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -.02em;
+}
+#root :where(.external-billing-history h2, .external-billing-dialog h2, .drive-confirm h2) {
+  font-size: var(--ar-type-dialog);
+  line-height: 1.5;
+  letter-spacing: -.02em;
+}
+#root :where(.remittance-page h3, .storage-meters h3) {
+  font-size: var(--ar-type-panel);
+  line-height: 1.5;
+  letter-spacing: -.015em;
+}
+#root :where(.remittance-page label, .remittance-tabs > span, .remittance-summary small, .remittance-page td small, .remittance-state, .remittance-allocations small, .remittance-review dt, .remittance-review dd small, .remittance-record-notes dt, .remittance-files small, .remittance-scroll-hint) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.6;
+}
+#root .remittance-page th {
+  font-size: var(--ar-type-caption);
+  font-weight: 600;
+  line-height: 1.5;
+}
+#root .template-choice small {
+  font-size: var(--ar-type-caption);
+  line-height: 1.5;
+}
+#root :where(.login-panel > p, .login-panel label, .login-panel input, .login-panel button) {
+  font-size: 13px;
+  line-height: 1.6;
+}
+#root :where(.login-divider, .login-panel > small, .login-panel .review-link) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.6;
+}
+
+/* Editor chrome only. Neither editor root nor any document/message ancestor
+   receives inherited typography, so rendered content and text overlays stay exact. */
+#root :where(.pdf-header b, .pdf-package > h2, .pdf-review > h2, .email-context > h2, .email-attachments > h2, .email-message-title h2) {
+  font-size: var(--ar-type-panel);
+  line-height: 1.4;
+  letter-spacing: -.015em;
+}
+#root :where(.pdf-package > h3, .pdf-review > h3, .email-context > section > h3, .email-attachments > h3) {
+  font-size: var(--ar-type-body);
+  line-height: 1.5;
+}
+#root :where(.pdf-header small, .pdf-steps b, .pdf-source > span, .pdf-toolbar button, .pdf-image-upload, .pdf-page-controls > span, .pdf-selection, .pdf-properties label, .pdf-final-navigation > span, .pdf-preview-files button, .pdf-preview-dialog > footer label) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.5;
+}
+#root :where(.pdf-steps small, .pdf-source > b, .pdf-source small, .pdf-review > h3 small) {
+  font-size: var(--ar-type-compact);
+  line-height: 1.5;
+}
+#root :where(.pdf-package > p, .pdf-review > p, .pdf-preview-dialog > header p, .pdf-unsaved-dialog > p, .pdf-email-next > p) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.65;
+}
+#root :where(.email-heading h1, .thread-review > header h2, .pdf-preview-dialog > header h2, .pdf-unsaved-dialog > h2) {
+  font-size: var(--ar-type-dialog);
+  line-height: 1.4;
+  letter-spacing: -.02em;
+}
+#root :where(.email-heading p, .email-steps li, .email-address > span, .email-body-label > span, .email-context > .email-muted, .email-purpose button, .email-note, .email-message-title > span, .email-message > footer, .email-file small, .email-handoff small, .email-upload-help, .email-upload-issue p, .thread-choice-buttons small, .thread-subject-note) {
+  font-size: var(--ar-type-caption);
+  line-height: 1.6;
+}
+#root .email-steps small {
+  font-size: var(--ar-type-compact);
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  :root { --ar-type-page: 26px; }
+
+  #root :where(.main-nav button, .main-nav > span, .hotel-switch button, .breadcrumb, .back-bottom, .aging-toggle, .queue-title > button, .queue-filters > button, .account-aging .small-button, .selection-bar button) {
+    font-size: var(--ar-type-body);
+  }
+  #root :where(.comparison td, .ledger td, .queue-work td, .queue-account, .detail-fields dd, .document-placeholder b) {
+    font-size: var(--ar-type-body);
+  }
+  #root :where(.portfolio .filter select, .account-page .filter select, .portfolio .search input, .account-page .search input, .queue-filters select, .queue-filters input, .dashboard-period-filters input, .dashboard-period-filters select, .dashboard-filters input, .dashboard-filters select, .aging-controls input, .aging-controls select, .aging-sort-controls select, .account-config-form input, .account-config-form select, .account-config-form textarea, .history-editor input, .history-editor select, .policy-panel input:not([type=checkbox]):not([type=radio]), .policy-panel select, .policy-panel textarea, .external-billing-filters input, .external-billing-filters select, .external-billing-dialog input, .external-billing-dialog select, .remittance-page input:not([type=checkbox]), .remittance-page select, .remittance-page textarea, .operations-section input, .operations-section select, .login-panel input, .email-address input, .thread-test-select select) {
+    font-size: 16px;
+  }
+}
+/* Let the overview contain its larger captions and action instead of clipping at 128px. */
+#root .portfolio-overview>.panel{max-height:none}
+#root .aging-summary .aging-toggle{float:none;display:flex;width:max-content;margin-left:auto}
+#root .account-aging .aging-value small{text-wrap:balance}

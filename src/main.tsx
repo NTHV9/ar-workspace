@@ -6,4 +6,6 @@ import '@fontsource/plus-jakarta-sans/latin-600.css';
 import '@fontsource/plus-jakarta-sans/latin-700.css';
 import { App } from './App';
 import './styles.css';
+import './ui-depth.css';
+import './ui-typography.css';
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

@@ -1,0 +1,52 @@
+/* Shared light direction and elevation. Application chrome only: no document/artwork selectors. */
+:root{
+ --ar-light-surface:linear-gradient(135deg,rgba(255,255,255,.96) 0%,rgba(255,255,255,.18) 54%,rgba(224,236,247,.24) 100%);
+ --ar-light-tint:linear-gradient(135deg,rgba(255,255,255,.23),rgba(255,255,255,0) 60%,rgba(20,49,79,.035));
+ --ar-light-blue:linear-gradient(135deg,rgba(255,255,255,.015),rgba(255,255,255,0) 45%,rgba(13,35,83,.085));
+ --ar-light-soft:linear-gradient(135deg,rgba(255,255,255,.62),rgba(255,255,255,0) 70%);
+ --ar-shadow-control:inset 0 1px 0 rgba(255,255,255,.7),0 2px 3px rgba(32,65,93,.035),0 4px 8px -5px rgba(32,65,93,.14);
+ --ar-shadow-control-hover:inset 0 1px 0 rgba(255,255,255,.78),0 3px 5px rgba(32,65,93,.07),0 7px 12px -7px rgba(32,65,93,.20);
+ --ar-shadow-surface:inset 0 1px 0 rgba(255,255,255,.9),0 2px 4px rgba(29,61,90,.035),0 12px 25px -13px rgba(29,61,90,.19);
+ --ar-shadow-card:inset 0 1px 0 rgba(255,255,255,.68),inset 0 -1px 0 rgba(27,58,87,.04),0 3px 6px rgba(27,58,87,.05),0 14px 28px -15px rgba(27,58,87,.23);
+ --ar-shadow-dialog:inset 0 1px 0 rgba(255,255,255,.94),0 7px 18px -7px rgba(18,43,69,.20),0 30px 75px -22px rgba(18,43,69,.36);
+ --ar-shadow-inner:inset 0 1px 0 rgba(255,255,255,.72),inset 0 -1px 0 rgba(29,61,90,.03);
+}
+body{background-image:radial-gradient(ellipse at 12% 0%,rgba(255,255,255,.92),rgba(255,255,255,0) 60%),linear-gradient(155deg,#edf5f9,#e7f0f7 68%,#e2edf4);background-attachment:fixed}
+#root .app-shell{box-shadow:inset 0 1px 0 #fff,0 4px 12px -6px #294a6514,0 25px 65px -24px #294a6536}
+#root .app-header{background-image:linear-gradient(120deg,#ffffffb8,#ffffff21);box-shadow:inset 0 1px 0 #fff,0 3px 9px -6px #294a6517}
+
+/* A single soft elevation for each content container; financial rows stay flat. */
+#root :where(.panel,.dashboard-surface,.dashboard-period-filters,.dashboard-day-grid,.dashboard-balance-breakdown,.aging-v4-overview,.aging-comparison-frame,.template-editor,.template-choice,.queue-sync,.pdf-companion,.private-pdf-preview,.email-send-confirm){box-shadow:var(--ar-shadow-surface);background-image:var(--ar-light-surface)}
+#root :where(.metric,.queue-metrics>button,.dashboard-kpi-card,.dashboard-activity-highlights>article,.remittance-summary>div,.reports-metrics>div){box-shadow:var(--ar-shadow-card);background-image:var(--ar-light-surface)}
+/* Preserve the existing image layer on the blue Account metric. */
+#root .metric.blue{background-color:#345ef4;background-image:linear-gradient(130deg,#ffffff0a,#ffffff00 70%,#18345b12),linear-gradient(110deg,#345ef4,#4a86fc)}
+#root :where(.dashboard-kpi-card.primary,.dashboard-kpi-card.blue,.dashboard-kpi-card.rose,.dashboard-kpi-card.amber){background-image:var(--ar-light-tint)}
+#root :where(.remittance-summary-accent,.reports-metric-accent){background-image:var(--ar-light-blue)}
+/* White caption contrast stays >=4.5 across the teal ramp. Hue retains Billing identity. */
+#root .queue-metrics>.billing-metric{background-color:#117e73;background-image:linear-gradient(135deg,#148075 0%,#0d7e75 55%,#117a71 100%);color:#fff;box-shadow:var(--ar-shadow-card)}
+#root .queue-metrics>.billing-metric:hover:not(:disabled){background-color:#0c766c;background-image:linear-gradient(135deg,#117c71,#086c64);color:#fff;box-shadow:var(--ar-shadow-card)}
+
+/* Inner subdivisions catch the same light without stacking another floating card. */
+#root :where(.property-pair>div,.selected-hotel,.aging-v4-balance,.aging-v4-profile,.account-config-body>nav,.system-billing-guidance,.pdf-toolbar,.pdf-email-next,.rich-message-toolbar,.email-steps,.pdf-steps,.email-template-overlay,.remittance-totals,.remittance-allocation-summary){background-image:var(--ar-light-soft);box-shadow:var(--ar-shadow-inner)}
+#root :where(.dashboard-activity-highlights>article>button){background-image:var(--ar-light-soft)}
+#root .account-config-body>nav{background-image:var(--ar-light-tint)}
+#root :where(.selection-bar){background-image:var(--ar-light-tint);box-shadow:var(--ar-shadow-card)}
+
+/* Raised controls. Text, financial cells, navigation tracks and PDF edit hit targets are excluded. */
+#root button:not(:where(table *, .queue-metrics *, .main-nav *, .account-tabs *, .dashboard-view-tabs *, .remittance-tabs *, .hotel-switch *, .account-config-body>nav *, .breadcrumb,.text-button,.sort-button,.name-link,.amount-link,.back-bottom,.queue-account,.remittance-reference,.dashboard-text-link,.dashboard-kpi,.dashboard-stage-row,.dashboard-billing-legend-row,.dashboard-billing-other button,.hotel-split button,.dashboard-activity-highlights button,.aging-value-button,.aging-group-name,.aging-invoice-link,.aging-row-link,.aging-v4-range,.aging-breadcrumbs button,.template-starter,.template-starters button,.email-file-link,.remove-supplemental,.pdf-paper *, .pdf-final-sheet *, .pdf-native-line,.pdf-native-area,.pdf-text-target,.pdf-layer-move,.pdf-resize)) {box-shadow:var(--ar-shadow-control)}
+#root button:not(:where(table *, .queue-metrics *, .main-nav *, .account-tabs *, .dashboard-view-tabs *, .remittance-tabs *, .hotel-switch *, .account-config-body>nav *, .breadcrumb,.text-button,.sort-button,.name-link,.amount-link,.back-bottom,.queue-account,.remittance-reference,.dashboard-text-link,.dashboard-kpi,.dashboard-stage-row,.dashboard-billing-legend-row,.dashboard-billing-other button,.hotel-split button,.dashboard-activity-highlights button,.aging-value-button,.aging-group-name,.aging-invoice-link,.aging-row-link,.aging-v4-range,.aging-breadcrumbs button,.template-starter,.template-starters button,.email-file-link,.remove-supplemental,.pdf-paper *, .pdf-final-sheet *, .pdf-native-line,.pdf-native-area,.pdf-text-target,.pdf-layer-move,.pdf-resize)):hover:not(:disabled){box-shadow:var(--ar-shadow-control-hover)}
+/* Keep native action-primary colors opaque; never target the intentional .dashboard-kpi.primary transparency. */
+#root button:where(.primary-button,.pdf-workspace .pdf-primary){background-color:#3d65ff;background-image:linear-gradient(135deg,rgba(255,255,255,.025),rgba(0,0,0,.065));box-shadow:inset 0 1px 0 #ffffff38,0 3px 5px #2140a617,0 8px 16px -8px #2140a638}
+#root button:where(.primary-button,.pdf-workspace .pdf-primary):hover:not(:disabled){background-color:#3157df;background-image:linear-gradient(135deg,rgba(255,255,255,.04),rgba(0,0,0,.035));box-shadow:inset 0 1px 0 #ffffff45,0 5px 12px -5px #2140a638}
+#root :where(.main-nav button.active,.hotel-switch button.active,.dashboard-view-tabs button[aria-pressed=true],.remittance-tabs button[aria-pressed=true]){box-shadow:var(--ar-shadow-control);background-image:var(--ar-light-tint)}
+#root :where(.main-nav,.hotel-switch){box-shadow:inset 0 1px 3px #24456908,inset 0 -1px 0 #ffffffc9}
+
+/* Floating UI has a stronger cast shadow; the backdrop, dimensions and focus geometry remain native. */
+#root :where(.group-dialog,.document-dialog,.external-billing-dialog,.drive-confirm,.email-workspace,.thread-review,.pdf-workspace,.pdf-preview-dialog,.pdf-unsaved-dialog,.private-pdf-preview){box-shadow:var(--ar-shadow-dialog);background-image:var(--ar-light-surface)}
+#root dialog.invoice-detail.drawer-open{box-shadow:var(--ar-shadow-dialog);background-image:var(--ar-light-surface)}
+#root .aging-column-panel{box-shadow:var(--ar-shadow-dialog);background-image:var(--ar-light-surface)}
+/* Selected compound surfaces retain their base tint after route-level lazy CSS loads. */
+#root .template-choice.active{background-color:#edf6fd;background-image:var(--ar-light-soft)}
+@media(max-width:600px){#root .total-summary{background-image:var(--ar-light-blue)}}
+
+@media(max-width:1000px){#root .queue-detail.open{box-shadow:var(--ar-shadow-dialog);background-image:var(--ar-light-surface)}}
