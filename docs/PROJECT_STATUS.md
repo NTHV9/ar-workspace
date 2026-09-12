@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ลำดับคอลัมน์และโรงแรม Aging — 12 กันยายน 2026
+
+- Implemented: Net open อยู่ท้ายตาราง (ขวาสุดบน desktop / แถวสุดท้ายบน mobile) และลำดับโรงแรมเป็น KAT / TSK / Total รวมตัวเลือก Sort hotel. คงยอด การ sort การซ่อนคอลัมน์ ไฮไลท์ยอดเกิน 90 วัน และ invoice drill เดิม
+- Tested: Typecheck / Build ผ่าน; related browser 21 cases ผ่าน รวมปรับ expected order เดิมให้ตรงคำขอล่าสุด. Cloudflare browser 6 cases ผ่านที่ 1440 / 1280 / 390 ตรวจลำดับจริง ทุกช่วงยัง fit และ drill ต่อได้. ภาพใหม่ aging-column-order-* เป็นข้อมูลสมมติ; reference และ runtime evidence ก่อนหน้าไม่ถูกแทนที่
+- Deployed source `49bb09c076555eea1a22b117ce9c3ea022cf50a9`, Worker `a943a428-a118-451f-bf27-e52f4ae78c9b` ที่ https://ar-workspace.ar-c82.workers.dev . Health ยืนยัน exact SHA / database_verified / OPERA connected. ไม่มี backend / financial calculation / provider changes
+- [PR #20](https://github.com/NTHV9/ar-workspace/pull/20) merged `62e2f194902199e9593d22a47509b74fd73f6541` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34682793009) และ push CI ผ่าน. Merge tree ตรง tested / deployed source; closeout เปลี่ยนเฉพาะเอกสาร
+
 ## Checkpoint ไฮไลท์ยอด Aging เกิน 90 วัน — 12 กันยายน 2026
 
 - Implemented: ช่องตาราง Aging ที่มี source range เริ่มหลังวันที่ 90 และยอดคงค้างบวกที่ยืนยันแล้ว ใช้พื้นส้มอมชมพูอ่อนและตัวเลขเข้ม ครอบคลุม Account Type / matched Account และ KAT / TSK / Total ทั้ง desktop และ mobile
