@@ -15,4 +15,6 @@ Owner asks for a more engaging, easier Aging view and KAT/TSK counts and amounts
 - [x] Aging implementer: redesign overview/table interactions and responsive style, preserve context/columns and behavioral regression tests; synthetic screenshots.
 - [x] Root: integrate bundle, redesign closing/activity presentation with all hotel breakdowns and drill navigation; source/date/actor isolation, error and unavailable tests.
 - [x] Scoped and final review, build/typecheck/tests/SQL replay, synthetic desktop/laptop/narrow visual inspection.
-- [ ] Hosted preflight/apply/read and budget/ACL checks, public audit, push/CI/deploy/live verification/merge and update PROJECT_STATUS.
+- [x] Hosted preflight/apply/read and budget/ACL checks, public audit, push/CI/deploy/live verification/merge and update PROJECT_STATUS.
+
+Completed: source0bb256b, Supabase migration20260912055415, Workerfa1e198e, PR16mergedb8cf8dee. 875unit /55localbrowser /68deployedbrowser cases and65migration/23SQLsuites passed; actual displayed hotel totals and drill verified.
