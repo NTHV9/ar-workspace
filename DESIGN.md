@@ -249,6 +249,8 @@ The owner requested a blend of light and colorful and rejected large dark navy f
 
 The all-range table uses 11–12px desktop values and a dense 10px narrow comparison with complete numeric strings. TSK/KAT labels retain property colors; negative credits use rose and Total subrows have a pale blue background. No reference PNG was edited and unrelated Dashboard/Portfolio/PDF styles are preserved.
 
+Verified positive balances in source ranges starting after day 90 receive a soft coral cell fill and darker bold figures, at both Account Type and matched Account levels. The same rule applies independently to KAT, TSK and Total in desktop and transposed tables. Zero, negative credits, unverified amounts and net-open cells keep their existing presentation. Selected-range backgrounds do not obscure the balance highlight; hover and keyboard focus remain visible.
+
 
 ## Shared lighting, elevation and UI typography — 12 September 2026
 
