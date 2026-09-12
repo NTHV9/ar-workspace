@@ -6,7 +6,8 @@
 - ช่อง Total ตัดสินจากยอดและสถานะของตัวเอง ไม่ตามสีของโรงแรมใดโรงแรมหนึ่ง; ยอดศูนย์ เครดิต ข้อมูลไม่ยืนยัน และ Net open คงรูปแบบเดิม ใช้ขอบเขตช่วงจริงจาก source ไม่ตีความจากชื่อหรืออันดับคอลัมน์
 - Tested locally: Typecheck / Build ผ่าน; Vitest ที่เกี่ยวกับ Aging 21 tests ผ่าน; browser regression เดิม 18 cases และกรณีใหม่ 3 cases ผ่านที่ 1440 / 1280 / 390 ตรวจ selected / hover / keyboard focus, contrast ≥4.5:1, unknown / absent / credit offset, ทุกช่วงไม่มี horizontal overflow และ drill ไป Invoice เฉพาะ Hotel / Account ที่เลือก
 - ตรวจภาพตาราง desktop / mobile แล้ว; ภาพใหม่ aging-balance-highlight-* ใช้ข้อมูลสมมติที่มีคำว่า Synthetic เท่านั้น คง reference และ runtime evidence เดิม ไม่มี API / database / OPERA / provider / retention changes หรือบริการเสียเงินเพิ่ม
-- Deploy และ CI / Merge: รอตรวจในขั้นส่งขึ้นระบบของ checkpoint นี้
+- Deployed: source `6181fa6a87bf867f15109990d01ed24f35d14154`, Worker `6a3fbf34-8439-4d4c-8781-d4a8a7c93c60` ที่ https://ar-workspace.ar-c82.workers.dev . Health ยืนยัน exact SHA / database_verified / OPERA connected; browser 6 cases ผ่านบน Cloudflare assets โดยใช้ข้อมูลสมมติ ภาพตารางใหม่ตรงกับ production render
+- [PR #19](https://github.com/NTHV9/ar-workspace/pull/19) merged `eaab51a38705c6f3b5784553bb1a689fe55531ac` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34681255684) และ push CI ผ่าน; merge tree ตรงกับ source ที่ทดสอบและ Deploy แล้ว คืนค่า incidental runtime captures เดิมทั้ง 3 ไฟล์; closeout เปลี่ยนเฉพาะเอกสาร
 
 ## Checkpoint แสงเงาและ Typography ทั้งระบบ — 12 กันยายน 2026
 
