@@ -1,12 +1,19 @@
 import {describe,expect,it} from 'vitest';
 import type {Account,AgingBucket} from '../src/domain/portfolio';
-import {agingColumns,agingComparison,agingInvoiceEvidence,agingOverview,agingPercentage,parseAgingInvoices} from '../src/dashboard/aging-model';
+import {agingAmountScale,agingColumns,agingComparison,agingInvoiceEvidence,agingOverview,agingPercentage,parseAgingInvoices} from '../src/dashboard/aging-model';
 
 const bucket=(amount:number,start=0,end:number|null=30):AgingBucket=>({label:end===null?`${start}+`:`${start}–${end}`,start,end,sequence:start,amount,debit:Math.max(0,amount),credit:Math.min(0,amount)});
 const account=(hotel:string,id:string,amount:number,extra:Partial<Account>={}):Account=>({hotel,id,name:id,type:'Agent',account_no:'PAIR',open:amount,over90:0,items:1,verification_state:'verified',agingBuckets:[bucket(amount),bucket(0,31,null)],...extra});
 const raw=(id:string,extra:Record<string,unknown>={})=>({id,hotel:'KAT',account_id:'a',invoice_no:id,folio_no:'folio',guest:'Synthetic guest',transaction_date:'2026-09-01',open:100,original:100,age:10,collection_role:'standalone',verification_state:'verified',...extra});
 
 describe('current aging comparison',()=>{
+ it('places credit bars below a common zero and keeps proportional positive amounts above it',()=>{
+  const scale=agingAmountScale([300,-100,150,0,null]);
+  expect(scale.zero).toBe(25);
+  expect(scale.bars).toEqual([{bottom:25,height:75},{bottom:0,height:25},{bottom:25,height:37.5},{bottom:25,height:0},null]);
+  expect(agingAmountScale([-20,-10]).bars).toEqual([{bottom:0,height:100},{bottom:50,height:50}]);
+  expect(agingAmountScale([0,null])).toEqual({zero:0,bars:[{bottom:0,height:0},null]});
+ });
  it('builds an overview from the complete filtered members with signed credit shares and exact hotel totals',()=>{
   const catalog=[account('KAT','a',80,{agingBuckets:[bucket(100),bucket(-20,31,null)]}),account('TSK','b',50)];
   const overview=agingOverview(catalog,'All',catalog);

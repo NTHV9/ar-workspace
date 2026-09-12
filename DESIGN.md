@@ -226,3 +226,14 @@ Current Aging adds a net-open hotel comparison and all source ranges on a shared
 Dashboard-specific type steps: 30px page title, 34px principal count, 28–32px aging net, 20px aging bucket amounts, 18px exact KPI amounts, 16–17px section titles, 11–13px controls and comparison labels. Cool navy #172e51, blue #4169dd, teal #087f80, rose #ad3e61 and amber #986914 carry meaning. Surfaces use 12–14px corners. Retained app typography is Plus Jakarta Sans. Color/type detector differences are intentional extensions for this approved Dashboard scope, not a global style replacement.
 
 Availability is separate from freshness: a verified publication remains visible during a new attempt, with source timestamps and an explicit refreshing/failed note. Same-scope browser reloads retain prior loaded data with a notice; changing date, hotel, account or authenticated session clears it. Unverified data and uncaptured historical dates stay unavailable.
+
+
+## Hotel comparison and focused Aging — 12 September 2026
+
+The owner requested a more engaging comparison surface and property counts/amounts beside combined Invoice metrics. Dashboard view controls now sit alongside the page heading on desktop. Four tinted closing-status panels keep totals dominant and use KAT blue / TSK teal splits with a true proportional amount track. Each property row exposes its count and exact amount and opens that property's details. Single-hotel/account cards occupy the full available card width.
+
+Billing, latest Follow-Up, period activity and payment measures retain Total with both hotel breakdowns. The numeric basis stays visible: invoice counts, send occurrences and current allocations are not interchangeable. A single protected database snapshot supplies all three scopes. When a later group read fails, the entire prior Total/KAT/TSK source group stays together with an explicit notice; fresh totals are never paired with old property values.
+
+Current Aging replaces the six small chart grid with a chronological selectable distribution on one shared signed THB scale. Selecting a range focuses the comparison on TSK / KAT / Total; Full matrix and Columns retain all ranges and user visibility choices. A compact all-age net header remains distinct from the selected-range table. Bars, labels and exact amounts explain the selection without invented trends. Current Aging page, filters, visible sort and range survive invoice drill and return.
+
+The palette remains the approved light navy/blue/teal family. Blue, pale blue, rose and amber status surfaces add semantic contrast; source money uses tabular numerals, 21px primary amounts and 12–13px property values. Lower activity tables retain controlled horizontal scrolling on narrow screens. Existing reference PNGs, Portfolio, Account Detail and PDF design are not replaced.

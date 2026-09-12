@@ -54,6 +54,12 @@ export function agingOverview(catalog:Account[],hotel:string,members:Account[]){
 export function agingPercentage(amount:number|null,denominator:number|null):number|null{
  return amount!==null&&denominator!==null&&Number.isFinite(amount)&&Number.isFinite(denominator)&&denominator>0?amount/denominator*100:null;
 }
+/** One signed amount scale: credits grow below zero, never as positive debt. */
+export function agingAmountScale(values:(number|null)[]){
+ const known=values.filter((value):value is number=>value!==null&&Number.isFinite(value));
+ const minimum=Math.min(0,...known),maximum=Math.max(0,...known),span=maximum-minimum||1,zero=-minimum/span*100||0;
+ return {zero,bars:values.map(value=>value===null||!Number.isFinite(value)?null:{bottom:value<0?(value-minimum)/span*100:zero,height:Math.abs(value)/span*100})};
+}
 const decimal=(value:unknown):number|null=>{
  if(typeof value!=='number'&&(typeof value!=='string'||!/^[-+]?\d+(?:\.\d+)?$/.test(value)))return null;
  const n=Number(value);return Number.isFinite(n)&&Number.isSafeInteger(cents(n))?n:null;

@@ -1,5 +1,15 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Dashboard แยกยอดโรงแรมและ Aging แบบเลือกช่วง — 12 กันยายน 2026
+
+- Implemented: ทุกหัวข้อ Invoice ใน Dashboard มีจำนวนและยอด Total/KAT/TSK เมื่อเลือก All Hotels รวมยอดค้าง สถานะวางบิล latest Follow-Up กิจกรรมตามช่วงวันและเงินรับจาก OPERA. กดแถวโรงแรมเพื่อเปิดรายละเอียดที่ตรงกัน; กลับจาก Account Detail คงตัวกรองโรงแรมของรายละเอียดได้
+- Aging เปลี่ยนเป็นกราฟช่วงอายุเรียงตามวัน เลือกช่วงแล้วแสดงตาราง TSK/KAT/Total ที่อ่านง่าย มี Full matrix และ Columns เพื่อเลือกดูครบหรือซ่อนช่วงตามต้องการ. เก็บ Account Type/Account ทุกแถวและรักษา page/search/sort/range เมื่อเจาะ Invoice และกลับ. ข้อมูลปัจจุบันไม่ขึ้นกับช่วงวันที่ Dashboard
+- New service-only RPC/API: ar_dashboard_hotel_overview / GET /api/dashboard/hotel-overview ใช้ authoritative readers เดิมสำหรับ Total/KAT/TSK ใน database snapshot เดียว ไม่เพิ่มตารางหรือข้อมูลธุรกิจที่เก็บใหม่ ไม่มี provider requests. Apply migration20260912055415 บน Supabase jmyvpurzmoiecpydjrci แล้ว. Hosted ทั้ง3 scopes ยอดค้าง complete=true/unverified0; จำนวนและยอด7metricsที่มีหลักฐานเท่ากับผลรวม KAT+TSK ตามจริง. RPC ไม่ให้ anon/authenticated เรียกตรง; security advisorมีINFO1 ไม่พบWARN/ERROR. DB62082195bytes; current-day bundleอ่านจริง119.5ms/result11870bytesในการวัดครั้งนี้ และactorนอกallowlistถูกปฏิเสธ
+- Preserve: วันที่ย้อนหลังที่ไม่มี snapshot ยัง unavailable; เงินรับใช้ OPERA payment date/current allocation ตามนิยามเดิม. HTTP failure และ partial-source reload คงข้อมูลเก่าทั้งกลุ่มโรงแรมด้วยกันพร้อมคำเตือน ไม่เอา Totalใหม่ปน KAT/TSKเก่า. Source failure ครั้งแรกยังแสดงส่วนอื่นที่มีข้อมูล; unknownไม่กลายเป็น0. รอบทวงที่เลิกใช้แต่มีประวัติในโรงแรมหนึ่งยังแสดงได้แม้ Total readerล้มเหลว
+- Tested: Typecheck/Build,875unit tests/97files, PostgreSQL65migrations+23SQLfixture suitesผ่าน; browser55casesผ่านในรอบสุดท้าย รวมretention/retiredstage/perhotel drill/accountcaption/mobilewidth และAging15casesรวมmatrixpage-return. แก้testassertionให้ตรวจbundle endpointใหม่โดยยังตรวจrefreshcompletionตามเดิม. Final source reviewไม่มีข้อค้าง; full deployed verificationกำลังดำเนินการ
+- Synthetic screenshotsใหม่: comparison-dashboard-*, comparison-activity-*, comparison-payments-* และ Aging-focused captures. ไม่แก้ reference baselines ไม่เก็บข้อมูลลูกค้าหรือrecipientทดสอบจริงในGit. ไม่มีการส่งอีเมล เปลี่ยนบัญชีในOPERA ลบไฟล์ลูกค้า หรือเพิ่มบริการเสียเงิน
+
+
 ## Checkpoint Modern Dashboard and current Aging — 12 กันยายน 2026
 
 - Implemented: ปรับ Dashboard ให้เห็นจำนวนบิลและยอดค้าง/ยังไม่วางบิล/Past Due date/อายุเกิน60วันทันที พร้อมกราฟสัดส่วนวางบิลและlatest Follow-Up. กิจกรรมตามช่วงวันอยู่คนละส่วนกับยอดค้างณวันสิ้นสุด; รายละเอียดจำนวน/ยอด/%และdrilldownยังครบ
