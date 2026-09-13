@@ -279,3 +279,30 @@ for(const width of [1440,1280])test('Statement row insertion preserves the total
  expect(await page.locator('.pdf-layer-target.empty-cell').evaluateAll(cells=>cells.every(cell=>parseFloat(getComputedStyle(cell,'::after').lineHeight)<=cell.getBoundingClientRect().height))).toBe(true);const bands=await statementGrayBands(page);expect(originalBands[1]).toBeGreaterThan(23);expect(Math.abs(bands[0]-originalBands[0])).toBeLessThan(1.5);expect(Math.abs(bands[1]-originalBands[1])).toBeLessThan(1.5);
  await page.getByRole('button',{name:'Select',exact:true}).click();await page.screenshot({path:`evidence/pdf-statement-row-fix-${width}.png`,animations:'disabled'});await page.getByRole('button',{name:'Continue to email',exact:true}).click();const preview=page.getByRole('dialog',{name:'Final PDF preview'});await expect(preview.getByLabel('Preview zoom')).toHaveValue('fit-width');await expect(preview.getByLabel('Preview zoom').locator('option[value="fit-page"]')).toHaveCount(0);await reviewPreviewPages(page);await preview.getByRole('checkbox').check();await preview.getByRole('button',{name:'Continue to email',exact:true}).click();await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();expect(controls.outboundRequests).toEqual([]);
 });
+
+for(const hotel of ['KAT','TSK'])test(hotel+' source text deletion and compact row work in the application route',async({page})=>{
+ test.setTimeout(60000);
+ const controls=await mockApplication(page,'combined','legacy',await syntheticStatement(hotel,'Example, Chris','Transferred From TST SYNTHETIC12345679'));
+ controls.job.hotel=hotel;
+ await page.goto('/?documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Edit original text: F002',exact:true})).toBeVisible();
+ const targets=await page.locator('.pdf-paper').evaluate(paper=>{
+  const bounds=paper.getBoundingClientRect(),buttons=Array.from(paper.querySelectorAll<HTMLButtonElement>('.pdf-text-target'));
+  const last=buttons.find(b=>b.getAttribute('aria-label')==='Edit original text: F002')!.getBoundingClientRect();
+  return buttons.filter(b=>{const r=b.getBoundingClientRect(),x=(r.x-bounds.x)/bounds.width*612;return x>=328&&x<=410&&r.y>=last.y-.1&&r.y<last.y+bounds.width/612*40;}).map(b=>b.getAttribute('aria-label')!);
+ });
+ expect(targets).toHaveLength(4);
+ for(const name of targets){await page.getByRole('button',{name,exact:true}).click();await page.getByRole('button',{name:'Delete text box',exact:true}).click();await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);}
+ await expect(page.locator('.pdf-layer-target')).toHaveCount(0);
+ await page.getByRole('button',{name:'Edit original text: F002',exact:true}).click();await page.getByRole('button',{name:'Add row below',exact:true}).click();
+ await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(8);
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByText('Draft saved. Final review is still required.',{exact:true})).toBeVisible();
+ const edited=controls.uploadRequests.at(-1)!.project.pages[0],edits=edited.rowEdits;
+ expect(edits.filter((e:any)=>e.kind==='delete').reduce((n:number,e:any)=>n+e.height,0)).toBeCloseTo(30,1);
+ expect(edits.find((e:any)=>e.kind==='insert').height).toBeCloseTo(12.747,1);
+ await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await reviewPreviewPages(page);
+ await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
+ await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(1);
+ expect(controls.outboundRequests).toEqual([]);expect(controls.emailOpens).toEqual([]);
+ await page.screenshot({path:'evidence/pdf-source-deletion-'+hotel.toLowerCase()+'-application-preview.png',animations:'disabled'});
+});

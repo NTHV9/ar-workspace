@@ -7,6 +7,7 @@ import { mapSourceRect, mapSourceTextRect } from './row-layout';
 import { extractSourceText, extractSourceImages } from './source-extraction';
 import { drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, measureLayerText } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
+import { replacementForRun, validateDeletedLayer } from './source-edits';
 GlobalWorkerOptions.workerSrc = workerUrl;
 const documentScopes = new WeakMap<Map<string, PDFDocumentProxy>, string>();
 
@@ -36,11 +37,13 @@ export async function detectText(page: PdfProjectPage, documents: Map<string, PD
 }
 
 async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer, page: PdfProjectPage) {
-  validateSourceText(layer);
+  validateDeletedLayer(layer);
+  if (!layer.deleted) validateSourceText(layer);
   ctx.save();
   try {
   const mask = layer.original && layer.maskOriginal !== false ? mapSourceTextRect(layer.original, page.rowEdits ?? [], sourceStyle(layer)?.baseline) : null;
   if (mask) { const o = mask; ctx.fillStyle = layer.fill; ctx.fillRect(o.x - 1, o.y - 1, o.width + 2, o.height + 2); }
+  if (layer.deleted) return;
   const { x, y, width, height } = layer;
   if (['shape', 'whiteout', 'note', 'stamp'].includes(layer.kind)) {
     ctx.fillStyle = layer.fill; ctx.fillRect(x, y, width, height);
@@ -62,14 +65,16 @@ export type RenderIssue={layerId:string;message:string};
 export type RenderOptions={tolerant?:boolean};
 async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,tolerant=false){
  const issues:RenderIssue[]=[],valid:PdfLayer[]=[];
- const runs=page.layers.some(l=>l.sourceText)?await detectText(page,documents):[];
+ const runs=page.layers.some(l=>l.sourceText||l.deleted!==undefined)?await detectText(page,documents):[];
  for(const layer of page.layers){try{
-  if(layer.sourceText){
-   const run=runs.find(r=>r.sourceText?.runIndex===layer.sourceText?.runIndex);
-   if(layer.sourceText.sourceId!==page.sourceId||layer.sourceText.sourcePage!==page.sourcePage||!run||!layer.original||run.text!==layer.original.text||Math.abs(run.x-layer.original.x)>.01||Math.abs(run.y-layer.original.y)>.01)throw Error('Source text no longer matches this document. Reopen the original.');
-   layer.sourceText={...run.sourceText!};
+  validateDeletedLayer(layer);
+  if(layer.sourceText||layer.deleted){
+   const ref=layer.sourceText;
+   const run=ref?runs.find(r=>r.sourceText?.runIndex===ref.runIndex):runs.find(r=>layer.original&&r.text===layer.original.text&&Math.abs(r.x-layer.original.x)<.01&&Math.abs(r.y-layer.original.y)<.01);
+   if(ref&&(ref.sourceId!==page.sourceId||ref.sourcePage!==page.sourcePage)||!run||!layer.original||run.text!==layer.original.text||Math.abs(run.x-layer.original.x)>.01||Math.abs(run.y-layer.original.y)>.01)throw Error('Source text no longer matches this document. Reopen the original.');
+   if(run.sourceText)layer.sourceText={...run.sourceText};
   }
-  validateSourceText(layer);
+  if(!layer.deleted)validateSourceText(layer);
   if(!layer.sourceText&&['text','replacement','note','stamp'].includes(layer.kind)&&layer.text){const metrics=measureLayerText(layer);if(metrics.height>layer.height+.5||metrics.width>layer.width+.5)throw Error('The edited text exceeds its box. Enlarge the text box before Preview.');}
   if(layer.original&&layer.maskOriginal!==false&&!mapSourceTextRect(layer.original,page.rowEdits??[],sourceStyle(layer)?.baseline))throw Error('The original text area was removed or split. Restore the row or discard this edit.');
   valid.push(layer);
@@ -105,15 +110,29 @@ function continuedRules(page:PdfProjectPage,source:HTMLCanvasElement,scale:numbe
  }
  return result;
 }
+function hasLayerInk(layer:PdfLayer){
+ return !layer.deleted&&(['image','shape','whiteout','note','stamp'].includes(layer.kind)||!!layer.text.trim());
+}
 function paintedExtent(page:PdfProjectPage,source:HTMLCanvasElement,scale:number,layers:PdfLayer[]){
  const pixels=source.getContext('2d')!.getImageData(0,0,source.width,source.height).data;
- let bottom=Math.max(page.height,...layers.map(l=>l.y+l.height));
+ const masks=layers.flatMap(layer=>{
+  if(!layer.original||layer.maskOriginal===false)return [];
+  const rect=mapSourceTextRect(layer.original,page.rowEdits??[],sourceStyle(layer)?.baseline);
+  return rect?[{x:rect.x-1,y:rect.y-1,width:rect.width+2,height:rect.height+2}]:[];
+ });
+ let bottom=Math.max(page.height,...layers.filter(hasLayerInk).map(l=>l.y+l.height));
  for(const f of sourceFragments(page)){
   if(f.y+f.height<=bottom)continue;
   const left=Math.max(0,Math.floor(f.sx*scale)),right=Math.min(source.width,Math.ceil((f.sx+f.width)*scale));
   outer:for(let y=Math.min(source.height-1,Math.ceil((f.sy+f.height)*scale)-1);y>=Math.max(0,Math.floor(f.sy*scale));y--){
    if(f.y+(y+1)/scale-f.sy<=bottom)break;
-   for(let x=left;x<right;x++){const i=(y*source.width+x)*4;if(pixels[i]<254||pixels[i+1]<254||pixels[i+2]<254){bottom=Math.max(bottom,f.y+(y+1)/scale-f.sy);break outer;}}
+   const mappedY=f.y+(y+.5)/scale-f.sy;
+   const lineMasks=masks.filter(mask=>mappedY>=mask.y&&mappedY<mask.y+mask.height);
+   for(let x=left;x<right;x++){const i=(y*source.width+x)*4;if(pixels[i]<254||pixels[i+1]<254||pixels[i+2]<254){
+    const mappedX=f.x+(x+.5)/scale-f.sx;
+    if(lineMasks.some(mask=>mappedX>=mask.x&&mappedX<mask.x+mask.width))continue;
+    bottom=Math.max(bottom,f.y+(y+1)/scale-f.sy);break outer;
+   }}
   }
  }
  for(const rule of continuedRules(page,source,scale))bottom=Math.max(bottom,rule.y+rule.height);
@@ -156,7 +175,7 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         const {valid}=await bindLayers(page,documents);
         const runs=await detectText(page,documents);
         const images=page.sourcePage?await extractSourceImages(await documents.get(page.sourceId)!.getPage(page.sourcePage)):[];
-        const protectedAreas=[...images.flatMap(r=>{const mapped=mapSourceRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...runs.flatMap(r=>{const mapped=mapSourceTextRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...valid.flatMap(l=>l.kind==='image'?[l]:measureLayerText(l).lines.map((_,n)=>({y:l.y+n*l.fontSize*1.25,height:l.fontSize*1.25})))];
+        const protectedAreas=[...images.flatMap(r=>{const mapped=mapSourceRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...runs.flatMap(r=>{if(replacementForRun(page,r))return [];const mapped=mapSourceTextRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...valid.flatMap(l=>!hasLayerInk(l)?[]:['image','shape','whiteout','note','stamp'].includes(l.kind)?[l]:measureLayerText(l).lines.flatMap((line,n)=>line.trim()?[{y:l.y+n*l.fontSize*1.25,height:l.fontSize*1.25}]:[]))];
         const scale=Math.min(300/72,Math.sqrt(20_000_000/(page.width*page.height)));
         const source=await sourceRaster(page,documents,scale),canvas=document.createElement('canvas');
         const sheets=paginateFlow({...page,rowEdits:[],flowHeight:paintedExtent(page,source,scale,valid)},protectedAreas);

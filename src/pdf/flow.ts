@@ -5,7 +5,8 @@ export const MAX_FLOW_HEIGHT = 14400;
 export function pageCanvasHeight(page: PdfProjectPage): number {
  let extent=page.height;
  for(const edit of page.rowEdits??[]) if(edit.kind!=='move') extent+=edit.kind==='insert'?edit.height:-edit.height;
- const result=Math.max(page.height,extent,page.flowHeight??0,...page.layers.map(l=>l.y+l.height));
+ const visible=page.layers.filter(l=>!l.deleted&&(['image','shape','whiteout','note','stamp'].includes(l.kind)||l.text.trim().length>0));
+ const result=Math.max(page.height,extent,page.flowHeight??0,...visible.map(l=>l.y+l.height));
  if(!Number.isFinite(result)||result>MAX_FLOW_HEIGHT)throw Error('Document content exceeds the supported editing extent.');
  return result;
 }

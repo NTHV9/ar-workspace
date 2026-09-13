@@ -60,8 +60,9 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
         const flow=l.textFlow as Record<string,unknown>;textFlow={at:number(flow.at,0,MAX_FLOW_HEIGHT),height:number(flow.height,.1,MAX_FLOW_HEIGHT)};
         if(textFlow.at+textFlow.height>MAX_FLOW_HEIGHT)return fail();
       }
-      if (l.maskOriginal !== undefined && (l.maskOriginal !== false || !sourceText)) return fail();
-      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, .1, 1440), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}), ...(sourceText ? { sourceText } : {}), ...(l.maskOriginal === false ? { maskOriginal: false } : {}),...(tableRow?{tableRow}:{}),...(textFlow?{textFlow}:{}) };
+      if (l.maskOriginal !== undefined && (typeof l.maskOriginal !== 'boolean' || !source || l.maskOriginal === false && !sourceText)) return fail();
+      if (l.deleted !== undefined && (l.deleted !== true || l.kind !== 'replacement' || !source || l.maskOriginal === false || l.text !== '')) return fail();
+      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, .1, 1440), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}), ...(sourceText ? { sourceText } : {}), ...(typeof l.maskOriginal === 'boolean' ? { maskOriginal: l.maskOriginal } : {}), ...(l.deleted === true ? { deleted: true } : {}),...(tableRow?{tableRow}:{}),...(textFlow?{textFlow}:{}) };
     });
     const flowHeight=p.flowHeight===undefined?undefined:number(p.flowHeight,height,MAX_FLOW_HEIGHT);
     let extent=height;

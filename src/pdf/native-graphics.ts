@@ -1,5 +1,6 @@
 import {OPS,Util,type PDFDocumentProxy} from 'pdfjs-dist';
 import type {PdfProjectPage} from './types';
+import {extractSourceImages} from './source-extraction';
 export type GraphicTarget={id:string;x:number;y:number;width:number;height:number};
 
 /** Extract thin painted path bounds; arbitrary groups use explicit area selection. */
@@ -30,4 +31,7 @@ async function detectPaths(page:PdfProjectPage,documents:Map<string,PDFDocumentP
 
 export function detectLines(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){return detectPaths(page,documents,true);}
 /** Filled total/header rectangles are row boundaries too, even with no thin path. */
-export function detectRowBarriers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){return detectPaths(page,documents,false);}
+export async function detectRowBarriers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){
+ const [paths,images]=await Promise.all([detectPaths(page,documents,false),page.sourcePage?extractSourceImages(await documents.get(page.sourceId)!.getPage(page.sourcePage)):[]]);
+ return [...paths,...images.map((rect,index)=>({...rect,id:'image-'+index}))];
+}
