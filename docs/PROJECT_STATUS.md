@@ -6,8 +6,11 @@
 - Implemented: Delete text box ลบข้อความต้นฉบับพร้อมซ่อนกรอบ; Restore original text แยกจากการลบ และ Undo/Redo คง state เดิม. Added text box ลบออกตามปกติ
 - Add row below ยุบบรรทัดต่อที่ล้างแล้วก่อนคำนวณความสูง; มี Remove empty lines สำหรับยุบแยก. เก็บ first baseline เป็นแม่แบบคอลัมน์ ไม่ลบช่องว่างที่ตั้งใจเพิ่มเป็นแถวใหม่ และไม่ตัดข้อความ/รูป/เส้นหรือพื้นที่ย้ายที่ยังมีอยู่
 - Red repro: synthetic KAT/TSK Voucher4บรรทัดทำให้แถวใหม่สูง42.747pt แทน12.747pt (เกิน30pt). หลังแก้กลับเท่า single-line control; ทดสอบการคงข้อความอื่น Balance Due/Aging/footer และไม่มี hidden source text/font/form/attachments ใน opaque edited PDF
-- Tested: Typecheck/Build/public-bundle check,920unit tests/102filesผ่าน; source-deletion browser10casesผ่านแบบfocused และ PDF regressionsเดิม40casesผ่าน. รายละเอียดอยู่ใน PDF_SOURCE_DELETION_20260914.md. Application-route local27casesผ่าน รวม transient review/email handoff และ reproductionทั้งสองโรงแรม; deployment verification กำลังตรวจใน release นี้
+- Tested: Typecheck/Build/public-bundle check,920unit tests/102filesผ่าน; source-deletion browser10casesผ่านแบบfocused และ PDF regressionsเดิม40casesผ่าน. รายละเอียดอยู่ใน PDF_SOURCE_DELETION_20260914.md. Application-route local27casesผ่าน รวม transient review/email handoff และ reproductionทั้งสองโรงแรม
 - ไม่มี provider calls, email sends, database/ledger/retention changes หรือ resource ค่าใช้จ่ายใหม่; evidenceใหม่เป็นsyntheticเท่านั้น. ไม่แทนที่ reference/runtime captures เดิม
+- Deployed source `91d3aec976183c7cbb11f2eed5236c50b87afef5`, Worker `d338184c-1436-4823-ab4d-d5ef143e1406` ที่ https://ar-workspace.ar-c82.workers.dev . Healthยืนยัน exact SHA/database_verified/OPERA connected; browser10casesบนdeployedassetsผ่าน รวมกรณีลบ/ยุบแถวทั้งสองโรงแรม ฟอนต์เดิม Preview และtransient email handoff. API/PDFในbrowserverificationเป็นsynthetic ไม่มีส่งอีเมลหรือแก้เอกสารลูกค้าจริง
+- [PR #23](https://github.com/NTHV9/ar-workspace/pull/23) merged `83b1d5a321afd10303750c55a45e676bfba1befe` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34773221491) และpushCIผ่าน. Merge treeตรงtested/deployedsource; คืนค่าruntimecapturesเดิม19ไฟล์จากlocalrunและ8ไฟล์จากdeployedrun. Closeoutเพิ่มเฉพาะเอกสาร/ภาพsyntheticจากเว็บจริง
+
 
 ## Checkpoint ตรวจข้อมูล Period analysis — 13 กันยายน 2026
 
