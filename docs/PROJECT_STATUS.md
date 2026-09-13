@@ -1,5 +1,16 @@
 # สถานะโครงการใหม่
 
+## Checkpoint จำนวน Invoice และรายละเอียดสถานะใน Aging — 13 กันยายน 2026
+
+- Implemented: เพิ่ม count links ใต้ยอด/เปอร์เซ็นต์เดิม ทั้ง KAT / TSK / Total และ Net open; เปิดส่วนรายละเอียดเต็มความกว้างด้านล่างตาราง ไม่เปลี่ยน overview/กราฟ/ตัวกรอง/ลำดับคอลัมน์เดิม
+- รายละเอียดมี Billing / Latest Follow-Up / Due date พร้อมจำนวน ยอดบิลค้างบวก และ % รวม On hold / Needs review, pagination, exact Invoice link และคืนตัวกรองเมื่อกลับจาก Account. เคลื่อน focus เข้า/ออกส่วนรายละเอียด; API failure/unknown coverage ไม่กลายเป็นศูนย์และยังเห็น observed rows
+- Backend: service-only stable RPC อ่านครบทั้งกลุ่มใน snapshot เดียว, exact Hotel/Account/bucket scope และ bounded pagination; ไม่เรียก OPERA ใหม่ทีละ Account. วันที่ไทยและ publication ทั้ง Hotel/Account ป้องกันข้อมูลข้ามรอบ; frontend re-reads เมื่อ account-only refresh หรือวันเปลี่ยน
+- Applied migrations: 20260913151952_ar_aging_invoice_status และ 20260913152623_ar_aging_verified_child_counts. ตัวหลังใช้หลักฐาน parent_open=0 ของ child ที่ยืนยันจาก publication เดียวกันและไม่มี parent ขัดแย้ง เพื่อไม่บล็อกจำนวนจากบิลย่อยที่ไม่ควรนับ; ไม่แก้ยอด/สถานะบัญชีเดิม
+- Tested: Typecheck/Build ผ่าน; final local browser 27 cases ผ่านที่1440/1280/390 ครอบคลุม counts/scope/filters/Back/ความกว้างและเส้นทางเดิม. Final unit suite898 cases/100files และ focused18 cases ผ่าน; isolated SQL replay67 migrations/24 suites ผ่าน โดยไม่มี provider requests
+- Live read verification:175/175 accounts complete,761 outstanding invoices ณเวลาตรวจ; count/amount ตรงกับ verified positive roots และแต่ละ Billing/Follow-Up/Due facet รวมกลับจำนวนเดียวกัน. Direct anon/authenticated EXECUTE=false, wrong actor=aging_forbidden. One measured detail read255.107ms; payloadประมาณ181KB; database64,048,275bytes. Advisors มีเพียง INFO private RLS-no-policy เดิม ไม่มี WARN/ERROR
+- Public evidence ใหม่ aging-invoice-status-* ใช้ข้อมูลสมมติเท่านั้น; คง reference และ runtime evidence ก่อนหน้า. ไม่มีemail sends/provider/accounting/retention changes หรือ paid resources ใหม่
+- Deploy / Merge: รอตรวจขั้นส่งขึ้นระบบของ checkpoint นี้
+
 ## Checkpoint ลำดับคอลัมน์และโรงแรม Aging — 12 กันยายน 2026
 
 - Implemented: Net open อยู่ท้ายตาราง (ขวาสุดบน desktop / แถวสุดท้ายบน mobile) และลำดับโรงแรมเป็น KAT / TSK / Total รวมตัวเลือก Sort hotel. คงยอด การ sort การซ่อนคอลัมน์ ไฮไลท์ยอดเกิน 90 วัน และ invoice drill เดิม

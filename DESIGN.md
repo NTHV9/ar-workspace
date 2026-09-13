@@ -261,3 +261,11 @@ Light comes from the upper left with restrained surface/colored/blue ramps. Cont
 UI type roles retain self-hosted Plus Jakarta Sans: page30px/26px narrow, dialog18px, section16px, compact panel14px, ordinary body/control12px, caption11px and dense heading/badge10px. Portfolio/Account/Collections small labels and headings are lifted selectively. Exact Aging table figures retain their established fit; mobile inputs use16px in mapped forms. The obsolete Portfolio overview128px cap is removed so the readable labels and Expand Aging action remain contained. Account debit/credit metadata uses balanced wrapping.
 
 Coverage includes Dashboard/Aging, Portfolio, Collections, Account/settings, Reports, Remittances, Templates, Storage, operations/policy, Login/recovery, Email Composer and PDF workspace chrome. Authored email content, PDF paper/canvas/native text/edit overlays, output bytes, amounts, chart colors and business actions are outside these selector maps. No new font files or runtime dependencies are introduced.
+
+## Current Aging invoice counts and status details — 13 September 2026
+
+Preserve the existing website composition: overview, distribution, filters and full-width comparison table. A compact count link below each amount/percentage opens an in-flow Invoice details section. Existing amount/name clicks keep the Type → Account → Invoice evidence path; KAT precedes TSK and Net open remains last. No permanent sidebar squeezes the comparison table.
+
+The detail section provides Billing, Latest Follow-Up and Due date views, each with count, positive outstanding amount and share of that amount. Attention flags filter the invoice list independently. Keep status choices and pagination when returning from Account Detail; move focus to the opened section and restore it on close. Missing coverage preserves observed rows with an explicit notice and unknown confirmed totals. Scope, hotel publication and account publication must match before showing a count or a confirmed detail result.
+
+Invoice counts exclude duplicate child bills, zero balances and credits. Signed OPERA Aging amounts stay unchanged. The compact basis explanation appears when source Aging and positive invoice totals differ; unknown credit membership remains unknown rather than suppressing otherwise verified positive invoice counts.
