@@ -9,7 +9,9 @@
 - Tested: Typecheck/Build ผ่าน; final local browser 27 cases ผ่านที่1440/1280/390 ครอบคลุม counts/scope/filters/Back/ความกว้างและเส้นทางเดิม. Final unit suite898 cases/100files และ focused18 cases ผ่าน; isolated SQL replay67 migrations/24 suites ผ่าน โดยไม่มี provider requests
 - Live read verification:175/175 accounts complete,761 outstanding invoices ณเวลาตรวจ; count/amount ตรงกับ verified positive roots และแต่ละ Billing/Follow-Up/Due facet รวมกลับจำนวนเดียวกัน. Direct anon/authenticated EXECUTE=false, wrong actor=aging_forbidden. One measured detail read255.107ms; payloadประมาณ181KB; database64,048,275bytes. Advisors มีเพียง INFO private RLS-no-policy เดิม ไม่มี WARN/ERROR
 - Public evidence ใหม่ aging-invoice-status-* ใช้ข้อมูลสมมติเท่านั้น; คง reference และ runtime evidence ก่อนหน้า. ไม่มีemail sends/provider/accounting/retention changes หรือ paid resources ใหม่
-- Deploy / Merge: รอตรวจขั้นส่งขึ้นระบบของ checkpoint นี้
+- Deployed source `a2c22d35ecb745e8ba8f2bafa6d24eb695bc188c`, Worker `64f7b2d3-a64e-4355-b8ee-d057c6268be4` ที่ https://ar-workspace.ar-c82.workers.dev . Health ยืนยัน exact SHA/database_verified/OPERA connected; unauthenticated Aging endpoint=401. Cloudflare browser12 cases ผ่าน รวม counts/status/pagination/Back/source gaps/highlights/all-range fit
+- Live signed-in UI: count link ของช่วงหนึ่งใน OTA/KAT เปิด verified summary และรายการ Invoice จริง ไม่มี notice/error; สลับ Latest Follow-Up และ Due date ได้ แล้วปิดกลับตารางเดิม. ไม่เก็บ customer DOM/screenshot ในGit; browser test images เป็น synthetic
+- [PR #21](https://github.com/NTHV9/ar-workspace/pull/21) merged `48a21a1bfad19a026b37fb2b25e8ac1c4dc2cee7` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34766184189) และ push CI ผ่าน; merge tree ตรง tested/deployed source. คืนค่า incidental runtime captures เดิม6ไฟล์; closeout เปลี่ยนเฉพาะเอกสาร
 
 ## Checkpoint ลำดับคอลัมน์และโรงแรม Aging — 12 กันยายน 2026
 

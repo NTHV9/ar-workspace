@@ -26,6 +26,8 @@
 - [x] Implement frontend parsing and aggregation, with loading/error/source-mismatch handling; add count links to desktop/mobile Aging cells.
 - [x] Implement an in-flow detail section with Billing / Follow-Up / Due views, amounts/counts/percentages and exact invoice rows. Preserve filters, page boundaries and return navigation.
 - [x] Add synthetic browser coverage for unchanged layout, all-range fit, KAT/TSK/Total, status overlap, filtered invoice links and error/reload behavior.
-- [ ] Run appropriate local SQL/unit/browser checks and independent review, apply the verified migration, deploy with existing bindings, verify protected reads and actual production UI assets, merge after CI and update PROJECT_STATUS.
+- [x] Run appropriate local SQL/unit/browser checks and independent review, apply the verified migration, deploy with existing bindings, verify protected reads and actual production UI assets, merge after CI and update PROJECT_STATUS.
 
 Only synthetic data and screenshots enter the public repository. Live verification reports aggregates and booleans; no customer payloads, recipients or credentials are published.
+
+Completed: both migrations applied and verified; 898 unit tests, 27 local browser cases, 12 deployed browser cases, and 67-migration/24-suite isolated SQL replay passed. Real signed-in UI confirmed the new read path. PR #21 merged after CI; see PROJECT_STATUS for source/version and scoped evidence.
