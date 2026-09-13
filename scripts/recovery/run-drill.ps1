@@ -129,6 +129,8 @@ try {
     if($AdditionalMigrationNames -contains 'ar_dashboard_publication_freshness'){$fixtures+='dashboard-freshness-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_aging_invoice_status'){$fixtures+='aging-invoice-status-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_dashboard_hotel_overview'){$fixtures+='dashboard-hotel-overview-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_financial_invoice_type_classification'){$fixtures+='financial-invoice-type-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_payment_allocation_direction'){$fixtures+='payment-allocation-direction-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture
