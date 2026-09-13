@@ -37,7 +37,7 @@ export function mapSourceTextRect<T extends Rect>(rect:T,edits:PdfRowEdit[],anch
 export function transformLayers(layers:PdfLayer[],edit:PdfRowEdit):PdfLayer[]{
  const result:PdfLayer[]=[];
  for(const layer of layers){
-  const next=layer.sourceText?mapSourceTextRect(layer,[edit],Math.min(layer.height*.65,layer.fontSize*.85)):mapSourceRect(layer,[edit]);
+  const next=layer.sourceText||layer.deleted?mapSourceTextRect(layer,[edit],Math.min(layer.height*.65,layer.fontSize*.85)):mapSourceRect(layer,[edit]);
   if(next){
    if(layer.textFlow){
     const flow=layer.textFlow,end=flow.at+flow.height;
@@ -53,7 +53,7 @@ export function transformLayers(layers:PdfLayer[],edit:PdfRowEdit):PdfLayer[]{
    }
    result.push(next);continue;
   }
-  if(edit.kind==='delete'&&(layer.sourceText||layer.y>=edit.y-.5&&layer.y+layer.height<=edit.y+edit.height+.5))continue;
+  if(edit.kind==='delete'&&(layer.sourceText||layer.deleted||layer.y>=edit.y-.5&&layer.y+layer.height<=edit.y+edit.height+.5))continue;
   throw Error('The selection crosses a text box or another edit. Select the whole object, or adjust the row boundary.');
  }
  return result;
