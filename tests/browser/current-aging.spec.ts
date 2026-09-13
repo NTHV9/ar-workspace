@@ -10,6 +10,7 @@ async function expectMeasures(table:Locator,labels=['net open',...ranges],hotel=
 }
 async function setup(page:Page){
  const failures:string[]=[];page.on('pageerror',e=>failures.push(e.message));
+ await page.route('**/api/dashboard/aging-invoices**',route=>route.fulfill({status:503,json:{error:'synthetic_counts_unavailable'}}));
  await page.route('**/api/accounts/**',route=>{
   const request=route.request(),parts=new URL(request.url()).pathname.split('/'),id=decodeURIComponent(parts[4]);
   if(request.headers().authorization!=='Bearer synthetic-aging-session'||!Object.hasOwn(currentAgingInvoices,id)){failures.push('Unexpected account read');return route.fulfill({status:400,json:{error:'unexpected'}});}
@@ -145,8 +146,8 @@ test('column presets and toggles preserve hotel groups, exact amounts and drill-
  await expect(columns.locator('.aging-column-state')).toContainText('Custom');await expectMeasures(comparison,['151+']);
  const firstGroup=comparison.locator('tbody[data-aging-group]').first();
  await expect(firstGroup.locator('.aging-row-hotel')).toHaveText(['KAT','TSK','Total']);
- await expect(firstGroup.locator('td')).toHaveText(['200.0071.4%','100.0066.7%','300.0069.8%']);
- await columns.getByLabel('Bucket percentages',{exact:true}).uncheck();await expect(firstGroup.locator('td')).toHaveText(['200.00','100.00','300.00']);
+ await expect(firstGroup.locator('.aging-value-button')).toHaveText(['200.0071.4%','100.0066.7%','300.0069.8%']);
+ await columns.getByLabel('Bucket percentages',{exact:true}).uncheck();await expect(firstGroup.locator('.aging-value-button')).toHaveText(['200.00','100.00','300.00']);
  await columns.locator('summary').click();await comparison.getByRole('button',{name:'Open accounts in Agent',exact:true}).click();
  await comparison.getByRole('button',{name:'Azure Travel · Synthetic · KAT · 151+',exact:true}).click();
  await page.getByRole('button',{name:'Open invoice INV-kat-old',exact:true}).click();await page.getByRole('button',{name:'Return from Account Detail',exact:true}).click();
@@ -165,7 +166,7 @@ test('a retired saved bucket selection keeps net open visible after a source sch
  await setup(page);await page.goto(local+'?staleColumns=1');
  const comparison=page.getByRole('table',{name:'Current source aging comparison'});
  await expectMeasures(comparison,['net open']);
- await expect(comparison.locator('tbody[data-aging-group]').first().locator('td')).toHaveText(['280.00','150.00','430.00']);
+ await expect(comparison.locator('tbody[data-aging-group]').first().locator('.aging-net-value')).toHaveText(['280.00','150.00','430.00']);
  await page.locator('.aging-column-controls summary').click();await page.getByRole('button',{name:'All aging',exact:true}).click();
  await expectMeasures(comparison);
 });

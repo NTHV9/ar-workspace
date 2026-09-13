@@ -26,6 +26,7 @@ export async function setupDashboard(page:Page,options:{balanceLift?:number;invo
    };
    const total=await make(),kat=await make('KAT'),tsk=await make('TSK');if(options.nullTskBalance)tsk.balances=null;if(options.nullTotalBalance)total.balances=null;if(options.nullTotalActivity)total.activity=null;return route.fulfill({json:{from:q.get('from'),to:q.get('to'),total,hotels:[{hotel:'KAT',...kat},{hotel:'TSK',...tsk}]}});
   }
+  if(path==='/api/dashboard/aging-invoices')return route.fulfill({status:503,json:{error:'synthetic_counts_unavailable'}});
   if(path==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic-key'}});
   if(path==='/api/collection-policy')return route.fulfill({json:policyFixture});
   if(path==='/api/refresh')return route.fulfill({json:{jobs:[],running:false,hotels:['KAT','TSK'].map(h=>({hotel:h,status:'succeeded',last_success_at:at}))}});

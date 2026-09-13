@@ -1,12 +1,13 @@
 import {ChevronRight} from 'lucide-react';
 import type {AgingBucket} from '../domain/portfolio';
 import {agingBucketKey,agingHotels,agingPercentage,type AgingCell,type AgingComparisonRow,type AgingHotel} from './aging-model';
+import type {AgingCount} from './aging-invoice-data';
 import './aging-all-table.css';
 export interface AgingSort {key:string;hotel:AgingHotel;descending:boolean}
-interface Props {rows:AgingComparisonRow[];columns:AgingBucket[];allColumns:AgingBucket[];showNet:boolean;percentages:boolean;hotel:string;type?:string;selectedKey:string;sort:AgingSort;onSort:(key:string)=>void;onDrill:(row:AgingComparisonRow,hotel:AgingHotel,bucket?:AgingBucket)=>void}
+interface Props {rows:AgingComparisonRow[];columns:AgingBucket[];allColumns:AgingBucket[];showNet:boolean;percentages:boolean;hotel:string;type?:string;selectedKey:string;sort:AgingSort;onSort:(key:string)=>void;onDrill:(row:AgingComparisonRow,hotel:AgingHotel,bucket?:AgingBucket)=>void;getCount?:(row:AgingComparisonRow,hotel:AgingHotel,bucket?:AgingBucket)=>AgingCount;onCounts?:(row:AgingComparisonRow,hotel:AgingHotel,bucket?:AgingBucket)=>void}
 const amount=(n:number|null)=>n===null?'—':new Intl.NumberFormat('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
 const stateText:Record<AgingCell['state'],string>={verified:'',absent:'No account',outside:'Outside scope',unavailable:'Unverified'};
-export default function AgingAllTable({rows,columns,allColumns,showNet,percentages,hotel,type,selectedKey,sort,onSort,onDrill}:Props){
+export default function AgingAllTable({rows,columns,allColumns,showNet,percentages,hotel,type,selectedKey,sort,onSort,onDrill,getCount,onCounts}:Props){
  const hotels:AgingHotel[]=hotel==='KAT'||hotel==='TSK'?[hotel]:agingHotels;
  const measures=[...columns.map(bucket=>({key:agingBucketKey(bucket),label:bucket.label,bucket})),...(showNet?[{key:'net',label:'Net open',bucket:undefined as AgingBucket|undefined}]:[])];
  const cell=(row:AgingComparisonRow,h:AgingHotel,key:string):AgingCell=>key==='net'?row.net[h]:row.cells[allColumns.findIndex(b=>agingBucketKey(b)===key)]?.[h]??{amount:null,state:'unavailable',debit:null,credit:null};
@@ -17,7 +18,8 @@ export default function AgingAllTable({rows,columns,allColumns,showNet,percentag
  const name=(row:AgingComparisonRow)=><><button className="aging-group-name aging-row-link" aria-label={type===undefined?`Open accounts in ${row.name}`:`Open invoices for ${row.name}`} onClick={()=>onDrill(row,'Total',allColumns.find(b=>agingBucketKey(b)===selectedKey))}>{row.name}<ChevronRight size={14}/></button><small className="aging-group-meta">{type===undefined?`${row.members.length} hotel accounts`:row.members.map(a=>`${a.hotel} · ${a.account_no||a.id}`).join(' / ')}</small></>;
  const value=(row:AgingComparisonRow,h:AgingHotel,key:string,bucket?:AgingBucket)=>{
   const c=cell(row,h,key),p=agingPercentage(c.amount,row.net[h].amount),content=<><strong className={c.amount!==null&&c.amount<0?'is-credit':''}>{amount(c.amount)}</strong>{c.state!=='verified'?<small>{stateText[c.state]}</small>:percentages&&bucket&&<small>{p===null?'% unavailable':`${p.toFixed(1)}%`}</small>}</>;
-  return bucket?<button className="aging-value-button" aria-label={`${row.name} · ${h} · ${bucket.label}`} disabled={c.state==='absent'||c.state==='outside'} onClick={()=>onDrill(row,h,bucket)}>{content}</button>:<div className="aging-net-value">{content}</div>;
+  const count=getCount?.(row,h,bucket);
+  return <>{bucket?<button className="aging-value-button" aria-label={`${row.name} · ${h} · ${bucket.label}`} disabled={c.state==='absent'||c.state==='outside'} onClick={()=>onDrill(row,h,bucket)}>{content}</button>:<div className="aging-net-value">{content}</div>}{count&&onCounts&&count.state!=='absent'&&<button className="aging-count-button" aria-label={`View invoice statuses for ${row.name} · ${h} · ${bucket?.label??'All ages'}`} disabled={count.state==='loading'} title={count.reason} onClick={()=>onCounts(row,h,bucket)}>{count.state==='loading'?'Loading invoices…':count.count===null?'— invoices':`${count.count.toLocaleString('en-GB')} ${count.count===1?'invoice':'invoices'}`}</button>}</>;
  };
  const sortLabel=(m:typeof measures[number])=>`Sort ${m.key==='net'?'net open':m.label} ${sort.hotel}`;
  const arrow=(key:string)=>sort.key===key?(sort.descending?' ↓':' ↑'):'';
