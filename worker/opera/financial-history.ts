@@ -117,7 +117,9 @@ function readInvoice(value:Obj,requested:FinancialScope,verifiedCurrency?:'THB')
  const compressed=flag(value.compressed),parentInvoiceNo=value.parentInvoiceNo===undefined||value.parentInvoiceNo===null?null:transactionId(value.parentInvoiceNo);
  if(compressed===true&&parentInvoiceNo!==null)return bad('invoice_relationship');
  return {...base,kind:'invoice',currency:verifiedCurrency||[originalAmount,currentAmount,cumulativePayments,openAmount].some(a=>a!==null)?'THB':null,invoiceNo:optionalText(value.invoiceNo),folioNo:optionalText(value.folioNo),invoiceType,originalAmount,currentAmount,cumulativePayments,openAmount,closeDate:calendar(value.closeDate,true),compressed,parentInvoiceNo,
-  collectionRole:parentInvoiceNo!==null?'child':compressed===true?'parent':compressed===false?'standalone':'unverified',entryClassification:invoiceType==='OldBalance'?'opening_balance':invoiceType==='Credit'?'credit':invoiceType===null?'unclassified':'invoice'};
+  // The source invoice code does not define the monetary sign. Credit-card AR invoices
+  // can carry the Credit code; keep signed amounts and the original code independently.
+  collectionRole:parentInvoiceNo!==null?'child':compressed===true?'parent':compressed===false?'standalone':'unverified',entryClassification:invoiceType==='OldBalance'?'opening_balance':invoiceType===null?'unclassified':'invoice'};
 }
 function readPayment(value:Obj,requested:FinancialScope,verifiedCurrency?:'THB'):FinancialPayment {
  const base=sourceRow(value,requested),amount=parseFinancialMoney(value.amount,verifiedCurrency),appliedAmount=parseFinancialMoney(value.amountUsed,verifiedCurrency),unallocatedAmount=parseFinancialMoney(value.balance,verifiedCurrency);

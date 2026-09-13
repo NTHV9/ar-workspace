@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Checkpoint ตรวจข้อมูล Period analysis — 13 กันยายน 2026
+
+- ตรวจทั้งหน้าเทียบ live RPC/source records และ UI: Todayใช้current, Yesterdayใช้daily snapshot คนละวันที่ถูกต้อง. Positive invoice keys761เหมือนกัน ไม่มี open balance เปลี่ยนระหว่างสองชุด แต่ageเปลี่ยนตามวัน จึงไม่แก้ยอดค้างให้ต่างโดยไม่มีหลักฐาน
+- แก้2บั๊ก: invoiceType=Credit ถูกเหมารวมเป็นmonetary credit ทำให้ New invoicesตกหล่น; และamountUsedบวกถูกกลับเครื่องหมายซ้ำในCurrently allocated. คง raw source type / signed money / payment proof / source scope ไม่เขียนทับประวัติหรือบัญชีOPERA
+- Correctionsใช้effective-read helper สำหรับข้อมูลเดิมและnormalizerสำหรับรอบถัดไป; validatorรับlegacyและcorrected payloadระหว่างrollout. Allocationใช้posting directionเมื่อcomponent magnitudesกระทบยอดได้;ไม่แปลงdebit correctionเป็นเงินรับใหม่
+- Liveหลังแก้: New invoicesของวันที่12กลับมา112รายการ (รวมnegative/zero originalตามbasisเดิม), วันที่13ยัง0ตามsource; allocation signsถูกต้องและยอดคงค้างเดิมไม่เปลี่ยน. จำนวนบิลที่รับเงินวันที่12ยังunverifiedเพราะ30paymentsไม่มีapplication linksที่บันทึกไว้—ไม่ใส่0หรือเดาคู่บิล
+- Tested: Typecheck/Build,901unit tests,69migrations/26isolatedSQL suitesผ่าน. ทั้งnormalizerและSQLreproแสดงredก่อนแก้/greenหลังแก้. ไม่มีprovider requestsในSQLtestsหรือpaidresourceใหม่. รายละเอียด/primarysourcesอยู่ใน PERIOD_ANALYSIS_AUDIT_20260913.md
+- Deploy / Merge: รอตรวจขั้นส่งขึ้นระบบของ checkpoint นี้
+
 ## Checkpoint จำนวน Invoice และรายละเอียดสถานะใน Aging — 13 กันยายน 2026
 
 - Implemented: เพิ่ม count links ใต้ยอด/เปอร์เซ็นต์เดิม ทั้ง KAT / TSK / Total และ Net open; เปิดส่วนรายละเอียดเต็มความกว้างด้านล่างตาราง ไม่เปลี่ยน overview/กราฟ/ตัวกรอง/ลำดับคอลัมน์เดิม
