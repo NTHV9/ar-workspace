@@ -7,7 +7,9 @@
 - Correctionsใช้effective-read helper สำหรับข้อมูลเดิมและnormalizerสำหรับรอบถัดไป; validatorรับlegacyและcorrected payloadระหว่างrollout. Allocationใช้posting directionเมื่อcomponent magnitudesกระทบยอดได้;ไม่แปลงdebit correctionเป็นเงินรับใหม่
 - Liveหลังแก้: New invoicesของวันที่12กลับมา112รายการ (รวมnegative/zero originalตามbasisเดิม), วันที่13ยัง0ตามsource; allocation signsถูกต้องและยอดคงค้างเดิมไม่เปลี่ยน. จำนวนบิลที่รับเงินวันที่12ยังunverifiedเพราะ30paymentsไม่มีapplication linksที่บันทึกไว้—ไม่ใส่0หรือเดาคู่บิล
 - Tested: Typecheck/Build,901unit tests,69migrations/26isolatedSQL suitesผ่าน. ทั้งnormalizerและSQLreproแสดงredก่อนแก้/greenหลังแก้. ไม่มีprovider requestsในSQLtestsหรือpaidresourceใหม่. รายละเอียด/primarysourcesอยู่ใน PERIOD_ANALYSIS_AUDIT_20260913.md
-- Deploy / Merge: รอตรวจขั้นส่งขึ้นระบบของ checkpoint นี้
+- Applied migrations20260913164303/20260913164305. Deployed source `ca1d6cfa35141e13a156671b484acdfd396690fa`, Worker `57e98196-0b74-4054-b8e1-65409498ceb0` ที่ https://ar-workspace.ar-c82.workers.dev . HealthยืนยันSHA/database_verified/OPERAconnected; Cloudflare browser31casesผ่าน
+- Live signed-in UIยืนยัน Yesterdayใช้snapshotวันที่12และNew invoices112/allocatedเป็นบวก; Todayกลับไปcurrentวันที่13และNew invoices0ตามsource. ไม่เก็บcustomerDOMหรือfinancialextractในGit
+- [PR #22](https://github.com/NTHV9/ar-workspace/pull/22) merged `b83157a869f4bbf2969ff0d39c1cbb51cea4d154` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34769755395) และpushCIผ่าน. Merge treeตรงtested/deployedsource;คืนค่าincidentalruntimecaptures9ไฟล์. Closeoutเปลี่ยนเฉพาะเอกสาร
 
 ## Checkpoint จำนวน Invoice และรายละเอียดสถานะใน Aging — 13 กันยายน 2026
 

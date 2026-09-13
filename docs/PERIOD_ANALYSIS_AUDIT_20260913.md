@@ -36,4 +36,4 @@ The association of the inspected Credit-coded rows with card receivables is supp
 - Combined isolated replay: 69 migrations and 26 SQL suites passed; no provider requests or live data export, local PostgreSQL stopped.
 - Typecheck and build passed; all 901 unit tests passed.
 - Both additive migrations were applied and the same dated live report was compared again. New invoice classification and allocation signs changed as intended; outstanding snapshots and posted-payment totals did not change. Missing application links remain explicitly unverified.
-- Production UI / source release verification is recorded in PROJECT_STATUS after deployment.
+- Production deployment verified by exact source SHA/health; 31 Cloudflare browser cases passed. Signed-in UI confirmed the corrected Yesterday values and correct Today date source. PR #22 merged after CI; see PROJECT_STATUS for source/version details. The 30 missing payment mappings remain an explicit data gap.
