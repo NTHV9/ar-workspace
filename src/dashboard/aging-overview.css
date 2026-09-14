@@ -47,3 +47,7 @@
 @media(prefers-reduced-motion:reduce){.aging-v4-ring circle{transition:none}}
 /* Keep range labels inline when the app shell gives generic small text a block display. */
 .aging-v4-overview .aging-v4-range-label small{display:inline}
+
+.aging-v4-invoice-total{grid-column:1;margin:4px 0 0;color:#42646f;font-size:12px;line-height:1.6}
+.aging-v4-invoice-total strong{font-size:18px;font-weight:700;color:var(--aging-v4-ink);margin-right:4px}
+.aging-v4-hotel>.aging-v4-invoice-count{grid-column:2;font-size:11px;line-height:1.5;margin:0}

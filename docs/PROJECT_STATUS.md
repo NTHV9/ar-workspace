@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Aging overview invoice counts — 14 กันยายน 2026
+
+- Added open-invoice count below the Net open total and below each KAT/TSK amount in the existing mint overview. Retains original layout, typography hierarchy, amounts and chart.
+- Uses the same positive-root count source and publication checks as the Aging table. Counts follow filtered account members/Hotel, remain independent of pagination and visible aging columns, and preserve unknown as an em dash. No extra API requests, database migration or calculation changes.
+- Typecheck/build and 30 focused data tests passed; 7 browser cases passed including desktop/mobile, source mismatch, Hotel/search scope and unchanged request count. Synthetic 1280/390 screenshots visually checked; original references unchanged. Independent review found no issues. Deployment/live verification pending.
+
+
 ## Completed Payment-date invoice totals — 14 กันยายน 2026
 
 - Implemented/deployed/enabled: Payment-date discovery reaches older Bill Date invoices; dual source proof reconciles allocations. Compatible optional dates merge atomically, contradictory facts still fail, and context-only refresh preserves unrelated payment proof. New Invoices, outstanding balances, OPERA ledger and document flows retain their definitions.
