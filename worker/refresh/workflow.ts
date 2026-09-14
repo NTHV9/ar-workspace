@@ -5,6 +5,7 @@ import type {DriveEnv} from '../drive/shared';
 import {writeManagedStorage} from '../operations/storage';
 import {financialWorkflow,runFinancialHistory,requestFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
 import {runFinancialDiagnostic} from '../opera/financial-diagnostic';
+import {probeFinancialMembership} from '../opera/financial-membership-probe';
 import {runMailReconcile} from '../email/reconcile';
 import type {ReconcileEnv} from '../email/reconcile';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
@@ -26,6 +27,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!['KAT','TSK'].includes(hotel))throw new Error('invalid_workflow_parameters');
     if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');return runFinancialHistory(runtime,{actor:payload.actorId,runId},step);}
+    if(payload.financialMembershipProbe){if(!accountId)throw Error('audit_account_required');return step.do('financial-membership-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'10 minutes'},()=>probeFinancialMembership(makeReader(runtime,hotel),{hotel:hotel as 'KAT'|'TSK',accountId,...payload.financialMembershipProbe}));}
     if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(runtime,hotel as 'KAT'|'TSK'));
     if(payload.documentJob)return runDocumentJob(runtime,runId,step);
     if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(runtime,hotel,accountId,async(bytes,expected)=>{

@@ -149,7 +149,7 @@ function split(rows:Row[]) {return {invoices:rows.filter((row):row is FinancialI
 function checkedUnique(rows:Row[]) {const seen=new Set<string>();for(const row of rows){const key=memberKey(row);if(seen.has(key))throw new OperaError('duplicate_member',undefined,'financial_transaction_identity');seen.add(key);}}
 
 /** Completion means the returned query paginated cleanly, not that source date semantics are proved. */
-export async function readFinancialHistory(reader:OperaReader,input:FinancialHistoryQuery,readOptions:FinancialReadOptions={}):Promise<FinancialHistoryResult> {
+export async function readFinancialHistory(reader:Pick<OperaReader,'financialHistoryPage'>,input:FinancialHistoryQuery,readOptions:FinancialReadOptions={}):Promise<FinancialHistoryResult> {
  const query=historyQuery(input),settings=options(readOptions),requested=scope(query);let pages=0,members=0,roots=0,reportedRoots=0;
  const rows=await collectPages(async(offset,limit)=>{
   if(pages>=settings.maxPages)throw new OperaError('response_too_large',undefined,'financial_history_page_budget');
