@@ -42,7 +42,12 @@ export function acceptanceTransport(fixture:Promise<AcceptanceFixture>|Acceptanc
   const detail=new RegExp(`^/ars/v1/hotels/${hotel}/accounts/${account}/transactions/([0-9]+)/invoicePaymentDetails$`).exec(u.pathname);
   if(detail){const invoice=f.invoices.find(r=>r.id===detail[1]),payment=f.invoices.find(r=>paymentId(r)===detail[1]&&r.open<r.original);return Response.json({details:[{hotelId:hotel,accountId:{id:f.accountId},invoices:invoice?[rawInvoice(f,invoice,true)]:[],payments:payment?[rawPayment(f,payment)]:[]}],hasMore:false,totalResults:invoice||payment?1:0,offset:20,limit:20});}
   const mapping=new RegExp(`^/ars/v1/hotels/${hotel}/transactions/([0-9]+)/accounts/${account}/invoiceAppliedPayments$`).exec(u.pathname);
-  if(mapping){const row=f.invoices.find(r=>r.id===mapping[1]);if(!row)throw Error('acceptance_fixture_scope_invalid');return Response.json({details:row.open<row.original?[{hotelId:hotel,transactionNo:row.id,invoiceNo:row.invoiceNo,paymentTrxNo:paymentId(row),appliedAmount:money(row.original-row.open),transactionDate:row.date}]:[]});}
+  if(mapping){
+   const row=f.invoices.find(r=>r.id===mapping[1]),payment=f.invoices.find(r=>paymentId(r)===mapping[1]&&r.open<r.original);
+   if(row)return Response.json({details:row.open<row.original?[{hotelId:hotel,transactionNo:row.id,invoiceNo:row.invoiceNo,paymentTrxNo:paymentId(row),appliedAmount:money(row.original-row.open),transactionDate:row.date}]:[]});
+   if(payment)return Response.json({details:[{hotelId:hotel,accountId:{id:f.accountId},transactionNo:payment.id,invoiceNo:payment.invoiceNo,paymentTrxNo:paymentId(payment),appliedAmount:money(payment.original-payment.open),originalAmount:money(payment.original),postingDate:payment.date,transactionDate:payment.date}]});
+   throw Error('acceptance_fixture_scope_invalid');
+  }
   const stay=new RegExp(`^/csh/v1/hotels/${hotel}/reservations/([0-9]+)/folios$`).exec(u.pathname);
   if(stay){const row=f.invoices.find(r=>r.reservationId===stay[1]);if(!row)throw Error('acceptance_fixture_scope_invalid');return Response.json({reservationFolioInformation:{reservationInfo:{hotelId:hotel,reservationIdList:[{id:row.reservationId,type:'Reservation'}],roomStay:{arrivalDate:row.arrival,departureDate:row.date}},folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:row.invoiceNo,folioNo:row.folioNo}]}]}});}
   const report=new RegExp(`^/med/config/v1/hotels/${hotel}/reservations/([0-9]+)/folioReports$`).exec(u.pathname);

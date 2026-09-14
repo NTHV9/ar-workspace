@@ -142,6 +142,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_dashboard_portfolio_invoice_entries'){$fixtures+='dashboard-portfolio-invoice-entries-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_signed_outstanding_portfolio'){$fixtures+='signed-outstanding-portfolio-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_financial_payment_mapping_steps'){$fixtures+='financial-payment-mapping-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_acceptance_admin_helpers'){$fixtures+='acceptance-admin-helpers-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture

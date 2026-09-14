@@ -4,7 +4,7 @@ test('deployed collection selection validation rejects missing or invalid login'
  expect((await request.post('/api/collection/validate-selection',{data})).status()).toBe(401);
  expect((await request.post('/api/collection/validate-selection',{data,headers:{Authorization:'Bearer invalid'}})).status()).toBe(401);
 });
-test('compressed children and unverified rows cannot enter selection or its total',async({page})=>{
+test('child rows are hidden and unverified rows cannot enter selection or its total',async({page})=>{
  const user={id:'synthetic-compression-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
  await page.addInitScript(user=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-session',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user})),user);
  await page.route('**/api/config',r=>r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic-key'}}));
@@ -18,14 +18,14 @@ test('compressed children and unverified rows cannot enter selection or its tota
   {...base,id:'3',guest:'Synthetic unknown',invoice_no:'UNKNOWN-3',collection_role:'unverified',collection_selectable:false}
  ]}}));
  await page.goto('/');await page.locator('.accounts-panel td.kat button').click();
- await expect(page.getByLabel('Select CHILD-1',{exact:true})).toBeDisabled();
+ await expect(page.getByLabel('Select CHILD-1',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Synthetic child',exact:true})).toHaveCount(0);
  await expect(page.getByLabel('Select UNKNOWN-3',{exact:true})).toBeDisabled();
  await page.getByLabel('Select all visible invoices',{exact:true}).check();
  await expect(page.locator('.selection-bar')).toContainText('1 items selected');
  await expect(page.locator('.selection-bar')).toContainText('THB 100');
- await page.getByRole('button',{name:'Synthetic child',exact:true}).click();
- await expect(page.locator('.invoice-detail')).toContainText('cannot collect separately');
- await expect(page.locator('.invoice-detail')).toContainText('Parent open balance: THB 0.00');
+ await page.getByRole('button',{name:'Synthetic standalone',exact:true}).click();
+ await expect(page.locator('.invoice-detail')).toContainText('ROOT-2');
  await page.screenshot({path:'evidence/compression-1440.png',animations:'disabled'});
  await page.setViewportSize({width:900,height:760});
  await expect(page.locator('.invoice-detail.drawer-open')).toBeVisible();
