@@ -1,5 +1,6 @@
 import {OperaError,type OperaReader} from './client';
-import {parseFinancialMoney,readFinancialTransactionDetail,type FinancialHotel} from './financial-history';
+import {parseFinancialMoney,readFinancialTransactionDetail,readFinancialHistory,type FinancialHotel} from './financial-history';
+import {readPaymentApplications} from './payment-applications';
 
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 const magnitude=(v:string)=>{const n=BigInt(v.replace('.',''));return n<0n?-n:n;};
@@ -29,12 +30,20 @@ export async function probePaymentHistory(reader:OperaReader,scope:{hotel:Financ
    if(pairs.length===1){const value=parseFinancialMoney(pairs[0].appliedAmount,payment?.currency==='THB'?'THB':undefined);if(value!==null&&applied!==null&&magnitude(value)===magnitude(applied))sampleChecks.backMagnitudeMatches++;if(value!==null&&payment?.amount!=null&&value.startsWith('-')===payment.amount.startsWith('-'))sampleChecks.backSamePaymentSign++;}
   }
  }
+ let fullReader:Record<string,string|number>={status:'missing_payment'};
+ if(payment?.transactionDate){try{
+  const cohort=await readFinancialHistory(reader,{hotel:scope.hotel,accountId:scope.accountId,start:payment.transactionDate,end:payment.transactionDate},{maxRows:1000});
+  const expected=cohort.payments.find(p=>p.transactionId===payment.transactionId);
+  if(!expected)throw new OperaError('invalid_response',undefined,'financial_payment_probe_missing');
+  const mapping=await readPaymentApplications(reader,expected,{maxRows:1000});
+  fullReader={status:'verified',invoices:mapping.invoices.length,links:mapping.links.length,olderBillDates:mapping.invoices.filter(i=>i.transactionDate!<payment.transactionDate!).length};
+ }catch(error){fullReader={status:'error',code:error instanceof OperaError?error.stage??error.code:'financial_payment_probe_error'};}}
  return {
   hotel:scope.hotel,paymentFound:!!payment,paymentAmountKnown:payment?.amount!=null,
   detailInvoiceRows:groups.reduce((n,g)=>n+(Array.isArray(g.invoices)?g.invoices.length:0),0),
   detailPaymentRows:groups.reduce((n,g)=>n+(Array.isArray(g.payments)?g.payments.length:0),0),
   historyRows:rows.length,historyKeys:keys,knownAppliedAmounts:known,
   appliedTotalMatches:known===rows.length&&payment?.appliedAmount!==null&&payment?.appliedAmount!==undefined&&sum===magnitude(payment.appliedAmount),
-  invoiceSamples,invoiceSampleMatches,signs,sampleChecks,
+  invoiceSamples,invoiceSampleMatches,signs,sampleChecks,fullReader,
  };
 }
