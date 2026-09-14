@@ -8,7 +8,9 @@
 - ตรวจสาเหตุเดิม: currentledgerกับhistoryถูกอ่านคนละเวลา. GETdiagnosticแบบมี/ไม่มีdatefilterคืนตัวอย่างตรงกันในเวลาตรวจ จึงไม่อ้างว่าproviderdatefilterผิด. แผนauto-history/freshnessและdiagnosticชั่วคราวไม่อยู่ในfinalruntime; เกณฑ์ล่าสุดอยู่ DECISIONS_AND_OPEN_ITEMS และ PORTFOLIO_INVOICE_DATE_AUDIT_20260914.md
 - Tested: Typecheck/Build/publicassetsผ่าน;924unit tests/103filesผ่าน. Browser32regressionsผ่านก่อนเพิ่มclosurecase และaffectedcasesหลังแก้รวมzeroผ่าน (ทดสอบcount/originalคงเดิมเมื่อopen100→0). Syntheticimages1280/390ตรวจแล้ว;คงreferenceเดิม
 - SQL:70migrations/27isolatedfixturesผ่าน รวมclosure/clearedzero/malformedclearednonzero/roles/signs/pagination/permissions. Applied `20260914050910_ar_dashboard_portfolio_invoice_entries` (localCLI-createdfile renamed toserver-issued version afterapply; SQLSHA25632bb25cfaaca600befae9af67c3a4348c26c09bcb9494ea2b80c3c08ae732a86 unchanged). LiveRPCday12/13ตรงsavedBillDatecohortและzeroยังอยู่;ไม่เขียนledgerหรือOPERA. SecurityadvisorsมีเพียงINFO RLS-no-policyของprivate tablesเดิม
-- การdeployและCI mergeกำลังตรวจในreleaseนี้; ไม่เพิ่มcron/auto-history/paidresourceหรือส่งอีเมล. เอกสารPDF/retentionไม่ได้แก้
+- Deployed source `ce1be6799a8e29abd672ccc54d2f682fa61f5860`, Worker `3958d6c3-b183-4a8c-99f8-763e0fe235a1` ที่ https://ar-workspace.ar-c82.workers.dev . HealthยืนยันexactSHA/database_verified/OPERAconnected; endpointใหม่ไม่มีsession=401. Browser6casesบนdeployedassetsผ่าน (syntheticAPIs) รวมclosurecountไม่ลด
+- Signed-in UIจริงยืนยันBillDate12/13, Hotel splitsและInvoiceยอด0ในdrillครบตามsavedledger. SQLยืนยันzero/clearedrowรวมในcount, anon/authenticatedEXECUTE=false, backend=true,wrongactorforbidden. ไม่เก็บcustomerrows/screenshotsในGit
+- [PR #24](https://github.com/NTHV9/ar-workspace/pull/24) merged `639194ca2be2bf209bc3b886bebd7b5de0bc6b8e` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34808732310) และpushCIผ่าน. Mergetreeตรงtested/deployedsource; closeoutเปลี่ยนเฉพาะเอกสาร. ไม่เพิ่มcron/auto-history/paidresourceหรือส่งอีเมล; PDF/retentionไม่ได้แก้
 
 
 ## Checkpoint ลบ source text box และยุบแถวว่าง PDF — 14 กันยายน 2026

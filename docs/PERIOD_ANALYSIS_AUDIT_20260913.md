@@ -1,5 +1,8 @@
 # Period analysis source audit — 13 September 2026
 
+
+Update14September: the owner subsequently required New Invoices to use the saved invoice ledger behind Portfolio, filtered solely by OPERA Bill Date and including retained zero-balance invoices. That reader replaces the financial-history source described below for this one KPI. See [the current source audit](PORTFOLIO_INVOICE_DATE_AUDIT_20260914.md). The earlier observations below are retained as dated audit evidence, not proof that a later current-ledger cohort is empty.
+
 The owner reported identical Today/Yesterday outstanding balances and zero New invoices, and asked to verify the entire page against actual sources. The audit used the authenticated UI, service-only reporting RPCs, saved source records and daily snapshots. Customer rows and monetary extracts were not added to the repository.
 
 ## Findings
