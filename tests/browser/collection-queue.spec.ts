@@ -24,3 +24,31 @@ test('latest sent filter and back navigation preserve queue context',async({page
 test('queue API failure does not become zero work',async({page})=>{await setup(page,true);await page.goto('/?collections=1');await expect(page.getByRole('alert')).toContainText('Collection data is unavailable');await expect(page.locator('.queue-metrics strong').first()).toHaveText('—');await expect(page.getByText('No work matches these filters',{exact:true})).toHaveCount(0);});
 
 test('Collection due card matches its drill-down count and excludes separate Urgent work',async({page})=>{await setup(page);await page.goto('/?collections=1');await page.getByRole('button',{name:/Collection due 3/}).click();await expect(page.locator('.queue-work tbody tr')).toHaveCount(3);await expect(page.locator('.queue-work tbody')).not.toContainText('Urgent');});
+
+for(const failAfter of [false,true])test(`saved OPERA publication ${failAfter?'retains queue on read failure':'updates queue and preserves valid selection'}`,async({page})=>{
+ await setup(page);let published=false,queueReads=0,publication=0;
+ const first={...rows()[0],open:100},keep={...first,id:'SYN-KEEP',invoice_no:'INV-KEEP',open:200},stay={...first,id:'SYN-STAY',invoice_no:'INV-STAY',open:300};
+ await page.route('**/api/portfolio',r=>r.fulfill({json:{status:'connected',accounts:[{id:first.account_id,hotel:first.hotel,name:first.account_name,type:first.account_type,open:published?500:600,items:published?2:3,over90:0,verification_state:'verified',synced_at:`2026-09-10T0${5+publication}:00:00Z`}],refresh:{running:false,hotels:[]}}}));
+ await page.route('**/api/collection-queue',r=>{queueReads++;return r.fulfill({status:published&&failAfter?503:200,json:published&&failAfter?{error:'unavailable'}:{rows:published?[keep,stay]:[first,keep,stay],asOf:'2026-09-10'}});});
+ await page.goto('/?collections=1');await page.getByLabel('Queue stage',{exact:true}).selectOption('Billing');await page.getByLabel('Queue account type').selectOption('OTA');
+ await page.getByLabel('Queue select INV-1',{exact:true}).check();await page.getByLabel('Queue select INV-KEEP',{exact:true}).check();
+ const before=queueReads;published=true;publication++;await page.getByRole('button',{name:'Reload saved data',exact:true}).click();
+ await expect.poll(()=>queueReads).toBeGreaterThan(before);
+ await expect(page.getByLabel('Queue stage',{exact:true})).toHaveValue('Billing');await expect(page.getByLabel('Queue account type')).toHaveValue('OTA');
+ await expect(page.getByLabel('Queue select INV-KEEP',{exact:true})).toBeChecked();
+ if(failAfter){await expect(page.getByRole('alert')).toContainText('Showing the last successfully loaded queue');await expect(page.getByLabel('Queue select INV-1',{exact:true})).toBeChecked();await expect(page.locator('.queue-metrics strong').first()).toHaveText('3');}
+ else{await expect(page.getByLabel('Queue select INV-1',{exact:true})).toHaveCount(0);await expect(page.locator('.queue-metrics strong').first()).toHaveText('2');await expect(page.locator('.queue-detail')).toContainText('1 invoices');await expect(page.locator('.queue-detail-balance')).toContainText('THB 500');
+  // An invoice that later returns to the queue requires a fresh human selection.
+  published=false;publication++;await page.getByRole('button',{name:'Reload saved data',exact:true}).click();
+  await expect(page.getByLabel('Queue select INV-1',{exact:true})).toBeVisible();await expect(page.getByLabel('Queue select INV-1',{exact:true})).not.toBeChecked();await expect(page.getByLabel('Queue select INV-KEEP',{exact:true})).toBeChecked();}
+});
+
+for(const newOwner of [false,true])test(`queue read failure after ${newOwner?'owner change clears prior data':'same-owner token refresh retains selection'}`,async({page})=>{
+ await setup(page);const refreshed:string[]=[];
+ await page.route('**/api/collection-queue',r=>{const auth=r.request().headers().authorization??'';if(auth!=='Bearer synthetic-renewed-token')return r.fallback();refreshed.push(auth);return r.fulfill({status:503,json:{error:'unavailable'}});});
+ await page.goto('/?collections=1');await page.getByLabel('Queue stage',{exact:true}).selectOption('Billing');await page.getByLabel('Queue select INV-1',{exact:true}).check();
+ await page.evaluate(changeOwner=>{const session=JSON.parse(localStorage.getItem('sb-example-auth-token')!);session.access_token='synthetic-renewed-token';session.expires_at=Math.floor(Date.now()/1000)+172800;if(changeOwner)session.user.id='synthetic-new-queue-owner';localStorage.setItem('sb-example-auth-token',JSON.stringify(session));const channel=new BroadcastChannel('sb-example-auth-token');channel.postMessage({event:changeOwner?'SIGNED_IN':'TOKEN_REFRESHED',session});channel.close();},newOwner);
+ await expect.poll(()=>refreshed.length).toBeGreaterThan(0);await expect(page.getByRole('alert')).toContainText('Collection data is unavailable');
+ if(newOwner){await expect(page.getByLabel('Queue select INV-1',{exact:true})).toHaveCount(0);await expect(page.locator('.queue-metrics strong').first()).toHaveText('—');await expect(page.getByRole('alert')).not.toContainText('Showing the last');}
+ else{await expect(page.getByLabel('Queue select INV-1',{exact:true})).toBeChecked();await expect(page.getByRole('alert')).toContainText('Showing the last successfully loaded queue');}
+});

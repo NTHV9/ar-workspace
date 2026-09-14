@@ -1,10 +1,10 @@
 import {assertAcceptanceRecipient} from '../acceptance/recipient';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {readPolicyForHandoff} from '../collection/policy-api';
-import {isCollectionStageKey} from '../../src/domain/collection-policy';
+import {isCollectionStageKey,parseStageSnapshot,policyStageLabel} from '../../src/domain/collection-policy';
 import {plainMessage} from '../../src/email/rich-message';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
-import {emailRpc,googleJson,boundedBody,type EmailEnv,type EmailDraft} from './shared';
+import {emailRpc,googleJson,GoogleResponseError,boundedBody,type EmailEnv,type EmailDraft} from './shared';
 import {gmailToken,gmailCanRead} from './oauth';
 import {hash,url64} from './crypto';
 import {buildMime} from './mime';
@@ -13,8 +13,12 @@ import type {MailFile} from './mime';
 import {verifySentEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
 import {syntheticConversation,type ThreadProof} from './threads';
-export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string}};claimed?:boolean;error?:string}
-export const deliveryView=(d:Delivery)=>({id:d.id,state:d.state,mode:d.mode,sentAt:d.sent_at,reason:d.reason,recorded:d.state==='sent'&&d.mode!=='test'});
+export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string}};claimed?:boolean;error?:string}
+export const deliveryView=(d:Delivery)=>{
+ const stage=isCollectionStageKey(d.stage)?d.stage:null;let stageLabel=stage?policyStageLabel(stage):null;
+ if(stage&&d.stage_snapshot)try{const snapshot=parseStageSnapshot(d.stage_snapshot);if(snapshot.key===stage)stageLabel=snapshot.label;}catch{/* Keep the recorded stage key when its historical label cannot be verified. */}
+ return {id:d.id,state:d.state,mode:d.mode,sentAt:d.sent_at,reason:d.reason,stage,stageLabel,recorded:d.state==='sent'&&d.mode!=='test'};
+};
 async function record(env:EmailEnv,actor:string,d:Delivery,state:string,gmailId:string|null=null,draftId:string|null=null,reason:string|null=null){
  await emailRpc(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:state,p_gmail_id:gmailId,p_gmail_draft_id:draftId,p_reason:reason});
 }
@@ -25,10 +29,10 @@ async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,tok
   const draft=delivery.mode==='draft';const message={raw,...(delivery.snapshot.expected.thread?{threadId:delivery.snapshot.expected.thread.threadId}:{})};const r=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/'+(draft?'drafts':'messages/send'),{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(draft?{message}:message)});
   const id=draft?(r.message as {id?:unknown})?.id:r.id;if(typeof id!=='string'||!id||draft&&typeof r.id!=='string')throw Error('gmail_unavailable');
   await record(env,actor,delivery,draft?'created':'awaiting_evidence',id,draft?String(r.id):null);
-  if(draft)return {id:delivery.id,state:'created',created:true,mode:'draft',recorded:false};
+  if(draft)return {...deliveryView(delivery),state:'created',created:true,recorded:false};
  }catch{try{await record(env,actor,delivery,'awaiting_evidence',null,null,'provider_result_unconfirmed');}catch{/* durable pending claim prevents retry */}}
  // Read-only reconciliation is safe even after an ambiguous provider response.
- try{return await checkDelivery(env,actor,delivery.id);}catch{return {id:delivery.id,state:'awaiting_evidence',recorded:false};}
+ try{return await checkDelivery(env,actor,delivery.id);}catch{return {...deliveryView(delivery),state:'awaiting_evidence',recorded:false};}
 }
 export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,revision:number,mode:'send'|'draft',stage:string|null,policyVersion?:number){
  assertWritesEnabled(env);
@@ -102,7 +106,15 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
  if(!hits.length)return {...deliveryView(d),reason:'no_sent_evidence'};
  if(hits.length!==1){await record(env,actor,d,'review_required',null,null,'ambiguous_sent_match');return {...deliveryView(d),state:'review_required',reason:'ambiguous_sent_match'};}
  const messageId=hits[0].id;if(typeof messageId!=='string'||!/^[A-Za-z0-9_-]+$/.test(messageId))throw Error('gmail_unavailable');
- const message=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,{headers});
+ let message:Record<string,unknown>;
+ try{message=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,{headers});}
+ catch(error){
+  if(!trustedId||!(error instanceof GoogleResponseError)||error.status!==404)throw error;
+  // Gmail may replace a draft's provider message ID when a person sends it.
+  // Its absence is not SENT evidence and never permits a new send or a weaker match.
+  await record(env,actor,d,'review_required',null,null,'gmail_receipt_missing');
+  return {...deliveryView(d),state:'review_required',reason:'gmail_receipt_missing',recorded:false};
+ }
  let expected={...d.snapshot.expected,...(trustedId?{gmailId:trustedId}:{})};
  if(d.mode==='test'){
   const payload=message.payload as {headers?:{name:string;value:string}[]}|undefined;const to=payload?.headers?.filter(h=>h.name.toLowerCase()==='to');const cc=payload?.headers?.find(h=>h.name.toLowerCase()==='cc')?.value;const bcc=payload?.headers?.find(h=>h.name.toLowerCase()==='bcc')?.value;
@@ -118,5 +130,5 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
  });
  if(result.status!=='verified'){if(result.status==='review_required')await record(env,actor,d,'review_required',messageId,null,result.reason??'message_content_unverified');return {...deliveryView(d),state:result.status==='not_sent'?d.state:'review_required',reason:result.status};}
  const confirmed=await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt});
- return {id:d.id,mode:d.mode,...confirmed};
+ return {...deliveryView(d),...confirmed,reason:confirmed.state==='sent'?null:d.reason};
 }

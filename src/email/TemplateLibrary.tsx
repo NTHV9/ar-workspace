@@ -12,9 +12,10 @@ export default function TemplateLibrary({token,onClose,onApply,onDirtyChange}:{t
  const [items,setItems]=useState<EmailTemplate[]>([]),[next,setNext]=useState<number|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [selected,setSelected]=useState<EmailTemplate|null>(null),[form,setForm]=useState<TemplateInput>(()=>inputOf(starterTemplates[0])),[dirty,setDirty]=useState(false),[history,setHistory]=useState<EmailTemplate[]>([]),[historyNext,setHistoryNext]=useState<number|null>(null),[oldVersion,setOldVersion]=useState<number|null>(null),[query,setQuery]=useState('');
  const command=useRef(crypto.randomUUID()),alive=useRef(true),generation=useRef(0);
+ const navigationDirty=dirty||busy;
  useEffect(()=>{alive.current=true;void load(0);return()=>{alive.current=false;generation.current++;};},[token]);
- useEffect(()=>{onDirtyChange?.(dirty);return()=>onDirtyChange?.(false);},[dirty,onDirtyChange]);
- useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty){e.preventDefault();e.returnValue='';}};addEventListener('beforeunload',warn);return()=>removeEventListener('beforeunload',warn);},[dirty]);
+ useEffect(()=>{onDirtyChange?.(navigationDirty);return()=>onDirtyChange?.(false);},[navigationDirty,onDirtyChange]);
+ useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(navigationDirty){e.preventDefault();e.returnValue='';}};addEventListener('beforeunload',warn);return()=>removeEventListener('beforeunload',warn);},[navigationDirty]);
  async function load(offset:number){setLoading(true);setError('');try{const r=await request<{items:EmailTemplate[];nextOffset:number|null}>(`/api/email/templates?offset=${offset}`,token);if(alive.current){setItems(prev=>offset?[...prev,...r.items]:r.items);setNext(r.nextOffset);}}catch(e){if(alive.current)setError((e as Error).message);}finally{if(alive.current)setLoading(false);}}
  function choose(t:TemplateInput,head:EmailTemplate|null=null){if(dirty&&!window.confirm('Discard unsaved template edits?'))return;generation.current++;setSelected(head);setForm(inputOf(t));setDirty(false);setHistory([]);setHistoryNext(null);setOldVersion(null);setNotice('');setError('');command.current=crypto.randomUUID();}
  function change(p:Partial<TemplateInput>){setForm(v=>({...v,...p}));setDirty(true);setNotice('');}

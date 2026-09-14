@@ -23,6 +23,10 @@ for(const width of [1280,390])test('period reading order and comparisons remain 
 
 test('reloading the new composition keeps a single overview reader',async({page})=>{
  const options={missingHistory:false},c=await setupDashboard(page,options);await page.goto('/?dashboard=1');await expect(page.getByTestId('activity-invoice_entries-KAT')).toBeVisible();
+ // Activity controls render before the independent closing overview arrives.
+ // Establish its completed initial read before counting a user-triggered reload.
+ await expect(page.getByTestId('dashboard-closing-count')).toHaveText('2 invoices');
+ await expect.poll(()=>c.calls.filter(r=>r.path==='/api/dashboard/hotel-overview').length).toBe(1);
  const before=c.calls.filter(r=>r.path==='/api/dashboard/hotel-overview').length;
  await page.getByRole('button',{name:'Reload dashboard',exact:true}).click();await expect.poll(()=>c.calls.filter(r=>r.path==='/api/dashboard/hotel-overview').length).toBe(before+1);
  expect(c.calls.some(r=>r.path==='/api/financial/payments'||r.path==='/api/reports/activity'||r.path==='/api/dashboard/balances')).toBe(false);

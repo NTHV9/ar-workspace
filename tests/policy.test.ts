@@ -1,5 +1,19 @@
 import {expect,it} from 'vitest';
 import {defaultCollectionPolicy,parseCollectionPolicy,parsePolicyCommand,stageSnapshot,policyStageLabel} from '../src/domain/collection-policy';
+
+it('expands canonical captured Follow labels without rewriting custom or historical names',()=>{
+ for(const key of ['Follow 1','Follow 2','Follow 3']){
+  const snapshot=stageSnapshot(defaultCollectionPolicy,key);snapshot.label=key;
+  expect(policyStageLabel(key,null,snapshot)).toBe(key.replace('Follow ','Follow-up '));
+  expect(snapshot.label).toBe(key);
+  snapshot.label='Historical escalation · '+key;
+  expect(policyStageLabel(key,defaultCollectionPolicy,snapshot)).toBe(snapshot.label);
+ }
+ const custom={...stageSnapshot(defaultCollectionPolicy,'Follow 1'),key:'round_imported' as const,label:'Follow 1'};
+ expect(policyStageLabel(custom.key,null,custom)).toBe('Follow 1');
+ const renamed=structuredClone(defaultCollectionPolicy);renamed.rounds[1].label='Follow 1 — renamed';
+ expect(policyStageLabel('Follow 1',renamed)).toBe('Follow 1 — renamed');
+});
 import {nextCollectionAction,type QueueInvoice} from '../src/domain/collection';
 const invoice:QueueInvoice={hotel:'KAT',account_id:'synthetic',id:'1',guest:'Synthetic',invoice_no:'1',folio_no:'1',open:100,transaction_date:'2026-08-01',collection_role:'standalone',collection_selectable:true,verification_state:'verified',workflow:{revision:0,billing_required:false,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:'2026-09-10'}};
 const policy=()=>structuredClone(defaultCollectionPolicy);

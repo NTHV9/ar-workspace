@@ -5,6 +5,7 @@ import {discoverAccountIds,readVerifiedAccount} from '../worker/refresh/read-sna
 import {statementModel} from '../worker/statement/model';
 import {getNativeInvoicePdf} from '../worker/documents/native-invoice';
 import {readFinancialHistory,readFinancialTransactionDetail,readAppliedPaymentMapping} from '../worker/opera/financial-history';
+import {readPaymentApplications} from '../worker/opera/payment-applications';
 const id='00000000-0000-4000-8000-000000000001';
 const fixture=()=>newAcceptanceFixture(id,'2026-09-11');
 const reader=(f=fixture(),hotel='KAT')=>new OperaReader({origin:'https://ar-acceptance.invalid',appKey:'synthetic',hotelId:hotel},async()=> 'synthetic',acceptanceTransport(f,hotel));
@@ -13,4 +14,15 @@ it('proves explicit zero and partial source amounts without treating absent rows
 it('feeds the real selected-only Statement model while retaining all-account aging',async()=>{const f=fixture(),snapshot=await readVerifiedAccount(reader(f),'KAT',f.accountId,f.businessDate),selected=snapshot.invoices.filter((_,n)=>n!==1);const model=statementModel(acceptanceAccount(f),selected,f.businessDate);expect(model.rows.map(r=>r.id)).toEqual([f.invoices[0].id,f.invoices[2].id]);expect(model.total).toBe(400000);expect(model.aging.reduce((n,b)=>n+b.cents,0)).toBe(600000);});
 it('exercises native Invoice selection/envelope code with an explicitly synthetic PDF and no network',async()=>{const f=fixture(),snapshot=await readVerifiedAccount(reader(f),'KAT',f.accountId,f.businessDate);const network=vi.fn();vi.stubGlobal('fetch',network);try{const result=await getNativeInvoicePdf(reader(f),snapshot.invoices[0]);expect(result.pages).toBe(1);expect(result.bytes.length).toBeGreaterThan(800);expect(network).not.toHaveBeenCalled();}finally{vi.unstubAllGlobals();}});
 it('supports dated invoice/payment history and independent detail/mapping reads',async()=>{const f=fixture();f.invoices[0].open=0;const r=reader(f),scope={hotel:'KAT' as const,accountId:f.accountId},observedAt='2026-09-11T10:00:00Z';const result=await readFinancialHistory(r,{...scope,start:'2026-07-01',end:'2026-09-11'},{observedAt});expect(result.invoices).toHaveLength(3);expect(result.payments).toHaveLength(1);expect(result.payments[0]).toMatchObject({amount:'-1000.00',transactionDate:'2026-09-11'});await readFinancialTransactionDetail(r,{...scope,kind:'payment',transactionId:'911001'},{observedAt});const links=await readAppliedPaymentMapping(r,{...scope,invoiceTransactionId:'910001',invoiceNo:'920001'},{observedAt});expect(links.links[0]).toMatchObject({paymentTransactionId:'911001',appliedAmount:'1000.00'});});
+it.each([{open:0,applied:'1000.00'},{open:250,applied:'750.00'}])('corroborates v3 payment-side invoice mappings without live OPERA: %s',async({open,applied})=>{
+ const f=fixture();f.invoices[0].open=open;const r=reader(f),observedAt='2026-09-11T10:00:00Z';
+ const network=vi.fn(()=>{throw Error('Unexpected network');});vi.stubGlobal('fetch',network);
+ try{
+  const history=await readFinancialHistory(r,{hotel:'KAT',accountId:f.accountId,start:'2026-09-11',end:'2026-09-11',kinds:['payment']},{observedAt});
+  const mapped=await readPaymentApplications(r,history.payments[0],{observedAt});
+  expect(mapped.links).toHaveLength(1);expect(mapped.links[0]).toMatchObject({invoiceTransactionId:'910001',paymentTransactionId:'911001',invoiceNo:'920001',appliedAmount:applied,applicationDate:null});
+  expect(mapped.invoices[0]).toMatchObject({transactionId:'910001',transactionDate:'2026-08-21'});
+  expect(mapped.coverage.paymentTotalsReconciled).toBe(true);expect(network).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});
 it('refuses every unsupported request instead of falling through to real OPERA',async()=>{const port=acceptanceTransport(fixture(),'KAT');await expect(port(new Request('https://ar-acceptance.invalid/ars/v1/statements'))).rejects.toThrow('acceptance_fixture_request_unsupported');await expect(port(new Request('https://unapproved.test/ars/v1/accounts'))).rejects.toThrow('acceptance_fixture_request_forbidden');});

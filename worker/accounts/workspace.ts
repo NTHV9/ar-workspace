@@ -1,10 +1,10 @@
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
-import {previewSavedDraftThread,savedDraftForReview} from '../email/threads';
+import {previewSavedDraftThread,savedDraftForReview,savedDeliveryForReview,verifiedSentMessage} from '../email/threads';
 import type {EmailEnv} from '../email/shared';
 import {parseRecipients} from '../settings/validation';
 export interface SavedEmailReviewData {
  id:string;hotel:string;accountId:string;documentJobId:string;documentRevision:number;draftRevision:number;
- subject:string;body:string;purpose:'billing'|'collection';recipients:{to:string[];cc:string[];bcc:string[]};packageChanged:boolean;hasThread:boolean;
+ subject:string;body:string;purpose:'billing'|'collection';recipients:{to:string[];cc:string[];bcc:string[]};packageChanged:boolean;hasThread:boolean;threadSource:'selected'|'sent'|null;
  delivery:{state:string;mode:'draft'|'send';sentAt:string|null;recorded:boolean}|null;gmailHandoff:string|null;
 }
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -29,12 +29,12 @@ export async function accountWorkspaceApi(request:Request,env:RefreshEnv&EmailEn
    }
    params(url.searchParams,[]);const draft=await savedDraftForReview(env,actor,scope);
    const [delivery,attempt]=await Promise.all([
-    backendRpc<{owner:string;draft_id:string;revision:number;state:string;mode:string;sent_at:string|null}|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draft.id,p_revision:draft.revision}),
+    savedDeliveryForReview(env,actor,draft),
     backendRpc<{state:string}|null>(env,'ar_gmail_attempt_get',{p_owner:actor,p_draft:draft.id,p_revision:draft.revision}),
    ]);
-   if(delivery&&(delivery.owner!==actor||delivery.draft_id!==draft.id||delivery.revision!==draft.revision||!['pending','created','awaiting_evidence','sent','review_required'].includes(delivery.state)||!['draft','send'].includes(delivery.mode)||delivery.sent_at!==null&&(typeof delivery.sent_at!=='string'||!Number.isFinite(Date.parse(delivery.sent_at)))))throw Error('account_workspace_unavailable');
    if(attempt&&!['creating','created','uncertain'].includes(attempt.state))throw Error('account_workspace_unavailable');
-   const result:SavedEmailReviewData={id:draft.id,hotel:draft.hotel,accountId:draft.account_id,documentJobId:draft.document_job_id,documentRevision:draft.document_revision,draftRevision:draft.revision,subject:draft.subject,body:draft.body,purpose:draft.purpose,recipients:parseRecipients(draft.recipients),packageChanged:draft.package_changed,hasThread:!!draft.thread,delivery:delivery?{state:delivery.state,mode:delivery.mode as 'draft'|'send',sentAt:delivery.sent_at,recorded:delivery.state==='sent'}:null,gmailHandoff:delivery?.state??attempt?.state??null};
+   const threadSource=draft.thread?'selected':verifiedSentMessage(delivery)?'sent':null;
+   const result:SavedEmailReviewData={id:draft.id,hotel:draft.hotel,accountId:draft.account_id,documentJobId:draft.document_job_id,documentRevision:draft.document_revision,draftRevision:draft.revision,subject:draft.subject,body:draft.body,purpose:draft.purpose,recipients:parseRecipients(draft.recipients),packageChanged:draft.package_changed,hasThread:threadSource!==null,threadSource,delivery:delivery?{state:delivery.state,mode:delivery.mode,sentAt:delivery.sent_at,recorded:delivery.state==='sent'}:null,gmailHandoff:delivery?.state??attempt?.state??null};
    return json(result);
   }
   if(match[4]||match[5])throw Error('account_workspace_invalid');params(url.searchParams,['page']);const page=integer(url.searchParams.get('page'),0);
