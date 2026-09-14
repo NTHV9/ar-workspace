@@ -173,6 +173,24 @@ export async function readFinancialTransactionDetail(reader:Pick<OperaReader,'fi
  const transaction=rows.find(r=>r.kind===query.kind&&r.transactionId===query.transactionId)??null;
  return {status:transaction?'found':'missing',transaction,coverage:{query,observedAt:settings.observedAt,endpoint:'transaction_detail',completeForFinancialPeriod:false}};
 }
+/** Exact printed-number lookup without a date filter, including paid invoices and
+ * explicit expanded children. This does not change the dated financial reader. */
+export async function readScopedFinancialInvoiceHistory(reader:Pick<OperaReader,'invoiceHistory'>,input:FinancialScope,invoiceNumbers:readonly string[],readOptions:FinancialReadOptions={}):Promise<FinancialInvoice[]> {
+ const requested=scope(input),settings=options(readOptions);
+ if(!Array.isArray(invoiceNumbers)||invoiceNumbers.length<1||invoiceNumbers.length>20||new Set(invoiceNumbers).size!==invoiceNumbers.length||invoiceNumbers.some(n=>typeof n!=='string'||!/^(0|[1-9][0-9]*)$/.test(n)||n.length>80))return invalid('invoice_numbers');
+ let pages=0,members=0;
+ const rows=await collectPages(async(offset,limit)=>{
+  if(pages>=settings.maxPages)throw new OperaError('response_too_large',undefined,'financial_history_page_budget');
+  const result=envelope(await reader.invoiceHistory(requested.accountId,[...invoiceNumbers],offset,limit));pages++;
+  if(typeof result.totalResults!=='number'||!Number.isSafeInteger(result.totalResults)||result.totalResults<0)return bad('pagination_metadata');
+  const page=groupedRows(result,requested,['invoice']);members+=page.rows.length;
+  if(members>settings.maxRows)throw new OperaError('response_too_large',undefined,'financial_history_row_budget');
+  for(const row of page.rows){if(row.kind!=='invoice'||!invoiceNumbers.includes(row.invoiceNo??'')&&!(row.collectionRole==='child'&&invoiceNumbers.includes(row.parentInvoiceNo??'')))return bad('invoice_number_scope');}
+  const emptyTerminal=page.rows.length===0&&result.totalResults===0&&result.hasMore===false;
+  return {rows:page.rows,logicalCount:page.roots,totalResults:result.totalResults,hasMore:result.hasMore as boolean|undefined,nextOffset:emptyTerminal?undefined:verifiedNextCursor(result,offset,limit)};
+ },memberKey,settings.pageSize);
+ return split(rows).invoices;
+}
 function appliedQuery(input:AppliedPaymentQuery):AppliedPaymentQuery {
  const requested=scope(input);let invoiceTransactionId:string;
  try{invoiceTransactionId=transactionId(input.invoiceTransactionId);}catch{return invalid('invoice_identity');}
