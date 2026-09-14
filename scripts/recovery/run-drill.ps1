@@ -88,7 +88,9 @@ try {
     $version=(Invoke-LocalTool -Tool 'postgres' -ToolArgs @('--version')).Output.Trim()
     if($version -notmatch '^postgres \(PostgreSQL\) 17\.'){throw 'Unexpected PostgreSQL major version'}
     Invoke-LocalTool -Tool 'initdb' -ToolArgs @('-D',$cluster,'-U','recovery_admin','--encoding=UTF8','--locale=C','--auth-host=scram-sha-256','--auth-local=scram-sha-256',('--pwfile='+$passwordFile)) | Out-Null
-    $serverOptions="-h 127.0.0.1 -p $Port -c max_connections=12 -c shared_buffers=32MB -c log_statement=none -c log_min_error_statement=panic"
+    # Repeated schema provision/retire fixtures hold relation locks until rollback.
+    # Increase only this disposable local cluster's lock table, not a hosted setting.
+    $serverOptions="-h 127.0.0.1 -p $Port -c max_connections=12 -c max_locks_per_transaction=256 -c shared_buffers=32MB -c log_statement=none -c log_min_error_statement=panic"
     Invoke-LocalTool -Tool 'pg_ctl' -ToolArgs @('-D',$cluster,'-l',(Join-Path $runDirectory 'postgres.log'),'-w','-t','60','-o',$serverOptions,'start') | Out-Null
     $started=$true
     Invoke-LocalTool -Tool 'createdb' -ToolArgs @('--no-password','-h','127.0.0.1','-p',[string]$Port,'-U','recovery_admin',$sourceDb) | Out-Null

@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {ArrowUpRight,FilePlus2,MailCheck,Wallet} from 'lucide-react';
 import {useCollectionPolicy} from '../collection/PolicyContext';
+import {displayCollectionStageLabel} from '../domain/collection-policy';
 import {activityResult,externalResult,financialResult,useSource,type Source,type DashboardFinancial} from './data';
 import {activityTotals,accountIdentity,historyChunks,scopeQuery,type DashboardScope,validPeriod} from './model';
 import {amount,number,paidInvoicesResult,rangeLabel,stamp,financialMembershipKnown} from './period-data';
@@ -73,7 +74,7 @@ export function PeriodActivity({scope,token,revision,onReload,onDetail,overview}
  const sendRows=[
   ...rows.filter(r=>!['invoice_entries','first','paid'].includes(r.key)).map(r=>({...r,measureKey:r.key,id:'activity-'+r.key,unit:'occurrences',href:undefined as string|undefined})),
   {key:'external',measureKey:'external',id:'activity-external',label:'External billing',count:external.data?.summary.invoices,amount:external.data?.summary.amount,basis:'Staff-recorded billing dates · '+number(external.data?.summary.firstBillingInvoices)+' first billed',unit:'invoices',detail:undefined,href:dashboardLink(scope,'external')},
-  ...rounds.map(r=>({key:'sent-'+r.kind,measureKey:'stage:'+r.kind,id:'sent-'+r.kind,label:(r.stage_label??r.kind)+' · sent',count:activity.data?r.invoices:null,amount:activity.data?r.amount:null,basis:'Actual send occurrences · amount at send',unit:'occurrences',detail:{kind:'sent' as const,stage:r.kind},href:undefined}))
+  ...rounds.map(r=>({key:'sent-'+r.kind,measureKey:'stage:'+r.kind,id:'sent-'+r.kind,label:displayCollectionStageLabel(r.kind,r.stage_label)+' · sent',count:activity.data?r.invoices:null,amount:activity.data?r.amount:null,basis:'Actual send occurrences · amount at send',unit:'occurrences',detail:{kind:'sent' as const,stage:r.kind},href:undefined}))
  ];
  return <section className="dashboard-period-activity" aria-label="Activity in selected period"><header className="dashboard-section-heading"><div><h2>Activity in selected period</h2><p>{rangeLabel(scope.from,scope.to)} · Calendar dates in Thailand</p></div><button disabled={busy||!valid||!status?.enabled||active.length>0||waitingForRefresh&&!!status?.running} onClick={()=>void refresh()}>{busy?'Requesting…':active.length===hotels.length?'OPERA refresh in progress':'Refresh OPERA for this period'}</button></header>
   {(notice||active.length>0)&&<p className="dashboard-notice" role="status">{notice}{active.length?' '+active.map(r=>r.hotel+': '+r.status).join(' · '):''}</p>}

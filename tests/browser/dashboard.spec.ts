@@ -1,5 +1,19 @@
 import {test,expect} from '@playwright/test';
 import {setupDashboard} from './fixtures/dashboard-period';
+test('sent activity expands canonical Follow labels and preserves custom captured labels',async({page})=>{
+ const c=await setupDashboard(page);
+ await page.route('**/api/reports/activity**',route=>route.fulfill({json:{rows:[],total:4,summary:{invoices:4,messages:4,missingAmounts:0,kinds:[
+  {kind:'Follow 1',stage_label:'Follow 1',invoices:1,amount:100},
+  {kind:'Follow 2',invoices:1,amount:100},
+  {kind:'Follow 3',stage_label:'Historical escalation',invoices:1,amount:100},
+  {kind:'round_imported',stage_label:'Follow 2',invoices:1,amount:100},
+ ]}}}));
+ await page.goto('/?dashboard=1&hotel=KAT');const activity=page.getByRole('region',{name:'Activity in selected period'});await expect(page.getByTestId('dashboard-sent-Follow 1-count')).toHaveText('1');
+ for(const label of ['Follow-up 1','Follow-up 2','Historical escalation','Follow 2'])await expect(activity.getByRole('button',{name:label+' · sent',exact:true})).toBeVisible();
+ await expect(activity.getByRole('button',{name:'Follow 1 · sent',exact:true})).toHaveCount(0);
+ await activity.getByRole('button',{name:'Follow-up 1 · sent',exact:true}).click();
+ await expect(page).toHaveURL(/dashboardStage=Follow\+1/);expect(c.errors).toEqual([]);
+});
 test('Dashboard uses an inclusive range and closing-date stock, with current Aging independent',async({page})=>{
  const c=await setupDashboard(page);await page.goto('/?dashboard=1');await expect(page.getByTestId('dashboard-closing-count')).toHaveText('2 invoices');await page.getByLabel('Date selection mode').selectOption('range');await page.getByLabel('From',{exact:true}).fill('2026-09-01');await page.getByLabel('Through',{exact:true}).fill('2026-09-11');await expect(page.getByTestId('dashboard-closing-count')).toHaveText('1 invoices');
  expect(c.calls.some(r=>r.path==='/api/dashboard/hotel-overview'&&r.query.get('from')==='2026-09-01'&&r.query.get('to')==='2026-09-11')).toBe(true);expect(c.calls.some(r=>r.path==='/api/dashboard/hotel-overview'&&r.query.get('to')==='2026-09-11')).toBe(true);
