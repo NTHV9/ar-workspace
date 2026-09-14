@@ -3,11 +3,12 @@ import {Check,ChevronRight} from 'lucide-react';
 import type {AgingBucket} from '../domain/portfolio';
 import {agingBucketKey,agingPercentage,type AgingCell,type agingOverview} from './aging-model';
 import './aging-overview.css';
+import type {AgingCount} from './aging-invoice-data';
 
 /* Aging overview: a light mint balance field meets one chronological distribution.
    All six source ranges retain exact THB values; selection highlights without hiding data.
    The chart is a part-to-whole only when source evidence supports that claim. */
-interface Props {data:ReturnType<typeof agingOverview>;columns:AgingBucket[];label:string;selectedKey:string;onSelect:(key:string)=>void}
+interface Props {data:ReturnType<typeof agingOverview>;columns:AgingBucket[];label:string;selectedKey:string;onSelect:(key:string)=>void;counts?:Record<'Total'|'KAT'|'TSK',AgingCount>}
 const formatter=new Intl.NumberFormat('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 const amount=(value:number|null)=>value===null?'—':formatter.format(value);
 const stateLabel:Record<AgingCell['state'],string>={verified:'',absent:'No matching account',outside:'Outside scope',unavailable:'Source unverified'};
@@ -15,7 +16,8 @@ const rangeColors=['#269d94','#68a8d3','#666bce','#ae91cd','#d5a03e','#d57571'];
 const known=(cell:AgingCell|undefined):cell is AgingCell&{amount:number}=>cell?.state==='verified'&&cell.amount!==null&&Number.isFinite(cell.amount);
 const cents=(value:number)=>Math.round(value*100);
 
-export default function AgingOverview({data,columns,label,selectedKey,onSelect}:Props){
+export default function AgingOverview({data,columns,label,selectedKey,onSelect,counts}:Props){
+ const countText=(hotel:'Total'|'KAT'|'TSK')=>counts?.[hotel].count==null?'—':counts[hotel].count!.toLocaleString('en-GB');
  const total=data.net.Total;
  const ranges=columns.map((bucket,index)=>({bucket,key:agingBucketKey(bucket),cell:data.cells[index]?.Total,color:rangeColors[index%rangeColors.length]}));
  const complete=ranges.length>0&&ranges.every(({cell})=>known(cell));
@@ -38,12 +40,14 @@ export default function AgingOverview({data,columns,label,selectedKey,onSelect}:
   <div className="aging-v4-balance">
    <div className="aging-v4-balance-heading"><h3>Net open · all ages</h3><span>THB</span></div>
    <strong className="aging-v4-net">{amount(known(total)?total.amount:null)}</strong>
+   <p className="aging-v4-invoice-total" aria-label="Total open invoice count"><strong>{countText('Total')}</strong> open invoices</p>
    {!known(total)&&<p className="aging-v4-source-state">{stateLabel[total.state]||'Source unverified'}</p>}
    <div className="aging-v4-hotels">{hotels.map(hotel=>{
     const cell=data.net[hotel];
     return <div className="aging-v4-hotel" key={hotel}>
      <span className={'aging-v4-property aging-v4-property-'+hotel.toLowerCase()}><i aria-hidden="true"/>{hotel}</span>
      <strong>{amount(known(cell)?cell.amount:null)}</strong>
+     <small className="aging-v4-invoice-count" aria-label={`${hotel} open invoice count`}>{countText(hotel)} invoices</small>
      {!known(cell)&&<small>{stateLabel[cell.state]||'Source unverified'}</small>}
     </div>;
    })}</div>

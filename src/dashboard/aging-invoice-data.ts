@@ -46,7 +46,7 @@ export function agingPublicationMatches(data:AgingInvoicesResponse,refresh:Refre
  const wanted=Array.isArray(hotel)?hotel:hotel==='KAT'||hotel==='TSK'?[hotel]:['KAT','TSK'];
  return wanted.every(h=>{const expected=refresh?.hotels.find(p=>p.hotel===h)?.last_success_at,actual=data.publications.find(p=>p.hotel===h)?.sourceAt;return !!expected&&!!actual&&Date.parse(expected)===Date.parse(actual);});
 }
-export function agingCountFor(row:AgingComparisonRow,hotel:AgingHotel,bucket:AgingBucket|undefined,source:Source<AgingInvoicesResponse>,refresh?:RefreshState):AgingCount{
+export function agingCountFor(row:Pick<AgingComparisonRow,'members'>,hotel:AgingHotel,bucket:AgingBucket|undefined,source:Source<AgingInvoicesResponse>,refresh?:RefreshState):AgingCount{
  const members=row.members.filter(a=>hotel==='Total'||a.hotel===hotel);
  if(!members.length)return {count:null,state:'absent'};
  if(!source.data)return {count:null,state:source.state==='loading'?'loading':'unavailable',reason:'Invoice counts are unavailable'};
