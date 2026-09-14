@@ -35,7 +35,8 @@ export function agingInvoicesResult(value:unknown):AgingInvoicesResponse{
   for(const m of s[dimension]){if(!object(m)||typeof m.key!=='string'||!m.key||typeof m.label!=='string'||!nullableCount(m.count)||!nullableAmount(m.amount)||seen.has(m.key))return invalid();seen.add(m.key);}
  }
  for(const r of value.rows){
-  if(!object(r)||!['KAT','TSK'].includes(String(r.hotel))||!['accountId','accountName','accountType','invoiceId','billingStatus','latestStage','latestStageLabel','dueStatus'].every(k=>typeof r[k]==='string')||!r.invoiceId||!decimal(r.open)||Number(r.open)<=0||r.age!==null&&!integer(r.age)||r.dueDate!==null&&(typeof r.dueDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(r.dueDate))||typeof r.held!=='boolean'||typeof r.needsReview!=='boolean'||!['invoiceNo','folioNo','guest'].every(k=>r[k]===null||typeof r[k]==='string'))return invalid();
+  if(!object(r)||!['KAT','TSK'].includes(String(r.hotel))||!['accountId','accountName','accountType','invoiceId','billingStatus','latestStage','latestStageLabel','dueStatus'].every(k=>typeof r[k]==='string')||!r.invoiceId||!decimal(r.open)||Number(r.open)===0||r.age!==null&&!integer(r.age)||r.dueDate!==null&&(typeof r.dueDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(r.dueDate))||typeof r.held!=='boolean'||typeof r.needsReview!=='boolean'||!['invoiceNo','folioNo','guest'].every(k=>r[k]===null||typeof r[k]==='string'))return invalid();
+  if(Number(r.open)<0?['billingStatus','latestStage','dueStatus'].some(key=>r[key]!=='credit')||r.dueDate!==null:['billingStatus','latestStage','dueStatus'].some(key=>r[key]==='credit'))return invalid();
   const id=JSON.stringify([r.hotel,r.accountId,r.invoiceId]);if(invoices.has(id))return invalid();invoices.add(id);
  }
  if(value.rows.length>value.total)return invalid();

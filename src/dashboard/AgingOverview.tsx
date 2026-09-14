@@ -31,7 +31,7 @@ export default function AgingOverview({data,columns,label,selectedKey,onSelect,c
  const selectedPercent=selected&&known(selected.cell)&&known(total)?agingPercentage(selected.cell.amount,total.amount):null;
  const hotels=(['KAT','TSK'] as const).filter(hotel=>data.net[hotel].state!=='outside');
  const note=mode==='distribution'?'Share of net open · all source ranges'
-  :mode==='zero'?'Verified source balances are zero.'
+  :mode==='zero'?'Verified net balances are zero.'
   :mode==='unavailable'?'Source verification required · only verified values are shown.'
   :!reconciles?'Range total differs from net open. Bars use one signed THB scale.'
   :'Credits extend left of zero. Percentages use signed net open.';
@@ -67,7 +67,7 @@ export default function AgingOverview({data,columns,label,selectedKey,onSelect,c
        })}
       </svg>
       <div className="aging-v4-ring-label" aria-hidden="true"><strong>{selectedPercent===null?'All ages':`${selectedPercent.toFixed(1)}%`}</strong><span>{selected?`${selected.bucket.label} days`:'of net open'}</span></div>
-     </>:mode==='zero'?<div className="aging-v4-chart-message"><strong>0.00</strong><span>No open balance</span></div>
+     </>:mode==='zero'?<div className="aging-v4-chart-message"><strong>0.00</strong><span>Net balance is zero</span></div>
       :mode==='unavailable'?<div className="aging-v4-chart-message"><strong>—</strong><span>Distribution unavailable</span></div>
       :<SignedProfile values={values} colors={ranges.map(range=>range.color)} selectedIndex={ranges.findIndex(range=>range.key===selectedKey)}/>}
     </div>

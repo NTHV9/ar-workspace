@@ -23,3 +23,5 @@ it('accepts bounded exact groups and rejects duplicate, foreign and ambiguous me
  const pairs=encodeURIComponent(JSON.stringify([['KAT','A'],['KAT','B'],['TSK','C']]));expect(parseAgingInvoicesQuery(url('accounts='+pairs))).toMatchObject({p_accounts:[['KAT','A'],['KAT','B'],['TSK','C']]});
  for(const q of ['accounts='+pairs+'&katAccount=A','accounts='+pairs+'&hotel=KAT','accounts='+encodeURIComponent(JSON.stringify([['KAT','A'],['KAT','A']])),'accounts='+encodeURIComponent(JSON.stringify([['Other','A']])),'accounts=[]','accounts={}','accounts='+encodeURIComponent(JSON.stringify(Array.from({length:201},(_,i)=>['KAT',String(i)])))])expect(()=>parseAgingInvoicesQuery(url(q))).toThrow('aging_invalid');
 });
+
+it('accepts Credit as a display filter in each status view, without making it an attention flag',()=>{for(const dimension of ['billing','followup','due'])expect(parseAgingInvoicesQuery(url('dimension='+dimension+'&status=credit'))).toMatchObject({p_dimension:dimension,p_status:'credit'});expect(()=>parseAgingInvoicesQuery(url('dimension=flags&status=credit'))).toThrow();});

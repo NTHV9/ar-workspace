@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Signed Invoice counts throughout Aging — 14 กันยายน 2026
+
+- Owner approved counting negative non-child credit items with positive open invoices. Overview/Hotel/table totals reuse the same RPC count; details include nonzero roots and signed net amounts. Credit is a display-only facet in Billing/Follow-Up/Due date, with no collection Due date; actual workflow/history and positive-only collection selection remain unchanged.
+- Unknown credit age prevents a confirmed combined bucket count, while the all-age count remains available when source facts are verified. Zero and child rows remain excluded. Percentages use positive net denominators; zero/negative net avoids invalid ratios. Zero chart text now says net balance is zero.
+- Frontend/API checks: TypeScript/build, 1,036 unit tests / 107 files, 11 local browser cases, and independent review passed. Mixed signs, credit-only and netzero checked; synthetic desktop/mobile screenshots inspected without altering original references. Additive SQL replay/deployment validation in progress.
+
+
 ## Checkpoint Aging overview invoice counts — 14 กันยายน 2026
 
 - Added open-invoice count below the Net open total and below each KAT/TSK amount in the existing mint overview. Retains original layout, typography hierarchy, amounts and chart.
