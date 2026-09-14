@@ -164,7 +164,7 @@ export async function readFinancialHistory(reader:OperaReader,input:FinancialHis
  return {...split(rows),coverage:{query,observedAt:settings.observedAt,pagination:'complete',pages,members,roots,reportedRoots,dateSemantics:'unverified',financialClassification:'unverified',completeForFinancialPeriod:false,
   missingTransactionDates:rows.filter(r=>r.transactionDate===null).length,outsideRequestedTransactionDates:rows.filter(r=>r.transactionDate!==null&&(r.transactionDate<query.start||r.transactionDate>query.end)).length,unknownPrimaryAmounts:rows.filter(r=>(r.kind==='invoice'?r.originalAmount:r.amount)===null).length}};
 }
-export async function readFinancialTransactionDetail(reader:OperaReader,input:FinancialDetailQuery,readOptions:FinancialReadOptions={}):Promise<FinancialTransactionDetail> {
+export async function readFinancialTransactionDetail(reader:Pick<OperaReader,'financialTransactionDetail'>,input:FinancialDetailQuery,readOptions:FinancialReadOptions={}):Promise<FinancialTransactionDetail> {
  const requested=scope(input),settings=options(readOptions);if(!['invoice','payment'].includes(input.kind))return invalid('kind');
  let requestedId:string;try{requestedId=transactionId(input.transactionId,input.kind==='invoice');}catch{return invalid('transaction_identity');}
  const query={...requested,kind:input.kind,transactionId:requestedId};
