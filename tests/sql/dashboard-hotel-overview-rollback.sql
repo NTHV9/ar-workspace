@@ -5,6 +5,7 @@ declare
  actor uuid;d date:=(now() at time zone 'Asia/Bangkok')::date;scope text:='SYNTHETIC-HOTEL-'||gen_random_uuid();
  kind text:='SYNTHETIC_HOTEL_OVERVIEW';h text;run uuid;delivery uuid;purpose text;r jsonb;direct jsonb;t jsonb;k jsonb;s jsonb;
  metric jsonb;stage jsonb;key text;view_name text;past date:=date '1905-01-01';stamp timestamptz:=clock_timestamp();
+ portfolio_entries boolean:=to_regprocedure('public.ar_dashboard_invoice_entries(uuid,date,date,text,text,text,integer,integer)') is not null;
 begin
  select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
  if actor is null then raise exception 'fixture actor missing';end if;
@@ -76,7 +77,10 @@ begin
   or t->'activity'->'summary'->>'invoices'<>'6' or k->'activity'->'summary'->>'invoices'<>'4' or s->'activity'->'summary'->>'invoices'<>'2'
   or (t->'activity'->'summary'->>'amount')::numeric<>467.00 then raise exception 'latest stage or actual send scope incorrect';end if;
  if t->'external'->'summary'->>'amount'<>'61.50' or t->'external'->'summary'->>'invoices'<>'3'
-  or t->'entries'->'summary'->>'amount'<>'280.60' or t->'entries'->'summary'->>'invoiceCount'<>'3'
+  -- Current Portfolio Bill Dates above are d-70/d-10. History deliberately
+  -- reports a different cohort at d; New Invoices now follows Portfolio dates.
+  or t->'entries'->'summary'->>'amount'<>(case when portfolio_entries then '0.00' else '280.60' end)
+  or t->'entries'->'summary'->>'invoiceCount'<>(case when portfolio_entries then '0' else '3' end)
   or t->'payments'->'summary'->'paymentTotals'->>'creditPostings'<>'37.75' or t->'payments'->'summary'->>'paymentCount'<>'3'
   or t->'paid'->'summary'->>'count'<>'3' or k->'paid'->'summary'->>'count'<>'2' or s->'paid'->'summary'->>'count'<>'1'
   or t->'paid'->'summary'->>'amount'<>'37.75' then raise exception 'external, invoice or distinct payment aggregate wrong';end if;
@@ -85,7 +89,9 @@ begin
   if direct->'balances' is distinct from jsonb_set(public.ar_dashboard_balances(actor,d,h,null,kind,null,null,0,1),'{rows}','[]')
    or direct->'paid' is distinct from jsonb_set(public.ar_dashboard_payment_invoices(actor,d,d,h,null,kind,0,1),'{rows}','[]') then raise exception 'bundle changed authoritative balance/payment metadata';end if;
   foreach view_name in array array['invoice_entries','payments'] loop
-   metric:=public.ar_financial_report(actor,view_name,h,null,kind,d,d,0,1);key:=case view_name when 'invoice_entries' then 'entries' else 'payments' end;
+   if portfolio_entries and view_name='invoice_entries' then metric:=public.ar_dashboard_invoice_entries(actor,d,d,h,null,kind,0,1);
+   else metric:=public.ar_financial_report(actor,view_name,h,null,kind,d,d,0,1);end if;
+   key:=case view_name when 'invoice_entries' then 'entries' else 'payments' end;
    if direct->key is distinct from jsonb_build_object('summary',metric->'summary','coverage',metric->'coverage') then raise exception 'bundle changed financial basis or coverage';end if;
   end loop;
   foreach key in array array['balances','activity','external','paid'] loop if direct->key->'rows'<>'[]'::jsonb then raise exception 'detail rows leaked';end if;end loop;
@@ -101,7 +107,8 @@ begin
  r:=public.ar_dashboard_hotel_overview(actor,d,d,kind);
  if r->'total'->'balances'->'metrics'->0->'count'<>'null'::jsonb or r->'hotels'->0->'balances'->'metrics'->0->>'amount'<>'200.40'
   or r->'hotels'->1->'balances'->'metrics'->0->'amount'<>'null'::jsonb or r->'total'->'entries'->'summary'->'amount'<>'null'::jsonb
-  or r->'hotels'->0->'entries'->'summary'->>'amount'<>'240.30' or r->'hotels'->1->'entries'->'summary'->'amount'<>'null'::jsonb
+  or r->'hotels'->0->'entries'->'summary'->>'amount'<>(case when portfolio_entries then '0.00' else '240.30' end)
+  or r->'hotels'->1->'entries'->'summary'->'amount'<>'null'::jsonb
   or r->'total'->'paid'->'summary'->'count'<>'null'::jsonb then raise exception 'missing hotel source became zero or erased another hotel';end if;
  -- Historical data is a captured snapshot, with no current-source substitution for TSK.
  alter table ar_private.dashboard_daily_captures disable trigger dashboard_capture_today;

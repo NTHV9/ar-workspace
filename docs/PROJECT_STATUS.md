@@ -1,6 +1,16 @@
 # สถานะโครงการใหม่
 
 
+## Checkpoint New Invoices ใช้ Bill Date จากฐาน Portfolio — 14 กันยายน 2026
+
+- เจ้าของย้ำใช้ invoice ledger เดียวกับ Portfolio และกรอง Bill Date เท่านั้น รวม stored rows ที่ยอดคงค้างเป็นศูนย์แล้ว. แก้ทั้ง summary, Hotel split และ drill ให้ใช้ RPCใหม่ ar_dashboard_invoice_entries; ไม่ต้องรอ financial history อีกชุด
+- ใหม่ใช้ public.ar_invoices / ar_accounts; เงื่อนไขวัน/Hotel/Account/typeก่อนรวมยอดและpagination. จำนวน/ยอด originalรวม verifiedหรือcleared-zero standalone/parent roots; ไม่บวกchildซ้ำ. การเคลียร์ยอดไม่ลดจำนวนหรือoriginalvalueของBillDateเดิม; unknown sourceไม่กลายเป็น0
+- ตรวจสาเหตุเดิม: currentledgerกับhistoryถูกอ่านคนละเวลา. GETdiagnosticแบบมี/ไม่มีdatefilterคืนตัวอย่างตรงกันในเวลาตรวจ จึงไม่อ้างว่าproviderdatefilterผิด. แผนauto-history/freshnessและdiagnosticชั่วคราวไม่อยู่ในfinalruntime; เกณฑ์ล่าสุดอยู่ DECISIONS_AND_OPEN_ITEMS และ PORTFOLIO_INVOICE_DATE_AUDIT_20260914.md
+- Tested: Typecheck/Build/publicassetsผ่าน;924unit tests/103filesผ่าน. Browser32regressionsผ่านก่อนเพิ่มclosurecase และaffectedcasesหลังแก้รวมzeroผ่าน (ทดสอบcount/originalคงเดิมเมื่อopen100→0). Syntheticimages1280/390ตรวจแล้ว;คงreferenceเดิม
+- SQL:70migrations/27isolatedfixturesผ่าน รวมclosure/clearedzero/malformedclearednonzero/roles/signs/pagination/permissions. Applied `20260914050910_ar_dashboard_portfolio_invoice_entries` (localCLI-createdfile renamed toserver-issued version afterapply; SQLSHA25632bb25cfaaca600befae9af67c3a4348c26c09bcb9494ea2b80c3c08ae732a86 unchanged). LiveRPCday12/13ตรงsavedBillDatecohortและzeroยังอยู่;ไม่เขียนledgerหรือOPERA. SecurityadvisorsมีเพียงINFO RLS-no-policyของprivate tablesเดิม
+- การdeployและCI mergeกำลังตรวจในreleaseนี้; ไม่เพิ่มcron/auto-history/paidresourceหรือส่งอีเมล. เอกสารPDF/retentionไม่ได้แก้
+
+
 ## Checkpoint ลบ source text box และยุบแถวว่าง PDF — 14 กันยายน 2026
 
 - Implemented: Delete text box ลบข้อความต้นฉบับพร้อมซ่อนกรอบ; Restore original text แยกจากการลบ และ Undo/Redo คง state เดิม. Added text box ลบออกตามปกติ
