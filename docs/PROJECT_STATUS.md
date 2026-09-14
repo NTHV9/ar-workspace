@@ -4,7 +4,9 @@
 
 - Rearranged Period analysis into closing overview, dated activity/payments, then dated Billing/Follow-Up detail. Compact active date presets and KAT/TSK comparisons; pale mint primary measure; horizontal billing progress; readable All/KAT/TSK activity columns with mobile row labels. Current Aging is outside the style scope.
 - Existing source readers, calculations, null/zero/credit rules, date semantics, refresh commands, retired rounds, billing classification and drilldowns retained. One reader per component; Activity remains visible when historical closing snapshots are unavailable. No backend/data/API changes.
-- Typecheck/build and 1,036 unit tests passed. 28 browser regressions plus targeted mobile text-bound checks passed; synthetic desktop/mobile captures reviewed. Fixed inherited global table-cell heights that caused mobile overlap. Original reference/captures retained. Independent source/layout review found no remaining data/action blockers. Deployment and live verification pending.
+- Typecheck/build and 1,036 unit tests passed. 28 browser regressions plus targeted mobile text-bound checks passed; synthetic desktop/mobile captures reviewed. Fixed inherited global table-cell heights that caused mobile overlap. Original reference/captures retained. Independent source/layout review found no remaining data/action blockers. Deployed browser suite passed 39 unique cases, including the final mobile cell-height fix and refresh/Bill Date regressions.
+- Deployed source 8a36b6cac97d0c76595d4c38ab772af568037943, Worker f1dd6e67-4f2b-428f-a96e-c5fdeabf29f6; health verified exact source. Signed-in live UI confirmed reading order, Hotel payment drilldown and absence of the Period style scope in Current Aging.
+- [PR30](https://github.com/NTHV9/ar-workspace/pull/30) merged 5ff1e4cf1ccbf3607977868eaf63f95c21a464eb after [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34840033668) and push CI passed. Merge tree matches tested/deployed source; closeout documentation only. No financial data or provider configuration changed.
 
 
 ## Checkpoint Signed Invoice counts throughout Aging — 14 กันยายน 2026
