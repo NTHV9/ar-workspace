@@ -1,6 +1,6 @@
 # Full system audit — 14 September 2026
 
-Status: in progress. The owner authorized a detailed audit of all pages, synthetic data creation, defect fixes and live test email to the conversation-supplied recipient. The recipient is ephemeral and is not recorded in this document or permanent configuration.
+Status: implementation, acceptance, cleanup and deployment verified; PR integration pending. The owner authorized a detailed audit of all pages, synthetic data creation, defect fixes and live test email to the conversation-supplied recipient. The recipient is ephemeral and is not recorded in this document or permanent configuration.
 
 ## Scope and authority
 
@@ -13,7 +13,7 @@ Status: in progress. The owner authorized a detailed audit of all pages, synthet
 
 - Typecheck and all 1,041 unit tests / 108 files passed.
 - Full browser suite: 364 passed; one old compression test expected visible disabled child rows, conflicting with the owner's newer instruction to hide child rows. Updated that assertion and retained unverified-row/selection/amount checks; both compression cases pass on deployed assets. This was an obsolete test expectation, not a product regression.
-- Initial local synthetic database dump/restore passed the runner's historical 33-migration / 3-fixture baseline. This does not validate the latest 74-migration schema: the runner requires explicit additional migration names. Full latest-schema replay is still required. Run `private/recovery/run-f8a193bf746746b7896abf1f25cb8438`; server stopped; dump SHA256 `e794d2ebffb6ab80fe5d540974a7282ae5718536ac7a850fffc70a445a172af6`; no provider requests or live export.
+- Initial local synthetic database dump/restore covered only the runner's historical 33-migration / 3-fixture baseline. This was superseded by the complete 76-migration / 31-suite replay below; no current-schema claim relies on the baseline-only run.
 - Live Supabase preflight: 78,490,771 database bytes; 19,036,387 stored bytes / 135 working objects; no active acceptance scenario, namespaces or test bucket. Existing quota protections remain active.
 - Security advisors: no WARN/ERROR; 55 INFO notices for private RLS tables with deliberately no client policy. Zero anonymous EXECUTE grants on public AR security-definer functions. Owner retains the email and Google identities.
 
@@ -49,14 +49,14 @@ The final signed-in acceptance run uses one isolated synthetic KAT Account, thre
 ## Verification evidence
 
 - Latest completed unit run: **1,059 tests / 108 files passed**; TypeScript and production build passed. The existing large-bundle advisory remains; PDF modules are loaded on demand.
-- Full browser run before the last Draft recovery/label additions: **385 passed**. The next 389-case run passed 388 and hit one 5-second initial PDF-harness load timeout before any editing assertion. The unchanged case then passed three consecutive isolated repeats. The final full run including deployment-rollover recovery is pending; do not sum overlapping runs or describe the earlier run as wholly green.
+- Browser coverage: **393 unique cases**. The final run on deployed assets passed 392; one request-count test read its baseline while the independent initial overview was still loading (expected 1, observed 2 after initial read + reload). Fixed the test to require the actual initial overview result and exactly one initial read, retaining its exactly-one-extra-read assertion. All three Period layout cases passed three consecutive repeats (9/9), with no product change. An earlier 389-case run had a 5-second initial PDF-harness load timeout; the unchanged case passed three isolated repeats and passed in the final full run. These timings are reported rather than hidden by retries or weakened assertions.
 - Latest complete local synthetic restore: **76 migrations / 31 SQL suites passed**, run `private/recovery/run-05c84a12718242e2b15f72ba7fa0bf62`, stopped local server. Dump 965,136 bytes, SHA256 `c7fa1e1496c9235ba964dec889dd61041fa836c891f41d0aeb9fb08f7e97a09e`. Zero provider requests and no live export. Two provision/retire cycles required a larger lock table only in the disposable local PostgreSQL process; hosted settings were not changed.
-- Runtime candidate `fdcada926af4d1d509a771ccbee64dd89737b6ef`, Worker `d4194117-193c-4f3c-90cb-abc35329f006`; health/database verified and all 19 anonymous boundary requests rejected. Acceptance remains temporarily enabled pending exact-object cleanup.
+- Final runtime source `cb4590b010898a955b723a04c6be2ae3de73009b`, Worker `d06d63c9-6bb5-400b-a5c3-880c8bea4476`; health/database verified and all 19 anonymous boundary requests rejected. `ACCEPTANCE_ENABLED=false`, no test cookie selected, normal Google auth enabled and recovery write hold off. Unit verification on this source again passed 1,059 / 108 files.
 - Existing synthetic visual references were preserved. Fresh test screenshots were inspected separately, not substituted to make assertions pass.
 
 ## Acceptance coverage and closeout
 
-| Area | Required evidence |
+| Area | Verified coverage (provider and regression distinctions above apply) |
 |---|---|
 | Auth / navigation | Unauthorized routes, Google session, Back/dirty/busy guards, keyboard and mobile |
 | Portfolio / Account | KAT/TSK grouping, filters/sort/selection, settings, terms, credit/child/unknown handling |
@@ -66,7 +66,7 @@ The final signed-in acceptance run uses one isolated synthetic KAT Account, thre
 | Email / Templates | Unsaved state, supplemental files, template editing, live Draft/Send/evidence/thread paths, recipient guard |
 | Remittances | Hotel/account scope, allocations, evidence, corrections/void/restore, no ledger closure |
 | Storage / Operations | Real private upload/readback, quota reservations, uncertain outcomes, retention/transient cleanup, recovery status |
-| Closeout | Exact test-object removal, scenario exit/retirement, acceptance disabled, production health and final deployment/CI |
+| Closeout | Exact test-object removal, scenario exit/retirement, acceptance disabled, production health and deployment; PR integration recorded below |
 
 The matrix combines real signed-in/provider checks with synthetic browser and SQL regressions. Follow-up 2/3/Final, custom/retired policy rounds, failure/uncertainty and unauthorized cases are covered by regression fixtures rather than additional real mail. No customer emails, OPERA accounting writes, production recovery restore, password reset, or paid add-on were required.
 
@@ -76,4 +76,7 @@ The matrix combines real signed-in/provider checks with synthetic browser and SQ
 - Advanced only the disposable retention clock by 31 days. All **21 Supabase objects and 2 Drive objects** were deleted and provider absence verified. The original restricted parent folder and production files were preserved. Remittance moved out of Pending at zero and remained one notice / three linked invoices / reported 6,500 / verified linked open zero in All records before cleanup.
 - The sealed scenario contains three minimal Sent receipts; recipient hash and fixture were erased. Its empty dedicated Drive folder and private Storage bucket were removed. Both temporary schemas were dropped via the reviewed admin helper, all application-role acceptance/helper grants revoked, and the global budget reservation settled. Managed egress upper bound was 4,058,212 bytes.
 - Post-retirement: zero active scenarios, zero temporary namespaces, zero test buckets/objects, zero application-role acceptance grants. Production Storage remained **19,036,387 bytes**, equal to preflight; physical database size **78,957,715 bytes**. No paid capacity was added. Security/performance advisors have INFO only, no WARN/ERROR; existing private-table RLS/no-policy and indexing advisories remain informational.
-- Final acceptance flag disablement, deployment/CI/merge, final browser suite and production smoke remain pending.
+- Acceptance was disabled in the final deployment. Signed-in production smoke loaded all seven main pages and the Account/collection paths. Drive folder access reverified at 00:11 ICT, Restricted and ready; no new console errors after the corrected bundle loaded.
+- Live read-only OPERA diagnostics passed normalization/discovery/pagination for KAT and TSK. The old optional folio-history diagnostic still returns the previously documented OPERA FOF00404; the application's supported reservation-folios route is unchanged and its identity lookup passed. This audit did not change OPERA controls or treat that optional retired route as evidence that actual customer PDF printing was retested.
+- Read-only source comparison at 00:09 ICT: KAT 760 signed open roots / 21,767,833.35 THB and TSK 114 / 5,213,482.45 THB. Portfolio, current Aging and today's closing view agreed on **874 invoices / 26,981,315.80 THB**; eleven credits included and sixteen child source rows excluded. These are point-in-time checks, not frozen operating totals. Accounts without actual billing/setup continue to show their genuine unknown Due date rather than fabricated dates.
+- [PR32](https://github.com/NTHV9/ar-workspace/pull/32) contains the audit fixes. Source `cb4590b` passed [PR CI](https://github.com/NTHV9/ar-workspace/actions/runs/34872824438) and push CI34872723627. Final documentation/test-only closeout and merge are recorded in PROJECT_STATUS.
