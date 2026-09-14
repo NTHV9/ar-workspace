@@ -70,7 +70,15 @@ function Invoke-LocalSql {
     param([string]$Database,[string]$File,[string]$Command)
     if($Database -notmatch '^ar_recovery_(source|restored)_[a-f0-9]{32}$'){throw 'Database name outside synthetic recovery scope'}
     $toolArgs=@('-X','--no-password','-h','127.0.0.1','-p',[string]$Port,'-U','recovery_admin','-d',$Database,'-v','ON_ERROR_STOP=1','-q','-t','-A')
-    if($File){$toolArgs+=@('-f',$File)}elseif($Command){$toolArgs+=@('-c',$Command)}else{throw 'Missing local SQL input'}
+    if($File){
+        # Git may check SQL out as CRLF while the SQL itself normalizes stored
+        # function bodies to LF for exact definition guards. Replay an LF-only
+        # private copy; keep every repository source byte and recorded hash intact.
+        $sqlInputPath=Join-Path $runDirectory ('sql-input-'+[Guid]::NewGuid().ToString('N')+'.sql')
+        $sqlInput=[IO.File]::ReadAllText($File).Replace("`r`n","`n").Replace("`r","`n")
+        [IO.File]::WriteAllText($sqlInputPath,$sqlInput,$encoding)
+        $toolArgs+=@('-f',$sqlInputPath)
+    }elseif($Command){$toolArgs+=@('-c',$Command)}else{throw 'Missing local SQL input'}
     return Invoke-LocalTool -Tool 'psql' -ToolArgs $toolArgs
 }
 $sourceDb='ar_recovery_source_'+$runId

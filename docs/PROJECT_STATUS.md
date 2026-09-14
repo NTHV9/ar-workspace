@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Payment publication integration — 14 กันยายน 2026
+
+- First real v3 imports completed all source reads but publication refused mixed nullable Posting Date facts. Atomic rollback preserved existing financial observations; failed staging was cleaned.
+- Applied additive 20260914072855_ar_financial_payment_context_scope: coalesce only compatible optional invoice Posting/Close dates; preserve strict primary facts and contradictory-date rejection. Scope context-only refresh so it cannot invalidate a different payment date.
+- 73 migrations / 29 SQL suites and independent review passed, including cross-period regression and mixed-phase source shape; 1,031 unit tests / 107 files plus typecheck passed. Existing applied migration unchanged; recovery uses private LF-normalized inputs for Windows checkout portability.
+- Bounded 11–14 September imports restarted after this correction. Final live totals/UI and follow-up PR closeout remain in progress. No OPERA ledger, new paid resource or email action. See PAYMENT_DATE_MAPPING_20260914.md.
+
+
 ## Checkpoint Payment-date invoice allocations — 14 กันยายน 2026
 
 - Fixed: Period analysis discovers Invoice allocations from each OPERA Payment in the selected Payment-date range, including older Bill Dates. New Invoices keeps the Portfolio Bill Date definition including zero; OPERA balances and document flows are unchanged.

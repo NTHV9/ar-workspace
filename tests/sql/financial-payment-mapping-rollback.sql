@@ -263,5 +263,98 @@ begin
  perform public.ar_financial_fail(actor,next_run,'financial_payment_cancelled');perform public.ar_financial_fail(actor,other_run,'financial_payment_cancelled');
 end$$;
 
+do $$
+declare actor uuid;a text:='SYNTHETIC-PAYMENT-PERIOD-ISOLATION-'||gen_random_uuid();legacy_run uuid;run uuid;i jsonb;p10 jsonb;p11 jsonb;l10 jsonb;l11 jsonb;coverage jsonb;before_paid jsonb;after_paid jsonb;before_link jsonb;before_payment jsonb;
+begin
+ select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
+ i:=pg_temp.payment_test_invoice(a,'101','1905-12-01','100.00','100.00','0.00');
+ p10:=pg_temp.payment_test_row(a,'301','-30.00','30.00','0.00')||'{"transactionDate":"1906-01-10","postingDate":"1906-01-10"}';
+ p11:=pg_temp.payment_test_row(a,'302','-70.00','70.00','0.00')||'{"transactionDate":"1906-01-11","postingDate":"1906-01-11"}';
+ l10:=pg_temp.payment_test_link(i,p10,'30.00');l11:=pg_temp.payment_test_link(i,p11,'70.00');
+ legacy_run:=(public.ar_financial_request(actor,gen_random_uuid(),'{"hotel":"KAT","reason":"backfill","from":"1905-12-01","to":"1906-01-11"}','1905-12-01','1906-01-11','synthetic-period-isolation')->>'id')::uuid;
+ update ar_private.financial_runs set steps_version=2 where id=legacy_run;
+ perform public.ar_financial_claim(actor,legacy_run);perform public.ar_financial_discovery_set(actor,legacy_run,array[a]);
+ perform public.ar_financial_stage_batch(actor,legacy_run,a,'invoice',0,jsonb_build_array(i));perform public.ar_financial_stage_batch(actor,legacy_run,a,'payment',0,jsonb_build_array(p10,p11));
+ coverage:=jsonb_build_object('query',jsonb_build_object('hotel','KAT','accountId',a,'start','1905-12-01','end','1906-01-11','kinds','["invoice","payment"]'::jsonb),'observedAt',clock_timestamp(),'pagination','complete','pages',1,'members',3,'roots',3,'reportedRoots',3,
+  'dateSemantics','unverified','financialClassification','unverified','completeForFinancialPeriod',false,'missingTransactionDates',0,'outsideRequestedTransactionDates',0,'unknownPrimaryAmounts',0);
+ perform public.ar_financial_history_ready(actor,legacy_run,a,'{"name":"Synthetic shared invoice","type":"SYNTHETIC_PAYMENT","accountNo":null}',coverage);
+ perform public.ar_financial_mapping_batch_save(actor,legacy_run,a,0,array['101'],array['101'],jsonb_build_array(l10,l11),'[]');
+ perform public.ar_financial_history_finalize(actor,legacy_run,a);perform public.ar_financial_publish(actor,legacy_run,array[a]);
+ before_paid:=public.ar_dashboard_payment_invoices(actor,'1906-01-10','1906-01-10','KAT',a);
+ before_link:=(select to_jsonb(v) from ar_private.financial_applications v where hotel='KAT' and account_id=a and payment_id='301');
+ before_payment:=(select to_jsonb(v) from ar_private.financial_payments v where hotel='KAT' and account_id=a and transaction_id='301');
+ if before_paid->>'complete' is distinct from 'true' or before_paid->'summary'->>'amount' is distinct from '30.00' then raise exception 'period isolation setup did not prove Payment10';end if;
+
+ -- This run reads Payment11 only. Its older invoice is context, not a new
+ -- full-invoice mapping attempt and not evidence about Payment10's allocation.
+ run:=(public.ar_financial_request(actor,gen_random_uuid(),'{"hotel":"KAT","reason":"backfill","from":"1906-01-11","to":"1906-01-11"}','1906-01-11','1906-01-11','synthetic-period-isolation')->>'id')::uuid;
+ perform public.ar_financial_claim(actor,run);perform public.ar_financial_discovery_set(actor,run,array[a]);perform public.ar_financial_stage_batch(actor,run,a,'payment',0,jsonb_build_array(p11));
+ coverage:=jsonb_set(coverage,'{query,start}','"1906-01-11"')||'{"members":1,"roots":1,"reportedRoots":1}';
+ perform public.ar_financial_history_ready(actor,run,a,'{"name":"Synthetic shared invoice","type":"SYNTHETIC_PAYMENT","accountNo":null}',coverage);
+ perform public.ar_financial_payment_prepare(actor,run,a);perform public.ar_financial_payment_batch_save(actor,run,a,0,jsonb_build_array(jsonb_build_object('payment',p11,'invoices',jsonb_build_array(i),'links',jsonb_build_array(l11))));
+ perform public.ar_financial_history_finalize(actor,run,a);perform public.ar_financial_publish(actor,run,array[a]);
+ after_paid:=public.ar_dashboard_payment_invoices(actor,'1906-01-10','1906-01-10','KAT',a);
+ if after_paid->>'complete' is distinct from 'true' or after_paid->'summary'->>'amount' is distinct from '30.00'
+  or (select to_jsonb(v) from ar_private.financial_applications v where hotel='KAT' and account_id=a and payment_id='301') is distinct from before_link
+  or (select to_jsonb(v) from ar_private.financial_payments v where hotel='KAT' and account_id=a and transaction_id='301') is distinct from before_payment
+  then raise exception 'cross-period invalidation: before complete %, amount %; after complete %, amount %; prior link status %, invoice mapping verified %',before_paid->>'complete',before_paid->'summary'->>'amount',after_paid->>'complete',after_paid->'summary'->>'amount',
+   (select source_status from ar_private.financial_applications where hotel='KAT' and account_id=a and payment_id='301'),(select mapping_verified from ar_private.financial_invoice_entries where hotel='KAT' and account_id=a and transaction_id='101');end if;
+ after_paid:=public.ar_dashboard_payment_invoices(actor,'1906-01-11','1906-01-11','KAT',a);
+ if after_paid->>'complete' is distinct from 'true' or after_paid->'summary'->>'amount' is distinct from '70.00' then raise exception 'scoped Payment11 proof was lost';end if;
+ if not exists(select 1 from ar_private.financial_invoice_entries where hotel='KAT' and account_id=a and transaction_id='101' and not mapping_verified) then raise exception 'payment context became complete invoice proof';end if;
+
+ -- An actual dated INVOICE mapping failure still invalidates that invoice's
+ -- previous applications; it must not be mistaken for a context-only lookup.
+ run:=(public.ar_financial_request(actor,gen_random_uuid(),'{"hotel":"KAT","reason":"backfill","from":"1905-12-01","to":"1905-12-01"}','1905-12-01','1905-12-01','synthetic-period-isolation')->>'id')::uuid;
+ perform public.ar_financial_claim(actor,run);perform public.ar_financial_discovery_set(actor,run,array[a]);perform public.ar_financial_stage_batch(actor,run,a,'invoice',0,jsonb_build_array(i));
+ coverage:=jsonb_set(jsonb_set(coverage,'{query,start}','"1905-12-01"'),'{query,end}','"1905-12-01"');
+ perform public.ar_financial_history_ready(actor,run,a,'{"name":"Synthetic shared invoice","type":"SYNTHETIC_PAYMENT","accountNo":null}',coverage);
+ perform public.ar_financial_mapping_batch_save(actor,run,a,0,array['101'],'{}','[]','[{"invoiceId":"101","code":"financial_mapping_changed"}]');
+ perform public.ar_financial_payment_prepare(actor,run,a);perform public.ar_financial_history_finalize(actor,run,a);perform public.ar_financial_publish(actor,run,array[a]);
+ after_paid:=public.ar_dashboard_payment_invoices(actor,'1906-01-10','1906-01-10','KAT',a);
+ if after_paid->>'complete' is distinct from 'false' or after_paid->'summary'->'amount' is distinct from 'null'::jsonb
+  or not exists(select 1 from ar_private.financial_applications where hotel='KAT' and account_id=a and payment_id='301' and source_status='not_observed') then raise exception 'explicit invoice mapping failure stopped invalidating unknown allocations';end if;
+end$$;
+
+do $$
+declare actor uuid;a text:='SYNTHETIC-PAYMENT-DATE-MERGE-'||gen_random_uuid();run uuid;p jsonb;i jsonb;invoice_link jsonb;payment_link jsonb;result jsonb;prior_source jsonb;prior_publications bigint;field_name text;
+begin
+ select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
+ p:=pg_temp.payment_test_row(a,'301');i:=pg_temp.payment_test_invoice(a,'101','1906-01-12')||'{"postingDate":null,"closeDate":"1906-01-12"}';
+ payment_link:=pg_temp.payment_test_link(i,p);invoice_link:=payment_link||'{"invoicePostingDate":"1906-01-12","invoiceCloseDate":null}';
+ run:=pg_temp.payment_test_start(actor,a,jsonb_build_array(p),jsonb_build_array(i));
+ perform public.ar_financial_mapping_batch_save(actor,run,a,0,array['101'],array['101'],jsonb_build_array(invoice_link),'[]');
+ perform public.ar_financial_payment_prepare(actor,run,a);
+ perform public.ar_financial_payment_batch_save(actor,run,a,0,jsonb_build_array(jsonb_build_object('payment',p,'invoices',jsonb_build_array(i),'links',jsonb_build_array(payment_link))));
+ perform public.ar_financial_history_finalize(actor,run,a);perform public.ar_financial_publish(actor,run,array[a]);
+ prior_source:=(select source_data from ar_private.financial_applications where hotel='KAT' and account_id=a and invoice_id='101' and payment_id='301');
+ if prior_source is distinct from (payment_link||'{"invoicePostingDate":"1906-01-12"}') or (select count(*) from ar_private.financial_changes where run_id=run and account_id=a and kind='application')<>1 then raise exception 'complementary optional dates were discarded or duplicated';end if;
+ result:=public.ar_dashboard_payment_invoices(actor,'1906-01-12','1906-01-12','KAT',a);
+ if result->>'complete' is distinct from 'true' or result->'summary'->>'amount' is distinct from '70.00' then raise exception 'compatible optional dates blocked verified payment';end if;
+ result:=public.ar_financial_report(actor,'applications','KAT',a,null,'1906-01-12','1906-01-12');
+ if result->'summary'->>'amount' is distinct from '70.00' or result->'summary'->>'coverageComplete' is distinct from 'true' then raise exception 'compatible dates changed independent invoice proof';end if;
+
+ -- Known/known contradictions must still abort atomically for either optional date.
+ for field_name in select unnest(array['invoicePostingDate','invoiceCloseDate']) loop
+  i:=pg_temp.payment_test_invoice(a,'101','1906-01-12')||'{"closeDate":"1906-01-12"}';
+  payment_link:=pg_temp.payment_test_link(i,p);invoice_link:=jsonb_set(payment_link,array[field_name],'"1906-01-13"');
+  select count(*) into prior_publications from ar_private.financial_publications;
+  run:=pg_temp.payment_test_start(actor,a,jsonb_build_array(p),jsonb_build_array(i));
+  perform public.ar_financial_mapping_batch_save(actor,run,a,0,array['101'],array['101'],jsonb_build_array(invoice_link),'[]');
+  perform public.ar_financial_payment_prepare(actor,run,a);
+  perform public.ar_financial_payment_batch_save(actor,run,a,0,jsonb_build_array(jsonb_build_object('payment',p,'invoices',jsonb_build_array(i),'links',jsonb_build_array(payment_link))));
+  perform public.ar_financial_history_finalize(actor,run,a);
+  begin perform public.ar_financial_publish(actor,run,array[a]);raise exception 'known optional date contradiction accepted';exception when others then if sqlerrm<>'financial_payment_observation_conflict' then raise;end if;end;
+  if (select count(*) from ar_private.financial_publications)<>prior_publications or exists(select 1 from ar_private.financial_changes where run_id=run)
+   or (select source_data from ar_private.financial_applications where hotel='KAT' and account_id=a and invoice_id='101' and payment_id='301') is distinct from prior_source then raise exception 'date contradiction changed published facts';end if;
+  perform public.ar_financial_fail(actor,run,'financial_payment_observation_conflict');
+ end loop;
+ if ar_private.financial_application_compatible(payment_link,jsonb_set(payment_link,'{invoiceTransactionDate}','"1906-01-13"'))
+  or ar_private.financial_application_compatible(payment_link,jsonb_set(payment_link,'{appliedAmount}','"-70.00"'))
+  or ar_private.financial_application_compatible(payment_link,jsonb_set(payment_link,'{paymentTransactionId}','"302"'))
+  or ar_private.financial_application_compatible(payment_link,jsonb_set(payment_link,'{currency}','"USD"')) then raise exception 'optional-date compatibility relaxed primary source facts';end if;
+ if has_function_privilege('service_role','ar_private.financial_application_compatible(jsonb,jsonb)','execute') or has_function_privilege('authenticated','ar_private.financial_application_publication_rows(uuid)','execute') then raise exception 'application merge helper exposed';end if;
+end$$;
+
 rollback;
 select 'Payment date scoped proof, older Bill Date, freshness, explicit retirement, atomic publication, signs, failures, batching and ACL checks passed; rolled back' as result;
