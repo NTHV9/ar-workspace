@@ -1,13 +1,14 @@
 import {assertWritesEnabled} from '../operations/write-hold';
 import {runGranularFinancialHistory} from './granular';
 import {readCorroboratedApplications} from '../opera/applied-payments';
+import {readPaymentApplications} from '../opera/payment-applications';
 import type {WorkflowStep} from 'cloudflare:workers';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {makeReader} from '../opera/probe';
 import {OperaError,type OperaReader} from '../opera/client';
 import {discoverAccountIds,readBusinessDate} from '../refresh/read-snapshot';
 import {readFinancialHistory,type FinancialHotel,type FinancialInvoice,type FinancialPayment,type AppliedPaymentLink} from '../opera/financial-history';
-import type {FinancialAccountContext,FinancialCounts,FinancialHistoryRequest,FinancialRun,FinancialRunReceipt,FinancialWorkflowResult} from './model';
+import type {FinancialAccountContext,FinancialCounts,FinancialHistoryRequest,FinancialRun,FinancialRunReceipt,FinancialWorkflowResult,FinancialPaymentMappingResult} from './model';
 export type {FinancialHistoryRequest,FinancialRunReceipt,FinancialWorkflowResult} from './model';
 export interface FinancialIngestionEnv extends RefreshEnv {AR_FINANCIAL?:RefreshEnv['AR_REFRESH'];FINANCIAL_HISTORY_ENABLED?:string;FINANCIAL_HISTORY_WINDOW_DAYS?:string;FINANCIAL_HISTORY_DATE_FILTER_PROOF?:string}
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -16,7 +17,7 @@ function date(value:unknown):string {if(typeof value!=='string'||!/^\d{4}-\d{2}-
 function shift(value:string,days:number){const d=new Date(value+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 function object(value:unknown):Record<string,unknown> {if(!value||typeof value!=='object'||Array.isArray(value))return fail('financial_invalid_response');return value as Record<string,unknown>;}
 function exactText(value:unknown,max=200):string {if(typeof value!=='string'||!value.trim()||value.length>max||/[\x00-\x1f\x7f]/.test(value))return fail('financial_invalid_response');return value;}
-export function financialWorkflow(env:FinancialIngestionEnv,version?:number){return version===2?env.AR_FINANCIAL:env.AR_REFRESH;}
+export function financialWorkflow(env:FinancialIngestionEnv,version?:number){return version===2||version===3?env.AR_FINANCIAL:env.AR_REFRESH;}
 function enabled(env:FinancialIngestionEnv){return env.FINANCIAL_HISTORY_ENABLED==='true'&&typeof env.FINANCIAL_HISTORY_DATE_FILTER_PROOF==='string'&&/^[A-Za-z0-9][A-Za-z0-9:._/-]{0,199}$/.test(env.FINANCIAL_HISTORY_DATE_FILTER_PROOF);}
 async function rpc<T>(env:FinancialIngestionEnv,name:string,args:Record<string,unknown>):Promise<T>{const v=await backendRpc<unknown>(env,name,args);if(v&&typeof v==='object'&&'error' in v)throw Error(typeof v.error==='string'&&/^financial_[a-z_]{1,80}$/.test(v.error)?v.error:'financial_unavailable');return v as T;}
 function safeError(value:unknown):string {if(value instanceof OperaError)return value.code;return value instanceof Error&&/^financial_[a-z_]{1,80}$/.test(value.message)?value.message:'financial_unavailable';}
@@ -50,6 +51,10 @@ async function mapFinancialInvoice(reader:OperaReader,invoice:FinancialInvoice,o
   return {links:mapping.links};
  }catch(error){if(!(error instanceof OperaError))throw error;return {links:[],error:/^financial_[a-z_]{1,80}$/.test(error.stage??'')?error.stage!:'financial_mapping_'+error.code};}
 }
+async function mapFinancialPayment(reader:OperaReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>{
+ try{const verified=await readPaymentApplications(reader,payment,{observedAt,maxRows:5000,maxPages:250});return {payment:verified.payment,invoices:verified.invoices,links:verified.links};}
+ catch(error){if(!(error instanceof OperaError))throw error;return {paymentId:payment.transactionId,error:/^financial_[a-z_]{1,80}$/.test(error.stage??'')?error.stage!:'financial_payment_'+error.code};}
+}
 const stepConfig={retries:{limit:1,delay:'5 seconds' as const,backoff:'constant' as const},timeout:'20 minutes' as const};
 const zeroCounts:FinancialCounts={invoices:0,payments:0,applications:0};
 /** Private source rows stay inside callbacks/DB staging; durable step outputs are counts only. */
@@ -62,7 +67,7 @@ export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{act
  try{
   const run=await rpc<FinancialRun>(env,'ar_financial_run_get',args);if(!run||run.owner!==actor||run.id!==runId||!['KAT','TSK'].includes(run.hotel)||!run.proof||!['queued','running','succeeded','failed'].includes(run.status))return fail('financial_run_invalid');
   date(run.from);date(run.to);if(run.status==='succeeded')return {status:'succeeded',accounts:run.accounts,...run.counts};if(run.status==='failed')return fail('financial_run_failed');
-  if(run.stepsVersion===2)return await runGranularFinancialHistory(env,run,step,{rpc:(name,extra={})=>rpc(env,name,{...extra,...args}),stage:(account,kind,rows)=>stageRows(env,actor,runId,account,kind,rows),context,mapping:mapFinancialInvoice});
+  if(run.stepsVersion===2||run.stepsVersion===3)return await runGranularFinancialHistory(env,run,step,{rpc:(name,extra={})=>rpc(env,name,{...extra,...args}),stage:(account,kind,rows)=>stageRows(env,actor,runId,account,kind,rows),context,mapping:mapFinancialInvoice,paymentMapping:mapFinancialPayment});
   const reader=makeReader(env,run.hotel);
   await step.do('financial-claim',{retries:{limit:20,delay:'30 seconds',backoff:'constant'},timeout:'12 minutes'},async()=>{if(!await rpc<boolean>(env,'ar_financial_claim',args))return fail('financial_lease_busy');return {claimed:true};});
   const discovery=await step.do('financial-discovery',stepConfig,async()=>{

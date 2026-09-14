@@ -4,7 +4,7 @@ import {boundedBody} from '../email/shared';
 import type {BudgetEnvironment} from '../operations/budget';
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
-export interface RefreshParams { acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean; mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
+export interface RefreshParams { acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};

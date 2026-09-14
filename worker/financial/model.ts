@@ -2,8 +2,8 @@ import type {AppliedPaymentLink,FinancialHotel,FinancialInvoice,FinancialPayment
 export type FinancialView='invoice_entries'|'payments'|'applications'|'coverage'|'options';
 export type FinancialRunStatus='queued'|'running'|'succeeded'|'failed';
 export interface FinancialHistoryRequest {commandId:string;hotel:FinancialHotel;reason:'manual'|'scheduled'|'backfill'|'open';from?:string;to?:string}
-export interface FinancialRunReceipt {stepsVersion?:1|2;id?:string;status:FinancialRunStatus|'not_enabled';created:boolean;hotel?:FinancialHotel;from?:string;to?:string}
-export interface FinancialRun {stepsVersion?:1|2;id:string;owner:string;hotel:FinancialHotel;from:string;to:string;status:FinancialRunStatus;proof:string;discovered:boolean;accounts:number;startedAt:string|null;initialImport:boolean;counts:FinancialCounts}
+export interface FinancialRunReceipt {stepsVersion?:1|2|3;id?:string;status:FinancialRunStatus|'not_enabled';created:boolean;hotel?:FinancialHotel;from?:string;to?:string}
+export interface FinancialRun {stepsVersion?:1|2|3;id:string;owner:string;hotel:FinancialHotel;from:string;to:string;status:FinancialRunStatus;proof:string;discovered:boolean;accounts:number;startedAt:string|null;initialImport:boolean;counts:FinancialCounts}
 export interface FinancialAccountContext {name:string;type:string;accountNo:string|null}
 export interface FinancialCounts {invoices:number;payments:number;applications:number}
 export interface FinancialWorkflowResult extends FinancialCounts {status:'succeeded'|'failed'|'not_enabled';accounts:number;error?:string}
@@ -29,3 +29,5 @@ export interface FinancialReport {
  view:FinancialView;rows:(FinancialInvoiceReportRow|FinancialPaymentReportRow|FinancialApplicationReportRow|FinancialCoverageRow|FinancialAccountOption)[];
  total:number;summary:FinancialReportSummary;coverage:{complete:boolean;from:string|null;to:string|null;lastSuccessAt:string|null;lastAttemptStatus:FinancialRunStatus|null;lastError:string|null};
 }
+
+export type FinancialPaymentMappingResult={payment:FinancialPayment;invoices:FinancialInvoice[];links:AppliedPaymentLink[]}|{paymentId:string;error:string};

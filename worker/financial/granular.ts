@@ -4,12 +4,13 @@ import {discoverAccountIds} from '../refresh/read-snapshot';
 import {readFinancialHistory,type FinancialInvoice,type FinancialPayment,type AppliedPaymentLink} from '../opera/financial-history';
 import type {OperaReader} from '../opera/client';
 import type {FinancialIngestionEnv} from './refresh';
-import type {FinancialRun,FinancialAccountContext,FinancialCounts,FinancialWorkflowResult} from './model';
+import type {FinancialRun,FinancialAccountContext,FinancialCounts,FinancialWorkflowResult,FinancialPaymentMappingResult} from './model';
 interface Ports{
  rpc<T>(name:string,args?:Record<string,unknown>):Promise<T>;
  stage(accountId:string,kind:'invoice'|'payment'|'application',rows:(FinancialInvoice|FinancialPayment|AppliedPaymentLink)[]):Promise<void>;
  context(value:unknown,hotel:'KAT'|'TSK',accountId:string):FinancialAccountContext;
  mapping(reader:OperaReader,invoice:FinancialInvoice,observedAt:string):Promise<{links:AppliedPaymentLink[];error?:string}>;
+ paymentMapping?(reader:OperaReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>;
 }
 const config={retries:{limit:1,delay:'5 seconds' as const,backoff:'constant' as const},timeout:'10 minutes' as const};
 /** Durable outputs are counts only; exact source identities/rows live in private SQL staging. */
@@ -39,6 +40,25 @@ export async function runGranularFinancialHistory(env:FinancialIngestionEnv,run:
    for(const invoice of work.invoices){const result=await ports.mapping(source,invoice,observedAt);if(result.error)failures.push({invoiceId:invoice.transactionId,code:result.error});else{verified.push(invoice.transactionId);links.push(...result.links);}}
    return ports.rpc<{verified:number;unknown:number;links:number}>('ar_financial_mapping_batch_save',{p_account:saved.accountId,p_batch:batch,p_ids:work.invoices.map(i=>i.transactionId),p_verified:verified,p_links:links,p_failures:failures});
   });
+  if(run.stepsVersion===3){
+   if(!ports.paymentMapping)throw Error('financial_payment_mapping_not_configured');
+   const preparedPayments=await step.do(`financial-v3-payment-prepare-${ordinal}`,config,async()=>{
+    if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');
+    const saved=await ports.rpc<{accountId:string}>('ar_financial_account_get',{p_ordinal:ordinal});
+    return ports.rpc<{mappingCount:number}>('ar_financial_payment_prepare',{p_account:saved.accountId});
+   });
+   if(!Number.isSafeInteger(preparedPayments.mappingCount)||preparedPayments.mappingCount<0)throw Error('financial_payment_batch_invalid');
+   for(let batch=0;batch<Math.ceil(preparedPayments.mappingCount/5);batch++)await step.do(`financial-v3-payment-${ordinal}-${batch}`,config,async()=>{
+    if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');
+    const saved=await ports.rpc<{accountId:string}>('ar_financial_account_get',{p_ordinal:ordinal});
+    const work=await ports.rpc<{saved:boolean;payments?:FinancialPayment[];verified?:number;unknown?:number;links?:number}>('ar_financial_payment_batch_get',{p_account:saved.accountId,p_batch:batch});
+    if(work.saved)return {verified:work.verified??0,unknown:work.unknown??0,links:work.links??0};
+    if(!Array.isArray(work.payments)||!work.payments.length||work.payments.length>5||work.payments.some(p=>p.hotel!==run.hotel||p.accountId!==saved.accountId||p.kind!=='payment'))throw Error('financial_payment_batch_invalid');
+    const results:FinancialPaymentMappingResult[]=[],source=reader();
+    for(const payment of work.payments){if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');results.push(await ports.paymentMapping!(source,payment,observedAt));}
+    return ports.rpc<{verified:number;unknown:number;links:number}>('ar_financial_payment_batch_save',{p_account:saved.accountId,p_batch:batch,p_results:results});
+   });
+  }
   await step.do(`financial-v2-finalize-${ordinal}`,config,async()=>{if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');const saved=await ports.rpc<{accountId:string}>('ar_financial_account_get',{p_ordinal:ordinal});return ports.rpc<FinancialCounts>('ar_financial_history_finalize',{p_account:saved.accountId});});
  }
  return step.do('financial-v2-publish',config,async()=>{if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');const after=(await discoverAccountIds(reader(),run.hotel)).sort();return ports.rpc<FinancialWorkflowResult>('ar_financial_publish',{p_accounts:after});});

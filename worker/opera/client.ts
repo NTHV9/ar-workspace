@@ -64,6 +64,11 @@ export class OperaReader {
     if(typeof scope.invoiceTransactionId!=='string'||!/^[1-9][0-9]*$/.test(scope.invoiceTransactionId)||scope.invoiceTransactionId.length>80||scope.invoiceNo!==undefined&&(typeof scope.invoiceNo!=='string'||!/^(0|[1-9][0-9]*)$/.test(scope.invoiceNo)||scope.invoiceNo.length>80))throw new OperaError('invalid_request',undefined,'financial_invoice_identity');
     return this.read(`/ars/v1/hotels/${this.id(scope.hotel)}/transactions/${this.id(scope.invoiceTransactionId)}/accounts/${this.id(scope.accountId)}/invoiceAppliedPayments`,scope.invoiceNo===undefined?[]:[['invoiceNo',scope.invoiceNo]]);
   }
+  paymentAppliedInvoices(scope:FinancialReadScope&{paymentTransactionId:string}) {
+    this.financialScope(scope);
+    if(typeof scope.paymentTransactionId!=='string'||!/^[1-9][0-9]{0,79}$/.test(scope.paymentTransactionId))throw new OperaError('invalid_request',undefined,'financial_payment_identity');
+    return this.read(`/ars/v1/hotels/${this.id(scope.hotel)}/transactions/${this.id(scope.paymentTransactionId)}/accounts/${this.id(scope.accountId)}/invoiceAppliedPayments`,[]);
+  }
   statementSelection(accountId:string,transactionIds:string[],includeFolios=false) {
     if(typeof includeFolios!=='boolean'||!transactionIds.length||transactionIds.some(id=>!/^\d+$/.test(id)))throw new OperaError('invalid_request');
     return this.read('/ars/v1/statements',[['hotelId',this.config.hotelId],['accountID',accountId],...transactionIds.map(id=>['transactionNo',id]),['inclFolios',String(includeFolios)],['inclPrinted','true'],['inclZero','false']]);

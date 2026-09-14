@@ -1,5 +1,7 @@
 -- Synthetic observations only. Both old and new normalizer payloads are covered; all writes roll back.
 begin;
+-- The staged invoice classification contract remains compatible with v2 jobs.
+alter table ar_private.financial_runs alter column steps_version set default 2;
 do $$
 declare
  actor uuid;scope text:='SYNTHETIC-INVOICE-TYPE-'||gen_random_uuid();run uuid:=gen_random_uuid();stamp timestamptz:=clock_timestamp();

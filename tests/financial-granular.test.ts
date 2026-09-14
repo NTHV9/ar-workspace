@@ -1,7 +1,7 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import type {WorkflowStep} from 'cloudflare:workers';
 import {runGranularFinancialHistory} from '../worker/financial/granular';
-import type {FinancialInvoice} from '../worker/opera/financial-history';
+import type {FinancialPayment,FinancialInvoice} from '../worker/opera/financial-history';
 import type {FinancialRun} from '../worker/financial/model';
 const run:FinancialRun={stepsVersion:2,id:'00000000-0000-4000-8000-000000000010',owner:'00000000-0000-4000-8000-000000000001',hotel:'KAT',from:'2026-08-12',to:'2026-09-11',status:'running',proof:'synthetic',discovered:true,accounts:1,startedAt:'2026-09-11T00:00:00.123456+00:00',initialImport:true,counts:{invoices:0,payments:0,applications:0}};
 const env={OPERA_BASE_URL:'https://synthetic.opera.invalid',OPERA_HOTEL_IDS:'KAT',OPERA_ENTERPRISE_ID:'synthetic',OPERA_CLIENT_ID:'synthetic',OPERA_CLIENT_SECRET:'synthetic',OPERA_APP_KEY:'synthetic'};
@@ -17,3 +17,20 @@ function setup(failLast=false){
 afterEach(()=>vi.unstubAllGlobals());
 it('many invoices use bounded durable batches with counts-only outputs and full final discovery',async()=>{const h=setup();expect(await runGranularFinancialHistory(env,run,h.step,h.ports)).toMatchObject({status:'succeeded',invoices:25});const batches=h.calls.filter(c=>c.name==='ar_financial_mapping_batch_save');expect(batches.map(c=>c.args.p_ids.length)).toEqual([10,10,5]);expect(batches[0].args.p_failures).toEqual([{invoiceId:'102',code:'financial_mapping_payment'}]);expect(h.calls.at(-1)).toMatchObject({name:'ar_financial_publish',args:{p_accounts:['SYNTHETIC-A']}});expect(JSON.stringify([...h.cache.values()])).not.toMatch(/SYNTHETIC-A|Synthetic account|invoiceId/);const before=h.mapping.mock.calls.length;await runGranularFinancialHistory(env,run,h.step,h.ports);expect(h.mapping).toHaveBeenCalledTimes(before);});
 it('resumes after a late checkpoint failure without re-reading completed invoice mappings',async()=>{const h=setup(true);await expect(runGranularFinancialHistory(env,run,h.step,h.ports)).rejects.toThrow('financial_storage_unavailable');expect(h.calls.some(c=>c.name==='ar_financial_publish')).toBe(false);await runGranularFinancialHistory(env,run,h.step,h.ports);expect(h.mapping.mock.calls.filter(c=>Number(c[1].transactionId)<121)).toHaveLength(20);expect(h.mapping.mock.calls.filter(c=>Number(c[1].transactionId)>=121)).toHaveLength(10);expect(h.calls.filter(c=>c.name==='ar_financial_publish')).toHaveLength(1);});
+
+it('version3 maps payment-date rows in batches independently of invoice Bill Date and saves only aggregate step outputs',async()=>{
+ const h=setup(),payments:FinancialPayment[]=Array.from({length:6},(_,n)=>({hotel:'KAT',accountId:'SYNTHETIC-A',kind:'payment',transactionId:String(900+n),transactionDate:'2026-09-14',postingDate:null,revenueDate:null,transferDate:null,transferredIn:false,transferredOut:false,currency:'THB',transactionCode:null,amount:'-100.00',appliedAmount:'100.00',unallocatedAmount:'0.00',transfer:'none_reported',classification:'unknown',reversal:'unknown'}));
+ const original=h.ports.rpc,records:any[]=[];let failOnce=true;
+ const rpc:typeof original=async(name,args:any={})=>{
+  if(name==='ar_financial_payment_prepare')return {mappingCount:6} as never;
+  if(name==='ar_financial_payment_batch_get')return {saved:false,payments:payments.slice(args.p_batch*5,args.p_batch*5+5)} as never;
+  if(name==='ar_financial_payment_batch_save'){if(args.p_batch===1&&failOnce){failOnce=false;throw Error('financial_storage_unavailable');}records.push(args);return {verified:args.p_results.filter((r:any)=>!r.error).length,unknown:args.p_results.filter((r:any)=>r.error).length,links:0} as never;}
+  return original(name,args);
+ };
+ const paymentMapping=vi.fn(async(_reader:unknown,payment:FinancialPayment)=>payment.transactionId==='901'?{paymentId:payment.transactionId,error:'financial_payment_pair_missing'}:{payment,invoices:[{...invoice(0),transactionDate:'2020-01-01'}],links:[]});
+ const ports={...h.ports,rpc,paymentMapping},current={...run,stepsVersion:3 as const,from:'2026-09-14',to:'2026-09-14'};
+ await expect(runGranularFinancialHistory(env,current,h.step,ports)).rejects.toThrow('financial_storage_unavailable');expect(h.calls.some(c=>c.name==='ar_financial_publish')).toBe(false);
+ await runGranularFinancialHistory(env,current,h.step,ports);
+ expect(records.map(r=>r.p_results.length)).toEqual([5,1]);expect(paymentMapping.mock.calls.filter(([,p])=>Number(p.transactionId)<905)).toHaveLength(5);expect(paymentMapping.mock.calls.filter(([,p])=>p.transactionId==='905')).toHaveLength(2);
+ expect(records[0].p_results[0].invoices[0].transactionDate).toBe('2020-01-01');expect(records[0].p_results[1].error).toBe('financial_payment_pair_missing');expect(JSON.stringify([...h.cache.values()])).not.toMatch(/SYNTHETIC-A|transactionId|2020-01-01/);
+});

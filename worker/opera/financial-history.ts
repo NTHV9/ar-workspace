@@ -149,7 +149,7 @@ function split(rows:Row[]) {return {invoices:rows.filter((row):row is FinancialI
 function checkedUnique(rows:Row[]) {const seen=new Set<string>();for(const row of rows){const key=memberKey(row);if(seen.has(key))throw new OperaError('duplicate_member',undefined,'financial_transaction_identity');seen.add(key);}}
 
 /** Completion means the returned query paginated cleanly, not that source date semantics are proved. */
-export async function readFinancialHistory(reader:OperaReader,input:FinancialHistoryQuery,readOptions:FinancialReadOptions={}):Promise<FinancialHistoryResult> {
+export async function readFinancialHistory(reader:Pick<OperaReader,'financialHistoryPage'>,input:FinancialHistoryQuery,readOptions:FinancialReadOptions={}):Promise<FinancialHistoryResult> {
  const query=historyQuery(input),settings=options(readOptions),requested=scope(query);let pages=0,members=0,roots=0,reportedRoots=0;
  const rows=await collectPages(async(offset,limit)=>{
   if(pages>=settings.maxPages)throw new OperaError('response_too_large',undefined,'financial_history_page_budget');
@@ -164,7 +164,7 @@ export async function readFinancialHistory(reader:OperaReader,input:FinancialHis
  return {...split(rows),coverage:{query,observedAt:settings.observedAt,pagination:'complete',pages,members,roots,reportedRoots,dateSemantics:'unverified',financialClassification:'unverified',completeForFinancialPeriod:false,
   missingTransactionDates:rows.filter(r=>r.transactionDate===null).length,outsideRequestedTransactionDates:rows.filter(r=>r.transactionDate!==null&&(r.transactionDate<query.start||r.transactionDate>query.end)).length,unknownPrimaryAmounts:rows.filter(r=>(r.kind==='invoice'?r.originalAmount:r.amount)===null).length}};
 }
-export async function readFinancialTransactionDetail(reader:OperaReader,input:FinancialDetailQuery,readOptions:FinancialReadOptions={}):Promise<FinancialTransactionDetail> {
+export async function readFinancialTransactionDetail(reader:Pick<OperaReader,'financialTransactionDetail'>,input:FinancialDetailQuery,readOptions:FinancialReadOptions={}):Promise<FinancialTransactionDetail> {
  const requested=scope(input),settings=options(readOptions);if(!['invoice','payment'].includes(input.kind))return invalid('kind');
  let requestedId:string;try{requestedId=transactionId(input.transactionId,input.kind==='invoice');}catch{return invalid('transaction_identity');}
  const query={...requested,kind:input.kind,transactionId:requestedId};
@@ -172,6 +172,24 @@ export async function readFinancialTransactionDetail(reader:OperaReader,input:Fi
  if(rows.length>settings.maxRows)throw new OperaError('response_too_large',undefined,'financial_history_row_budget');checkedUnique(rows);
  const transaction=rows.find(r=>r.kind===query.kind&&r.transactionId===query.transactionId)??null;
  return {status:transaction?'found':'missing',transaction,coverage:{query,observedAt:settings.observedAt,endpoint:'transaction_detail',completeForFinancialPeriod:false}};
+}
+/** Exact printed-number lookup without a date filter, including paid invoices and
+ * explicit expanded children. This does not change the dated financial reader. */
+export async function readScopedFinancialInvoiceHistory(reader:Pick<OperaReader,'invoiceHistory'>,input:FinancialScope,invoiceNumbers:readonly string[],readOptions:FinancialReadOptions={}):Promise<FinancialInvoice[]> {
+ const requested=scope(input),settings=options(readOptions);
+ if(!Array.isArray(invoiceNumbers)||invoiceNumbers.length<1||invoiceNumbers.length>20||new Set(invoiceNumbers).size!==invoiceNumbers.length||invoiceNumbers.some(n=>typeof n!=='string'||!/^(0|[1-9][0-9]*)$/.test(n)||n.length>80))return invalid('invoice_numbers');
+ let pages=0,members=0;
+ const rows=await collectPages(async(offset,limit)=>{
+  if(pages>=settings.maxPages)throw new OperaError('response_too_large',undefined,'financial_history_page_budget');
+  const result=envelope(await reader.invoiceHistory(requested.accountId,[...invoiceNumbers],offset,limit));pages++;
+  if(typeof result.totalResults!=='number'||!Number.isSafeInteger(result.totalResults)||result.totalResults<0)return bad('pagination_metadata');
+  const page=groupedRows(result,requested,['invoice']);members+=page.rows.length;
+  if(members>settings.maxRows)throw new OperaError('response_too_large',undefined,'financial_history_row_budget');
+  for(const row of page.rows){if(row.kind!=='invoice'||!invoiceNumbers.includes(row.invoiceNo??'')&&!(row.collectionRole==='child'&&invoiceNumbers.includes(row.parentInvoiceNo??'')))return bad('invoice_number_scope');}
+  const emptyTerminal=page.rows.length===0&&result.totalResults===0&&result.hasMore===false;
+  return {rows:page.rows,logicalCount:page.roots,totalResults:result.totalResults,hasMore:result.hasMore as boolean|undefined,nextOffset:emptyTerminal?undefined:verifiedNextCursor(result,offset,limit)};
+ },memberKey,settings.pageSize);
+ return split(rows).invoices;
 }
 function appliedQuery(input:AppliedPaymentQuery):AppliedPaymentQuery {
  const requested=scope(input);let invoiceTransactionId:string;

@@ -1,5 +1,7 @@
 -- Synthetic-only transaction. Run after the financial ingestion migration; never commits.
 begin;
+-- Exercise the original v1 publication API after newer defaults are installed.
+alter table ar_private.financial_runs alter column steps_version set default 1;
 do $$
 declare
  actor uuid;other uuid:=gen_random_uuid();command uuid:=gen_random_uuid();run uuid;second_run uuid;mapping_run uuid;failed_run uuid;r jsonb;before_publications bigint;

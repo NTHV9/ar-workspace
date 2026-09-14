@@ -1,4 +1,6 @@
 begin;
+-- This fixture explicitly exercises an existing v2 worker during v3 rollout.
+alter table ar_private.financial_runs alter column steps_version set default 2;
 do $$
 declare actor uuid;account text:='SYNTHETIC-GRANULAR-'||gen_random_uuid();input jsonb;run uuid;rows jsonb;coverage jsonb;result jsonb;batch jsonb;ids text[];
 begin
