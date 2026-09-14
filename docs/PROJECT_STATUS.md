@@ -1,6 +1,16 @@
 # สถานะโครงการใหม่
 
 
+## Checkpoint ตัดบิลย่อยออกและรวมเครดิตในยอดค้าง — 14 กันยายน 2026
+
+- Implemented: Portfolioอ่านatomicRPC ar_portfolio_accounts; itemsนับnonzero/non-childและคงnativeAccountnet/Agingเดิม. AccountAPIกรองchild, AccountDetailกรองซ้ำเพื่อป้องกันstaleresponse/deeplink; ไม่ลบsource/historyและไม่หักchildamountจากAccountnetซ้ำ
+- Period All outstandingนับsignednonzero rootsพร้อมยอดสุทธิ; มีpositive/creditbreakdownและcreditnote. Billing/Due/Over60/Follow-Upยังเป็นงานยอดบวก, เปอร์เซ็นต์ใช้positivebase. New InvoicesคงBillDate/zero/clearedและตัดchildออกจากdrillด้วย
+- Signed inventoryversionใช้กับcaptureใหม่และrecaptureเฉพาะวันนี้จากverifiedsavedpublication. Legacypositive-onlycaptureไม่ใส่เครดิตปัจจุบันย้อนหลัง; Allnet/countที่ตรวจไม่ได้เป็น — แต่positiveworkยังอยู่ และไม่มีข้อความแจ้งเครดิตย้อนหลังในUIตามคำขอล่าสุด
+- Tested:937unit/105files,Typecheck/Build/publicassetsผ่าน; browser8focusedและ23regressionsผ่านรวมnetzero/negative,childdeeplink,creditไม่ถูกเลือกไปเก็บหนี้,legacyไม่มีwarning. SQL71migrations/28fixturesผ่านในisolatedloopback; serverstopped,ไม่มีproviderrequestsในSQLtests
+- Applied `20260914055234_ar_signed_outstanding_portfolio` (renamedCLI-createdfileตามserver-issuedversion; SQLSHA47b275686c6e9c4302b359116377e1e3b695a3a0d4e1cdf5e5918403d384e706คงเดิม). LiveRPCPortfolio/Period countและnetตรงกัน; nativeAccountnetตรงrootledgerครบทุกAccount. Today'scapturesทั้งสองโรงแรมsigned-v1และเก็บnegativeครบ; ไม่แก้วันย้อนหลัง/ledger/OPERA
+- รายละเอียดใน SIGNED_OUTSTANDING_PLAN_20260914.md; evidenceใหม่synthetic1280/390,คงreference/runtimecapturesก่อนหน้า. DeploymentและCI mergeกำลังตรวจในreleaseนี้
+
+
 ## Checkpoint New Invoices ใช้ Bill Date จากฐาน Portfolio — 14 กันยายน 2026
 
 - เจ้าของย้ำใช้ invoice ledger เดียวกับ Portfolio และกรอง Bill Date เท่านั้น รวม stored rows ที่ยอดคงค้างเป็นศูนย์แล้ว. แก้ทั้ง summary, Hotel split และ drill ให้ใช้ RPCใหม่ ar_dashboard_invoice_entries; ไม่ต้องรอ financial history อีกชุด

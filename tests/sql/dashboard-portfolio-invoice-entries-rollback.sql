@@ -56,17 +56,17 @@ begin
  if r->>'source' is distinct from 'portfolio' or r->>'view' is distinct from 'invoice_entries'
   or r->'coverage'->>'complete' is distinct from 'true' or r->'summary'->>'dateBasis' is distinct from 'invoice_transaction_date'
   or r->'summary'->>'amountBasis' is distinct from 'original_invoice_amount' or r->'summary'->>'amount' is distinct from '277.20'
-  or r->'summary'->>'invoiceCount' is distinct from '5' or r->'summary'->>'compressedChildren' is distinct from '1'
-  or r->'summary'->>'credits' is distinct from '1' or r->>'total' is distinct from '6'
+  or r->'summary'->>'invoiceCount' is distinct from '5' or r->'summary'->>'compressedChildren' is distinct from '0'
+  or r->'summary'->>'credits' is distinct from '1' or r->>'total' is distinct from '5'
  then raise exception 'Portfolio scope changed dates, signs, roots or original amount';end if;
  if (select count(*) from jsonb_array_elements(r->'rows')v where v->>'invoiceNo'='REPEATED')<>2
   or exists(select 1 from jsonb_array_elements(r->'rows')v where v->>'transactionDate'<>(d-1)::text or v->>'transactionId'='107')
   or not exists(select 1 from jsonb_array_elements(r->'rows')v where v->>'transactionId'='106' and v->>'originalAmount'='77.00' and v->>'openAmount'='0.00' and v->>'sourceStatus'='observed')
   or not exists(select 1 from jsonb_array_elements(r->'rows')v where v->>'transactionId'='105' and v->>'originalAmount'='-10.40' and v->>'openAmount'='-5.00')
-  or not exists(select 1 from jsonb_array_elements(r->'rows')v where v->>'transactionId'='104' and v->>'collectionRole'='child')
+  or exists(select 1 from jsonb_array_elements(r->'rows')v where v->>'transactionId'='104' or v->>'collectionRole'='child')
  then raise exception 'raw Portfolio rows were deduplicated by printed number or lost details';end if;
  r:=public.ar_dashboard_invoice_entries(actor,d-1,d-1,null,null,kind);
- if r->'summary'->>'invoiceCount' is distinct from '6' or r->'summary'->>'amount' is distinct from '302.70' or r->>'total' is distinct from '7'
+ if r->'summary'->>'invoiceCount' is distinct from '6' or r->'summary'->>'amount' is distinct from '302.70' or r->>'total' is distinct from '6'
  then raise exception 'Hotel + Account + transaction identities collapsed or type ignored';end if;
  r:=public.ar_dashboard_invoice_entries(actor,d-1,d-1,'KAT',other_scope,kind||'_OTHER');
  if r->'summary'->>'amount' is distinct from '5.50' or r->'summary'->>'invoiceCount' is distinct from '1' then raise exception 'Account filter ignored';end if;
@@ -88,7 +88,7 @@ begin
  before_close:=r->'summary';
  update public.ar_invoices set open=0,verification_state='cleared' where hotel='KAT' and account_id=scope and id='101';
  r:=public.ar_dashboard_invoice_entries(actor,d-1,d-1,'KAT',scope);
- if r->'summary' is distinct from before_close or r->>'total' is distinct from '6'
+ if r->'summary' is distinct from before_close or r->>'total' is distinct from '5'
   or not exists(select 1 from jsonb_array_elements(r->'rows')v where v->>'transactionId'='101' and v->>'openAmount'='0.00' and v->>'originalAmount'='100.10' and v->>'sourceStatus'='observed')
  then raise exception 'clearing an invoice reduced its Bill Date count or original amount';end if;
  update public.ar_invoices set verification_state='verified' where hotel='KAT' and account_id=scope and id='101';
@@ -147,7 +147,7 @@ begin
  insert into public.ar_invoices(hotel,account_id,id,invoice_no,transaction_date,original,open,verification_state,collection_role,compressed,synced_at)
  values('KAT',scope,'108','UNVERIFIED',d-1,1,1,'verified','unverified',null,stamp);
  r:=public.ar_dashboard_invoice_entries(actor,d-1,d-1,'KAT',scope);
- if r->>'total' is distinct from '7' or r->'summary'->>'invoiceCount' is distinct from '5' or r->'summary'->>'knownAmount' is distinct from '277.20'
+ if r->>'total' is distinct from '6' or r->'summary'->>'invoiceCount' is distinct from '5' or r->'summary'->>'knownAmount' is distinct from '277.20'
   or r->'coverage'->>'complete' is distinct from 'false' or r->'summary'->>'unknownAmounts' is distinct from '1' or r->'summary'->'amount' is distinct from 'null'::jsonb
  then raise exception 'unverified non-child was hidden or converted to known count/value';end if;
  update public.ar_invoices set collection_role='standalone',compressed=false,verification_state='missing' where hotel='KAT' and account_id=scope and id='108';
@@ -155,7 +155,7 @@ begin
  if r->'coverage'->>'complete' is distinct from 'false' or r->'summary'->>'notObserved' is distinct from '1' then raise exception 'missing non-child accepted';end if;
  update public.ar_invoices set open=0 where hotel='KAT' and account_id=scope and id='108';
  r:=public.ar_dashboard_invoice_entries(actor,d-1,d-1,'KAT',scope);
- if r->>'total' is distinct from '7' or r->'coverage'->>'complete' is distinct from 'false' or r->'summary'->>'notObserved' is distinct from '1' then raise exception 'unverified zero was hidden or trusted';end if;
+ if r->>'total' is distinct from '6' or r->'coverage'->>'complete' is distinct from 'false' or r->'summary'->>'notObserved' is distinct from '1' then raise exception 'unverified zero was hidden or trusted';end if;
  update public.ar_invoices set open=0,verification_state='cleared' where hotel='KAT' and account_id=scope and id='108';
  update public.ar_invoices set verification_state='missing' where hotel='KAT' and account_id=scope and id='104';
  r:=public.ar_dashboard_invoice_entries(actor,d-1,d-1,'KAT',scope);

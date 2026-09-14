@@ -1,6 +1,15 @@
 # ข้อสรุปล่าสุด ข้อเสนอ และเรื่องที่ต้องยืนยัน
 
 
+## ยืนยันล่าสุด — ซ่อนบิลย่อยและรวมเครดิตในยอดค้าง — 14 กันยายน 2026
+
+หน้า Invoice / Folio ไม่แสดงรายการ collection_role=child และไม่รวมบิลย่อยในจำนวน/ยอดสรุป. จำนวนรายการ Portfolio ใช้ nonzero non-child rows; ยอดเงิน Account/Aging จาก OPERA เดิมไม่รวม child ซ้ำอยู่แล้ว จึงห้ามนำยอด child ไปหักออกอีกครั้ง. เก็บ source rows และความสัมพันธ์ไว้ภายใน ไม่ลบประวัติ.
+
+Period analysis: All outstanding invoices รวมบิลหลักยอดค้างบวกและรายการยอดติดลบที่ไม่ใช่ child นับแต่ละ identity ครั้งเดียวและรวมยอดแบบมีเครื่องหมาย. งานวางบิล/Due date/Over60/Follow-Up ยังเป็นกลุ่มยอดบวกสำหรับติดตามหนี้; เปอร์เซ็นต์งานใช้ฐานยอดบวก. New Invoices ยังคงกรอง Bill Date และรวม verified zero/cleared invoices ตามที่ยืนยันก่อนหน้า แต่ไม่แสดง child ใน drill.
+
+Snapshot ที่เก็บตั้งแต่รุ่นนี้มี signed inventory; วันที่เก่าที่มีเฉพาะยอดบวกไม่เติมเครดิตปัจจุบันย้อนกลับ. ยอดรวมที่ตรวจไม่ได้เป็น — โดยไม่แสดงข้อความแจ้งเรื่องข้อมูลเครดิตย้อนหลังไม่ครบ ตามที่เจ้าของย้ำ. สถิติงานยอดบวกเดิมยังใช้ได้ตามหลักฐานของวันนั้น.
+
+
 ## ยืนยันล่าสุด — New Invoices ใช้ชุดข้อมูล Portfolio — 14 กันยายน 2026
 
 เจ้าของย้ำให้ New Invoices ใน Period analysis ใช้แหล่งข้อมูลเดียวกับ Portfolio แล้วกรอง Bill Date ของ OPERA ให้ตรงกับวันหรือช่วงที่เลือก ไม่อ่านอีกชุดจาก financial history. Bill Date คือ invoice transaction_date ที่หน้า Account แสดง ซึ่งมาจาก OPERA invoice.transactionDate; ไม่ใช้วันซิงก์หรือ first observed เป็นวันบิล.

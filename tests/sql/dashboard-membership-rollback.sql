@@ -15,7 +15,11 @@ begin
  insert into public.ar_invoices(hotel,account_id,id,transaction_date,original,open,verification_state,collection_role,synced_at)
  select 'KAT',scope,id,d-1,100,amount,state,'unverified',clock_timestamp() from(values('VERIFIED-ZERO',0,'verified'),('VERIFIED-CREDIT',-25,'verified'),('CLEARED-CREDIT',-30,'cleared'))v(id,amount,state);
  r:=public.ar_dashboard_balances(actor,d,'KAT',scope);
- if r->>'complete'<>'true' or r->>'total'<>'1' or r->>'unverified'<>'0' then raise exception 'confirmed nonpositive unknown relationships entered open-debt scope';end if;
+ if to_regprocedure('public.ar_portfolio_accounts(uuid)') is not null then
+  if r->>'complete'<>'false' or r->>'total'<>'3' or r->>'unverified'<>'2' then raise exception 'signed unknown credit relationships were hidden or trusted';end if;
+  -- Signed scope retains nonzero credits; restore only these synthetic rows to verified zero for the remaining uncertainty cases.
+  update public.ar_invoices set open=0,verification_state='cleared' where hotel='KAT' and account_id=scope and id in('VERIFIED-CREDIT','CLEARED-CREDIT');
+ elsif r->>'complete'<>'true' or r->>'total'<>'1' or r->>'unverified'<>'0' then raise exception 'confirmed nonpositive unknown relationships entered positive-only scope';end if;
  -- Relationship ambiguity on a positive balance is still unsafe, even when the source amount is verified.
  -- Missing/unknown source amounts remain explicit even at zero or credit values; no absence-to-zero inference.
  for case_row in select * from(values('POSITIVE-RELATION',50,'verified'),('MISSING-ZERO',0,'missing'),('UNKNOWN-ZERO',0,'unknown'),('UNKNOWN-CREDIT',-10,'unknown'),('MISSING-POSITIVE',20,'missing'))v(id,amount,state) loop
