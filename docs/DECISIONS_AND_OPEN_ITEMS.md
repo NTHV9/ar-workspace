@@ -1,5 +1,14 @@
 # ข้อสรุปล่าสุด ข้อเสนอ และเรื่องที่ต้องยืนยัน
 
+
+## ยืนยันล่าสุด — New Invoices ใช้ชุดข้อมูล Portfolio — 14 กันยายน 2026
+
+เจ้าของย้ำให้ New Invoices ใน Period analysis ใช้แหล่งข้อมูลเดียวกับ Portfolio แล้วกรอง Bill Date ของ OPERA ให้ตรงกับวันหรือช่วงที่เลือก ไม่อ่านอีกชุดจาก financial history. Bill Date คือ invoice transaction_date ที่หน้า Account แสดง ซึ่งมาจาก OPERA invoice.transactionDate; ไม่ใช้วันซิงก์หรือ first observed เป็นวันบิล.
+
+ใช้ฐาน invoice ledger เดียวกับ Portfolio แต่กรองเฉพาะ Hotel / Account Type / Account / Bill Date โดยไม่เพิ่มเงื่อนไข open ไม่เท่ากับศูนย์ของหน้าจอ Portfolio. รวมรายการที่เก็บไว้ซึ่งยอดคงค้างเป็นศูนย์แล้ว เพื่อไม่ให้การปิดยอดทำให้จำนวนบิลตาม Bill Date ลดลง. จำนวน/ยอดสรุปนับ verified standalone/parent roots ครั้งเดียว ไม่บวก children ซ้ำ; รวม signed credit roots. ยอด New Invoices คง original invoice amount และ detail แสดง current open แยกกัน. ชุดข้อมูลคือตาราง Invoice ที่ระบบบันทึกจาก OPERA ไม่เติมรายการจากอีกชุด financial history.
+
+ไม่เปลี่ยนเกณฑ์ Outstanding at period end, current Aging หรือ Payment dates/หลักฐานการรับเงิน. ไม่เพิ่มการดึง financial history อัตโนมัติเพื่อคำนวณ New Invoices.
+
 ## ยืนยันล่าสุด — จำนวน Invoice และสถานะใน Current Aging (13 กันยายน 2026)
 
 - เจ้าของอนุมัติให้เพิ่มบนเว็บจริงโดยคงโครงหน้าปัจจุบันตามภาพที่ส่ง ไม่ใช้โครงภาพจำลองใหม่ที่ย่อตารางหรือเปลี่ยนสัดส่วนหน้า

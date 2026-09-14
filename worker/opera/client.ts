@@ -48,26 +48,11 @@ export class OperaReader {
     if(!['KAT','TSK'].includes(scope.hotel)||scope.hotel!==this.config.hotelId||typeof scope.accountId!=='string'||!scope.accountId||scope.accountId.length>200||scope.accountId.trim()!==scope.accountId||scope.accountId==='.'||scope.accountId==='..'||/[\x00-\x1f\x7f/\\]/.test(scope.accountId))throw new OperaError('invalid_request',undefined,'financial_scope');
   }
   /** A separate dated read; the incumbent current-debt refresh does not call it. */
-  private financialHistoryParameters(scope:FinancialHistoryRead,offset=0,limit=20):string[][] {
+  financialHistoryPage(scope:FinancialHistoryRead,offset=0,limit=20) {
     this.financialScope(scope);
     const date=(v:string)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!v.startsWith('0000-')&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
     if(!date(scope.start)||!date(scope.end)||scope.start>scope.end||(Date.parse(scope.end)-Date.parse(scope.start))/86400000>=366||!Array.isArray(scope.kinds)||scope.kinds.length<1||scope.kinds.length>2||new Set(scope.kinds).size!==scope.kinds.length||scope.kinds.some(k=>!['invoice','payment'].includes(k))||![10,20].includes(limit))throw new OperaError('invalid_request',undefined,'financial_history_query');
-    return [['hotelIds',scope.hotel],['start',scope.start],['end',scope.end],['inclZeroBalance','true'],['inclDetails','true'],['orderBy','TransactionDate'],['sortOrder','Asc'],...scope.kinds.map(kind=>['fetchInstructions',kind==='invoice'?'Invoices':'Payments']),...this.page(offset,limit)];
-  }
-  financialHistoryPage(scope:FinancialHistoryRead,offset=0,limit=20) {
-    return this.read(`/ars/v1/invoicePayments/accounts/${this.id(scope.accountId)}`,this.financialHistoryParameters(scope,offset,limit));
-  }
-  /** Administrative GET-only comparison of a fixed set of source filters. */
-  financialMembershipProbePage(scope:FinancialHistoryRead,variant:string,offset=0,limit=20){
-    if(!['dated','undated','unordered','include-unbilled','exclude-printed','include-both','extended-end'].includes(variant))throw new OperaError('invalid_request',undefined,'financial_probe_variant');
-    let query=this.financialHistoryParameters(scope,offset,limit);
-    if(variant==='undated')query=query.filter(([key])=>!['start','end','orderBy','sortOrder'].includes(key));
-    if(variant==='unordered')query=query.filter(([key])=>!['orderBy','sortOrder'].includes(key));
-    if(['include-unbilled','include-both'].includes(variant))query.push(['unBilled','true']);
-    if(variant==='exclude-printed')query.push(['printed','false']);
-    if(variant==='include-both')query.push(['printed','true']);
-    if(variant==='extended-end'){const date=new Date(scope.end+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+1);query=query.map(([key,value])=>[key,key==='end'?date.toISOString().slice(0,10):value]);}
-    return this.read(`/ars/v1/invoicePayments/accounts/${this.id(scope.accountId)}`,query);
+    return this.read(`/ars/v1/invoicePayments/accounts/${this.id(scope.accountId)}`,[['hotelIds',scope.hotel],['start',scope.start],['end',scope.end],['inclZeroBalance','true'],['inclDetails','true'],['orderBy','TransactionDate'],['sortOrder','Asc'],...scope.kinds.map(kind=>['fetchInstructions',kind==='invoice'?'Invoices':'Payments']),...this.page(offset,limit)]);
   }
   financialTransactionDetail(scope:FinancialReadScope&{transactionId:string}) {
     this.financialScope(scope);
