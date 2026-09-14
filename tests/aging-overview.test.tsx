@@ -43,7 +43,7 @@ describe('aging distribution evidence',()=>{
  it('shows a verified all-zero source as zero without drawing a full ring',()=>{
   const html=render([0,0,0,0,0,0],0);
   expect(html).toContain('data-chart-mode="zero"');
-  expect(html).toContain('No open balance');
+  expect(html).toContain('Net balance is zero');
   expect(html).not.toContain('100.0%');
  });
 });
