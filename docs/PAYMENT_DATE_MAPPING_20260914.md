@@ -21,4 +21,4 @@ New Invoices remains the Portfolio Bill Date cohort, including zero balances. Th
 - Bounded production GET probes confirmed payment-side invoice discovery, exact allocated totals and reciprocal sign semantics. History and detail supply complementary optional descriptors; the reader is being validated against that provider shape before enabling new runs.
 - Deploy v3-aware Worker before applying the migration that defaults new runs to v3. Backfill bounded affected payment periods and verify live KPI totals, drilldown and Hotel splits before closeout.
 
-Status: implemented and locally tested; production validation in progress. No migration applied at this checkpoint.
+Status: v3 enabled after successful read-only probes for both Hotels. Applied migration 20260914065819_ar_financial_payment_mapping_steps, unchanged SQL SHA256 71c8899ddbb2ffb4eb6c5bc809a304e8a5c6744ae7eb8d8fabe09f7f2f835dc5. Bounded 11–14 September backfills and final UI verification are in progress.

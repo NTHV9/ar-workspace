@@ -1,5 +1,17 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Payment-date invoice allocations — 14 กันยายน 2026
+
+- Fixed: Period analysis discovers Invoice allocations from each OPERA Payment in the selected Payment-date range, including older Bill Dates. New Invoices keeps the Portfolio Bill Date definition including zero; OPERA balances and document flows are unchanged.
+- Both directions of Pay History and independent history/detail agree on identities, THB, signed allocations and stable source facts. Optional descriptors are corroborated only where supplied; transfer evidence must be explicit.
+- SQL v3 uses five-payment durable batches, atomic context/link publication and verified-only retirement. Failed/expired work is cleaned by exact run ID. Independent invoice proof remains usable if complete payment proof fails.
+- Tested: 1021 unit tests / 107 files before removing the temporary diagnostic, typecheck/build passed; 72 migrations / 29 isolated SQL suites passed. Independent review found two issues (expiry cleanup, suppressed independent links); both fixed and replayed. 24 deployed browser regressions passed with synthetic API fixtures; no baseline changes retained.
+- Live read-only probes passed for both KAT/TSK, including a payment allocated to 20 older invoices. No customer extracts or identifiers in Git. Temporary diagnostic is being removed from final runtime.
+- Applied migration 20260914065819_ar_financial_payment_mapping_steps after v3-aware deployment. SQL SHA256 71c8899ddbb2ffb4eb6c5bc809a304e8a5c6744ae7eb8d8fabe09f7f2f835dc5; canonical file renamed to server-issued version without changing bytes. Database 72 MB at this checkpoint.
+- Enabled: new financial-history runs use v3. Bounded 11–14 September backfills requested for both Hotels; final totals/UI verification and final deployment/merge remain in progress.
+- Details: PAYMENT_DATE_MAPPING_20260914.md. No paid resource, account permissions, email send or OPERA ledger mutation.
+
+
 
 ## Checkpoint ตัดบิลย่อยออกและรวมเครดิตในยอดค้าง — 14 กันยายน 2026
 
