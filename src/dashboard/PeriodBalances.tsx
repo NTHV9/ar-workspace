@@ -4,6 +4,7 @@ import {useSource,type Source} from './data';
 import type {DashboardHotelOverviewResponse} from '../../worker/dashboard/hotel-model';
 import {overviewSource} from './hotel-data';
 import {HotelSplit,type HotelMeasure} from './HotelSplit';
+import {BillingStatusOverview} from './BillingStatusOverview';
 import {accountIdentity,scopeQuery,type DashboardScope,validPeriod} from './model';
 import {balancesResult,balanceLabels,amount,number,percent,stamp} from './period-data';
 import {useCollectionPolicy} from '../collection/PolicyContext';
@@ -39,6 +40,7 @@ export function PeriodBalances({scope,token,revision,onDetail,overview,children}
    <b id={`${id}-${key}-amount`} data-testid={key==='open'?'dashboard-closing-amount':undefined}>{amount(value)}</b>
    <small id={`${id}-${key}-hint`}>{key==='open'?(breakdown?'Net open balance · ':'Open balance · ')+(scopeHotel==='All'?'Both hotels':scopeHotel):key==='unbilled'?'Billing-required invoices':key==='past_due'?(count==null&&known?'Due dates need verification':'Based on the recorded Due date'):'OPERA invoice age · all billing statuses'}{key==='open'&&known&&breakdown?.creditCoverageComplete&&credit?.count!=null&&credit.count>0&&credit.amount!=null&&<><br/>Includes {number(credit.count)} credit {credit.count===1?'item':'items'} · <span style={{whiteSpace:'nowrap'}}>{amount(credit.amount)}</span></>}</small>
   </button><HotelSplit visual rows={hotelMeasures(key)} id={'metric-'+key} label={label}/></article>;})}</div>
+  <BillingStatusOverview data={data} canDrill={canDrill} onOpen={key=>onDetail({kind:'balance',metric:key})}/>
  </section>
  {children}
  <section className="dashboard-period-details" aria-label="Closing-date billing and follow-up details">
