@@ -175,13 +175,15 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     };
     if(path==='/api/collection-queue')return json({rows:await attachExceptions(await allRows('ar_collection_rows','select=*&order=hotel,account_id,id')),source:'saved_opera',asOf:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'})});
     if (path === '/api/portfolio') {
-      const accounts=await allRows('ar_accounts','select=*&order=hotel,id');
-      const refresh=env.SUPABASE_SECRET_KEY?await backendRpc<{hotels:{last_success_at?:string|null}[];running:boolean}>(env,'ar_refresh_status',{}):{hotels:[],running:false};
-      return json({accounts,source:'opera',status:refresh.hotels.some(h=>h.last_success_at)?'connected':'not_connected',refresh});
+      if(!user.id)return json({error:'unauthorized'},401);
+      const data=await backendRpc<{accounts?:unknown[];source?:string;status?:string;refresh?:{hotels?:unknown[];running?:boolean};error?:string}>(env,'ar_portfolio_accounts',{p_actor:user.id});
+      if(data?.error==='portfolio_forbidden')return json({error:'forbidden'},403);
+      if(!data||data.error||!Array.isArray(data.accounts)||data.source!=='opera'||!['connected','not_connected'].includes(data.status??'')||!Array.isArray(data.refresh?.hotels)||typeof data.refresh?.running!=='boolean')throw Error('database_unavailable');
+      return json(data);
     }
     const [, , , hotel, id] = path.split('/');
     const query = `hotel=eq.${encodeURIComponent(decodeURIComponent(hotel))}&account_id=eq.${encodeURIComponent(decodeURIComponent(id))}`;
-    const invoices=await allRows('ar_invoices',`select=*&${query}&open=neq.0&order=id`);
+    const invoices=await allRows('ar_invoices',`select=*&${query}&open=neq.0&collection_role=neq.child&order=id`);
     let workflows:unknown[]=[];let workflowStatus='available';
     if(invoices.length)try{workflows=await allRows('ar_invoice_workflow',`select=*&${query}&order=invoice_id`);}catch{workflowStatus='unavailable';}
     const byId=new Map(workflows.map(w=>{const row=w as {invoice_id:string};return [row.invoice_id,row];}));

@@ -11,6 +11,7 @@ export interface DashboardBalanceRow {
 export interface DashboardBalancesResponse {
  asOfDate:string;mode:'current'|'snapshot'|'unavailable';capturedAt:string|null;sourceAt:string|null;
  freshness?:{refreshingHotels:string[];failedHotels:string[]};
+ openBalanceBreakdown?:{positive:{count:number|null;amount:string|null};credit:{count:number|null;amount:string|null};creditCoverageComplete:boolean};
  complete:boolean;missingHotels:string[];reason?:string;metrics:DashboardBalanceMetric[];stages:DashboardBalanceStage[];
  rows:DashboardBalanceRow[];total:number;unverified:number;
 }

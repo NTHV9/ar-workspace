@@ -13,6 +13,8 @@ export function balancesResult(value:unknown):DashboardBalancesResponse{
  if(value.rows.some(r=>!object(r)||!['KAT','TSK'].includes(String(r.hotel))||typeof r.accountId!=='string'||typeof r.invoiceId!=='string'||decimal(r.open)===null||typeof r.verified!=='boolean'))throw Error('dashboard_balances_invalid');
  const freshness=value.freshness;
  if(freshness!==undefined&&(!object(freshness)||!['refreshingHotels','failedHotels'].every(key=>Array.isArray(freshness[key])&&(freshness[key] as unknown[]).every(h=>h==='KAT'||h==='TSK'))))throw Error('dashboard_balances_invalid');
+ const breakdown=value.openBalanceBreakdown;
+ if(breakdown!==undefined&&(!object(breakdown)||!object(breakdown.positive)||!object(breakdown.credit)||!metric(breakdown.positive)||!metric(breakdown.credit)||typeof breakdown.creditCoverageComplete!=='boolean'||breakdown.positive.amount!==null&&Number(breakdown.positive.amount)<0||breakdown.credit.amount!==null&&Number(breakdown.credit.amount)>0))throw Error('dashboard_balances_invalid');
  return value as unknown as DashboardBalancesResponse;
 }
 export function paidInvoicesResult(value:unknown):DashboardPaymentInvoicesResponse{
