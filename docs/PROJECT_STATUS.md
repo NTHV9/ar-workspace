@@ -4,7 +4,9 @@
 
 - Amplified the existing teal primary balance, supporting semantic colors and activity icons. Added interactive independent Billing status indicators using existing counts and explicit positive-invoice metadata. No source/backend/financial calculation changes.
 - Review caught that setup overlaps other billing states; final bars are independent, permit overlap, require positive-count metadata, and never infer a denominator from signed open counts. Invalid/missing/zero populations cannot produce invented percentages.
-- Typecheck/build and 1,041 unit tests / 108 files passed. Thirty-one browser cases passed, including source guards, signed amounts, overlapping setup, zero/missing data, drilldown and mobile clipping. Synthetic desktop/mobile captures inspected; original references retained. Independent review cleared the final implementation. Deployment/live verification pending.
+- Typecheck/build and 1,041 unit tests / 108 files passed. Thirty-one browser cases passed locally and on deployed assets, including source guards, signed amounts, overlapping setup, zero/missing data, drilldown and mobile clipping. Synthetic desktop/mobile captures inspected; original references retained. Independent review cleared the final implementation.
+- Deployed source 6f8c123270e0eec279ccb8eb6dca526920cd8a7c, Worker c60048e2-e83f-4f4b-aec3-b535f56edf9d; health verified exact source. Signed-in live visual check confirmed the stronger metric hierarchy, verified positive-invoice status indicators, and the Not billed indicator opening the matching invoice details.
+- [PR31](https://github.com/NTHV9/ar-workspace/pull/31) merged 1ef567f5d49af6d704bbe9898c674f7ccc3652a5 after [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34846891912) and push CI passed. Merge tree matches tested/deployed source; closeout documentation only. No financial data or provider configuration changed.
 
 
 ## Checkpoint Period analysis presentation — 14 กันยายน 2026
