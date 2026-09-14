@@ -266,3 +266,37 @@ describe('complementary invoice source dates',()=>{
   await expect(readPaymentApplications(h.reader,h.payment)).rejects.toMatchObject({stage:'financial_payment_mapping_invoice_facts'});
  });
 });
+
+describe('reciprocal posting dates use both independently corroborated sources',()=>{
+ it.each(['history','detail'] as const)('accepts a slim payment pair posting date supplied only by %s',async source=>{
+  const postingDate='2026-09-12';
+  const h=setup({mutate:(route,_count,value)=>{
+   if(route==='paymentDetail'||route==='paymentScopeHistory'){
+    const row=groupRows(value,'payments')[0];
+    if((source==='detail')===(route==='paymentDetail'))row.postingDate=postingDate;else delete row.postingDate;
+   }
+   if(route==='invoiceBack')rows(value)[0].postingDate=postingDate;return value;
+  }});h.payment.postingDate=source==='history'?postingDate:null;
+  const result=await readPaymentApplications(h.reader,h.payment);expect(result.links).toHaveLength(2);expect(result.payment).toBe(h.payment);
+  expect(result.payment.postingDate).toBe(source==='history'?postingDate:null);
+ });
+ it.each(['history','detail'] as const)('accepts an expanded invoice pair posting date supplied only by %s',async source=>{
+  const postingDate='2025-08-02';
+  const h=setup({mutate:(route,_count,value,url)=>{
+   if(route==='invoiceHistory'||route==='invoiceDetail')for(const invoice of groupRows(value,'invoices')){
+    if((source==='detail')===(route==='invoiceDetail'))invoice.postingDate=postingDate;else delete invoice.postingDate;
+   }
+   if(route==='paymentHistory')for(const application of rows(value))application.postingDate='2025-08-01';
+   if(route==='invoiceBack')return {details:[{transactionNo:url.pathname.match(/\/transactions\/(\d+)\//)![1],invoiceNo:url.searchParams.get('invoiceNo'),paymentTrxNo:301,appliedAmount:money('100.00'),transactionDate:'2025-08-01',postingDate}]};
+   return value;
+  }});
+  const result=await readPaymentApplications(h.reader,h.payment);expect(result.links).toHaveLength(2);
+  expect(result.links.every(link=>link.invoicePostingDate===(source==='history'?postingDate:null))).toBe(true);
+ });
+ it('rejects a reciprocal date that neither corroborated source knows',async()=>{
+  const h=setup({mutate:(route,_count,value)=>{
+   if(route==='paymentDetail')delete groupRows(value,'payments')[0].postingDate;
+   if(route==='invoiceBack')rows(value)[0].postingDate='2026-09-12';return value;
+  }});await expect(readPaymentApplications(h.reader,h.payment)).rejects.toMatchObject({stage:'financial_payment_mapping_back_date'});
+ });
+});

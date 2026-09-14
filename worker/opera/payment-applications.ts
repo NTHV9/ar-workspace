@@ -125,7 +125,7 @@ function contextFor(application:InvoiceApplication,contexts:FinancialInvoice[]):
  if(application.transactionDate!==null&&application.transactionDate!==invoice.transactionDate)return bad('invoice_date');
  return invoice;
 }
-function pair(rows:Obj[],payment:FinancialPayment,invoice:FinancialInvoice,application:InvoiceApplication){
+function pair(rows:Obj[],payment:FinancialPayment,invoice:FinancialInvoice,application:InvoiceApplication,paymentSources:readonly FinancialPayment[],invoiceSources:readonly FinancialInvoice[]){
  const seen=new Set<string>();let match:Obj|undefined,expandedMatch=false;
  for(const row of rows){
   const expanded=row.paymentTrxNo!==undefined;
@@ -141,11 +141,11 @@ function pair(rows:Obj[],payment:FinancialPayment,invoice:FinancialInvoice,appli
   if(magnitude(cents(rowMoney(match.originalAmount)))!==magnitude(cents(payment.amount!)))return bad('back_original_amount');
   if((amount<0n)!==(cents(payment.amount!)<0n))return bad('back_sign');
   const date=sourceDate(match.postingDate);
-  if(date!==payment.postingDate&&date!==payment.transactionDate)return bad('back_date');
+  if(date!==payment.transactionDate&&!paymentSources.some(source=>source.postingDate===date))return bad('back_date');
   if(match.transactionDate!=null&&sourceDate(match.transactionDate)!==payment.transactionDate)return bad('back_date');
  }else{
   if(match.transactionDate!=null&&sourceDate(match.transactionDate)!==invoice.transactionDate)return bad('back_date');
-  if(match.postingDate!=null&&sourceDate(match.postingDate)!==invoice.postingDate)return bad('back_date');
+  if(match.postingDate!=null){const date=sourceDate(match.postingDate);if(!invoiceSources.some(source=>source.postingDate===date))return bad('back_date');}
  }
 }
 export interface PaymentApplications {
@@ -171,7 +171,7 @@ export async function readPaymentApplications(reader:Reader,expectedPayment:Fina
    const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:invoice.transactionId},options);
    if(detail.status!=='found'||detail.transaction?.kind!=='invoice')return bad('invoice_identity');
    sameKnownFacts(detail.transaction,invoice);details.push({invoice,detail:detail.transaction});
-   pair(history(await reader.appliedInvoicePayments({...scope,invoiceTransactionId:invoice.transactionId,invoiceNo:invoice.invoiceNo!}),scope,options),detailBefore,invoice,application);
+   pair(history(await reader.appliedInvoicePayments({...scope,invoiceTransactionId:invoice.transactionId,invoiceNo:invoice.invoiceNo!}),scope,options),payment,invoice,application,[detailBefore,historyBefore],[invoice,detail.transaction]);
    invoices.push(invoice);
    links.push({...scope,invoiceTransactionId:invoice.transactionId,paymentTransactionId:payment.transactionId,invoiceNo:invoice.invoiceNo,appliedAmount:decimal(directed.direction*magnitude(cents(application.appliedAmount))),currency:'THB',invoiceTransactionDate:invoice.transactionDate,invoicePostingDate:invoice.postingDate,invoiceCloseDate:invoice.closeDate,applicationDate:null,applicationEventId:null});
   }
