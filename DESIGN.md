@@ -277,3 +277,9 @@ Mode: Operate. Preserve the luminous light-blue/mint world and current Aging ide
 The primary closing measure uses pale mint with dark teal text. Other measures are neutral with restrained semantic icons/amounts. KAT precedes TSK in compact paired values. Activity highlights share one divided surface; source payment totals use one horizontal strip on desktop. The sent-activity table compares All/KAT/TSK in columns, with per-cell labels and intrinsic-height rows on narrow screens. Billing uses a labelled horizontal completion bar; stage amounts retain their existing positive-balance denominator. All values, source notices, filters, refresh commands and drilldowns retain their prior contract.
 
 Implementation is scoped by .period-analysis in src/dashboard/period-layout.css. Global td/th heights must not constrain the mobile grid rows. PeriodBalances owns one balances reader and composes its Activity child between the closing summary and closing details; no duplicate reader or CSS-only content reordering.
+
+### Period analysis visual emphasis follow-up
+
+The owner requested a stronger focal point after the light layout pass. The primary closing measure now uses the existing Billing teal with high-contrast white type and a stronger Hotel share strip; blue/rose/amber supporting measures remain subordinate. Activity highlights reuse the established pale blue, lavender and mint with semantic Lucide icons. Font family, elevation system and other page scopes remain unchanged.
+
+Billing status is shown as independent count-based indicators against explicit verified positive invoice metadata. Setup can overlap billed/unbilled/not-required states, so the bars are never stacked or summed. Zero/unknown denominators show unavailable percentages. Each indicator uses the existing balance drill route; no new data reader or metric definition.

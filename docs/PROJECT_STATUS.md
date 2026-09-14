@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Period analysis visual emphasis — 14 กันยายน 2026
+
+- Amplified the existing teal primary balance, supporting semantic colors and activity icons. Added interactive independent Billing status indicators using existing counts and explicit positive-invoice metadata. No source/backend/financial calculation changes.
+- Review caught that setup overlaps other billing states; final bars are independent, permit overlap, require positive-count metadata, and never infer a denominator from signed open counts. Invalid/missing/zero populations cannot produce invented percentages.
+- Typecheck/build and 1,041 unit tests / 108 files passed. Thirty-one browser cases passed, including source guards, signed amounts, overlapping setup, zero/missing data, drilldown and mobile clipping. Synthetic desktop/mobile captures inspected; original references retained. Independent review cleared the final implementation. Deployment/live verification pending.
+
+
 ## Checkpoint Period analysis presentation — 14 กันยายน 2026
 
 - Rearranged Period analysis into closing overview, dated activity/payments, then dated Billing/Follow-Up detail. Compact active date presets and KAT/TSK comparisons; pale mint primary measure; horizontal billing progress; readable All/KAT/TSK activity columns with mobile row labels. Current Aging is outside the style scope.
