@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## Completed legacy Google Cloud retirement — 14 กันยายน 2026
+
+- Owner authorized retiring the old Google Cloud AR system, corrected the protected task to **Detail One Shot**, and explicitly declined a backup. Deleted the identified legacy Cloud Run service/3 jobs, Cloud SQL instance, 7 Scheduler jobs, 2 Pub/Sub topics/1 subscription, 5.67 GB image repository, 32 secrets, 12 service accounts/27 IAM memberships, old federation/roles/alerts/budget, 132 state-object generations and their bucket, and 2 old OAuth clients. No database/secret backup or final backup was created.
+- Preserved the current AR OAuth clients/Picker key, `ar-project-506410`, the entire `aging-master` project/Desktop OAuth used by Detail One Shot, and the explicitly protected default Compute service account. No current app code, Cloudflare/Supabase resource, Drive file, email or OPERA ledger mutation. Exact scope, provider evidence and recovery caveats are in [GOOGLE_RESOURCE_REVIEW.md](GOOGLE_RESOURCE_REVIEW.md).
+- Live provider postchecks found no remaining identified legacy runtime/storage services. Current Worker health remains verified and a signed-in live Drive folder access check passed at 20:38 ICT. Historical billing/audit records remain; deletion does not refund already accrued charges. The unrelated unbilled third project was preserved because it was not tied to the retired system.
+
 ## Checkpoint Period analysis visual emphasis — 14 กันยายน 2026
 
 - Amplified the existing teal primary balance, supporting semantic colors and activity icons. Added interactive independent Billing status indicators using existing counts and explicit positive-invoice metadata. No source/backend/financial calculation changes.
