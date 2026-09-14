@@ -27,3 +27,22 @@ it('acceptance cleanup also visits transient preparations through the same isola
  expect(await response.json()).toEqual({enabled:true,checked:0,deleted:0,blocked:0,uncertain:0,errors:0,transient:{enabled:true,checked:0,deleted:0,errors:0}});
  expect(visited).toContain('ar_document_cleanup_candidates');
 });
+it('the current Account route sends the exact isolated child-exclusion filter and preserves signed outstanding',async()=>{
+ const account='SYN-'+id,invoiceQueries:unknown[]=[];
+ vi.stubGlobal('fetch',async(input:RequestInfo|URL,init:RequestInit={})=>{
+  const path=new URL(String(input)).pathname;if(path==='/auth/v1/user')return Response.json(user);
+  const args=JSON.parse(String(init.body));
+  if(path.endsWith('ar_acceptance_context'))return Response.json({id,owner:actor,sourceSha:'synthetic',recipientHash:'a'.repeat(64),clockOffsetDays:0});
+  if(!path.endsWith('ar_acceptance_read')||args.p_actor!==actor||args.p_id!==id)throw Error('Unexpected unscoped account read');
+  if(args.p_table==='ar_invoices'){
+   invoiceQueries.push(args.p_query);
+   if(args.p_query.collection_role!=='neq.child')throw Error('Missing child exclusion');
+   return Response.json([{hotel:'KAT',account_id:account,id:'A',open:100,collection_role:'standalone'},{hotel:'KAT',account_id:account,id:'D',open:-25,collection_role:'standalone'}]);
+  }
+  if(args.p_table==='ar_invoice_workflow'||args.p_table==='ar_invoice_exceptions')return Response.json([]);
+  throw Error('Unexpected account table');
+ });
+ const response=await handleApi(new Request('https://app.test/api/accounts/KAT/'+account,{headers:{Authorization:'Bearer synthetic',Cookie:'__Host-ar-acceptance='+id}}),env);
+ expect(response.status).toBe(200);expect(invoiceQueries).toEqual([{select:'*',hotel:'eq.KAT',account_id:'eq.'+account,open:'neq.0',collection_role:'neq.child',order:'id'}]);
+ const body=await response.json() as {invoices:{id:string;open:number}[]};expect(body.invoices.map(row=>({id:row.id,open:row.open}))).toEqual([{id:'A',open:100},{id:'D',open:-25}]);
+});

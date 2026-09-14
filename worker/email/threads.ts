@@ -114,10 +114,38 @@ export async function savedDraftForReview(env:EmailEnv,actor:string,scope:SavedD
  parseRecipients(draft.recipients);if(draft.thread)validateThreadChoice(draft.thread,draft.recipients,draft.subject);
  return draft;
 }
-/** The only provider ID comes from the owner/scoped saved choice, never from the URL. */
+export interface SavedDraftDelivery {owner:string;draft_id:string;revision:number;state:string;mode:'draft'|'send';sent_at:string|null;gmail_id?:string|null}
+/** Scope a historical delivery to the already-authorized draft and its exact revision. */
+export async function savedDeliveryForReview(env:EmailEnv,actor:string,draft:EmailDraft):Promise<SavedDraftDelivery|null>{
+ const delivery=await emailRpc<SavedDraftDelivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draft.id,p_revision:draft.revision});
+ if(!delivery)return null;
+ if(delivery.owner!==actor||delivery.draft_id!==draft.id)throw Error('email_forbidden');
+ if(delivery.revision!==draft.revision)throw Error('email_revision_conflict');
+ if(!['pending','created','awaiting_evidence','sent','review_required'].includes(delivery.state)||!['draft','send'].includes(delivery.mode)||delivery.sent_at!==null&&(typeof delivery.sent_at!=='string'||!Number.isFinite(Date.parse(delivery.sent_at))))throw Error('email_invalid');
+ return delivery;
+}
+export function verifiedSentMessage(delivery:SavedDraftDelivery|null):string|null{
+ return delivery?.state==='sent'&&delivery.sent_at&&typeof delivery.gmail_id==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(delivery.gmail_id)?delivery.gmail_id:null;
+}
+async function savedSentConversation(env:EmailEnv,actor:string,draft:EmailDraft):Promise<Conversation>{
+ const delivery=await savedDeliveryForReview(env,actor,draft),id=verifiedSentMessage(delivery);if(!id)throw Error('email_thread_not_selected');
+ const token=await tokenForRead(env,actor);
+ // Resolve a new conversation from the verified SENT message, not a recipient search
+ // or the provider's earlier draft/create receipt. Closed transient files are irrelevant.
+ const message=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?${metadataQuery(true)}`,{headers:{Authorization:'Bearer '+token}});
+ if(providerId(message.id)!==id||!Array.isArray(message.labelIds)||!message.labelIds.includes('SENT')||message.labelIds.includes('DRAFT'))return invalid();
+ const threadId=providerId(message.threadId),observed=parseConversation({id:threadId,historyId:'0',messages:[message]},threadId,draft.recipients);
+ const anchor=chooseParent(observed,draft.recipients,id),sent=observed.messages[0],sameAddresses=(a:string[],b:string[])=>JSON.stringify(a.map(s=>s.toLowerCase()).sort())===JSON.stringify(b.map(s=>s.toLowerCase()).sort());
+ if(sent.from!==sender||anchor.subject!==draft.subject||Date.parse(anchor.parentDate)!==Date.parse(delivery!.sent_at!)||!sameAddresses(sent.to,draft.recipients.to)||!sameAddresses(sent.cc,draft.recipients.cc))throw Error('email_thread_changed');
+ const conversation=await readConversation(token,threadId,draft.recipients,anchor.rfcMessageId),parent=chooseParent(conversation,draft.recipients,id);
+ if(conversation.messages.find(m=>m.id===id)?.from!==sender||JSON.stringify(parent)!==JSON.stringify(anchor))throw Error('email_thread_changed');
+ return conversation;
+}
+/** Provider IDs come only from the scoped saved choice or verified SENT receipt. */
 export async function previewSavedDraftThread(env:EmailEnv,actor:string,scope:SavedDraftScope,revision:number,offset=0,historyId?:string):Promise<ThreadPreview> {
  if(!Number.isSafeInteger(revision)||revision<0||!Number.isSafeInteger(offset)||offset<0||offset>0&&!historyId||historyId!==undefined&&!/^\d{1,30}$/.test(historyId))return invalid();
- const draft=await savedDraftForReview(env,actor,scope);if(draft.revision!==revision)throw Error('email_revision_conflict');if(!draft.thread)throw Error('email_thread_not_selected');
+ const draft=await savedDraftForReview(env,actor,scope);if(draft.revision!==revision)throw Error('email_revision_conflict');
+ if(!draft.thread)return preview(await savedSentConversation(env,actor,draft),offset,historyId);
  const saved=validateThreadChoice(draft.thread,draft.recipients,draft.subject);
  const conversation=await readConversation(await tokenForRead(env,actor),saved.threadId,draft.recipients,saved.rfcMessageId);
  const parent=chooseParent(conversation,draft.recipients,saved.parentMessageId);
