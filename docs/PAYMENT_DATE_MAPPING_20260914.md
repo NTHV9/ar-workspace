@@ -33,3 +33,13 @@ Additive migration 20260914072855_ar_financial_payment_context_scope merges comp
 - 73 migrations / 29 SQL suites passed; 1,031 unit tests / 107 files and typecheck passed. Recovery replays LF-normalized private SQL copies while preserving repository migration files.
 - Applied additive SQL SHA256 da078b02df9df0e59ee031db65fb0d18225eceafed3242114c4d37920498328d, renamed to the provider-issued version without altering its SQL.
 - Financial RPC failures retain only bounded machine error codes; raw database details remain suppressed. Source 2d9bba6 is deployed, Worker ea2644be-bb9f-4030-b9bd-2de80ca118aa. Both affected-date imports were restarted with fresh reads after the migration.
+
+## Final verification
+
+Both real affected-date imports succeeded after the additive fix. All observed payments in the refreshed range are verified, work tables are cleared, daily and multi-day totals are complete, and the previously verified preceding date remains unchanged. Signed-in production UI matches backend results for daily totals, Hotel splits, multi-day totals, OTA filtering and invoice-detail pagination. No real customer values or extracts are committed.
+
+Final test count is 1,031 unit tests / 107 files, plus 73 migrations / 29 SQL suites and 24 deployed browser regressions. Source 3fd944288830623bf1a8ef3c32ea5d6eaed4aec2 is deployed as Worker ce4c75d3-0d64-4267-9280-31c5ff182d74. PR26 and PR27 are merged; final merge tree matches tested/deployed source.
+
+The SQL hashes above describe LF source text submitted during application. A Windows Git checkout can materialize CRLF without a Git content change; recovery normalizes only private execution copies and preserves tracked migration history.
+
+Status: implemented, tested, deployed, enabled and live-verified for the refreshed period.

@@ -1,5 +1,16 @@
 # สถานะโครงการใหม่
 
+## Completed Payment-date invoice totals — 14 กันยายน 2026
+
+- Implemented/deployed/enabled: Payment-date discovery reaches older Bill Date invoices; dual source proof reconciles allocations. Compatible optional dates merge atomically, contradictory facts still fail, and context-only refresh preserves unrelated payment proof. New Invoices, outstanding balances, OPERA ledger and document flows retain their definitions.
+- Live verification complete: both bounded 11–14 September imports succeeded across all 105 KAT and 70 TSK accounts. Every observed payment in that range has verified mapping; no unknown mappings or private batch work remain. Daily and whole-range KPI responses complete, including genuine empty-payment days; earlier verified 10 September results remain intact. Customer values are kept out of Git.
+- Signed-in production UI verified daily totals, KAT/TSK splits, date-range totals, OTA filter, invoice detail and next-page navigation. 24 deployed synthetic browser regressions passed; reference images unchanged.
+- Tests: 1,031 unit tests / 107 files, TypeScript/build, and 73 migrations / 29 isolated SQL suites passed. Independent review fixes incorporated. Live RPC privileges: anon/authenticated writes denied, backend allowed, private helper direct access denied. Database remained 73 MB; no paid resources or permission expansion.
+- Applied migrations: 20260914065819_ar_financial_payment_mapping_steps and 20260914072855_ar_financial_payment_context_scope. Source LF SQL hashes recorded in PAYMENT_DATE_MAPPING_20260914.md; Windows checkout normalization is handled only in private recovery inputs.
+- Final deployed source 3fd944288830623bf1a8ef3c32ea5d6eaed4aec2; Worker ce4c75d3-0d64-4267-9280-31c5ff182d74. Health verified exact source/database/OPERA status.
+- [PR26](https://github.com/NTHV9/ar-workspace/pull/26) merged ea89435dbf79e7db8754481056327ef27f4d5c00; [PR27](https://github.com/NTHV9/ar-workspace/pull/27) merged ba2ecfbfab4b6ffb4d8485258043bd297bf29c32 after [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34818236419) and push CI passed. Merge tree equals tested/deployed source. Closeout changes documentation only.
+
+
 ## Checkpoint Payment publication integration — 14 กันยายน 2026
 
 - First real v3 imports completed all source reads but publication refused mixed nullable Posting Date facts. Atomic rollback preserved existing financial observations; failed staging was cleaned.
