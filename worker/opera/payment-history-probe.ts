@@ -1,5 +1,5 @@
 import {OperaError,type OperaReader} from './client';
-import {parseFinancialMoney,readFinancialTransactionDetail,readFinancialHistory,type FinancialHotel} from './financial-history';
+import {parseFinancialMoney,readFinancialTransactionDetail,readFinancialHistory,readScopedFinancialInvoiceHistory,type FinancialHotel} from './financial-history';
 import {readPaymentApplications} from './payment-applications';
 
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
@@ -12,7 +12,7 @@ export async function probePaymentHistory(reader:OperaReader,scope:{hotel:Financ
  const raw=object(await reader.paymentAppliedInvoices(scope));
  if(!Array.isArray(raw.details)||raw.details.length>1000)throw new OperaError('invalid_response',undefined,'payment_probe_shape');
  const rows=raw.details.map(object),keys=[...new Set(rows.flatMap(r=>Object.keys(r)))].sort();
- let sum=0n,known=0,invoiceSamples=0,invoiceSampleMatches=0;
+ let sum=0n,known=0,invoiceSamples=0,invoiceSampleMatches=0;const invoiceContextChecks:{missing:string[];different:string[];role:string;classification:string}[]=[];
  const signs={positive:0,negative:0,zero:0},sampleChecks={originalExact:0,originalMagnitude:0,currentExact:0,missingOriginal:0,appliedSamePaymentSign:0,appliedSameInvoiceSign:0,backPairs:0,backMagnitudeMatches:0,backSamePaymentSign:0};
  for(const row of rows){const amount=parseFinancialMoney(row.appliedAmount,payment?.currency==='THB'?'THB':undefined);if(amount!==null){sum+=magnitude(amount);known++;signs[amount.startsWith('-')?'negative':magnitude(amount)===0n?'zero':'positive']++;}}
  for(const row of rows.slice(0,3)){
@@ -21,6 +21,8 @@ export async function probePaymentHistory(reader:OperaReader,scope:{hotel:Financ
   const candidate=await readFinancialTransactionDetail(reader,{hotel:scope.hotel,accountId:scope.accountId,kind:'invoice',transactionId:id});
   if(candidate.status==='found'&&candidate.transaction?.kind==='invoice'){
    invoiceSampleMatches++;const invoice=candidate.transaction,original=parseFinancialMoney(row.originalAmount,payment?.currency==='THB'?'THB':undefined),applied=parseFinancialMoney(row.appliedAmount,payment?.currency==='THB'?'THB':undefined);
+   const contexts=await readScopedFinancialInvoiceHistory(reader,{hotel:scope.hotel,accountId:scope.accountId},[String(row.invoiceNo)],{maxRows:1000}),context=contexts.find(i=>i.transactionId===id);
+   if(context)invoiceContextChecks.push({missing:Object.keys(context).filter(k=>context[k as keyof typeof context]===null),different:Object.keys(context).filter(k=>invoice[k as keyof typeof invoice]!==null&&invoice[k as keyof typeof invoice]!==context[k as keyof typeof context]),role:context.collectionRole,classification:context.entryClassification});
    if(invoice.originalAmount===null)sampleChecks.missingOriginal++;else if(original!==null){if(original===invoice.originalAmount)sampleChecks.originalExact++;if(magnitude(original)===magnitude(invoice.originalAmount))sampleChecks.originalMagnitude++;}
    if(original!==null&&original===invoice.currentAmount)sampleChecks.currentExact++;
    if(applied!==null&&payment?.amount!==null&&payment?.amount!==undefined&&applied.startsWith('-')===payment.amount.startsWith('-'))sampleChecks.appliedSamePaymentSign++;
@@ -45,6 +47,6 @@ export async function probePaymentHistory(reader:OperaReader,scope:{hotel:Financ
   detailPaymentRows:groups.reduce((n,g)=>n+(Array.isArray(g.payments)?g.payments.length:0),0),
   historyRows:rows.length,historyKeys:keys,knownAppliedAmounts:known,
   appliedTotalMatches:known===rows.length&&payment?.appliedAmount!==null&&payment?.appliedAmount!==undefined&&sum===magnitude(payment.appliedAmount),
-  invoiceSamples,invoiceSampleMatches,signs,sampleChecks,fullReader,detailDifferences,
+  invoiceSamples,invoiceSampleMatches,signs,sampleChecks,fullReader,detailDifferences,invoiceContextChecks,
  };
 }
