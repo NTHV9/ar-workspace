@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Checkpoint Period analysis presentation — 14 กันยายน 2026
+
+- Rearranged Period analysis into closing overview, dated activity/payments, then dated Billing/Follow-Up detail. Compact active date presets and KAT/TSK comparisons; pale mint primary measure; horizontal billing progress; readable All/KAT/TSK activity columns with mobile row labels. Current Aging is outside the style scope.
+- Existing source readers, calculations, null/zero/credit rules, date semantics, refresh commands, retired rounds, billing classification and drilldowns retained. One reader per component; Activity remains visible when historical closing snapshots are unavailable. No backend/data/API changes.
+- Typecheck/build and 1,036 unit tests passed. 28 browser regressions plus targeted mobile text-bound checks passed; synthetic desktop/mobile captures reviewed. Fixed inherited global table-cell heights that caused mobile overlap. Original reference/captures retained. Independent source/layout review found no remaining data/action blockers. Deployment and live verification pending.
+
+
 ## Checkpoint Signed Invoice counts throughout Aging — 14 กันยายน 2026
 
 - Owner approved counting negative non-child credit items with positive open invoices. Overview/Hotel/table totals reuse the same RPC count; details include nonzero roots and signed net amounts. Credit is a display-only facet in Billing/Follow-Up/Due date, with no collection Due date; actual workflow/history and positive-only collection selection remain unchanged.

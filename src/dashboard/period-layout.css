@@ -1,0 +1,220 @@
+/* Period analysis: scan the closing position, then activity, then workflow detail.
+   Scope every change to this view; Current Aging keeps its existing presentation. */
+#root .period-analysis {
+  --period-ink: #173747;
+  --period-muted: #536c7a;
+  --period-line: #dce7eb;
+  --period-teal: #117b70;
+  --period-mint: #eaf6f2;
+}
+#root .period-analysis .dashboard-title {margin-bottom: 20px; gap: 16px}
+#root .period-analysis .dashboard-title h1 {font-size: 30px; letter-spacing: -.035em}
+#root .period-analysis .dashboard-view-tabs {background: #e7eef2; border: 1px solid #dbe5eb; padding: 4px}
+#root .period-analysis .dashboard-view-tabs button[aria-pressed=true] {background: #fff; color: #173747; box-shadow: var(--ar-shadow-control)}
+#root .period-analysis .dashboard-period-filters {display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 16px 20px; margin-bottom: 24px; border-color: var(--period-line); background-color: #fff}
+#root .period-analysis .dashboard-date-controls {display: flex; flex-wrap: wrap; align-items: end; gap: 10px}
+#root .period-analysis .dashboard-date-controls>label {flex: 1; min-width: 115px}
+#root .period-analysis .dashboard-date-controls>label:first-child {flex: 0 0 118px}
+#root .period-analysis .dashboard-date-controls input {width: 100%; min-width: 0}
+#root .period-analysis .dashboard-presets {width: 100%; display: flex; gap: 6px; margin: 0}
+#root .period-analysis .dashboard-presets button {padding: 6px 12px; border-color: transparent; background: #f1f5f8; color: #405d6e; box-shadow: none}
+#root .period-analysis .dashboard-presets button[aria-pressed=true] {background: #d9eee7; border-color: #bfdfd4; color: #146458; font-weight: 700}
+#root .period-analysis .dashboard-scope-controls {display: grid; grid-template-columns: minmax(135px,.65fr) minmax(0,1.35fr); gap: 12px; align-self: start}
+#root .period-analysis .dashboard-scope-controls label {min-width: 0; width: 100%}
+#root .period-analysis .dashboard-period-filters label {font-size: 11px; color: var(--period-muted); gap: 5px}
+#root .period-analysis .dashboard-period-filters :is(input,select) {font-size: 12px; height: 38px; border-color: #d9e4eb; border-radius: 8px; background-color: #fff}
+#root .period-analysis .dashboard-section-heading {align-items: center; gap: 14px; margin: 0 0 14px}
+#root .period-analysis .dashboard-section-heading h2 {font-size: 18px; line-height: 1.4; letter-spacing: -.025em; color: var(--period-ink)}
+#root .period-analysis .dashboard-section-heading p {font-size: 11px; line-height: 1.6; margin-top: 4px; color: var(--period-muted)}
+#root .period-analysis .dashboard-heading-date {background: #e7eef1; color: #3c5969; font-size: 11px; padding: 4px 8px}
+#root .period-analysis .dashboard-source-stamp {font-size: 10px; line-height: 1.5; color: var(--period-muted)}
+#root .period-analysis .dashboard-kpis {grid-template-columns: minmax(0,1.15fr) repeat(3,minmax(0,1fr)); gap: 12px; margin: 0 0 28px}
+#root .period-analysis .dashboard-kpi-card {display: flex; border-color: var(--period-line); background-color: #fff; color: var(--period-ink); border-radius: 14px; box-shadow: var(--ar-shadow-surface); background-image: var(--ar-light-surface); transition: box-shadow .18s ease}
+#root .period-analysis .dashboard-kpi-card.primary {background-color: #e1f1eb; border-color: #c9e3d8; background-image: var(--ar-light-soft)}
+#root .period-analysis .dashboard-kpi-card>button.dashboard-kpi {padding: 16px 17px 13px; gap: 7px; min-height: 0; background: transparent; color: var(--period-ink)}
+#root .period-analysis .dashboard-kpi-card>button.dashboard-kpi:hover:not(:disabled) {background: #edf5f880}
+#root .period-analysis .dashboard-kpi-card.primary>button.dashboard-kpi:hover:not(:disabled) {background: #cde9df60}
+#root .period-analysis .dashboard-kpi-label {min-height: 32px; font-size: 12px; color: #3e5c6b; line-height: 1.4; align-items: center; gap: 7px}
+#root .period-analysis .dashboard-kpi-label svg:first-child {width: 16px; height: 16px}
+#root .period-analysis .dashboard-kpi-label svg:last-child {width: 13px; height: 13px; opacity: .7}
+#root .period-analysis .dashboard-kpi strong {font-size: 34px; line-height: 1.15; color: var(--period-ink)}
+#root .period-analysis .dashboard-kpi strong span {font-size: 10px; font-weight: 500; color: var(--period-muted)}
+#root .period-analysis .dashboard-kpi>b {font-size: 19px; line-height: 1.4}
+#root .period-analysis .dashboard-kpi.primary>b {color: #126c5d}
+#root .period-analysis .dashboard-kpi>small {font-size: 10px; line-height: 1.55; color: var(--period-muted); margin-top: 3px}
+#root .period-analysis .dashboard-kpi-card>.hotel-split,
+#root .period-analysis .dashboard-activity-highlights article>.hotel-split {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); column-gap: 12px; padding: 10px 16px 12px; border-top: 1px solid var(--period-line); border-left: 0; background: #ffffff60; margin: 0}
+#root .period-analysis .dashboard-kpi-card.primary>.hotel-split {border-color: #c5e1d7; background: #ffffff35}
+#root .period-analysis .hotel-comparison-track {grid-column: 1/-1; margin: 0 0 7px; height: 3px; gap: 2px}
+#root .period-analysis .dashboard-kpi-card .hotel-split>button,
+#root .period-analysis .dashboard-activity-highlights .hotel-split>button {display: grid; grid-template-columns: 1fr auto; gap: 3px 6px; align-items: baseline; padding: 2px 0; color: var(--period-ink); min-height: 0; flex-wrap: nowrap}
+#root .period-analysis .dashboard-kpi-card .hotel-split b,
+#root .period-analysis .dashboard-activity-highlights .hotel-split b {grid-column: 1/-1; margin: 0; width: auto; font-size: 12px; color: var(--period-ink); white-space: normal; overflow-wrap: anywhere}
+#root .period-analysis .hotel-split-count {font-size: 11px}
+#root .period-analysis :is(.dashboard-kpi-card,.dashboard-activity-highlights) .hotel-split-count small {display: none}
+#root .period-analysis .dashboard-kpi-card .hotel-split-name.kat {color: var(--kat-compare)}
+#root .period-analysis .dashboard-kpi-card .hotel-split-name.tsk {color: var(--tsk-compare)}
+#root .period-analysis .dashboard-kpi-card .hotel-split small {color: var(--period-muted)}
+#root .period-analysis .dashboard-period-activity {margin: 0 0 30px; padding: 0; border: 0}
+#root .period-analysis .dashboard-activity-highlights {display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; background: #fff; border: 1px solid var(--period-line); border-radius: 14px; overflow: hidden; box-shadow: var(--ar-shadow-surface); margin-bottom: 18px}
+#root .period-analysis .dashboard-activity-highlights>article {display: flex; border: 0; border-radius: 0; background: transparent; box-shadow: none; background-image: none}
+#root .period-analysis .dashboard-activity-highlights>article+article {border-left: 1px solid var(--period-line)}
+#root .period-analysis .dashboard-activity-highlights article>button {display: flex; flex-direction: column; gap: 9px; min-height: 0; padding: 18px 20px 14px; background: transparent; background-image: none; color: var(--period-ink)}
+#root .period-analysis .dashboard-activity-highlights article>button:hover {background: #f0f7f8}
+#root .period-analysis .dashboard-activity-highlights article>button>span {font-size: 12px; font-weight: 650; color: #426172}
+#root .period-analysis .dashboard-activity-highlights article>button>div {display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 7px; width: 100%}
+#root .period-analysis .dashboard-activity-highlights article>button strong {font-size: 30px; line-height: 1.2; letter-spacing: -.03em; color: var(--period-ink)}
+#root .period-analysis .dashboard-activity-highlights article>button>div>span {font-size: 10px; color: var(--period-muted)}
+#root .period-analysis .dashboard-activity-highlights article>button b {font-size: 19px; line-height: 1.4; margin-left: auto; color: #146f65}
+#root .period-analysis .dashboard-activity-highlights article>button small {font-size: 10px; line-height: 1.5; color: var(--period-muted)}
+#root .period-analysis .dashboard-activity-highlights article>.hotel-split {margin-top: auto; background: #f4f9fa80}
+#root .period-analysis .dashboard-payment-summary {background-color: #edf5f7; border-color: #d8e5e9; padding: 18px 20px; margin: 0 0 18px}
+#root .period-analysis .dashboard-payment-summary header {align-items: center; gap: 12px}
+#root .period-analysis .dashboard-payment-summary h3 {font-size: 15px; margin: 0; color: var(--period-ink)}
+#root .period-analysis .dashboard-payment-summary dl {display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; margin: 17px 0 0}
+#root .period-analysis .dashboard-payment-summary dl>div+div {border-left: 1px solid #d5e3e8; padding-left: 18px}
+#root .period-analysis .dashboard-payment-summary dt {font-size: 11px; min-height: 28px; color: var(--period-muted)}
+#root .period-analysis .dashboard-payment-summary dd {font-size: 21px; line-height: 1.3; margin: 4px 0 0; overflow-wrap: anywhere}
+#root .period-analysis .dashboard-payment-summary .hotel-split {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 12px; padding-top: 8px; border-color: #d5e3e8}
+#root .period-analysis .dashboard-payment-summary .hotel-split>button {display: flex; flex-direction: column; align-items: start; gap: 3px; padding: 0}
+#root .period-analysis .dashboard-payment-summary .hotel-split b {margin: 0; font-size: 11px; white-space: normal; overflow-wrap: anywhere}
+#root .period-analysis .dashboard-payment-summary .dashboard-footnote {font-size: 10px; line-height: 1.6; margin: 15px 0 0; color: var(--period-muted)}
+#root .period-analysis .dashboard-activity-table {padding: 0; overflow: hidden}
+#root .period-analysis .period-table-heading {padding: 17px 20px; border-bottom: 1px solid var(--period-line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline}
+#root .period-analysis .period-table-heading h3 {font-size: 15px; margin: 0; color: var(--period-ink)}
+#root .period-analysis .period-table-heading p {font-size: 11px; margin: 0; color: var(--period-muted)}
+#root .period-analysis .dashboard-activity-table table {table-layout: fixed; width: 100%; min-width: 0}
+#root .period-analysis .dashboard-activity-table :is(th,td) {min-width: 0; max-width: none; padding: 12px 20px; white-space: normal; vertical-align: middle; text-align: left}
+#root .period-analysis .dashboard-activity-table th:first-child {width: 34%}
+#root .period-analysis .dashboard-activity-table thead th {font-size: 11px; font-weight: 600; text-align: left; background: #edf3f6; color: var(--period-muted)}
+#root .period-analysis .dashboard-activity-table thead th:nth-child(3) {color: var(--kat-compare)}
+#root .period-analysis .dashboard-activity-table thead th:nth-child(4) {color: var(--tsk-compare)}
+#root .period-analysis .dashboard-activity-table tbody th {font-weight: 500; text-align: left}
+#root .period-analysis .dashboard-activity-table tbody th>small {display: block; font-size: 10px; font-weight: 400; line-height: 1.5; color: var(--period-muted); margin-top: 3px}
+#root .period-analysis .period-activity-value {text-align: left; font-variant-numeric: tabular-nums}
+#root .period-analysis .period-activity-value strong {display: block; font-size: 13px; color: var(--period-ink)}
+#root .period-analysis .period-activity-value strong small {display: inline; font-size: 10px; font-weight: 400; color: var(--period-muted)}
+#root .period-analysis .period-activity-value>b {display: block; font-size: 12px; margin-top: 3px; font-weight: 600}
+#root .period-analysis .dashboard-activity-table .hotel-split>button,
+#root .period-analysis .dashboard-activity-table .hotel-split>div {display: flex; flex-direction: column; align-items: start; gap: 3px; padding: 0}
+#root .period-analysis .dashboard-activity-table .hotel-split-name {display: none}
+#root .period-analysis .dashboard-activity-table .hotel-split-count {font-size: 13px; font-weight: 600; white-space: normal}
+#root .period-analysis .dashboard-activity-table .hotel-split b {font-size: 12px; margin: 0; white-space: normal; overflow-wrap: anywhere}
+#root .period-analysis .dashboard-period-details {padding-top: 0; margin-bottom: 0}
+#root .period-analysis .dashboard-insights {grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap: 18px}
+#root .period-analysis .dashboard-insights>.dashboard-surface {padding: 20px; border-color: var(--period-line)}
+#root .period-analysis .dashboard-insights header h3 {font-size: 16px; color: var(--period-ink)}
+#root .period-analysis .dashboard-insights header p {margin-top: 4px; font-size: 11px; line-height: 1.5; color: var(--period-muted)}
+#root .period-analysis .dashboard-insights header>svg {width: 17px; color: #548a85}
+#root .period-analysis .period-billing-progress {padding: 18px 0 12px}
+#root .period-analysis .period-billing-progress>div:first-child {display: flex; align-items: baseline; gap: 8px; color: var(--period-muted); font-size: 11px}
+#root .period-analysis .period-billing-progress strong {font-size: 26px; letter-spacing: -.03em; color: var(--period-teal)}
+#root .period-analysis .period-billing-track {height: 7px; margin-top: 10px; background: #e5eeef; border-radius: 4px; overflow: hidden}
+#root .period-analysis .period-billing-track i {display: block; height: 100%; background: #26988b; border-radius: inherit}
+#root .period-analysis .dashboard-billing-legend {display: grid; grid-template-columns: 1fr 1fr; gap: 18px}
+#root .period-analysis .dashboard-billing-legend-row {padding: 10px 0; gap: 6px; border: 0; grid-template-columns: 1fr}
+#root .period-analysis .dashboard-billing-legend-row strong {font-size: 17px; color: var(--period-ink)}
+#root .period-analysis .dashboard-billing-legend-row strong small {font-size: 10px}
+#root .period-analysis .dashboard-billing-legend-row>b {font-size: 14px; margin: 0}
+#root .period-analysis .billing-hotel-comparison {gap: 18px; padding: 8px 0 14px; margin: 0; border-top: 0}
+#root .period-analysis .billing-hotel-comparison h4 {display: none}
+#root .period-analysis .billing-hotel-comparison .hotel-split>button {display: grid; grid-template-columns: auto 1fr; padding: 4px 0; gap: 3px 7px}
+#root .period-analysis .billing-hotel-comparison .hotel-split b {grid-column: 1/-1; margin-left: 0}
+#root .period-analysis .billing-other-row {display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: 14px; align-items: center}
+#root .period-analysis .billing-other-row+.billing-other-row {margin: 0; padding-top: 0}
+#root .period-analysis .billing-other-row>button {padding: 12px 0; gap: 4px; grid-template-columns: 1fr}
+#root .period-analysis .billing-other-row>button>span {font-size: 11px}
+#root .period-analysis .billing-other-row>button strong {font-size: 14px}
+#root .period-analysis .billing-other-row>button>b {font-size: 12px; margin: 0}
+#root .period-analysis .billing-other-row>.hotel-split {display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0}
+#root .period-analysis .billing-other-row .hotel-split>button {display: flex; flex-direction: column; align-items: start; gap: 2px; padding: 4px 0}
+#root .period-analysis .billing-other-row .hotel-split b {font-size: 11px; margin: 0; white-space: normal}
+#root .period-analysis .billing-other-row .hotel-split small {display: none}
+#root .period-analysis .stage-comparison {display: grid; grid-template-columns: minmax(0,1.12fr) minmax(0,1fr); gap: 18px; align-items: center; padding: 10px 0}
+#root .period-analysis .dashboard-stage-row {display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; padding: 0!important}
+#root .period-analysis .dashboard-stage-name {font-size: 12px; min-width: 0; overflow-wrap: anywhere}
+#root .period-analysis .dashboard-stage-name small {display: block; font-size: 10px; margin-top: 4px}
+#root .period-analysis .dashboard-stage-value b {font-size: 12px!important; white-space: normal; overflow-wrap: anywhere}
+#root .period-analysis .dashboard-stage-value small {font-size: 10px}
+#root .period-analysis .dashboard-stage-track {grid-column: 1/-1; grid-row: 2; height: 4px!important; background: #e7eef3}
+#root .period-analysis .stage-comparison .hotel-split {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px}
+#root .period-analysis .stage-comparison .hotel-split>button {display: flex; flex-direction: column; align-items: start; padding: 3px 0; gap: 3px}
+#root .period-analysis .stage-comparison .hotel-split b {width: auto; margin: 0; font-size: 11px!important; white-space: normal; overflow-wrap: anywhere}
+#root .period-analysis .stage-comparison .hotel-split-count {font-size: 11px}
+#root .period-analysis .stage-comparison .hotel-split small {display: none}
+#root .period-analysis .dashboard-balance-breakdown {margin-top: 18px; border-color: var(--period-line)}
+#root .period-analysis .dashboard-balance-breakdown summary {font-size: 12px; padding: 14px 18px; color: #355966}
+#root .period-analysis .dashboard-footnote {color: var(--period-muted); line-height: 1.6}
+@media(max-width:1100px) {
+  #root .period-analysis .dashboard-kpis {grid-template-columns: repeat(2,minmax(0,1fr))}
+  #root .period-analysis .dashboard-kpi-card {display: grid; grid-template-columns: 1fr 1fr}
+  #root .period-analysis .dashboard-kpi-card>.hotel-split {display: grid; grid-template-columns: 1fr; align-content: center; border-top: 0; border-left: 1px solid var(--period-line)}
+  #root .period-analysis .dashboard-kpi-card .hotel-split>button {grid-template-columns: 1fr auto; padding: 5px 0}
+  #root .period-analysis .dashboard-kpi-card .hotel-split b {grid-column: 1/-1}
+  #root .period-analysis .dashboard-kpi-card:not(:has(.hotel-split))>button {grid-column: 1/-1}
+  #root .period-analysis .dashboard-insights {grid-template-columns: 1fr}
+  #root .period-analysis .dashboard-period-filters {grid-template-columns: 1fr}
+  #root .period-analysis .dashboard-date-controls>label {flex: 0 1 200px}
+  #root .period-analysis .dashboard-presets {width: auto; align-self: end}
+  #root .period-analysis .dashboard-payment-summary dl {grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px}
+  #root .period-analysis .dashboard-payment-summary dl>div:nth-child(3) {border-left: 0; padding-left: 0}
+}
+@media(max-width:700px) {
+  #root .period-analysis .dashboard-title {gap: 12px; margin-bottom: 18px}
+  #root .period-analysis .dashboard-title h1 {font-size: 26px}
+  #root .period-analysis .dashboard-period-filters {padding: 14px; gap: 14px; margin-bottom: 22px}
+  #root .period-analysis .dashboard-date-controls {gap: 8px}
+  #root .period-analysis .dashboard-date-controls>label {flex: 1; min-width: 125px}
+  #root .period-analysis .dashboard-date-controls>label:first-child {flex: 0 0 106px; min-width: 106px}
+  #root .period-analysis .dashboard-presets {width: 100%; gap: 5px; flex-wrap: wrap}
+  #root .period-analysis .dashboard-presets button {padding: 6px 9px; font-size: 11px}
+  #root .period-analysis .dashboard-scope-controls {grid-template-columns: 1fr; gap: 9px}
+  #root .period-analysis .dashboard-section-heading {flex-wrap: wrap; gap: 8px}
+  #root .period-analysis .dashboard-section-heading h2 {font-size: 16px}
+  #root .period-analysis .dashboard-heading-date {margin-left: 5px; font-size: 10px}
+  #root .period-analysis .dashboard-source-stamp {text-align: left}
+  #root .period-analysis .dashboard-kpis {grid-template-columns: 1fr; gap: 10px; margin-bottom: 24px}
+  #root .period-analysis .dashboard-kpi-card>button.dashboard-kpi {padding: 15px 13px; gap: 7px}
+  #root .period-analysis .dashboard-kpi-label {font-size: 11px; min-height: 0}
+  #root .period-analysis .dashboard-kpi strong {font-size: 29px}
+  #root .period-analysis .dashboard-kpi>b {font-size: 16px}
+  #root .period-analysis .dashboard-kpi-card>.hotel-split {padding: 12px}
+  #root .period-analysis .dashboard-activity-highlights {grid-template-columns: 1fr}
+  #root .period-analysis .dashboard-activity-highlights>article+article {border-left: 0; border-top: 1px solid var(--period-line)}
+  #root .period-analysis .dashboard-activity-highlights article>button {padding: 16px 17px 12px}
+  #root .period-analysis .dashboard-activity-highlights article>button b {font-size: 18px}
+  #root .period-analysis .dashboard-payment-summary {padding: 16px}
+  #root .period-analysis .dashboard-payment-summary header {flex-wrap: wrap}
+  #root .period-analysis .dashboard-payment-summary dl {gap: 17px 14px}
+  #root .period-analysis .dashboard-payment-summary dl>div+div {padding-top: 0; border-top: 0}
+  #root .period-analysis .dashboard-payment-summary dl>div:nth-child(even) {padding-left: 14px}
+  #root .period-analysis .dashboard-payment-summary dd {font-size: 18px}
+  #root .period-analysis .dashboard-payment-summary .hotel-split {grid-template-columns: 1fr; gap: 7px}
+  #root .period-analysis .dashboard-payment-summary .hotel-split>button {gap: 0}
+  #root .period-analysis .period-table-heading {padding: 15px 16px}
+  #root .period-analysis .dashboard-activity-table table {display: block}
+  #root .period-analysis .dashboard-activity-table thead {position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%)}
+  #root .period-analysis .dashboard-activity-table tbody {display: block}
+  #root .period-analysis .dashboard-activity-table tbody tr {display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); padding: 13px 16px; gap: 9px; border-bottom: 1px solid var(--period-line)}
+  #root .period-analysis .dashboard-activity-table tbody :is(th,td) {width: auto; height: auto; padding: 0; border: 0; min-width: 0}
+  #root .period-analysis .dashboard-activity-table tbody th:first-child {display: block; grid-column: 1/-1; grid-row: 1; width: 100%}
+  #root .period-analysis .dashboard-activity-table tbody td {display: block; grid-row: 2}
+  #root .period-analysis .dashboard-activity-table td::before {content: attr(data-label); display: block; font-size: 10px; color: var(--period-muted); margin-bottom: 5px; font-weight: 600}
+  #root .period-analysis .dashboard-activity-table td:nth-child(2):last-child {grid-column: 1/-1}
+  #root .period-analysis .dashboard-activity-table td:nth-child(3)::before {color: var(--kat-compare)}
+  #root .period-analysis .dashboard-activity-table td:nth-child(4)::before {color: var(--tsk-compare)}
+  #root .period-analysis .period-activity-value strong {font-size: 12px}
+  #root .period-analysis .period-activity-value strong small,
+  #root .period-analysis .dashboard-activity-table .hotel-split small {display: block; font-size: 9px}
+  #root .period-analysis .period-activity-value>b,
+  #root .period-analysis .dashboard-activity-table .hotel-split b {font-size: 11px; overflow-wrap: anywhere}
+  #root .period-analysis .dashboard-insights>.dashboard-surface {padding: 17px}
+  #root .period-analysis .billing-other-row {gap: 12px; grid-template-columns: 1fr 1.2fr}
+  #root .period-analysis .billing-hotel-comparison {grid-template-columns: 1fr 1fr; gap: 18px}
+  #root .period-analysis .stage-comparison {grid-template-columns: 1fr; gap: 7px; padding: 12px 0}
+  #root .period-analysis .dashboard-stage-row {grid-template-columns: 1fr auto}
+  #root .period-analysis .stage-comparison .hotel-split {gap: 18px}
+  #root .period-analysis .stage-comparison .hotel-split>button {display: grid; grid-template-columns: auto 1fr; gap: 3px 8px}
+  #root .period-analysis .stage-comparison .hotel-split b {grid-column: 1/-1}
+}
+@media(prefers-reduced-motion:reduce) {#root .period-analysis .dashboard-kpi-card {transition: none}}

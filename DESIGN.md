@@ -269,3 +269,11 @@ Preserve the existing website composition: overview, distribution, filters and f
 The detail section provides Billing, Latest Follow-Up and Due date views, each with count, positive outstanding amount and share of that amount. Attention flags filter the invoice list independently. Keep status choices and pagination when returning from Account Detail; move focus to the opened section and restore it on close. Missing coverage preserves observed rows with an explicit notice and unknown confirmed totals. Scope, hotel publication and account publication must match before showing a count or a confirmed detail result.
 
 Invoice counts exclude duplicate child bills, zero balances and credits. Signed OPERA Aging amounts stay unchanged. The compact basis explanation appears when source Aging and positive invoice totals differ; unknown credit membership remains unknown rather than suppressing otherwise verified positive invoice counts.
+
+## Period analysis — 14 September 2026
+
+Mode: Operate. Preserve the luminous light-blue/mint world and current Aging identity. Period analysis reads in DOM order as closing KPI summary, selected-period activity/payment evidence, then closing Billing/Follow-Up details with its own end-date heading. Native date and account controls share a compact toolbar; the active date preset remains visible.
+
+The primary closing measure uses pale mint with dark teal text. Other measures are neutral with restrained semantic icons/amounts. KAT precedes TSK in compact paired values. Activity highlights share one divided surface; source payment totals use one horizontal strip on desktop. The sent-activity table compares All/KAT/TSK in columns, with per-cell labels and intrinsic-height rows on narrow screens. Billing uses a labelled horizontal completion bar; stage amounts retain their existing positive-balance denominator. All values, source notices, filters, refresh commands and drilldowns retain their prior contract.
+
+Implementation is scoped by .period-analysis in src/dashboard/period-layout.css. Global td/th heights must not constrain the mobile grid rows. PeriodBalances owns one balances reader and composes its Activity child between the closing summary and closing details; no duplicate reader or CSS-only content reordering.
