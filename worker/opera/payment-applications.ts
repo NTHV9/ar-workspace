@@ -1,7 +1,7 @@
 import {OperaError,type OperaReader} from './client';
-import {parseFinancialMoney,readFinancialTransactionDetail,readScopedFinancialInvoiceHistory,type AppliedPaymentLink,type FinancialInvoice,type FinancialPayment,type FinancialReadOptions,type FinancialScope} from './financial-history';
+import {parseFinancialMoney,readFinancialHistory,readFinancialTransactionDetail,readScopedFinancialInvoiceHistory,type AppliedPaymentLink,type FinancialInvoice,type FinancialPayment,type FinancialReadOptions,type FinancialScope} from './financial-history';
 
-type Reader=Pick<OperaReader,'financialTransactionDetail'|'paymentAppliedInvoices'|'invoiceHistory'|'appliedInvoicePayments'>;
+type Reader=Pick<OperaReader,'financialTransactionDetail'|'financialHistoryPage'|'paymentAppliedInvoices'|'invoiceHistory'|'appliedInvoicePayments'>;
 type Obj=Record<string,unknown>;
 const bad=(stage:string):never=>{throw new OperaError('invalid_response',undefined,'financial_payment_mapping_'+stage);};
 const object=(value:unknown):Obj=>value&&typeof value==='object'&&!Array.isArray(value)?value as Obj:bad('shape');
@@ -54,6 +54,7 @@ function checkedReader(reader:Reader,scope:FinancialScope):Reader{
  };
  return {
   financialTransactionDetail:async query=>checkGrouped(await reader.financialTransactionDetail(query)),
+  financialHistoryPage:async(...args)=>checkGrouped(await reader.financialHistoryPage(...args)),
   invoiceHistory:async(...args)=>checkGrouped(await reader.invoiceHistory(...args)),
   paymentAppliedInvoices:reader.paymentAppliedInvoices.bind(reader),appliedInvoicePayments:reader.appliedInvoicePayments.bind(reader),
  };
@@ -73,11 +74,27 @@ function allocation(payment:FinancialPayment){
  if(magnitude(amount)!==used+unallocated)return bad('allocation');
  return {amount,used,direction:amount<0n?1n:amount>0n?-1n:0n};
 }
+function samePaymentFacts(actual:FinancialPayment,expected:FinancialPayment){
+ for(const key of ['hotel','accountId','kind','transactionId','transactionDate','currency','amount','appliedAmount','unallocatedAmount'] as const){
+  if(actual[key]!==expected[key])return bad('payment_changed');
+ }
+ for(const key of ['postingDate','revenueDate','transferDate','transactionCode','transferredIn','transferredOut'] as const){
+  if(actual[key]!==null&&expected[key]!==null&&actual[key]!==expected[key])return bad('payment_changed');
+ }
+ if(actual.transferredIn===true||actual.transferredOut===true||expected.transferredIn===true||expected.transferredOut===true)return bad('payment_transfer');
+}
 async function paymentDetail(reader:Reader,expected:FinancialPayment,options:FinancialReadOptions){
  const result=await readFinancialTransactionDetail(reader,{hotel:expected.hotel,accountId:expected.accountId,kind:'payment',transactionId:expected.transactionId},options);
  if(result.status!=='found'||result.transaction?.kind!=='payment')return bad('payment_identity');
- if(facts(result.transaction)!==facts(expected))return bad('payment_changed');
- allocation(result.transaction);return result.transaction;
+ samePaymentFacts(result.transaction,expected);return result.transaction;
+}
+async function paymentHistoryFacts(reader:Reader,expected:FinancialPayment,options:FinancialReadOptions){
+ const result=await readFinancialHistory(reader,{hotel:expected.hotel,accountId:expected.accountId,start:expected.transactionDate!,end:expected.transactionDate!,kinds:['payment']},options);
+ const matches=result.payments.filter(row=>row.transactionId===expected.transactionId);
+ if(matches.length!==1)return bad('payment_history_identity');
+ const payment=matches[0];samePaymentFacts(payment,expected);allocation(payment);
+ if(payment.transferredIn!==false||payment.transferredOut!==false)return bad('payment_transfer');
+ return payment;
 }
 interface InvoiceApplication {transactionId:string;invoiceNo:string;appliedAmount:string;originalAmount:string;postingDate:string;transactionDate:string|null}
 function invoiceApplications(rows:Obj[],payment:FinancialPayment):InvoiceApplication[]{
@@ -135,7 +152,9 @@ export interface PaymentApplications {
  * directions. No application event date, collection role, or missing zero is inferred. */
 export async function readPaymentApplications(reader:Reader,expectedPayment:FinancialPayment,options:FinancialReadOptions={}):Promise<PaymentApplications>{
  reader=checkedReader(reader,expectedPayment);
- const payment=await paymentDetail(reader,expectedPayment,options),scope={hotel:payment.hotel,accountId:payment.accountId};
+ const payment=expectedPayment,detailBefore=await paymentDetail(reader,payment,options),scope={hotel:payment.hotel,accountId:payment.accountId};
+ allocation(payment);
+ const historyBefore=await paymentHistoryFacts(reader,payment,options);samePaymentFacts(detailBefore,historyBefore);
  const query={...scope,paymentTransactionId:payment.transactionId};
  const before=invoiceApplications(history(await reader.paymentAppliedInvoices(query),scope,options),payment),directed=allocation(payment);
  if(before.reduce((sum,row)=>sum+magnitude(cents(row.appliedAmount)),0n)!==directed.used)return bad('total');
@@ -148,7 +167,7 @@ export async function readPaymentApplications(reader:Reader,expectedPayment:Fina
    const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:invoice.transactionId},options);
    if(detail.status!=='found'||detail.transaction?.kind!=='invoice')return bad('invoice_identity');
    sameKnownFacts(detail.transaction,invoice);details.push({invoice,detail:detail.transaction});
-   pair(history(await reader.appliedInvoicePayments({...scope,invoiceTransactionId:invoice.transactionId,invoiceNo:invoice.invoiceNo!}),scope,options),payment,invoice,application);
+   pair(history(await reader.appliedInvoicePayments({...scope,invoiceTransactionId:invoice.transactionId,invoiceNo:invoice.invoiceNo!}),scope,options),detailBefore,invoice,application);
    invoices.push(invoice);
    links.push({...scope,invoiceTransactionId:invoice.transactionId,paymentTransactionId:payment.transactionId,invoiceNo:invoice.invoiceNo,appliedAmount:decimal(directed.direction*magnitude(cents(application.appliedAmount))),currency:'THB',invoiceTransactionDate:invoice.transactionDate,invoicePostingDate:invoice.postingDate,invoiceCloseDate:invoice.closeDate,applicationDate:null,applicationEventId:null});
   }
@@ -162,6 +181,10 @@ export async function readPaymentApplications(reader:Reader,expectedPayment:Fina
  const after=invoiceApplications(history(await reader.paymentAppliedInvoices(query),scope,options),payment);
  const rowFacts=(rows:InvoiceApplication[])=>JSON.stringify(rows.map(row=>JSON.stringify(row)).sort());
  if(rowFacts(before)!==rowFacts(after))return bad('history_changed');
- await paymentDetail(reader,payment,options);
+ const detailAfter=await paymentDetail(reader,payment,options);
+ if(facts(detailBefore)!==facts(detailAfter))return bad('payment_changed');
+ const historyAfter=await paymentHistoryFacts(reader,payment,options);
+ if(facts(historyBefore)!==facts(historyAfter))return bad('payment_changed');
+ samePaymentFacts(detailAfter,historyAfter);
  return {payment,invoices,links,coverage:{contract:'payment_history_correlated_v1',paymentTotalsReconciled:true,invoicePairsCorroborated:true,applicationEventHistory:false,observedAt:new Date(options.observedAt??Date.now()).toISOString(),completeness:'payment_totals_reconciled',dateSemantics:'no_application_event_date'}};
 }

@@ -52,7 +52,7 @@ async function mapFinancialInvoice(reader:OperaReader,invoice:FinancialInvoice,o
  }catch(error){if(!(error instanceof OperaError))throw error;return {links:[],error:/^financial_[a-z_]{1,80}$/.test(error.stage??'')?error.stage!:'financial_mapping_'+error.code};}
 }
 async function mapFinancialPayment(reader:OperaReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>{
- try{const verified=await readPaymentApplications(reader,payment,{observedAt});return {payment:verified.payment,invoices:verified.invoices,links:verified.links};}
+ try{const verified=await readPaymentApplications(reader,payment,{observedAt,maxRows:5000,maxPages:250});return {payment:verified.payment,invoices:verified.invoices,links:verified.links};}
  catch(error){if(!(error instanceof OperaError))throw error;return {paymentId:payment.transactionId,error:/^financial_[a-z_]{1,80}$/.test(error.stage??'')?error.stage!:'financial_payment_'+error.code};}
 }
 const stepConfig={retries:{limit:1,delay:'5 seconds' as const,backoff:'constant' as const},timeout:'20 minutes' as const};
