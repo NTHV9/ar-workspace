@@ -8,7 +8,9 @@
 - Signed inventoryversionใช้กับcaptureใหม่และrecaptureเฉพาะวันนี้จากverifiedsavedpublication. Legacypositive-onlycaptureไม่ใส่เครดิตปัจจุบันย้อนหลัง; Allnet/countที่ตรวจไม่ได้เป็น — แต่positiveworkยังอยู่ และไม่มีข้อความแจ้งเครดิตย้อนหลังในUIตามคำขอล่าสุด
 - Tested:937unit/105files,Typecheck/Build/publicassetsผ่าน; browser8focusedและ23regressionsผ่านรวมnetzero/negative,childdeeplink,creditไม่ถูกเลือกไปเก็บหนี้,legacyไม่มีwarning. SQL71migrations/28fixturesผ่านในisolatedloopback; serverstopped,ไม่มีproviderrequestsในSQLtests
 - Applied `20260914055234_ar_signed_outstanding_portfolio` (renamedCLI-createdfileตามserver-issuedversion; SQLSHA47b275686c6e9c4302b359116377e1e3b695a3a0d4e1cdf5e5918403d384e706คงเดิม). LiveRPCPortfolio/Period countและnetตรงกัน; nativeAccountnetตรงrootledgerครบทุกAccount. Today'scapturesทั้งสองโรงแรมsigned-v1และเก็บnegativeครบ; ไม่แก้วันย้อนหลัง/ledger/OPERA
-- รายละเอียดใน SIGNED_OUTSTANDING_PLAN_20260914.md; evidenceใหม่synthetic1280/390,คงreference/runtimecapturesก่อนหน้า. DeploymentและCI mergeกำลังตรวจในreleaseนี้
+- รายละเอียดใน SIGNED_OUTSTANDING_PLAN_20260914.md; evidenceใหม่synthetic1280/390ตรวจภาพแล้ว,คงreference/runtimecapturesก่อนหน้า. SecurityadvisorsมีเฉพาะINFO privateRLS-no-policyเดิม ไม่มีWARN/ERROR
+- Deployed source `3a4f6f4bd3151a2784bd9cdedeff324dc5d7ce2e`, Worker `a8ce1bfc-a6fe-4ca3-87ba-7079f495a3fc` ที่ https://ar-workspace.ar-c82.workers.dev . FreshhealthยืนยันexactSHA/database_verified/OPERAconnected;8focusedbrowsercasesบนdeployedassetsผ่าน(syntheticAPIs). Signed-inUIจริงยืนยันPortfolio/Periodจำนวนตรงกัน และตัวอย่างchildไม่แสดงในFolioหลังAccountโหลดครบ
+- [PR #25](https://github.com/NTHV9/ar-workspace/pull/25) merged `c40bdfeab0e5cc239ed1859de9baff4ff0664fba` หลัง [CI](https://github.com/NTHV9/ar-workspace/actions/runs/34811374026) และpushCIผ่าน; mergetreeตรงtested/deployedsource. Closeoutเปลี่ยนเฉพาะเอกสาร ไม่มีcustomerextractในGit
 
 
 ## Checkpoint New Invoices ใช้ Bill Date จากฐาน Portfolio — 14 กันยายน 2026
