@@ -24,6 +24,7 @@ export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<strin
   if(!response.ok){
     let message:unknown;try{message=(JSON.parse(new TextDecoder().decode(await boundedBody(response,8192))) as {message?:unknown}).message;}catch{await response.body?.cancel().catch(()=>{});}
     if(message==='budget_database_exceeded'||message==='retention_busy')throw Error(message);
+    if(name.startsWith('ar_financial_')&&typeof message==='string'&&/^financial_[a-z_]{1,80}$/.test(message))throw Error(message);
     throw new OperaError('provider_unavailable',response.status,`database_${name}`);
   }
   const text=await response.text();return (text?JSON.parse(text):null) as T;
