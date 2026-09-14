@@ -61,9 +61,13 @@ function checkedReader(reader:Reader,scope:FinancialScope):Reader{
 }
 function sameKnownFacts(detail:FinancialInvoice,context:FinancialInvoice){
  // A missing descriptor in detail supplies no role or date evidence. Every
- // descriptor actually returned must agree with the fully scoped history.
- for(const key of ['hotel','accountId','kind','transactionId','transactionDate','postingDate','revenueDate','transferDate','currency','transferredIn','transferredOut','invoiceNo','folioNo','invoiceType','originalAmount','currentAmount','cumulativePayments','openAmount','closeDate','compressed','parentInvoiceNo'] as const){
+ // shared descriptor must agree with the fully scoped history. Detail-only
+ // optional dates remain independent observations; they do not overwrite it.
+ for(const key of ['hotel','accountId','kind','transactionId','transactionDate','currency','transferredIn','transferredOut','invoiceNo','folioNo','invoiceType','originalAmount','currentAmount','cumulativePayments','openAmount','compressed','parentInvoiceNo'] as const){
   if(detail[key]!==null&&detail[key]!==context[key])return bad('invoice_facts');
+ }
+ for(const key of ['postingDate','revenueDate','transferDate','closeDate'] as const){
+  if(detail[key]!==null&&context[key]!==null&&detail[key]!==context[key])return bad('invoice_facts');
  }
  if(detail.collectionRole==='child'||detail.collectionRole!=='unverified'&&detail.collectionRole!==context.collectionRole)return bad('invoice_role');
 }

@@ -233,3 +233,36 @@ describe('complementary payment detail and refreshed history evidence',()=>{
   await expect(readPaymentApplications(h.reader,h.payment)).rejects.toMatchObject({code:'pagination_incomplete'});
  });
 });
+
+describe('complementary invoice source dates',()=>{
+ const sparseDates=(route:Route,value:Obj)=>{
+  if(route==='invoiceHistory')for(const invoice of groupRows(value,'invoices'))for(const key of ['postingDate','revenueDate','transferDate','closeDate'])delete invoice[key];
+  if(route==='invoiceDetail')groupRows(value,'invoices')[0].transferDate='2025-08-03';
+  if(route==='paymentHistory')for(const application of rows(value))application.postingDate='2025-08-01';
+  return value;
+ };
+ it('retains canonical invoice history dates while corroborating stable detail-only optional dates',async()=>{
+  const h=setup({sparse:true,mutate:(route,_count,value)=>sparseDates(route,value)}),result=await readPaymentApplications(h.reader,h.payment);
+  expect(result.invoices).toHaveLength(2);
+  expect(result.invoices.every(invoice=>invoice.postingDate===null&&invoice.revenueDate===null&&invoice.transferDate===null&&invoice.closeDate===null&&invoice.collectionRole==='standalone')).toBe(true);
+  expect(result.links.every(link=>link.invoicePostingDate===null&&link.invoiceCloseDate===null&&link.invoiceTransactionDate==='2025-08-01')).toBe(true);
+ });
+ it.each(['postingDate','revenueDate','transferDate','closeDate'] as const)('rejects conflicting known invoice %s',async key=>{
+  const h=setup({mutate:(route,_count,value)=>{
+   if(route==='invoiceHistory')for(const invoice of groupRows(value,'invoices'))invoice[key]='2025-08-02';
+   if(route==='invoiceDetail')groupRows(value,'invoices')[0][key]='2025-08-03';return value;
+  }});await expect(readPaymentApplications(h.reader,h.payment)).rejects.toMatchObject({stage:'financial_payment_mapping_invoice_facts'});
+ });
+ it('rejects a changing detail-only date even when history omits it',async()=>{
+  const h=setup({mutate:(route,count,value)=>{sparseDates(route,value);if(route==='invoiceDetail'&&count>2)groupRows(value,'invoices')[0].transferDate='2025-08-04';return value;}});
+  await expect(readPaymentApplications(h.reader,h.payment)).rejects.toMatchObject({stage:'financial_payment_mapping_invoice_changed'});
+ });
+ it('rejects an optional date appearing only on the final history reread',async()=>{
+  const h=setup({mutate:(route,count,value)=>{sparseDates(route,value);if(route==='invoiceHistory'&&count===2)groupRows(value,'invoices')[0].closeDate='2026-09-14';return value;}});
+  await expect(readPaymentApplications(h.reader,h.payment)).rejects.toMatchObject({stage:'financial_payment_mapping_invoice_changed'});
+ });
+ it('does not relax a conflicting required transaction date when optional dates are complementary',async()=>{
+  const h=setup({mutate:(route,_count,value)=>{sparseDates(route,value);if(route==='invoiceDetail')groupRows(value,'invoices')[0].transactionDate='2025-08-02';return value;}});
+  await expect(readPaymentApplications(h.reader,h.payment)).rejects.toMatchObject({stage:'financial_payment_mapping_invoice_facts'});
+ });
+});
