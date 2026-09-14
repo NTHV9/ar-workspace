@@ -30,11 +30,12 @@ export async function probePaymentHistory(reader:OperaReader,scope:{hotel:Financ
    if(pairs.length===1){const value=parseFinancialMoney(pairs[0].appliedAmount,payment?.currency==='THB'?'THB':undefined);if(value!==null&&applied!==null&&magnitude(value)===magnitude(applied))sampleChecks.backMagnitudeMatches++;if(value!==null&&payment?.amount!=null&&value.startsWith('-')===payment.amount.startsWith('-'))sampleChecks.backSamePaymentSign++;}
   }
  }
- let fullReader:Record<string,string|number>={status:'missing_payment'};
+ let fullReader:Record<string,string|number>={status:'missing_payment'};let detailDifferences:{field:string;detailMissing:boolean;historyMissing:boolean}[]=[];
  if(payment?.transactionDate){try{
   const cohort=await readFinancialHistory(reader,{hotel:scope.hotel,accountId:scope.accountId,start:payment.transactionDate,end:payment.transactionDate},{maxRows:1000});
   const expected=cohort.payments.find(p=>p.transactionId===payment.transactionId);
   if(!expected)throw new OperaError('invalid_response',undefined,'financial_payment_probe_missing');
+  detailDifferences=Object.keys(expected).filter(key=>expected[key as keyof typeof expected]!==payment[key as keyof typeof payment]).map(field=>({field,detailMissing:payment[field as keyof typeof payment]===null,historyMissing:expected[field as keyof typeof expected]===null}));
   const mapping=await readPaymentApplications(reader,expected,{maxRows:1000});
   fullReader={status:'verified',invoices:mapping.invoices.length,links:mapping.links.length,olderBillDates:mapping.invoices.filter(i=>i.transactionDate!<payment.transactionDate!).length};
  }catch(error){fullReader={status:'error',code:error instanceof OperaError?error.stage??error.code:'financial_payment_probe_error'};}}
@@ -44,6 +45,6 @@ export async function probePaymentHistory(reader:OperaReader,scope:{hotel:Financ
   detailPaymentRows:groups.reduce((n,g)=>n+(Array.isArray(g.payments)?g.payments.length:0),0),
   historyRows:rows.length,historyKeys:keys,knownAppliedAmounts:known,
   appliedTotalMatches:known===rows.length&&payment?.appliedAmount!==null&&payment?.appliedAmount!==undefined&&sum===magnitude(payment.appliedAmount),
-  invoiceSamples,invoiceSampleMatches,signs,sampleChecks,fullReader,
+  invoiceSamples,invoiceSampleMatches,signs,sampleChecks,fullReader,detailDifferences,
  };
 }
