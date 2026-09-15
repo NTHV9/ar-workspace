@@ -1,4 +1,4 @@
-import {describe,expect,it} from 'vitest';
+import {afterEach,describe,expect,it,vi} from 'vitest';
 import {OperaReader} from '../worker/opera/client';
 import {readPaymentApplications} from '../worker/opera/payment-applications';
 import {type FinancialPayment,readScopedFinancialInvoiceHistory} from '../worker/opera/financial-history';
@@ -9,13 +9,14 @@ const observedAt='2026-09-14T09:00:00.000Z';
 const money=(amount:string)=>({amount,currencyCode:'THB'});
 const structured=(value:unknown)=>structuredClone(value) as Obj;
 type Route='paymentDetail'|'paymentHistory'|'paymentScopeHistory'|'invoiceHistory'|'invoiceDetail'|'invoiceBack';
-function setup(options:{count?:number;debit?:boolean;zero?:boolean;sparse?:boolean;mutate?:(route:Route,count:number,value:Obj,url:URL)=>Obj}={}){
+function setup(options:{count?:number;delayMs?:number;debit?:boolean;zero?:boolean;sparse?:boolean;mutate?:(route:Route,count:number,value:Obj,url:URL)=>Obj}={}){
  const count=options.zero?0:options.count??2,debit=options.debit===true,used=count*100,posted=used+200;
  const signed=(n:number)=>`${debit?'':'-'}${n}.00`,sourcePayment={hotelId:'KAT',transactionNo:301,transactionCode:'9000',transactionDate:'2026-09-14',postingDate:'2026-09-14',revenueDate:'2026-09-13',transferDate:null,amount:money(signed(posted)),amountUsed:money(`${used}.00`),balance:money('200.00'),transferredIn:false,transferredOut:false};
  const payment:FinancialPayment={...scope,kind:'payment',transactionId:'301',transactionCode:'9000',transactionDate:'2026-09-14',postingDate:'2026-09-14',revenueDate:'2026-09-13',transferDate:null,currency:'THB',amount:signed(posted),appliedAmount:`${used}.00`,unallocatedAmount:'200.00',transferredIn:false,transferredOut:false,transfer:'none_reported',classification:'unknown',reversal:'unknown'};
  const invoices=Array.from({length:count},(_,index)=>({hotelId:'KAT',transactionNo:1001+index,invoiceNo:String(2001+index),folioNo:String(3001+index),invoiceType:'Normal',transactionDate:'2025-08-01',postingDate:'2025-08-02',revenueDate:'2025-07-31',transferDate:null,originalAmount:money('300.00'),amount:money('300.00'),payments:money(debit?'0.00':'300.00'),balance:money(debit?'300.00':'0.00'),closeDate:debit?null:'2026-09-14',compressed:false,transferredIn:false,transferredOut:false}));
  const applications=invoices.map(invoice=>({transactionNo:invoice.transactionNo,invoiceNo:invoice.invoiceNo,originalAmount:money('300.00'),appliedAmount:money(debit?'-100.00':'100.00'),postingDate:invoice.postingDate,guestName:'Synthetic private guest'}));
  const reads:Record<Route,number>={paymentDetail:0,paymentHistory:0,paymentScopeHistory:0,invoiceHistory:0,invoiceDetail:0,invoiceBack:0},calls:URL[]=[];
+ const activity={active:0,peak:0};
  const group=(invoices:unknown[]=[],payments:unknown[]=[])=>({details:[{hotelId:'KAT',accountId:{id:scope.accountId},invoices,payments}]});
  const reader=new OperaReader({origin:'https://opera.synthetic.invalid',appKey:'synthetic',hotelId:'KAT'},async()=>'synthetic',async request=>{
   expect(request.method).toBe('GET');expect(request.redirect).toBe('manual');const url=new URL(request.url);calls.push(url);let route:Route,value:Obj;
@@ -34,14 +35,25 @@ function setup(options:{count?:number;debit?:boolean;zero?:boolean;sparse?:boole
    if(options.sparse){delete invoice.compressed;delete invoice.invoiceNo;delete invoice.folioNo;delete invoice.originalAmount;}
    value=group([invoice]);
   }
-  reads[route]++;return Response.json(options.mutate?.(route,reads[route],structured(value),url)??value);
+  reads[route]++;const result=options.mutate?.(route,reads[route],structured(value),url)??value;
+  activity.active++;activity.peak=Math.max(activity.peak,activity.active);
+  try{if(options.delayMs)await new Promise(resolve=>setTimeout(resolve,options.delayMs));return Response.json(result);}finally{activity.active--;}
  });
- return {reader,payment,reads,calls};
+ return {reader,payment,reads,calls,activity};
 }
+afterEach(()=>vi.useRealTimers());
 const rows=(value:Obj)=>value.details as Obj[];
 const groupRows=(value:Obj,kind:'invoices'|'payments')=>rows(value)[0][kind] as Obj[];
 
 describe('payment history reaches old invoices independently of Bill Date',()=>{
+ it('verifies a large allocation within the step budget without dropping any independent reads',async()=>{
+  vi.useFakeTimers();const h=setup({count:60,delayMs:1000}),start=Date.now();
+  const pending=readPaymentApplications(h.reader,h.payment,{observedAt});
+  await vi.runAllTimersAsync();const result=await pending;
+  expect(result.invoices).toHaveLength(60);expect(result.links.map(link=>link.invoiceTransactionId)).toEqual(Array.from({length:60},(_,n)=>String(1001+n)));
+  expect(h.reads).toEqual({paymentDetail:2,paymentHistory:2,paymentScopeHistory:2,invoiceHistory:6,invoiceDetail:120,invoiceBack:60});
+  expect(h.activity).toEqual({active:0,peak:3});expect(Date.now()-start).toBe(75000);
+ });
  it('corroborates both directions, keeps paid-zero/old invoice facts and strips private descriptors',async()=>{
   const h=setup(),result=await readPaymentApplications(h.reader,h.payment,{observedAt});
   expect(result.payment).toEqual(h.payment);expect(result.invoices).toHaveLength(2);
@@ -84,6 +96,19 @@ describe('payment history reaches old invoices independently of Bill Date',()=>{
 });
 
 describe('payment application proof fails closed',()=>{
+ it('waits for all before proofs before rechecking history, then all after proofs before finishing payment',async()=>{
+  vi.useFakeTimers();const h=setup({count:6,delayMs:100,mutate:(route,count,value)=>{
+   if(route==='invoiceHistory'&&count===2){expect(h.activity.active).toBe(0);expect(h.reads.invoiceDetail).toBe(6);expect(h.reads.invoiceBack).toBe(6);}
+   if(route==='paymentHistory'&&count===2){expect(h.activity.active).toBe(0);expect(h.reads.invoiceDetail).toBe(12);}
+   return value;
+  }});
+  const pending=readPaymentApplications(h.reader,h.payment);await vi.runAllTimersAsync();expect((await pending).links).toHaveLength(6);
+ });
+ it('drains concurrent proofs and stops before after-history checks when a source pair is invalid',async()=>{
+  vi.useFakeTimers();const h=setup({count:6,delayMs:100,mutate:(route,count,value)=>{if(route==='invoiceBack'&&count===1)rows(value).shift();return value;}});
+  const checked=readPaymentApplications(h.reader,h.payment).catch(error=>error);await vi.runAllTimersAsync();
+  expect(await checked).toMatchObject({stage:'financial_payment_mapping_missing_back_pair'});expect(h.activity.active).toBe(0);expect(h.reads.invoiceHistory).toBe(1);expect(h.reads.invoiceDetail).toBe(3);expect(h.reads.invoiceBack).toBe(3);expect(h.reads.paymentHistory).toBe(1);
+ });
  const cases:{name:string;route:Route;mutate:(value:Obj)=>void}[]=[
   {name:'missing payment',route:'paymentDetail',mutate:v=>{groupRows(v,'payments').length=0;}},
   {name:'wrong payment date',route:'paymentDetail',mutate:v=>{groupRows(v,'payments')[0].transactionDate='2026-09-13';}},

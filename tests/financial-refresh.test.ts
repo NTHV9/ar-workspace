@@ -32,7 +32,7 @@ function harness(options:{knownCommand?:boolean;historyFailure?:boolean;changedD
   if(url.pathname.includes('/invoicePayments/')){if(options.historyFailure&&account==='SYNTHETIC-B')return new Response('private unavailable',{status:503});return Response.json({details:[{hotelId:'KAT',accountId:{id:account},invoices:[{hotelId:'KAT',transactionNo:'101',invoiceNo:'201',folioNo:'401',invoiceType:'Normal',transactionDate:'2026-08-20',originalAmount:money('0.30'),amount:money('0.30'),payments:money(options.noMapping?'0.00':'0.30'),balance:money(options.noMapping?'0.30':options.changedHistoryBalance?'0.15':'0.00'),compressed:false}],payments:[{hotelId:'KAT',transactionNo:'301',transactionDate:'2026-09-01',amount:money('-0.30'),amountUsed:money('-0.30'),balance:money('0.00'),transferredIn:false,transferredOut:false}]}],offset:20,limit:20,totalResults:2,hasMore:false});}
   return Response.json({accountDetails:{hotelId:'KAT',accountId:{id:account},accountName:'Synthetic account',type:'Synthetic type',accountNo:null}});
  });
- const step={do:async(_name:string,_config:unknown,callback:()=>Promise<unknown>)=>{const value=await callback();stepOutputs.push(value);return value;}} as Pick<WorkflowStep,'do'>;
+ const step={sleep:vi.fn(async()=>{}),do:(async(_name:string,_config:unknown,callback:()=>Promise<unknown>)=>{const value=await callback();stepOutputs.push(value);return value;}) as WorkflowStep['do']};
  return {rpc,sources,stepOutputs,step};
 }
 afterEach(()=>vi.unstubAllGlobals());

@@ -1,4 +1,5 @@
 import {OperaError,type OperaReader} from './client';
+import {mapFinancialReads} from './bounded-read';
 import {parseFinancialMoney,readFinancialHistory,readFinancialTransactionDetail,readScopedFinancialInvoiceHistory,type AppliedPaymentLink,type FinancialInvoice,type FinancialPayment,type FinancialReadOptions,type FinancialScope} from './financial-history';
 
 type Reader=Pick<OperaReader,'financialTransactionDetail'|'financialHistoryPage'|'paymentAppliedInvoices'|'invoiceHistory'|'appliedInvoicePayments'>;
@@ -165,22 +166,22 @@ export async function readPaymentApplications(reader:Reader,expectedPayment:Fina
  const numbers=[...new Set(before.map(row=>row.invoiceNo))],invoices:FinancialInvoice[]=[],links:AppliedPaymentLink[]=[];
  for(let offset=0;offset<numbers.length;offset+=20){
   const batch=numbers.slice(offset,offset+20),contexts=await readScopedFinancialInvoiceHistory(reader,scope,batch,options);
-  const applications=before.filter(row=>batch.includes(row.invoiceNo)),details:{invoice:FinancialInvoice;detail:FinancialInvoice}[]=[];
-  for(const application of applications){
+  const applications=before.filter(row=>batch.includes(row.invoiceNo));
+  const details=await mapFinancialReads(applications,async application=>{
    const invoice=contextFor(application,contexts);
    const detail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:invoice.transactionId},options);
    if(detail.status!=='found'||detail.transaction?.kind!=='invoice')return bad('invoice_identity');
-   sameKnownFacts(detail.transaction,invoice);details.push({invoice,detail:detail.transaction});
+   sameKnownFacts(detail.transaction,invoice);
    pair(history(await reader.appliedInvoicePayments({...scope,invoiceTransactionId:invoice.transactionId,invoiceNo:invoice.invoiceNo!}),scope,options),payment,invoice,application,[detailBefore,historyBefore],[invoice,detail.transaction]);
-   invoices.push(invoice);
-   links.push({...scope,invoiceTransactionId:invoice.transactionId,paymentTransactionId:payment.transactionId,invoiceNo:invoice.invoiceNo,appliedAmount:decimal(directed.direction*magnitude(cents(application.appliedAmount))),currency:'THB',invoiceTransactionDate:invoice.transactionDate,invoicePostingDate:invoice.postingDate,invoiceCloseDate:invoice.closeDate,applicationDate:null,applicationEventId:null});
-  }
+   return {invoice,detail:detail.transaction,link:{...scope,invoiceTransactionId:invoice.transactionId,paymentTransactionId:payment.transactionId,invoiceNo:invoice.invoiceNo,appliedAmount:decimal(directed.direction*magnitude(cents(application.appliedAmount))),currency:'THB' as const,invoiceTransactionDate:invoice.transactionDate,invoicePostingDate:invoice.postingDate,invoiceCloseDate:invoice.closeDate,applicationDate:null,applicationEventId:null}};
+  });
   const after=await readScopedFinancialInvoiceHistory(reader,scope,batch,options);
   if(JSON.stringify(contexts.map(facts).sort())!==JSON.stringify(after.map(facts).sort()))return bad('invoice_changed');
-  for(const {invoice,detail} of details){
+  await mapFinancialReads(details,async({invoice,detail})=>{
    const afterDetail=await readFinancialTransactionDetail(reader,{...scope,kind:'invoice',transactionId:invoice.transactionId},options);
    if(afterDetail.status!=='found'||afterDetail.transaction?.kind!=='invoice'||facts(detail)!==facts(afterDetail.transaction))return bad('invoice_changed');
-  }
+  });
+  for(const {invoice,link}of details){invoices.push(invoice);links.push(link);}
  }
  const after=invoiceApplications(history(await reader.paymentAppliedInvoices(query),scope,options),payment);
  const rowFacts=(rows:InvoiceApplication[])=>JSON.stringify(rows.map(row=>JSON.stringify(row)).sort());
