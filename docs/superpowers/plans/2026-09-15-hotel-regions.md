@@ -38,9 +38,9 @@ export function resolveRegion(params: URLSearchParams): RegionId;
 export function reportHotelScope(region: RegionId, hotel: string|null): HotelId|'KhaoLak'|null;
 ```
 
-- [ ] Write red tests for exact region order, unsupported IDs, old Phuket URLs, explicit Khao Lak properties, and rejected mismatched Hotel/Region.
-- [ ] Implement registry functions without provider calls. `reportHotelScope` keeps null for legacy Phuket All and uses reserved report scope `KhaoLak` for four-hotel reports; a reserved scope is never an operational HotelId.
-- [ ] Run `node node_modules/vitest/vitest.mjs run tests/hotels.test.ts` and review the public contract before dependent tasks.
+- [x] Write red tests for exact region order, unsupported IDs, old Phuket URLs, explicit Khao Lak properties, and rejected mismatched Hotel/Region.
+- [x] Implement registry functions without provider calls. `reportHotelScope` keeps null for legacy Phuket All and uses reserved report scope `KhaoLak` for four-hotel reports; a reserved scope is never an operational HotelId.
+- [x] Run `node node_modules/vitest/vitest.mjs run tests/hotels.test.ts` and review the public contract before dependent tasks.
 
 ## Task 2: Additive SQL property and reporting scope support
 
@@ -48,46 +48,46 @@ Files: one CLI-generated migration in `supabase/migrations/`; `tests/sql/hotel-r
 
 Interfaces: SQL `ar_private.is_supported_hotel(text)`, `ar_private.report_scope_hotels(text)` (null/All/Phuket => KAT/TSK; KhaoLak => four new IDs; exact hotel => one), and `ar_private.hotel_in_report_scope(text,text)`; new `public.ar_dashboard_region_overview(p_actor uuid,p_from date,p_to date,p_type text,p_region text)` returning the existing scope objects with an ordered dynamic hotels array. Existing `ar_dashboard_hotel_overview` remains Phuket-compatible.
 
-- [ ] Inventory live function definitions/constraints read-only, without real row exports. Build an explicit replacement manifest; exclude immutable applied migrations and acceptance-admin static test definitions.
-- [ ] Write rollback fixtures with identical account/invoice IDs in different properties. Verify independent workflow/amounts and reject mixed selections; assert Phuket defaults exclude Khao Lak and Khao Lak totals exclude Phuket.
-- [ ] Generate migration with the installed Supabase CLI. Expand actual property checks/FKs, update current operational validation and report-scope predicates. Preserve old signatures and privileges unless the new regional overview needs a new signature.
-- [ ] Verify all pre-existing suites and new scope fixture on disposable local PostgreSQL; inspect remaining KAT/TSK-only definitions individually. No blanket bypasses or live migration application by a subagent.
+- [x] Inventory live function definitions/constraints read-only, without real row exports. Build an explicit replacement manifest; exclude immutable applied migrations and acceptance-admin static test definitions.
+- [x] Write rollback fixtures with identical account/invoice IDs in different properties. Verify independent workflow/amounts and reject mixed selections; assert Phuket defaults exclude Khao Lak and Khao Lak totals exclude Phuket.
+- [x] Generate migration with the installed Supabase CLI. Expand actual property checks/FKs, update current operational validation and report-scope predicates. Preserve old signatures and privileges unless the new regional overview needs a new signature.
+- [x] Verify all pre-existing suites and new scope fixture on disposable local PostgreSQL; inspect remaining KAT/TSK-only definitions individually. No blanket bypasses or live migration application by a subagent.
 
 ## Task 3: Worker validators, readers and regional report adapters
 
 Files: `worker/index.ts`, `worker/opera/client.ts`, `worker/opera/probe.ts`, `worker/refresh/workflow.ts`, `worker/financial/*`, `worker/dashboard/*`, `worker/reports/*`, `worker/settings/*`, `worker/billing/*`, `worker/remittance/*`, `worker/accounts/*`, `worker/documents/*`, and focused API unit tests. Exclude font assets and synthetic acceptance hard limits.
 
-- [ ] Replace duplicated operational hotel allowlists/types with `isHotelId`/`HotelId`. Keep selected Hotel equal to the source/request Hotel at every identity gate.
-- [ ] Accept validated regional report scope; adapt `region + optional hotel` to the SQL contract without permitting region strings in single-property write routes. Account filter requires an exact hotel.
-- [ ] Add regional overview endpoint behavior, ordered four-hotel response validation and wrong-region response rejection. Preserve legacy no-region Phuket response shape/call path.
-- [ ] Regionalize report options/refresh requests and ensure all six known properties can run through the same bounded workflow. Keep startup enabling separate from code support.
-- [ ] Run existing API tests plus new four-property, invalid-region, owner and wrong-hotel cases. Root reviews and applies migrations/deployment only after integration.
+- [x] Replace duplicated operational hotel allowlists/types with `isHotelId`/`HotelId`. Keep selected Hotel equal to the source/request Hotel at every identity gate.
+- [x] Accept validated regional report scope; adapt `region + optional hotel` to the SQL contract without permitting region strings in single-property write routes. Account filter requires an exact hotel.
+- [x] Add regional overview endpoint behavior, ordered four-hotel response validation and wrong-region response rejection. Preserve legacy no-region Phuket response shape/call path.
+- [x] Regionalize report options/refresh requests and ensure all six known properties can run through the same bounded workflow. Keep startup enabling separate from code support.
+- [x] Run existing API tests plus new four-property, invalid-region, owner and wrong-hotel cases. Root reviews and applies migrations/deployment only after integration.
 
 ## Task 4: Browser regional navigation and dynamic comparisons
 
 Files: `src/App.tsx`, `src/Portfolio.tsx`, `src/AccountDetail.tsx`, `src/domain/portfolio.ts`, `src/dashboard/*`, `src/CollectionQueue.tsx`, `src/reports/*`, `src/remittance/*`, relevant CSS and browser fixtures/tests.
 
-- [ ] Add regional selector and ordered hotel controls. Wrap page state in selected region, reset incompatible account/selection context through current dirty guards and retain date/view preferences.
-- [ ] Generalize `Comparison` with per-hotel amounts while preserving existing kat/tsk fields for compatibility; render the selected region's columns, totals and hotel contribution. Group matching Account No. only within region.
-- [ ] Propagate region in all regional reads, options, drill links and Back state. Keep Document/Email one hotel and account.
-- [ ] Generalize Current Aging and HotelSplit to 2/4 hotel rows and dynamic names/colors. Keep all six ranges and Net open last visible at supported desktop widths.
-- [ ] Add six-hotel fixtures and test all page scopes, sorting, unknown/credits/child cases, mobile widths and dirty region switches; preserve original visual references.
+- [x] Add regional selector and ordered hotel controls. Wrap page state in selected region, reset incompatible account/selection context through current dirty guards and retain date/view preferences.
+- [x] Generalize `Comparison` with per-hotel amounts while preserving existing kat/tsk fields for compatibility; render the selected region's columns, totals and hotel contribution. Group matching Account No. only within region.
+- [x] Propagate region in all regional reads, options, drill links and Back state. Keep Document/Email one hotel and account.
+- [x] Generalize Current Aging and HotelSplit to 2/4 hotel rows and dynamic names/colors. Keep all six ranges and Net open last visible at supported desktop widths.
+- [x] Add six-hotel fixtures and test all page scopes, sorting, unknown/credits/child cases, mobile widths and dirty region switches; preserve original visual references.
 
 ## Task 5: Hotel document and sender readiness
 
 Files: statement template loading/configuration and associated readiness UI; Gmail region configuration only if the owner's sender choice requires it.
 
-- [ ] Verify the authoritative hotel assets privately before registration; render synthetic selected-only examples for each available hotel and compare logo/footer/bank details.
-- [ ] Keep missing templates as explicit setup errors and prohibit cross-hotel assets. Existing Phuket templates must remain byte-identical.
-- [ ] Honor the owner's mailbox answer. Do not infer authorization to a second mailbox from general app access. Preserve current sender behavior until the correct path is ready.
-- [ ] Test actual source PDF identity with allowed provider reads and document generation scope; any email test must use the conversation-authorized recipient ephemerally.
+- [x] Verify the authoritative hotel assets privately before registration; render synthetic selected-only examples for each available hotel and compare logo/footer/bank details.
+- [x] Keep missing templates as explicit setup errors and prohibit cross-hotel assets. Existing Phuket templates must remain byte-identical.
+- [x] Honor the owner's mailbox answer. Do not infer authorization to a second mailbox from general app access. Preserve current sender behavior until the correct path is ready.
+- [x] Test actual source PDF identity with allowed provider reads and document generation scope; any email test must use the conversation-authorized recipient ephemerally.
 
 ## Task 6: Controlled enabling, quota and final regression
 
-- [ ] Measure current quota headroom and bound initial read/import. Do not increase paid capacity or remove existing safety margins.
-- [ ] Apply reviewed additive migration, enable the confirmed hotel IDs and verify each source independently. Preserve atomic publication and all old history.
-- [ ] Run typecheck/build, relevant unit/browser suites and full SQL replay. Exercise Phuket as regression and Khao Lak as the new functional scope. Record qualitative/private provider results separately from synthetic evidence.
-- [ ] Independent whole-branch review; repair findings. Commit/Push/PR/CI/merge and verified deployment under the user's existing work authorization. Update PROJECT_STATUS with no real customer financial details.
+- [x] Measure current quota headroom and bound initial read/import. Do not increase paid capacity or remove existing safety margins.
+- [x] Apply reviewed additive migration, enable the confirmed hotel IDs and verify each source independently. Preserve atomic publication and all old history.
+- [x] Run typecheck/build, relevant unit/browser suites and full SQL replay. Exercise Phuket as regression and Khao Lak as the new functional scope. Record qualitative/private provider results separately from synthetic evidence.
+- [x] Independent whole-branch review; repair findings. Commit/Push/PR/CI/merge and verified deployment under the user's existing work authorization. Update PROJECT_STATUS with no real customer financial details.
 
 ## Execution ledger
 
