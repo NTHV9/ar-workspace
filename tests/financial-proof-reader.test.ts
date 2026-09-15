@@ -7,8 +7,14 @@ afterEach(()=>vi.useRealTimers());
 it('shares only queued identical calls and delivers isolated objects',async()=>{
  const read=vi.fn(async()=>({rows:[{amount:1}]})),scoped=createFinancialProofReader(fixture(read));
  const results=await Promise.all([scoped.reader.financialTransactionDetail(query),scoped.reader.financialTransactionDetail(query)]);
- expect(read).toHaveBeenCalledTimes(1);expect(scoped.stats()).toMatchObject({calls:1,joinedQueued:1});expect(results[0]).not.toBe(results[1]);
+ expect(read).toHaveBeenCalledTimes(1);expect(scoped.stats()).toMatchObject({calls:1,joinedQueued:1,copiedResponses:2});expect(results[0]).not.toBe(results[1]);
+ (results[0] as {rows:{amount:number}[]}).rows[0].amount=99;expect(results[1]).toEqual({rows:[{amount:1}]});
  await scoped.reader.financialTransactionDetail(query);expect(read).toHaveBeenCalledTimes(2);
+});
+it('transfers exclusive ownership without copying an unshared response body',async()=>{
+ const body={rows:Array.from({length:2000},(_,n)=>({id:n,values:Array(10).fill('synthetic')}))};
+ const scoped=createFinancialProofReader(fixture(async()=>body));
+ const result=await scoped.reader.financialTransactionDetail(query);expect(result===body).toBe(true);expect(scoped.stats().copiedResponses).toBe(0);
 });
 it('never joins a running older snapshot when another proof reaches its after barrier',async()=>{
  let version=1,release=()=>{};const hold=new Promise<void>(resolve=>{release=resolve;});

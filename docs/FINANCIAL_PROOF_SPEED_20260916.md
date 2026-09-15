@@ -27,3 +27,13 @@ Oracle publishes an environment-wide synchronous request limit; this change keep
 - Controlled workload: three different payments each contributing to the same 21 invoices. Complete returned proof objects match serial execution. Calls reduced from 219 to 153; elapsed synthetic time from 10,200 ms to 5,300 ms, at a maximum of three underlying calls. This workload demonstrates the sharing opportunity; live proportions may differ.
 - Live baseline semantic fingerprints were captured privately for invoice observations, payment observations and application links, excluding observation timestamps/run IDs. No customer payload or fingerprints were added to Git.
 - Deployment/live throughput and full-result comparison pending.
+
+## First live attempt and CPU repair
+
+- Source `3329ac5e385875d355808d57dec8e2731338c4c8` was deployed as Worker `dc1f6cc5-fb9d-4c02-9f00-9c35404d5db3`. Health/database and 19 anonymous boundary checks passed.
+- The live attempt failed after 43.5 minutes, at payment batch ordinal 60 / batch 1. Cloudflare reported a CPU-time limit, then an internal retry error. The preceding large batch completed in 194.6 seconds versus 482.8 seconds before, with the same five verified payments / 1,226 links. This partial speed result is not a successful full rollout.
+- All three published dataset fingerprints remained identical after the failed attempt. No incomplete dataset was published.
+- Production was returned to proven source `169c0ff2c7184f4c4cbcf2d67d60a9ffa9335c30`, Worker `100d7037-70f0-4844-963f-09c544a5316a`, while repairing the overhead.
+- Avoidable work found: every parsed response body was copied even when it had exactly one consumer. The repaired adapter transfers that exclusively owned body directly. Only queued shared results are copied for isolation; consumer count freezes before source execution. Input snapshots and freshness barriers remain.
+- Controlled CPU benchmark: 60 fresh parses of a 1,442,903-byte JSON response. Parse plus unconditional copy used 1,609 ms CPU; the repaired adapter used 375 ms. Timing is informational and does not prove production headroom. Ownership, shared nested mutation isolation and zero unnecessary-copy assertions are deterministic.
+- Full repaired suite: 1,223 tests passed; TypeScript/build and independent review passed. The CPU ceiling has not been increased. A new full live run is still required before calling the CPU issue resolved.
