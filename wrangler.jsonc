@@ -12,6 +12,7 @@
   "assets": { "directory": "dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "vars": {
     "OPERATIONS_BUDGET_ENABLED": "true",
+    "OPS_BUDGET_DATABASE_BYTES": "1073741824",
     "ACCEPTANCE_ENABLED": "false",
     "RETENTION_ENABLED": "true",
     "FINANCIAL_LOG_RETENTION_ENABLED": "true",

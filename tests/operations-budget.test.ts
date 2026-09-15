@@ -1,4 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {assessOperationBudget,operationBudgetLimits,reserveOperationBudget,startOperationBudget,finishOperationBudget,releaseOperationBudget,recordBudgetMeasurement,refreshLocalBudgetMeasurement,type BudgetBytes,type BudgetMeasurement,type BudgetReservation} from '../worker/operations/budget';
 
 const actor='00000000-0000-4000-8000-000000000001',id='00000000-0000-4000-8000-000000000002';
@@ -11,6 +12,17 @@ const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synth
 const input={id,resource:'remittance_upload',bytes:bytes(622,622,4096)};
 const reservation=(state:BudgetReservation['state']='reserved'):BudgetReservation=>({id,resource:input.resource,state,reserved:input.bytes,actual:state==='finished'?input.bytes:null,overrun:false});
 afterEach(()=>vi.unstubAllGlobals());
+
+it('production database allowance admits growth beyond the old cap and keeps 20% in reserve',()=>{
+ const configured=operationBudgetLimits(JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8')).vars);
+ expect(configured).toEqual({...operationBudgetLimits({}),databaseBytes:1073741824});
+ const s=state();s.measurement.used.databaseBytes=300*1048576;s.measurement.headroom.databaseBytes=1073741824;
+ expect(assessOperationBudget(s,bytes(0,0,8192),configured,now)).toEqual({allowed:true});
+ const safeLimit=Math.floor(1073741824*0.8);
+ s.measurement.used.databaseBytes=safeLimit-8192;
+ expect(assessOperationBudget(s,bytes(0,0,8192),configured,now)).toEqual({allowed:true});
+ expect(assessOperationBudget(s,bytes(0,0,8193),configured,now)).toEqual({allowed:false,reason:'budget_database_exceeded'});
+});
 
 it('uses conservative configurable allowances with a mandatory safety margin and no implicit enablement',()=>{expect(operationBudgetLimits({})).toEqual({storedBytes:1073741824,egressBytes:2147483648,databaseBytes:268435456,safetyPercent:20,maxConcurrent:4,measurementMaxAgeSeconds:300});for(const changes of [{OPS_BUDGET_STORED_BYTES:'0'},{OPS_BUDGET_EGRESS_BYTES:'1e9'},{OPS_BUDGET_DATABASE_BYTES:'1.5'},{OPS_BUDGET_SAFETY_PERCENT:'19'},{OPS_BUDGET_MAX_CONCURRENT:'17'},{OPS_BUDGET_MEASUREMENT_SECONDS:'901'}])expect(()=>operationBudgetLimits(changes)).toThrow('budget_not_configured');});
 it('fails closed for missing, unknown, stale, future or wrong-period usage instead of converting it to zero',()=>{for(const m of [null,{...measurement(),used:{...bytes(),egressBytes:null}},{...measurement(),headroom:{...bytes(),databaseBytes:null}},{...measurement(),observedAt:{...measurement().observedAt,storedBytes:'2026-09-10T13:39:59Z'}},{...measurement(),observedAt:{...measurement().observedAt,databaseBytes:'2026-09-10T13:45:01Z'}},{...measurement(),periodEnd:'2026-09-10T13:45:00Z'}])expect(assessOperationBudget({...state(),measurement:m},input.bytes,limits,now).allowed).toBe(false);});

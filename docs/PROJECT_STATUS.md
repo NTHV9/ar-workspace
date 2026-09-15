@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## App database allowance — 15 กันยายน 2026
+
+- Implemented: production configuration `OPS_BUDGET_DATABASE_BYTES=1073741824` เพิ่ม app allowance เป็น 1 GiB ผ่าน validator/atomic budget RPC เดิม. คง safetyPercent=20; ไม่มี schema, physical Disk, paid plan หรือโควต้าอื่นเปลี่ยน.
+- หน้า Storage ใช้ชื่อ **App database allowance** และแสดงหน่วย GiB เมื่อถึง 1 GiB. คงตัววัด usage, headroom, pending reservations และ retention เดิม.
+- Tested: unit boundary ยืนยันรับการเติบโตเกินเพดานเก่า และหยุดเมื่อ projected usage เกิน 80% ของ 1 GiB. 1,168 unit tests, TypeScript/build/public assets และ browser 5 cases ผ่าน รวม unknown usage, exact upload reconciliation และ 1440/1280/390; เปิดตรวจภาพ desktop/mobile แล้ว. Independent review ผ่าน; reference captures เดิมคงไว้.
+- Deployed source `dce1a5b7264d97d55e16b773c1a3d989421a1092`, Worker `f6cded88-f2fd-4f4b-92ed-ad1af0a93216`. เปิดค่า 1 GiB ผ่าน RPC เดิม ตรวจ persisted limit และ 20% reserve จริง; allowance/headroom อื่นและ blocked state คงเดิม. Production assets ผ่าน browser อีก 5 cases พร้อม health/database และ 19 anonymous boundaries. Integration: [PR39](https://github.com/NTHV9/ar-workspace/pull/39).
+
 ## Technical financial Log retention — 15 กันยายน 2026
 
 - Implemented: เก็บ `ar_private.financial_changes` หนึ่งเดือนปฏิทินนับจาก `observed_at` ตาม Asia/Bangkok. Service-only pruning RPC ล้าง exact expired IDs ไม่เกิน 1,000 แถวต่อครั้ง ใช้ private transaction/PID claim และ index ตามวันครบกำหนด. ปิด claim หลังสำเร็จ/ผิดพลาด; เก็บสถานะรวมเพียงหนึ่งแถว ไม่มี payload ใน maintenance log.
