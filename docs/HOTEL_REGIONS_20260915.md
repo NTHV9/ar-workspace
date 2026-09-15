@@ -28,6 +28,8 @@ Live private Statement plus native Invoice preparation succeeded for every new h
 - Four private template sets registered with PNG checksum checks. Existing quota guards and concurrency limits remain; no paid capacity was added. Security/performance advisor checks found no WARN/ERROR.
 - Deployed runtime `228ab836f110cf2ac22a5258a6643b53de190aab`, Worker `59c2643b-8569-4058-a646-f62a35a33d5f`. Health/database and 19 anonymous boundaries passed. All six source IDs are enabled; acceptance remains disabled. Existing refresh and cleanup schedules remain.
 - Integration: [PR #33](https://github.com/NTHV9/ar-workspace/pull/33); final release closeout is recorded in PROJECT_STATUS.
+- PR33 merged as `1fc9a60ffb2ea16791c30137bfe6dffa08503d68` after both CI runs passed on exact head `98940ce`. All eight test objects were deleted through the normal retention lifecycle; exact IDs checked absent and Storage returned to its prior level.
+- One late combined Period read failed. The private actual RPC completed in under two seconds and passed the exact Worker/frontend checks. A subsequently traced request returned HTTP200 and populated the view without a functional change; the original failure remains intermittent with unproven cause. Temporary instrumentation and private payloads were removed. Clean runtime `338fc7c95234aa85d220d0778da96aff3dfa24e7`, Worker `97ef2b31-59a5-4f63-8eb4-188ad636d3f5`, has the same application source as PR33 and passed health/database/anonymous checks.
 
 ## Operator setup
 
