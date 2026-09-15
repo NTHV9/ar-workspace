@@ -5,7 +5,8 @@
 - พบ/แก้ Collections hidden account filter หลังเปลี่ยนโรงแรม, KPI ที่ยังติด latest-sent filter, Sign out ที่ไม่เตือน unsaved Templates/Account และข้อความไฟล์ email หมดอายุที่ชวน retry. ลด queue fetch ซ้ำจากการกรอง/เรียงฝั่ง client พร้อมคง owner/token/publication refresh.
 - หลังแก้ 1,194 unit tests, TypeScript/build/public assets, Collection 14 cases, Sign-out 4 cases และ expiry/depth regressions ผ่าน. Initial full browser 449 cases: 446 ผ่าน อีกสามเป็น selector เก่าของ Portfolio; ปรับให้ตรงดีไซน์ใหม่โดยคง contrast/lighting checks และ baseline เดิม.
 - SQL replay/restore 78 migrations/33 rollback suites ผ่าน. Live authenticated pages, six-hotel invoice counts, current refresh status, Restricted Drive folder, budgets/log maintenance และ health/anonymous boundaries ตรวจแล้ว. คิว financial history ยังรอนานแต่มีความคืบหน้า; ไม่เพิ่ม concurrency/capacity หรือเปลี่ยนประวัติ.
-- รายละเอียดและข้อจำกัดใน [FULL_SYSTEM_AUDIT_20260915.md](FULL_SYSTEM_AUDIT_20260915.md). ไม่มีอีเมลจริงใหม่/เปลี่ยนข้อมูลลูกค้าในการทดสอบรอบนี้; final deployment/browser/integration อยู่ในขั้นปิดงาน.
+- Deployed source `b5bc85191e5a4df9fed3a883bb942d8ee2f226ad`, Worker `75c61bd8-8af0-4fe5-8823-e4d613c73939`. Final browser 461 unique cases มีผลผ่านครบ: full run ผ่าน 446 และอีก 15 เจอ network suspension/disconnection ระหว่าง navigation; หลังการเชื่อมต่อกลับมา ทวน 15/15 ผ่านบน source เดิม. Health/database/19 anonymous boundaries ผ่าน และตรวจตัวกรอง Collections ข้ามโรงแรมบน live signed-in session ผ่าน.
+- รายละเอียดและข้อจำกัดใน [FULL_SYSTEM_AUDIT_20260915.md](FULL_SYSTEM_AUDIT_20260915.md). ไม่มีอีเมลจริงใหม่หรือแก้การตั้งค่าลูกค้า/บัญชี OPERA ในรอบนี้. Integration: [PR43](https://github.com/NTHV9/ar-workspace/pull/43).
 
 ## Period analysis composition — 15 กันยายน 2026
 

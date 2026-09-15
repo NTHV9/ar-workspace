@@ -18,7 +18,7 @@ Collections also stopped re-reading the same catalog on local filter/sort change
 | Area | Verification |
 |---|---|
 | Core logic and APIs | 1,194 unit tests passed after repairs; TypeScript, production build and public-asset validation passed. |
-| Complete browser inventory | Initial full run: 449 cases across deployed assets and local PDF/editor harnesses; 446 passed, three failures referenced retired Portfolio selectors. Updated assertions preserve lighting, contrast, viewport and paper checks; all eight visual-depth cases pass. Final post-deployment run is recorded below. |
+| Complete browser inventory | Initial full run: 449 cases across deployed assets and local PDF/editor harnesses; 446 passed, three failures referenced retired Portfolio selectors. Updated assertions preserve lighting, contrast, viewport and paper checks. Final inventory: all 461 unique scenarios passed across the full run and targeted recovery described below. |
 | Collections and logout | Collection suite 14/14; logout suite 4/4, all against actual components with synthetic service responses. |
 | Email file expiry | API and browser regressions cover verified expiry versus ordinary failures, editable message preservation and retained attachment state. |
 | Database | All 78 migrations and 33 registered rollback suites replayed in disposable local PostgreSQL. Synthetic dump/restore fingerprints matched and the server stopped. No live database export. |
@@ -31,10 +31,15 @@ Historical reference screenshots are retained unchanged. Newly generated synthet
 ## Improvements and practical limits
 
 - The scheduled financial-history queue remains slow: some hotels wait behind earlier work. A running job was progressing, with valid leases. This is a performance follow-up; no concurrency, paid capacity or history policy was changed by this audit.
+- Some Khao Lak accounts still require their deliberately separate billing/credit-term/recipient setup. The live queue labels this work as Setup needed. These business settings need owner input, not guessed defaults or copied Phuket settings.
 - The source-level account credit noted above should be explained separately from invoice totals if a future UI needs reconciliation details. It is not evidence of a changed invoice amount or a reason to alter OPERA values.
 - This run did not recreate retired acceptance schemas, issue new real Gmail sends, create Drive test files, reset passwords or change customer settings. Sending/reply handling, authentication recovery, PDF edits, supplemental uploads and retention failure paths were exercised with regression fixtures. The prior audit's real-provider sends are historical evidence, not repeated claims for this run.
 - A passing audit covers the exercised scenarios and observed service state; it is not a guarantee that every future source response or interaction is defect-free.
 
 ## Release verification
 
-Repairs are implemented and locally verified. Deployment, final complete browser results and integration references will be recorded after execution.
+Deployed source `b5bc85191e5a4df9fed3a883bb942d8ee2f226ad`, Worker `75c61bd8-8af0-4fe5-8823-e4d613c73939`. Health/database and all 19 anonymous boundary checks passed on that source. A signed-in live Collections check confirmed a cross-hotel account filter clears and the new hotel's work remains visible.
+
+The full final browser inventory ran 461 cases. It passed 446 immediately; 15 could not navigate during a browser/network interruption (`ERR_NETWORK_IO_SUSPENDED` on localhost and `ERR_INTERNET_DISCONNECTED` on the deployed site). Once connectivity was healthy, the unchanged source passed all 15 in the targeted recovery run. These failures are retained as evidence; no application patch or assertion relaxation was used to suppress them.
+
+All 461 unique cases therefore have passing evidence on the release, including the new regressions. Original reference screenshots remain untouched. Integration: [PR43](https://github.com/NTHV9/ar-workspace/pull/43).
