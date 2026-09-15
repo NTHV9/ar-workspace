@@ -112,7 +112,7 @@ export async function expectChromeTypography(page: Page) {
   expect(Math.min(...sizes), 'navigation remains readable at desktop and narrow widths').toBeGreaterThanOrEqual(11);
 }
 
-/** Conservative caption contrast across each stop of a single translucent gradient. */
+/** Conservative caption contrast across opaque stops or a translucent gradient over an opaque base. */
 export async function expectGradientCaptionContrast(surface: Locator) {
   const result = await surface.evaluate(el => {
     const rgba = (value: string) => { const channels = value.match(/[\d.]+/g)?.map(Number) ?? []; return [channels[0], channels[1], channels[2], channels[3] ?? 1]; };
@@ -124,9 +124,9 @@ export async function expectGradientCaptionContrast(surface: Locator) {
       const bg = over(rgba(stop), base), fg = over(foreground, bg), levels = [luminance(bg), luminance(fg)].sort((a, b) => a - b);
       return (levels[1] + .05) / (levels[0] + .05);
     });
-    return { baseAlpha: base[3], image: style.backgroundImage, ratios };
+    return { baseAlpha: base[3], opaqueStops: stops.length>1&&stops.every(stop=>rgba(stop)[3]===1), image: style.backgroundImage, ratios };
   });
-  expect(result.baseAlpha, 'caption card has an opaque base').toBe(1);
+  expect(result.baseAlpha===1||result.opaqueStops, 'caption background is opaque through its base or every gradient stop').toBe(true);
   expect(result.ratios.length, 'the rendered gradient has color stops').toBeGreaterThan(1);
   expect(Math.min(...result.ratios), JSON.stringify(result)).toBeGreaterThanOrEqual(4.5);
 }
