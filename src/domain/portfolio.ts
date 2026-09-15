@@ -1,3 +1,4 @@
+import {hotelRegion,isHotelId,type HotelId} from './hotels';
 import type {StageSnapshot} from './collection-policy';
 export interface Account {
   hotel: string; id: string; name: string; type: string; open: number; over90: number; items: number;
@@ -24,7 +25,7 @@ export function sourceAging(rows: Account[], hotel: string): AgingBucket[] {
   if(accounts.some(a=>JSON.stringify(a.agingBuckets!.map(signature))!==JSON.stringify(first.map(signature))))return [];
   return first.map((bucket,index)=>({...bucket,amount:accounts.reduce((s,a)=>s+a.agingBuckets![index].amount,0),debit:accounts.reduce((s,a)=>s+a.agingBuckets![index].debit,0),credit:accounts.reduce((s,a)=>s+a.agingBuckets![index].credit,0)}));
 }
-export interface Comparison { key: string; name: string; kat: number; tsk: number; total: number; over90: number; share: number; items: number; accounts: number; members: Account[] }
+export interface Comparison { key: string; name: string; amounts: Partial<Record<HotelId,number>>; kat: number; tsk: number; total: number; over90: number; share: number; items: number; accounts: number; members: Account[] }
 export interface InvoiceWorkflow {last_reminder_policy_version?:number|null;last_reminder_stage_snapshot?:StageSnapshot|null;revision:number;credit_term:number|null;billing_required:boolean|null;first_billing_date:string|null;last_reminder_stage:string|null;last_reminder_date:string|null;due_date:string|null}
 export interface Invoice { exceptions?:{held:boolean;needsReview:boolean;dispute:string;reopenedAt:string|null};exception_status?:'available'|'unavailable';workflow?:InvoiceWorkflow|null; id: string; hotel: string; accountId: string; guest: string; invoiceNo: string; folioNo: string; date: string; due: string | null; original: number; open: number; aging: string; stage: string;
  age?:number|null; collection_role?:'unverified'|'standalone'|'parent'|'child'; collection_selectable?:boolean; parent_invoice_no?:string|null; parent_invoice_id?:string|null; parent_open?:number|null; verification_state?:string;
@@ -49,18 +50,21 @@ export function aggregateAccounts(rows: Account[], byType = false, identityRows:
     const number=numberOf(row);
     if(!number)continue;
     const key=JSON.stringify([row.hotel,number]);
-    if(seen.has(key))ambiguous.add(number);
+    if(seen.has(key))ambiguous.add((isHotelId(row.hotel)?hotelRegion(row.hotel):row.hotel)+number);
     seen.add(key);
   }
   const groups = new Map<string, Comparison>();
   for (const row of rows) {
     const number=numberOf(row);
+    const region=isHotelId(row.hotel)?hotelRegion(row.hotel):row.hotel;
     const key = byType ? row.type : row.group ? `group:${row.group}`
-      : number && !ambiguous.has(number) ? `number:${number}` : `${row.hotel}:${row.id}`;
-    const value = groups.get(key) ?? { key, name: byType ? row.type : row.name, kat: 0, tsk: 0, total: 0, over90: 0, share: 0, items: 0, accounts: 0, members: [] };
+      : number && !ambiguous.has(region+number) ? `number:${number}` : `${row.hotel}:${row.id}`;
+    const scopedKey=region==='phuket'?key:`${region}:${key}`;
+    const value = groups.get(scopedKey) ?? { key, name: byType ? row.type : row.name, amounts:{}, kat: 0, tsk: 0, total: 0, over90: 0, share: 0, items: 0, accounts: 0, members: [] };
+    if(isHotelId(row.hotel))value.amounts[row.hotel]=(value.amounts[row.hotel]??0)+row.open;
     if (row.hotel === 'KAT') value.kat += row.open;
     if (row.hotel === 'TSK') value.tsk += row.open;
-    value.total += row.open; value.over90 += row.over90; value.items += row.items; value.accounts++; value.members.push(row); groups.set(key, value);
+    value.total += row.open; value.over90 += row.over90; value.items += row.items; value.accounts++; value.members.push(row); groups.set(scopedKey, value);
   }
   const total = rows.reduce((sum,row)=>sum+row.open,0);
   return [...groups.values()].map(row=>({...row,share:total?row.total/total*100:0}));

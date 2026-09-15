@@ -1,14 +1,15 @@
+import {regionHotels,type RegionId} from '../domain/hotels';
 import type {CSSProperties} from 'react';
 import {Check,ChevronRight} from 'lucide-react';
 import type {AgingBucket} from '../domain/portfolio';
-import {agingBucketKey,agingPercentage,type AgingCell,type agingOverview} from './aging-model';
+import {agingBucketKey,agingPercentage,agingRegion,type AgingHotel,type AgingCell,type agingOverview} from './aging-model';
 import './aging-overview.css';
 import type {AgingCount} from './aging-invoice-data';
 
 /* Aging overview: a light mint balance field meets one chronological distribution.
    All six source ranges retain exact THB values; selection highlights without hiding data.
    The chart is a part-to-whole only when source evidence supports that claim. */
-interface Props {data:ReturnType<typeof agingOverview>;columns:AgingBucket[];label:string;selectedKey:string;onSelect:(key:string)=>void;counts?:Record<'Total'|'KAT'|'TSK',AgingCount>}
+interface Props {region?:RegionId;data:ReturnType<typeof agingOverview>;columns:AgingBucket[];label:string;selectedKey:string;onSelect:(key:string)=>void;counts?:Partial<Record<AgingHotel,AgingCount>>}
 const formatter=new Intl.NumberFormat('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 const amount=(value:number|null)=>value===null?'—':formatter.format(value);
 const stateLabel:Record<AgingCell['state'],string>={verified:'',absent:'No matching account',outside:'Outside scope',unavailable:'Source unverified'};
@@ -16,8 +17,8 @@ const rangeColors=['#269d94','#68a8d3','#666bce','#ae91cd','#d5a03e','#d57571'];
 const known=(cell:AgingCell|undefined):cell is AgingCell&{amount:number}=>cell?.state==='verified'&&cell.amount!==null&&Number.isFinite(cell.amount);
 const cents=(value:number)=>Math.round(value*100);
 
-export default function AgingOverview({data,columns,label,selectedKey,onSelect,counts}:Props){
- const countText=(hotel:'Total'|'KAT'|'TSK')=>counts?.[hotel].count==null?'—':counts[hotel].count!.toLocaleString('en-GB');
+export default function AgingOverview({region,data,columns,label,selectedKey,onSelect,counts}:Props){
+ const countText=(hotel:AgingHotel)=>counts?.[hotel]?.count==null?'—':counts![hotel]!.count!.toLocaleString('en-GB');
  const total=data.net.Total;
  const ranges=columns.map((bucket,index)=>({bucket,key:agingBucketKey(bucket),cell:data.cells[index]?.Total,color:rangeColors[index%rangeColors.length]}));
  const complete=ranges.length>0&&ranges.every(({cell})=>known(cell));
@@ -29,7 +30,7 @@ export default function AgingOverview({data,columns,label,selectedKey,onSelect,c
  const mode=distribution?'distribution':zero?'zero':complete&&known(total)?'signed':'unavailable';
  const selected=ranges.find(range=>range.key===selectedKey);
  const selectedPercent=selected&&known(selected.cell)&&known(total)?agingPercentage(selected.cell.amount,total.amount):null;
- const hotels=(['KAT','TSK'] as const).filter(hotel=>data.net[hotel].state!=='outside');
+ const hotels=regionHotels(region??agingRegion(data.members)).filter(hotel=>data.net[hotel].state!=='outside');
  const note=mode==='distribution'?'Share of net open · all source ranges'
   :mode==='zero'?'Verified net balances are zero.'
   :mode==='unavailable'?'Source verification required · only verified values are shown.'

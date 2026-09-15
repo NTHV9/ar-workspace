@@ -1,3 +1,4 @@
+import {regionHotels,type RegionId} from './domain/hotels';
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Account, RefreshState } from './domain/portfolio';
@@ -15,9 +16,9 @@ export function SearchBox({ value, onChange, placeholder }: { value: string; onC
 export function Metric({ label, value, note, accent = '' }: { label: string; value: ReactNode; note?: string; accent?: string }) {
   return <div className={`metric ${accent}`}><span className="metric-label">{label}</span><strong>{value}</strong>{note && <small>{note}</small>}</div>;
 }
-export function refreshLabel(refresh?: RefreshState, hotel='All', now=Date.now()) {
+export function refreshLabel(refresh?: RefreshState, hotel='All', now=Date.now(),region:RegionId='phuket') {
   if(!refresh)return 'Refresh status unavailable';
-  return (hotel==='All'?['KAT','TSK']:[hotel]).map(h=>{
+  return (hotel==='All'?regionHotels(region):[hotel]).map(h=>{
     const row=refresh.hotels.find(r=>r.hotel===h);
     if(!row)return `${h} · Never refreshed`;
     const date=row.last_success_at?new Date(row.last_success_at):null;
@@ -27,4 +28,4 @@ export function refreshLabel(refresh?: RefreshState, hotel='All', now=Date.now()
     return `${h} · ${status?`${status} · `:''}${stamp}`;
   }).join(' / ');
 }
-export function Freshness({ review, refresh, hotel='All' }: { review: boolean; refresh?: RefreshState; hotel?: string }) { return <span className={`freshness ${review ? 'review' : ''}`}><i/>{review ? 'Synthetic review' : refreshLabel(refresh,hotel)}</span>; }
+export function Freshness({ review, refresh, hotel='All',region='phuket' }: { region?:RegionId;review: boolean; refresh?: RefreshState; hotel?: string }) { return <span className={`freshness ${review ? 'review' : ''}`}><i/>{review ? 'Synthetic review' : refreshLabel(refresh,hotel,Date.now(),region)}</span>; }

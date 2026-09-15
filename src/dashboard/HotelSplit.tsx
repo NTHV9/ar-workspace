@@ -1,6 +1,7 @@
+import type {HotelId} from '../domain/hotels';
 import {amount,number} from './period-data';
 
-export interface HotelMeasure {hotel:'KAT'|'TSK';count?:number|null;amount?:string|number|null;onOpen?:()=>void;disabled?:boolean}
+export interface HotelMeasure {hotel:HotelId;count?:number|null;amount?:string|number|null;onOpen?:()=>void;disabled?:boolean}
 export function HotelSplit({rows,id,label,unit='invoices',visual=false}:{visual?:boolean;rows:HotelMeasure[];id:string;label:string;unit?:string}){
  if(!rows.length)return null;
  const totals=rows.map(r=>r.amount==null?null:Number(r.amount)),sum=totals.every(n=>n!==null&&Number.isFinite(n)&&n>=0)?totals.reduce<number>((n,v)=>n+(v??0),0):0;

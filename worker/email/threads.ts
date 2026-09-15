@@ -3,6 +3,7 @@ import {parseRecipients,validMailbox,type Recipients} from '../settings/validati
 import {emailRpc,googleJson,type EmailDraft,type EmailEnv} from './shared';
 import {gmailCanRead,gmailToken} from './oauth';
 import {unbase64} from './crypto';
+import {isHotelId,type HotelId} from '../../src/domain/hotels';
 
 const sender='ar@katathani.com';
 export type ThreadProof=Omit<ThreadChoice,'matchedRecipients'>&{matchedRecipients?:string[]};
@@ -102,12 +103,12 @@ function preview(conversation:Conversation,offset:number,historyId?:string):Thre
  return {thread:conversation.thread,messages:conversation.messages.slice(offset,offset+50).map(({id,date,from,to,subject,snippet,direction,matchesReply})=>({id,date,from,to,subject,snippet,direction,matchesReply})),nextMessageOffset:offset+50<conversation.messages.length?offset+50:null,checkedAt:new Date().toISOString(),historyId:conversation.historyId};
 }
 export async function previewThread(env:EmailEnv,actor:string,id:string,revision:number,threadId:string,offset=0,historyId?:string){const d=await accessibleDraft(env,actor,id,revision);return preview(await readConversation(await tokenForRead(env,actor),threadId,d.recipients,d.thread?.rfcMessageId),offset,historyId);}
-export interface SavedDraftScope {hotel:'KAT'|'TSK';accountId:string;draftId:string}
+export interface SavedDraftScope {hotel:HotelId;accountId:string;draftId:string}
 /** Historical inspection does not grant permission to edit, select a thread, or send. */
 export async function savedDraftForReview(env:EmailEnv,actor:string,scope:SavedDraftScope):Promise<EmailDraft> {
  const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  if(!uuid.test(actor))throw Error('email_forbidden');
- if(!uuid.test(scope.draftId)||!['KAT','TSK'].includes(scope.hotel)||typeof scope.accountId!=='string'||!scope.accountId.trim()||scope.accountId.length>200||/[\x00-\x1f\x7f]/.test(scope.accountId))throw Error('email_invalid');
+ if(!uuid.test(scope.draftId)||!isHotelId(scope.hotel)||typeof scope.accountId!=='string'||!scope.accountId.trim()||scope.accountId.length>200||/[\x00-\x1f\x7f]/.test(scope.accountId))throw Error('email_invalid');
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:scope.draftId});if(!draft)throw Error('email_missing');
  if(draft.owner!==actor||draft.id!==scope.draftId||draft.hotel!==scope.hotel||draft.account_id!==scope.accountId)throw Error('email_forbidden');
  if(!uuid.test(draft.document_job_id)||!Number.isSafeInteger(draft.revision)||draft.revision<0||!Number.isSafeInteger(draft.document_revision)||draft.document_revision<0||typeof draft.package_changed!=='boolean'||typeof draft.subject!=='string'||typeof draft.body!=='string'||!['billing','collection'].includes(draft.purpose))throw Error('email_invalid');

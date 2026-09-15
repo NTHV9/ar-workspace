@@ -1,8 +1,9 @@
 import {OperaError,type OperaReader,type FinancialReadScope,type FinancialHistoryRead} from './client';
 import {collectPages,verifiedNextCursor} from './pagination';
 import {historyRootCount} from './history-count';
+import {isHotelId,type HotelId} from '../../src/domain/hotels';
 
-export type FinancialHotel='KAT'|'TSK';
+export type FinancialHotel=HotelId;
 export type FinancialKind='invoice'|'payment';
 export type FinancialAmount=string;
 export interface FinancialScope {hotel:FinancialHotel;accountId:string}
@@ -65,8 +66,8 @@ function transactionId(value:unknown,opening=false):string {
  return value;
 }
 function scope(query:FinancialReadScope):FinancialScope {
- if(!query||!['KAT','TSK'].includes(query.hotel)||typeof query.accountId!=='string'||!query.accountId||query.accountId.length>200||query.accountId.trim()!==query.accountId||query.accountId==='.'||query.accountId==='..'||/[\x00-\x1f\x7f/\\]/.test(query.accountId))return invalid('scope');
- return {hotel:query.hotel as FinancialHotel,accountId:query.accountId};
+ if(!query||!isHotelId(query.hotel)||typeof query.accountId!=='string'||!query.accountId||query.accountId.length>200||query.accountId.trim()!==query.accountId||query.accountId==='.'||query.accountId==='..'||/[\x00-\x1f\x7f/\\]/.test(query.accountId))return invalid('scope');
+ return {hotel:query.hotel,accountId:query.accountId};
 }
 function historyQuery(query:FinancialHistoryQuery):FinancialHistoryRead {
  const identity=scope(query);let start:string|null,end:string|null;

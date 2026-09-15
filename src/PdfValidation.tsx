@@ -1,3 +1,4 @@
+import {isHotelId} from './domain/hotels';
 import {useEffect,useRef,useState} from 'react';
 import {getDocument,GlobalWorkerOptions} from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -10,7 +11,7 @@ export default function PdfValidation({runId,hotel,token}:{runId:string;hotel:st
   let cancelled=false;const controller=new AbortController();let destroy:(()=>Promise<void>)|undefined;
   setStatus('Loading private PDF…');setChecks(null);pages.current?.replaceChildren();
   void(async()=>{try{
-   if(!/^[0-9a-f-]{36}$/.test(runId)||!['KAT','TSK'].includes(hotel))throw new Error();
+   if(!/^[0-9a-f-]{36}$/.test(runId)||!isHotelId(hotel))throw new Error();
    const base=`/api/pdf-validation/${runId}/${hotel}`;
    const responses=await Promise.all(['pdf','json'].map(ext=>fetch(`${base}/${ext}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal})));
    if(responses.some(r=>!r.ok))throw new Error();

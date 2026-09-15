@@ -1,3 +1,4 @@
+import {isHotelId} from '../domain/hotels';
 import {dashboardMetricKeys,type DashboardBalancesResponse,type DashboardPaymentInvoicesResponse} from '../../worker/dashboard/model';
 import {count,decimal,validDay} from './model';
 import {formatAmount} from '../remittance/money';
@@ -10,9 +11,9 @@ const metric=(v:unknown)=>object(v)&&(v.count===null||count(v.count)!==null)&&(v
 export function balancesResult(value:unknown):DashboardBalancesResponse{
  if(!object(value)||!validDay(String(value.asOfDate))||!['current','snapshot','unavailable'].includes(String(value.mode))||typeof value.complete!=='boolean'||!Array.isArray(value.rows)||!Array.isArray(value.metrics)||!Array.isArray(value.stages)||!Array.isArray(value.missingHotels)||count(value.total)===null||count(value.unverified)===null)throw Error('dashboard_balances_invalid');
  if(value.metrics.some(m=>!metric(m)||!dashboardMetricKeys.includes(m.key as never))||value.stages.some(m=>!metric(m)||typeof m.key!=='string'||typeof m.label!=='string'))throw Error('dashboard_balances_invalid');
- if(value.rows.some(r=>!object(r)||!['KAT','TSK'].includes(String(r.hotel))||typeof r.accountId!=='string'||typeof r.invoiceId!=='string'||decimal(r.open)===null||typeof r.verified!=='boolean'))throw Error('dashboard_balances_invalid');
+ if(value.rows.some(r=>!object(r)||!isHotelId(r.hotel)||typeof r.accountId!=='string'||typeof r.invoiceId!=='string'||decimal(r.open)===null||typeof r.verified!=='boolean'))throw Error('dashboard_balances_invalid');
  const freshness=value.freshness;
- if(freshness!==undefined&&(!object(freshness)||!['refreshingHotels','failedHotels'].every(key=>Array.isArray(freshness[key])&&(freshness[key] as unknown[]).every(h=>h==='KAT'||h==='TSK'))))throw Error('dashboard_balances_invalid');
+ if(freshness!==undefined&&(!object(freshness)||!['refreshingHotels','failedHotels'].every(key=>Array.isArray(freshness[key])&&(freshness[key] as unknown[]).every(h=>isHotelId(h)))))throw Error('dashboard_balances_invalid');
  const breakdown=value.openBalanceBreakdown;
  if(breakdown!==undefined&&(!object(breakdown)||!object(breakdown.positive)||!object(breakdown.credit)||!metric(breakdown.positive)||!metric(breakdown.credit)||typeof breakdown.creditCoverageComplete!=='boolean'||breakdown.positive.amount!==null&&Number(breakdown.positive.amount)<0||breakdown.credit.amount!==null&&Number(breakdown.credit.amount)>0))throw Error('dashboard_balances_invalid');
  return value as unknown as DashboardBalancesResponse;

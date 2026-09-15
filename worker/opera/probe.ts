@@ -4,11 +4,15 @@ import {backendRpc} from '../refresh/backend';
 import { OperaReader, OperaError } from './client';
 import { createTokenProvider } from './auth';
 import { normalizeAccount } from './normalize';
+import {isHotelId} from '../../src/domain/hotels';
+import {configuredOperaHotels} from '../hotels';
+import {balanceReconciliationDiagnostic} from './balance-diagnostic';
 export interface OperaEnv extends AcceptanceEnv { OPERA_BASE_URL?:string; OPERA_ENTERPRISE_ID?:string; OPERA_HOTEL_IDS?:string; OPERA_CLIENT_ID?:string; OPERA_CLIENT_SECRET?:string; OPERA_APP_KEY?:string; OPERA_SCOPE?:string; OPERA_TIMEOUT_MS?:string }
 function object(value:unknown):Record<string,unknown> {if(!value||typeof value!=='object'||Array.isArray(value))throw new OperaError('invalid_response');return value as Record<string,unknown>;}
 export function makeReader(env:OperaEnv,hotel:string,sharedToken?:()=>Promise<string>) {
+  if(!isHotelId(hotel))throw new OperaError('invalid_configuration');
   if(env.ACCEPTANCE){const scoped=env as OperaEnv&{SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string};const fixture=backendRpc<unknown>(scoped,'ar_acceptance_fixture',{p_actor:env.ACCEPTANCE.owner,p_id:env.ACCEPTANCE.id}).then(checkedAcceptanceFixture);return new OperaReader({origin:'https://ar-acceptance.invalid',appKey:'synthetic-test-only',hotelId:hotel},async()=> 'synthetic-test-only',acceptanceTransport(fixture,hotel));}
-  if(!env.OPERA_BASE_URL||!env.OPERA_CLIENT_ID||!env.OPERA_CLIENT_SECRET||!env.OPERA_APP_KEY||!env.OPERA_HOTEL_IDS?.split(',').includes(hotel))throw new OperaError('invalid_configuration');
+  if(!env.OPERA_BASE_URL||!env.OPERA_CLIENT_ID||!env.OPERA_CLIENT_SECRET||!env.OPERA_APP_KEY||!configuredOperaHotels(env.OPERA_HOTEL_IDS).includes(hotel))throw new OperaError('invalid_configuration');
   const getToken=sharedToken??createTokenProvider(env.OPERA_BASE_URL,env.OPERA_ENTERPRISE_ID??'',JSON.stringify({grantType:'client_credentials',clientId:env.OPERA_CLIENT_ID,clientSecret:env.OPERA_CLIENT_SECRET,appKey:env.OPERA_APP_KEY,scope:env.OPERA_SCOPE??'urn:opc:hgbu:ws:__myscopes__'}));
   return new OperaReader({origin:env.OPERA_BASE_URL,appKey:env.OPERA_APP_KEY,hotelId:hotel,timeoutMs:Number(env.OPERA_TIMEOUT_MS??60000)},getToken);
 }
@@ -83,7 +87,7 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){
     const a=object(object(raw).accountDetails);const summary=a.summary?object(a.summary):{};
     let normalized='passed';try{normalizeAccount(raw,hotel,String(date));}catch(e){normalized=e instanceof OperaError?e.stage??e.code:'failed';}
-    normalizationChecks.push({sample,normalized,invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:r.agingStartDay,end:r.agingEndDay,sequence:r.sequence};}):null});
+    normalizationChecks.push({sample,normalized,balanceDiagnostic:balanceReconciliationDiagnostic(raw),invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:r.agingStartDay,end:r.agingEndDay,sequence:r.sequence};}):null});
   }
   return {hotel,status:'read_verified',statementSelection,nativeFolio,reservationFolioLookup,normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }

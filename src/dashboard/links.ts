@@ -2,7 +2,7 @@ import {accountIdentity,dashboardScope,type DashboardScope} from './model';
 import type {ReportContext} from '../reports/Reports';
 import type {RemittanceContext} from '../remittance/Remittances';
 export type DashboardDestination='invoice_entries'|'payments'|'external'|'email_billing'|'sent'|'remittance'|'portfolio'|'account'|'urgent'|'billing'|'collection'|'review'|'held'|'setup';
-export function dashboardUrl(scope:DashboardScope){const q=new URLSearchParams({dashboard:'1',hotel:scope.hotel,dashboardFrom:scope.from,dashboardTo:scope.to});if(scope.type)q.set('dashboardType',scope.type);if(scope.account)q.set('dashboardAccount',scope.account);return '/?'+q;}
+export function dashboardUrl(scope:DashboardScope){const q=new URLSearchParams({...scope.region?{region:scope.region}:{},dashboard:'1',hotel:scope.hotel,dashboardFrom:scope.from,dashboardTo:scope.to});if(scope.type)q.set('dashboardType',scope.type);if(scope.account)q.set('dashboardAccount',scope.account);return '/?'+q;}
 export function dashboardLink(scope:DashboardScope,destination:DashboardDestination,stage?:string){
  const q=new URLSearchParams(dashboardUrl(scope).slice(2));q.delete('dashboard');q.set('fromDashboard','1');q.set('dashboardHotel',scope.hotel);
  const identity=accountIdentity(scope.account);if(identity)q.set('hotel',identity[0]);

@@ -1,6 +1,9 @@
+import {HOTEL_IDS,hotelRegion,isHotelId,regionHotels,type HotelId,type RegionId} from '../domain/hotels';
 import {aggregateAccounts,sourceAging,validSourceBucket,type Account,type AgingBucket} from '../domain/portfolio';
 
-export type AgingHotel='TSK'|'KAT'|'Total';
+export type AgingHotel=HotelId|'Total';
+export const agingRegion=(members:Account[]):RegionId=>{const h=members.find(a=>isHotelId(a.hotel));return h&&isHotelId(h.hotel)?hotelRegion(h.hotel):'phuket';};
+export const comparisonHotels=(members:Account[],region:RegionId=agingRegion(members)):AgingHotel[]=>[...regionHotels(region),'Total'];
 export const agingHotels:AgingHotel[]=['KAT','TSK','Total'];
 export interface AgingCell {state:'verified'|'absent'|'outside'|'unavailable';amount:number|null;debit:number|null;credit:number|null}
 export interface AgingComparisonRow {key:string;name:string;members:Account[];cells:Record<AgingHotel,AgingCell>[];net:Record<AgingHotel,AgingCell>}
@@ -31,14 +34,14 @@ function hotelCell(members:Account[],hotel:string,scope:string,bucket?:AgingBuck
  return amount===null||debit===null||credit===null?unavailable():{state:'verified',amount,debit,credit};
 }
 function cells(members:Account[],scope:string,bucket?:AgingBucket):Record<AgingHotel,AgingCell>{
- const TSK=hotelCell(members,'TSK',scope,bucket),KAT=hotelCell(members,'KAT',scope,bucket);
- const included=[TSK,KAT].filter(c=>c.state!=='outside'&&c.state!=='absent');
+ const result=Object.fromEntries(HOTEL_IDS.map(h=>[h,hotelCell(members,h,scope,bucket)])) as Record<AgingHotel,AgingCell>;
+ const included=regionHotels(agingRegion(members)).map(h=>result[h]).filter(c=>c.state!=='outside'&&c.state!=='absent');
  let Total=unavailable(included.length?'unavailable':'absent');
  if(included.length&&included.every(c=>c.state==='verified')){
   const amount=sum(included.map(c=>c.amount!));
   Total={state:amount===null?'unavailable':'verified',amount,debit:bucket?sum(included.map(c=>c.debit!)):null,credit:bucket?sum(included.map(c=>c.credit!)):null};
  }
- return {TSK,KAT,Total};
+ return {...result,Total};
 }
 /** An omitted type lists types. A selected type lists matched accounts, checked against the complete catalog. */
 export function agingComparison(catalog:Account[],hotel:string,type?:string):AgingComparisonRow[]{

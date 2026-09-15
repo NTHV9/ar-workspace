@@ -1,5 +1,13 @@
 # ข้อสรุปล่าสุด ข้อเสนอ และเรื่องที่ต้องยืนยัน
 
+## ยืนยันล่าสุด — Phuket และ Khao Lak — 15 กันยายน 2026
+
+- เจ้าของให้ขยายระบบเดิมเป็นสองกลุ่ม: Phuket = KAT, TSK; Khao Lak = TLKL, WAKL, TLFO, TSAN. ใช้หน้าตาและฟังก์ชันเดิม โดย All Hotels รวมเฉพาะโรงแรมในกลุ่มที่เลือก. คง Account/Invoice และคำสั่งงานแยก Hotel + Account.
+- เจ้าของยืนยันให้ Khao Lak เริ่มตั้ง Billing Required, Credit Term และอีเมลผู้รับแยกจาก Phuket ไม่คัดลอกตาม Account No. ประวัติเริ่มยังไม่วางบิล/ไม่ทวง โดยไม่เดาวันจริงหรือ Credit Term.
+- เจ้าของให้ไฟล์แม่แบบ tlkl_statement.rtf, wakl_statement.rtf, tlfo_statement.rtf, tsan_statement.rtf ในโฟลเดอร์ Downloads/Statement. ใช้ส่วนคงที่ของแต่ละแม่แบบในตัวสร้าง Statement ของระบบ; Invoice/Folio ยังคง OPERA API. เก็บแม่แบบและ assets ที่มีข้อมูลธนาคารแบบ private.
+- คงการเชื่อมกล่องอีเมลเดิมระหว่างเตรียมงาน; ไม่เชื่อมหรือให้สิทธิ์บัญชีใหม่โดยเดา. คำถามเรื่องผู้ส่งของ Khao Lak ยังรอคำตอบ. ไม่มี auto-send.
+- ไม่เพิ่ม paid project/capacity และต้องตรวจโควต้าก่อนเปิดอ่านสี่โรงแรมเพิ่ม. สถานะ implemented/tested/deployed/enabled ดู PROJECT_STATUS ไม่ถือว่าข้อกำหนดนี้คือผลเปิดใช้แล้ว.
+
 ## ยืนยันล่าสุด — รวมเครดิตในจำนวน Invoice ของ Aging — 14 กันยายน 2026
 
 เจ้าของยืนยันให้นับรายการยอดติดลบด้วย หลังเทียบจำนวน Aging กับหน้าอื่น. กล่องสรุป KAT/TSK/Total ตารางแต่ละช่วงและ Net open รวม verified nonzero root invoices ทั้งบวกและลบครั้งเดียว ไม่รวม zero หรือ child. ใช้ publication และตัวกรองเดียวกับยอดที่กำลังแสดง. จำนวนรวมจึงใช้เกณฑ์เดียวกับ Portfolio/All outstanding เมื่อข้อมูลและ scope ตรงกัน.

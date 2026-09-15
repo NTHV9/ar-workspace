@@ -30,6 +30,8 @@ import {emailApi} from './email/api';
 import {gmailCallback} from './email/oauth';
 import type {EmailEnv} from './email/shared';
 import {rendererProof} from './statement/proof';
+import {isHotelId,regionHotels} from '../src/domain/hotels';
+import {configuredOperaHotels,hotelBelongsToRegion,regionalHotelScope,resultMatchesHotelScope} from './hotels';
 interface Env extends FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function upstream(url: string, options: RequestInit) {
@@ -43,7 +45,7 @@ async function upstream(url: string, options: RequestInit) {
   finally { clearTimeout(timer); }
 }
 export async function handleApi(request: Request, env: Env): Promise<Response> {
-  const path = new URL(request.url).pathname;
+  const requestUrl=new URL(request.url),path=requestUrl.pathname;
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
   const acceptanceRequest=path.startsWith('/api/acceptance/');
   const operationsRequest=path.startsWith('/api/operations/');
@@ -64,7 +66,8 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   const refreshRequest=path==='/api/refresh'&&['GET','POST'].includes(request.method);
   const collectionValidation=path==='/api/collection/validate-selection'&&request.method==='POST';
   const documentRequest=path==='/api/documents'||path.startsWith('/api/documents/');
-  const pdfValidation=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/(KAT|TSK)\/(pdf|json)$/.exec(path);
+  const pdfMatch=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/([^/]+)\/(pdf|json)$/.exec(path);
+  const pdfValidation=pdfMatch&&isHotelId(pdfMatch[2])?pdfMatch:null;
   if (request.method !== 'GET'&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest&&!billingRequest&&!operationsRequest&&!acceptanceRequest) return json({ error: 'method_not_allowed' }, 405);
   if (path === '/api/config') {
     let googleEnabled = false;
@@ -129,23 +132,31 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       const reader=request.body.getReader();let body='';let size=0;const decoder=new TextDecoder();
       try{while(true){const p=await reader.read();if(p.done)break;size+=p.value.byteLength;if(size>16384){await reader.cancel();return json({error:'invalid_request'},413);}body+=decoder.decode(p.value,{stream:true});}}finally{reader.releaseLock();}
       let input;try{input=JSON.parse(body);}catch{return json({error:'invalid_request'},400);}
-      if(!input||!['KAT','TSK'].includes(input.hotel)||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>2000||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>100||input.ids.some((id:unknown)=>typeof id!=='string'||!id||id.length>2000)||new Set(input.ids).size!==input.ids.length)return json({error:'invalid_request'},400);
+      if(!input||!isHotelId(input.hotel)||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>2000||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>100||input.ids.some((id:unknown)=>typeof id!=='string'||!id||id.length>2000)||new Set(input.ids).size!==input.ids.length)return json({error:'invalid_request'},400);
       // Ignore client-supplied roles/balances/eligibility. Recheck authoritative rows with user RLS.
       const r=await upstream(`${env.SUPABASE_URL}/rest/v1/rpc/${env.ACCEPTANCE?'ar_acceptance_selection':'ar_validate_collection_selection'}`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({...env.ACCEPTANCE?{p_id:env.ACCEPTANCE.id}:{},p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids})});
       if(!r.ok)return json({error:'selection_verification_unavailable'},503);
       const valid=await r.json()===true;return json({valid,...(!valid?{error:'selection_not_collectible'}:{})},valid?200:409);
     }
     if(refreshRequest){
-      if(request.method==='GET')return json(await backendRpc(env,'ar_refresh_status',{}));
+      if(request.method==='GET'){
+       for(const key of requestUrl.searchParams.keys())if(key!=='region'||requestUrl.searchParams.getAll(key).length!==1)return json({error:'invalid_request'},400);
+       let regional;try{regional=regionalHotelScope(requestUrl.searchParams);}catch{return json({error:'invalid_request'},400);}
+       const status=await backendRpc<Record<string,unknown>>(env,regional.explicitRegion?'ar_refresh_region_status':'ar_refresh_status',regional.explicitRegion?{p_region:regional.region}:{});
+       if(!status||!Array.isArray(status.hotels)||!resultMatchesHotelScope(status,regional.region))throw Error('database_unavailable');
+       return json(status);
+      }
       const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'forbidden'},403);
       if(!request.headers.get('Content-Type')?.includes('application/json'))return json({error:'invalid_request'},400);
       const reader=request.body?.getReader();if(!reader)return json({error:'invalid_request'},400);
       let text='';let size=0;const decoder=new TextDecoder();
       try{while(true){const p=await reader.read();if(p.done)break;size+=p.value.byteLength;if(size>1024){await reader.cancel();return json({error:'invalid_request'},413);}text+=decoder.decode(p.value,{stream:true});}}finally{reader.releaseLock();}
-      let input:{hotel?:string;accountId?:string;reason?:string};try{input=JSON.parse(text);}catch{return json({error:'invalid_request'},400);}
-      if(!input||!['All','KAT','TSK'].includes(input.hotel??'')||!['manual','open'].includes(input.reason??'')||(input.accountId!==undefined&&(typeof input.accountId!=='string'||!input.accountId.trim()||input.accountId.length>2000||input.hotel==='All')))return json({error:'invalid_request'},400);
+      let input:{region?:string;hotel?:string;accountId?:string;reason?:string};try{input=JSON.parse(text);}catch{return json({error:'invalid_request'},400);}
+      if(!input||!(input.hotel==='All'||isHotelId(input.hotel))||!['manual','open'].includes(input.reason??'')||(input.accountId!==undefined&&(typeof input.accountId!=='string'||!input.accountId.trim()||input.accountId.length>2000||input.hotel==='All')))return json({error:'invalid_request'},400);
+      const query=new URLSearchParams();if(input.region!==undefined)query.set('region',input.region);if(input.hotel!==undefined)query.set('hotel',input.hotel);
+      let regional;try{regional=regionalHotelScope(query,input.accountId,true);}catch{return json({error:'invalid_request'},400);}
       if(input.reason==='open'&&env.OPERA_REFRESH_ENABLED!=='true')return json({jobs:[],status:'not_enabled'});
-      const hotels=input.hotel==='All'?['KAT','TSK']:[input.hotel!];
+      const hotels=input.hotel==='All'?regionHotels(regional.region):[regional.hotel!];
       const jobs=[];for(const hotel of hotels)jobs.push(await requestRefresh(env,hotel,input.accountId??null,input.reason!));
       return json({jobs});
     }
@@ -153,7 +164,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       const origin=request.headers.get('Origin');
       if(origin&&origin!==new URL(request.url).origin)return json({error:'forbidden'},403);
       const hotel=new URL(request.url).searchParams.get('hotel');
-      if(!hotel||!['KAT','TSK'].includes(hotel))return json({error:'invalid_hotel'},400);
+      if(!isHotelId(hotel))return json({error:'invalid_hotel'},400);
       try{return json(await probeOpera(env,hotel));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined},503);}
     }
     const allRows = async (table: string, query: string) => {
@@ -173,15 +184,25 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       const map=new Map(exceptions.map(value=>{const r=value as {hotel:string;account_id:string;invoice_id:string;held:boolean;needs_review:boolean;dispute:string;reopened_at:string|null};return [JSON.stringify([r.hotel,r.account_id,r.invoice_id]),r];}));
       return rows.map(value=>{const r=value as {hotel:string;account_id:string;id:string};const e=map.get(JSON.stringify([r.hotel,r.account_id,r.id]));return {...r,exception_status:status,exceptions:{held:e?.held??false,needsReview:e?.needs_review??false,dispute:e?.dispute??'',reopenedAt:e?.reopened_at??null}};});
     };
-    if(path==='/api/collection-queue')return json({rows:await attachExceptions(await allRows('ar_collection_rows','select=*&order=hotel,account_id,id')),source:'saved_opera',asOf:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'})});
+    if(path==='/api/collection-queue'){
+      for(const key of requestUrl.searchParams.keys())if(key!=='region'||requestUrl.searchParams.getAll(key).length!==1)return json({error:'invalid_request'},400);
+      let regional;try{regional=regionalHotelScope(requestUrl.searchParams);}catch{return json({error:'invalid_request'},400);}
+      const rows=await allRows('ar_collection_rows','select=*&order=hotel,account_id,id');
+      if(rows.some(value=>!value||typeof value!=='object'||!isHotelId((value as {hotel?:unknown}).hotel)))throw Error('database_unavailable');
+      const scoped=rows.filter(value=>hotelBelongsToRegion((value as {hotel:unknown}).hotel,regional.region));
+      return json({rows:await attachExceptions(scoped),source:'saved_opera',asOf:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'})});
+    }
     if (path === '/api/portfolio') {
       if(!user.id)return json({error:'unauthorized'},401);
-      const data=await backendRpc<{accounts?:unknown[];source?:string;status?:string;refresh?:{hotels?:unknown[];running?:boolean};error?:string}>(env,'ar_portfolio_accounts',{p_actor:user.id});
+      for(const key of requestUrl.searchParams.keys())if(key!=='region'||requestUrl.searchParams.getAll(key).length!==1)return json({error:'invalid_request'},400);
+      let regional;try{regional=regionalHotelScope(requestUrl.searchParams);}catch{return json({error:'invalid_request'},400);}
+      const data=await backendRpc<{region?:string;accounts?:unknown[];source?:string;status?:string;refresh?:{hotels?:unknown[];running?:boolean};error?:string}>(env,regional.explicitRegion?'ar_portfolio_region_accounts':'ar_portfolio_accounts',{p_actor:user.id,...(regional.explicitRegion?{p_region:regional.region}:{})});
       if(data?.error==='portfolio_forbidden')return json({error:'forbidden'},403);
-      if(!data||data.error||!Array.isArray(data.accounts)||data.source!=='opera'||!['connected','not_connected'].includes(data.status??'')||!Array.isArray(data.refresh?.hotels)||typeof data.refresh?.running!=='boolean')throw Error('database_unavailable');
+      if(!data||data.error||regional.explicitRegion&&data.region!==regional.region||!Array.isArray(data.accounts)||data.source!=='opera'||!['connected','not_connected'].includes(data.status??'')||!Array.isArray(data.refresh?.hotels)||typeof data.refresh?.running!=='boolean'||!resultMatchesHotelScope(data,regional.region))throw Error('database_unavailable');
       return json(data);
     }
     const [, , , hotel, id] = path.split('/');
+    if(!isHotelId(hotel)||!id)return json({error:'not_found'},404);
     const query = `hotel=eq.${encodeURIComponent(decodeURIComponent(hotel))}&account_id=eq.${encodeURIComponent(decodeURIComponent(id))}`;
     const invoices=await allRows('ar_invoices',`select=*&${query}&open=neq.0&collection_role=neq.child&order=id`);
     let workflows:unknown[]=[];let workflowStatus='available';
@@ -199,6 +220,6 @@ export default {
     if(writesHeld(env))return;
     if(event.cron===gmailReconcileCron){if(env.GMAIL_RECONCILE_ENABLED==='true')await requestMailReconcile(env,'scheduled');try{await sweepTransientDocuments(env);}catch{/* Durable exact candidates retry on the next cron. */}return;}
     if(event.cron!=='0 0,12 * * *'||env.OPERA_REFRESH_ENABLED!=='true')return;
-    for(const hotel of ['KAT','TSK'])await requestRefresh(env,hotel,null,'scheduled');
+    for(const hotel of configuredOperaHotels(env.OPERA_HOTEL_IDS))await requestRefresh(env,hotel,null,'scheduled');
   },
 };

@@ -85,6 +85,32 @@ function balances(value: unknown, currency: 'THB') {
   return { debit, credit, total };
 }
 
+/** A signed Summary credit is accepted only when an independent conventional Aging ledger proves the same account total. */
+function signedCreditSummary(account:RecordValue,summary:RecordValue,currency:'THB'):{debit:number;credit:number;total:number}|null {
+  try {
+    const debit=amountCents(summary.debit,currency),credit=amountCents(summary.credit,currency),total=amountCents(summary.total,currency);
+    if(credit>=0||sumCents([debit,credit])!==total||account.balance===undefined||account.balance===null||amountCents(account.balance,currency)!==total)return null;
+    const agingInfo=record(account.agingInfo),outstanding=record(agingInfo.totalOutstanding);
+    // Summary total explicitly asserted THB above. Aging components use the same
+    // inherited-currency policy as the ordinary Aging path, while empty or foreign codes fail.
+    const corroborated=balances(outstanding,currency);
+    if(corroborated.debit!==debit||corroborated.credit!==-credit||corroborated.total!==total)return null;
+    if(!Array.isArray(agingInfo.aging)||agingInfo.aging.length===0)return null;
+    const buckets=agingInfo.aging.map(raw=>balances(record(raw).balanceInfo,currency));
+    if(sumCents(buckets.map(bucket=>bucket.debit))!==debit||sumCents(buckets.map(bucket=>bucket.credit))!==-credit||sumCents(buckets.map(bucket=>bucket.total))!==total)return null;
+    return {debit,credit,total};
+  }catch{return null;}
+}
+function summaryBalances(account:RecordValue,summary:RecordValue,currency:'THB'){
+  try{return balances(summary,currency);}
+  catch(error){
+    if(!(error instanceof OperaError)||error.stage!=='normalize_balance_reconciliation')throw error;
+    const proven=signedCreditSummary(account,summary,currency);
+    if(!proven)throw error;
+    return proven;
+  }
+}
+
 /** Maps only documented, needed fields. Never forwards contact data or payment-card payloads. */
 export function normalizeAccount(current: unknown, hotel: string, businessDate: string): AccountSnapshot {
   field('requested_hotel', () => requiredText(hotel)); field('business_date', () => date(businessDate));
@@ -95,7 +121,7 @@ export function normalizeAccount(current: unknown, hotel: string, businessDate: 
   const summary = field('summary', () => record(account.summary));
   // Require a positive currency assertion; neither hotel nor a requested currency is evidence.
   field('summary_total', () => amountCents(summary.total));
-  const totals = field('summary', () => balances(summary, 'THB'));
+  const totals = field('summary', () => summaryBalances(account, summary, 'THB'));
   // Some OPERA accounts provide the account total only in Summary. That total
   // has already passed explicit THB and debit/credit reconciliation above.
   const open = account.balance == null ? totals.total : field('account_balance', () => amountCents(account.balance, 'THB'));

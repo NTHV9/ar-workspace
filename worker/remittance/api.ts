@@ -3,6 +3,8 @@ import type {RemittanceAccount,RemittanceHistory,RemittanceInvoiceList,Remittanc
 import {checkedRemittanceRecord,checkedRemittanceRow,remittanceFileRequest,remittanceFileRpc,remittanceLimits,type RemittanceFilesEnv} from './files';
 import {runRemittanceDiagnostic} from './diagnostic';
 import {parseRemittanceDiagnostic,parseRemittanceFilters,parseRemittanceHistoryQuery,parseRemittanceId,parseRemittanceInput,parseRemittanceInvoiceQuery,parseRemittanceStatus,readRemittanceJson} from './validation';
+import {isHotelId} from '../../src/domain/hotels';
+import {regionalHotelScope,resultMatchesHotelScope} from '../hotels';
 
 export type RemittanceApiEnv=RemittanceFilesEnv;
 const json=(value:unknown,status=200,extra:Record<string,string>={})=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extra}});
@@ -87,7 +89,7 @@ function checkedList(value:unknown):RemittanceList {
 }
 function checkedAccounts(value:unknown):RemittanceAccount[] {
  const v=object(value);if(!Array.isArray(v.accounts))return unavailable();
- return v.accounts.map(item=>{const a=object(item);if(a.hotel!=='KAT'&&a.hotel!=='TSK')return unavailable();return {hotel:a.hotel,accountId:string(a.accountId),name:string(a.name),type:string(a.type),accountNo:nullableString(a.accountNo),verified:bool(a.verified)};});
+ return v.accounts.map(item=>{const a=object(item);if(!isHotelId(a.hotel))return unavailable();return {hotel:a.hotel,accountId:string(a.accountId),name:string(a.name),type:string(a.type),accountNo:nullableString(a.accountNo),verified:bool(a.verified)};});
 }
 function checkedInvoices(value:unknown):RemittanceInvoiceList {
  const v=object(value);if(!Array.isArray(v.rows))return unavailable();
@@ -110,13 +112,14 @@ export async function remittanceApi(request:Request,env:RemittanceApiEnv,actor:s
   if(path!=='/api/remittances'&&!path.startsWith('/api/remittances/'))throw Error('not_found');
   const parts=path==='/api/remittances'?[]:path.slice('/api/remittances/'.length).split('/');
   const rpc=(name:string,args:Record<string,unknown>={})=>remittanceFileRpc(env,name,{p_actor:actor,...args});
-  if(parts.length===0){const denied=method(request,['GET']);if(denied)return denied;return json(checkedList(await rpc('ar_remittance_list',{p_filters:parseRemittanceFilters(url.searchParams)})));}
+  if(parts.length===0){const denied=method(request,['GET']);if(denied)return denied;const filters=parseRemittanceFilters(url.searchParams),regional=regionalHotelScope(url.searchParams,url.searchParams.get('accountId')),result=checkedList(await rpc('ar_remittance_list',{p_filters:filters}));if(!resultMatchesHotelScope(result,regional.region,regional.hotel))return unavailable();return json(result);}
   if(parts.length===1&&parts[0]==='options'){
-   const denied=method(request,['GET']);if(denied)return denied;noQuery(url.searchParams);
-   const config=remittanceLimits(env),result=object(await rpc('ar_remittance_options')),accounts=checkedAccounts(result);
+   const denied=method(request,['GET']);if(denied)return denied;for(const key of url.searchParams.keys())if(key!=='region'||url.searchParams.getAll(key).length!==1)throw Error('remittance_query_invalid');
+   let regional;try{regional=regionalHotelScope(url.searchParams);}catch{throw Error('remittance_query_invalid');}const config=remittanceLimits(env),result=object(await rpc(regional.explicitRegion?'ar_remittance_region_options':'ar_remittance_options',regional.explicitRegion?{p_region:regional.region}:{})),accounts=checkedAccounts(result);
+   if(regional.explicitRegion&&result.region!==regional.region||!resultMatchesHotelScope(accounts,regional.region))return unavailable();
    if(result.accountTypes!==undefined&&!Array.isArray(result.accountTypes))return unavailable();
    const accountTypes=result.accountTypes===undefined?[...new Set(accounts.map(account=>account.type))]:(result.accountTypes as unknown[]).map(string);
-   return json({accounts,accountTypes,config});
+   return json({...(regional.explicitRegion?{region:regional.region}:{}),accounts,accountTypes,config});
   }
   if(parts.length===1&&parts[0]==='invoices'){
    const denied=method(request,['GET']);if(denied)return denied;const q=parseRemittanceInvoiceQuery(url.searchParams);

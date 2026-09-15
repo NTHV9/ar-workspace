@@ -1,8 +1,9 @@
+import {isHotelId,hotelInRegion,resolveRegion,type RegionId} from '../domain/hotels';
 import {thaiToday,nextCollectionAction,type QueueInvoice} from '../domain/collection';
 import type {CollectionPolicy} from '../domain/collection-policy';
 import {amountToSatang,satangToAmount} from '../remittance/money';
 
-export interface DashboardScope {hotel:string;day:string;from:string;to:string;type:string;account:string}
+export interface DashboardScope {region?:RegionId;hotel:string;day:string;from:string;to:string;type:string;account:string}
 export interface AccountOption {hotel:string;account_id:string;account_name:string;account_type:string}
 export interface ActivityKind {kind:string;invoices:number;amount:number|null;stage_label?:string|null}
 export interface ActivitySummary {kinds:ActivityKind[];invoices:number;messages:number;missingAmounts:number}
@@ -11,15 +12,15 @@ export interface CurrentSummary {invoices:number;amount:number|null;unverified:n
 export type DashboardQueueRow=QueueInvoice&{account_name:string;account_type:string};
 export const validDay=(day:string)=>/^\d{4}-\d{2}-\d{2}$/.test(day)&&!day.startsWith('0000')&&Number.isFinite(Date.parse(day))&&new Date(day+'T00:00:00Z').toISOString().slice(0,10)===day;
 export function accountIdentity(value:string):[string,string]|null {
- try{const v:unknown=JSON.parse(value);return Array.isArray(v)&&v.length===2&&['KAT','TSK'].includes(v[0])&&typeof v[1]==='string'&&v[1].length>0&&v[1].length<=200&&!/[\x00-\x1f\x7f]/.test(v[1])?[v[0],v[1]]:null;}catch{return null;}
+ try{const v:unknown=JSON.parse(value);return Array.isArray(v)&&v.length===2&&isHotelId(v[0])&&typeof v[1]==='string'&&v[1].length>0&&v[1].length<=200&&!/[\x00-\x1f\x7f]/.test(v[1])?[v[0],v[1]]:null;}catch{return null;}
 }
 export function dashboardScope(params:URLSearchParams,hotel:string,today=thaiToday()):DashboardScope {
- const identity=accountIdentity(params.get('dashboardAccount')??'');
+ const region=resolveRegion(params),identity=accountIdentity(params.get('dashboardAccount')??'');
  const to=params.get('dashboardTo')??params.get('dashboardDay')??today,from=params.get('dashboardFrom')??params.get('dashboardDay')??to;
- return {hotel:['KAT','TSK'].includes(hotel)?hotel:'All',day:to,from,to,type:(params.get('dashboardType')??'').slice(0,200),account:identity&&(hotel==='All'||identity[0]===hotel)?JSON.stringify(identity):''};
+ return {...(region==='khao-lak'?{region}:{}),hotel:hotelInRegion(hotel,region)?hotel:'All',day:to,from,to,type:(params.get('dashboardType')??'').slice(0,200),account:identity&&hotelInRegion(identity[0],region)&&(hotel==='All'||identity[0]===hotel)?JSON.stringify(identity):''};
 }
 export function scopeQuery(scope:DashboardScope,dated=false){
- const q=new URLSearchParams(),identity=accountIdentity(scope.account);
+ const q=new URLSearchParams(scope.region?{region:scope.region}:{}),identity=accountIdentity(scope.account);
  if(identity){q.set('hotel',identity[0]);q.set('account',identity[1]);}else if(scope.hotel!=='All')q.set('hotel',scope.hotel);
  if(scope.type)q.set('type',scope.type);if(dated){q.set('from',scope.from);q.set('to',scope.to);}return q;
 }

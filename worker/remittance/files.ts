@@ -2,6 +2,7 @@ import {acceptanceRpc} from '../acceptance/routing';
 import type {BudgetEnvironment} from '../operations/budget';
 import {readManagedStorage,writeManagedStorage} from '../operations/storage';
 import type {RemittanceConfig,RemittanceFile,RemittanceRecord,RemittanceRow} from '../../src/remittance/model';
+import {HOTEL_IDS} from '../../src/domain/hotels';
 import {boundedBody} from '../email/shared';
 import {hash} from '../email/crypto';
 import {inspectSupplemental,supplementalName} from '../email/supplemental-validation';
@@ -64,7 +65,7 @@ function checkedFile(value:unknown):RemittanceFile {
 /** Strip internal keys rather than forwarding arbitrary service JSON to the browser. */
 export function checkedRemittanceRow(value:unknown):RemittanceRow {
  const v=object(value);
- return {id:idText(v.id),revision:integer(v.revision,1),state:choice(v.state,['active','voided']),hotel:choice(v.hotel,['KAT','TSK']),accountId:text(v.accountId),accountName:text(v.accountName),accountType:text(v.accountType),accountNo:nullableText(v.accountNo),receivedDate:text(v.receivedDate),reference:text(v.reference),sourceNote:text(v.sourceNote),notes:text(v.notes),reportedAmount:nullableAmount(v.reportedAmount),allocatedAmount:amount(v.allocatedAmount),unallocatedAmount:nullableAmount(v.unallocatedAmount),
+ return {id:idText(v.id),revision:integer(v.revision,1),state:choice(v.state,['active','voided']),hotel:choice(v.hotel,HOTEL_IDS),accountId:text(v.accountId),accountName:text(v.accountName),accountType:text(v.accountType),accountNo:nullableText(v.accountNo),receivedDate:text(v.receivedDate),reference:text(v.reference),sourceNote:text(v.sourceNote),notes:text(v.notes),reportedAmount:nullableAmount(v.reportedAmount),allocatedAmount:amount(v.allocatedAmount),unallocatedAmount:nullableAmount(v.unallocatedAmount),
   invoiceCount:integer(v.invoiceCount),fileCount:integer(v.fileCount),pendingFiles:integer(v.pendingFiles),linkedOpen:nullableAmount(v.linkedOpen),knownLinkedOpen:amount(v.knownLinkedOpen),unverifiedLines:integer(v.unverifiedLines),resolution:choice(v.resolution,['awaiting_opera','linked_zero','needs_review','voided']),createdAt:text(v.createdAt),updatedAt:text(v.updatedAt),voidReason:nullableText(v.voidReason)};
 }
 export function checkedRemittanceRecord(value:unknown):RemittanceRecord {

@@ -1,10 +1,12 @@
+import {isHotelId,type HotelId} from '../../src/domain/hotels';
+
 export type OperaErrorCode = 'invalid_configuration'|'invalid_request'|'redirect_rejected'|'provider_unavailable'|'provider_unauthorized'|'provider_rejected'|'response_too_large'|'invalid_response'|'timeout'|'duplicate_member'|'pagination_incomplete'|'pagination_changed';
 export class OperaError extends Error {
   constructor(readonly code: OperaErrorCode,readonly upstreamStatus?:number,readonly stage?:string,readonly providerMessage?:string,readonly diagnostics?:Record<string,number|boolean|string>) { super(stage?`${code}:${stage}`:code); this.name='OperaError'; }
 }
 export interface OperaReadConfig { origin:string; appKey:string; hotelId:string; timeoutMs?:number; maxResponseBytes?:number }
 export type FetchPort = (request:Request)=>Promise<Response>;
-export interface FinancialReadScope {hotel:string;accountId:string}
+export interface FinancialReadScope {hotel:HotelId;accountId:string}
 export interface FinancialHistoryRead extends FinancialReadScope {start:string;end:string;kinds:readonly ('invoice'|'payment')[]}
 
 /** Property reads plus explicit Statement document processing. No caller-supplied URL or accounting mutations. */
@@ -45,7 +47,7 @@ export class OperaReader {
     return this.read(`/ars/v1/invoicePayments/accounts/${this.id(accountId)}`,[['inclZeroBalance','true'],['inclDetails','true'],['hotelIds',this.config.hotelId],['fetchInstructions','Invoices'],...invoiceNumbers.map(n=>['invoiceNo',n]),...this.page(offset,limit)]);
   }
   private financialScope(scope:FinancialReadScope) {
-    if(!['KAT','TSK'].includes(scope.hotel)||scope.hotel!==this.config.hotelId||typeof scope.accountId!=='string'||!scope.accountId||scope.accountId.length>200||scope.accountId.trim()!==scope.accountId||scope.accountId==='.'||scope.accountId==='..'||/[\x00-\x1f\x7f/\\]/.test(scope.accountId))throw new OperaError('invalid_request',undefined,'financial_scope');
+    if(!isHotelId(scope.hotel)||scope.hotel!==this.config.hotelId||typeof scope.accountId!=='string'||!scope.accountId||scope.accountId.length>200||scope.accountId.trim()!==scope.accountId||scope.accountId==='.'||scope.accountId==='..'||/[\x00-\x1f\x7f/\\]/.test(scope.accountId))throw new OperaError('invalid_request',undefined,'financial_scope');
   }
   /** A separate dated read; the incumbent current-debt refresh does not call it. */
   financialHistoryPage(scope:FinancialHistoryRead,offset=0,limit=20) {
