@@ -10,7 +10,7 @@ for (const width of [1440, 1280]) {
     const surfaces = [
       { route: '/?dashboard=1', surface: '.dashboard-period-filters', lit: '.dashboard-kpi-card.primary', capture: 'dashboard', card: true },
       { route: '/?dashboard=1&dashboardView=aging', surface: '.aging-v4-overview', lit: '.aging-v4-balance', capture: 'aging', action: 'Current Aging · KAT / TSK' },
-      { route: '/', surface: '.total-summary', lit: '.total-summary', capture: 'portfolio', nav: 'Portfolio' },
+      { route: '/', surface: '.portfolio-total', lit: '.portfolio-total', capture: 'portfolio', nav: 'Portfolio' },
       { route: '/?account=kat-azure&property=KAT', surface: '.ledger-panel', lit: '.metric.blue', capture: 'account', card: true },
       { route: '/?account=kat-azure&property=KAT&accountSection=Overview', surface: '.account-config', lit: '.account-config', action: 'Overview', controls: true },
       { route: '/?collections=1', surface: '.queue-work', lit: '.queue-metrics .billing-metric', capture: 'collections', nav: 'Collections', card: true },
@@ -35,15 +35,15 @@ for (const width of [1440, 1280]) {
         await expectNoOverflow(page);
         if (item.capture === 'portfolio') {
           await page.evaluate(() => document.fonts.ready);
-          const toggle = await page.locator('.aging-toggle').boundingBox(), filters = await page.locator('.filters').boundingBox();
-          expect(toggle!.y + toggle!.height, 'Aging toggle clears the filter row after larger type').toBeLessThanOrEqual(filters!.y);
+          const toggle = await page.locator('.portfolio-aging>footer').boundingBox(), filters = await page.locator('.filters').boundingBox();
+          expect(toggle!.y + toggle!.height, 'Aging controls clear the filter row after larger type').toBeLessThanOrEqual(filters!.y);
         }
         if (item.capture) await captureDepth(page, `${item.capture}-${width}`);
       });
     }
     // Revisit an eager page without reloading after an operations stylesheet loads.
     await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Portfolio', exact: true }).click();
-    await expectElevation(page.locator('.total-summary'));
+    await expectElevation(page.locator('.portfolio-total'));
     await expectFlatContent(page, '.table-panel tbody td');
     await expectFlatContent(page, '.table-panel .sort-button');
     await expectFlatContent(page, '.table-panel .name-link');
@@ -139,8 +139,8 @@ test('narrow Aging and Portfolio keep readable colors while surfaces fit', async
   await page.locator('.aging-comparison-frame').scrollIntoViewIfNeeded();
   await captureDepth(page, 'aging-table-390');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Portfolio', exact: true }).click();
-  await expectElevation(page.locator('.total-summary'));
-  await expectGradientCaptionContrast(page.locator('.total-summary'));
+  await expectElevation(page.locator('.portfolio-total'));
+  await expectGradientCaptionContrast(page.locator('.portfolio-total'));
   await expectChromeTypography(page);
   await expectNoOverflow(page);
   await page.evaluate(() => scrollTo(0, 0));

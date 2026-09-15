@@ -43,4 +43,18 @@ test('lost upload response retries the same command and never adds twice',async(
 
 test('PNG preview renders the uploaded bytes',async({page})=>{await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Receipt.png',mimeType:'image/png',buffer:png});await page.getByRole('button',{name:'Receipt.png',exact:true}).click();await expect(page.locator('.email-attachment-preview').getByRole('status')).toHaveText('Image loaded');expect(await page.getByRole('img',{name:'Preview of Receipt.png',exact:true}).evaluate(e=>(e as HTMLImageElement).naturalWidth)).toBe(1);});
 
+for(const expired of [true,false])test(`supplemental preview explains verified expiry without removing the attachment (${expired})`,async({page})=>{
+ const fixture=await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);
+ await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Supporting-document.pdf',mimeType:'application/pdf',buffer:fixture.pdfBytes});
+ await expect(page.getByRole('button',{name:'Supporting-document.pdf',exact:true})).toBeVisible();
+ await page.route(`**/api/email/${draftId}/attachments/*`,route=>route.request().method()==='GET'?route.fulfill({status:expired?410:503,json:{error:expired?'storage_file_expired':'email_attachment_unavailable'}}):route.fallback());
+ await page.getByRole('button',{name:'Supporting-document.pdf',exact:true}).click();
+ const preview=page.locator('.email-attachment-preview'),alert=preview.getByRole('alert');
+ if(expired){await expect(alert).toContainText('deleted');await expect(alert).toContainText('attach the original supplemental file again');await expect(alert).not.toContainText('try again');}
+ else{await expect(alert).toContainText('Close and try again.');await expect(alert).not.toContainText('deleted');}
+ await expect(preview.locator('canvas,img')).toHaveCount(0);await page.getByRole('button',{name:'Close attachment preview',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Supporting-document.pdf',exact:true})).toBeVisible();
+ expect(fixture.requests.some(call=>call.startsWith('DELETE ')||/\/(send|gmail-draft)$/.test(call))).toBe(false);
+});
+
 test('test email includes supplemental files only after explicit selection',async({page})=>{const f=await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Supporting-document.pdf',mimeType:'application/pdf',buffer:f.pdfBytes});await page.getByRole('button',{name:'Connection test',exact:true}).click();await expect(page.getByLabel('Include supplemental files in test email',{exact:true})).not.toBeChecked();await page.getByLabel('One-time test recipient',{exact:true}).fill('recipient@example.test');await page.getByLabel('Include supplemental files in test email',{exact:true}).check();await page.getByRole('button',{name:'Send one test email',exact:true}).click();await expect(page.locator('.email-test').getByRole('status')).toContainText('Test email sent and verified');expect(f.testBodies[0].supplemental).toMatchObject({draftId,revision:1,ids:[f.uploadIds[0]]});expect(JSON.stringify(f.testBodies[0])).not.toContain('Reviewed-package.pdf');await expect(page.getByLabel('One-time test recipient',{exact:true})).toHaveValue('');});

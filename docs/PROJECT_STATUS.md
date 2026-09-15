@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Full system regression audit — 15 กันยายน 2026
+
+- พบ/แก้ Collections hidden account filter หลังเปลี่ยนโรงแรม, KPI ที่ยังติด latest-sent filter, Sign out ที่ไม่เตือน unsaved Templates/Account และข้อความไฟล์ email หมดอายุที่ชวน retry. ลด queue fetch ซ้ำจากการกรอง/เรียงฝั่ง client พร้อมคง owner/token/publication refresh.
+- หลังแก้ 1,194 unit tests, TypeScript/build/public assets, Collection 14 cases, Sign-out 4 cases และ expiry/depth regressions ผ่าน. Initial full browser 449 cases: 446 ผ่าน อีกสามเป็น selector เก่าของ Portfolio; ปรับให้ตรงดีไซน์ใหม่โดยคง contrast/lighting checks และ baseline เดิม.
+- SQL replay/restore 78 migrations/33 rollback suites ผ่าน. Live authenticated pages, six-hotel invoice counts, current refresh status, Restricted Drive folder, budgets/log maintenance และ health/anonymous boundaries ตรวจแล้ว. คิว financial history ยังรอนานแต่มีความคืบหน้า; ไม่เพิ่ม concurrency/capacity หรือเปลี่ยนประวัติ.
+- รายละเอียดและข้อจำกัดใน [FULL_SYSTEM_AUDIT_20260915.md](FULL_SYSTEM_AUDIT_20260915.md). ไม่มีอีเมลจริงใหม่/เปลี่ยนข้อมูลลูกค้าในการทดสอบรอบนี้; final deployment/browser/integration อยู่ในขั้นปิดงาน.
+
 ## Period analysis composition — 15 กันยายน 2026
 
 - Implemented: All Hotels comparison ย้ายรายโรงแรมออกจากกล่อง KPI/กิจกรรมเล็กเป็น matrix เต็มความกว้าง; ยอด payment รวมกับรายโรงแรมอยู่ที่เดียว. Billing และ Follow-Up แยกเป็นส่วนเต็มแถว; รองรับ Phuket/Khao Lak และ mobile blocks. ข้อมูลทั้งหมดใช้ readers/measure helpers/formatters/drill callbacks เดิม.
