@@ -1,5 +1,6 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {OperaReader} from '../worker/opera/client';
+import {createFinancialProofReader} from '../worker/opera/proof-reader';
 import {readPaymentApplications} from '../worker/opera/payment-applications';
 import {type FinancialPayment,readScopedFinancialInvoiceHistory} from '../worker/opera/financial-history';
 
@@ -39,7 +40,7 @@ function setup(options:{count?:number;delayMs?:number;debit?:boolean;zero?:boole
   activity.active++;activity.peak=Math.max(activity.peak,activity.active);
   try{if(options.delayMs)await new Promise(resolve=>setTimeout(resolve,options.delayMs));return Response.json(result);}finally{activity.active--;}
  });
- return {reader,payment,reads,calls,activity};
+ return {reader:createFinancialProofReader(reader).reader,payment,reads,calls,activity};
 }
 afterEach(()=>vi.useRealTimers());
 const rows=(value:Obj)=>value.details as Obj[];

@@ -5,7 +5,8 @@ import {readPaymentApplications} from '../opera/payment-applications';
 import type {WorkflowStep} from 'cloudflare:workers';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {makeReader} from '../opera/probe';
-import {OperaError,type OperaReader} from '../opera/client';
+import {OperaError} from '../opera/client';
+import type {FinancialProofReader} from '../opera/proof-reader';
 import {discoverAccountIds,readBusinessDate} from '../refresh/read-snapshot';
 import {readFinancialHistory,type FinancialHotel,type FinancialInvoice,type FinancialPayment,type AppliedPaymentLink} from '../opera/financial-history';
 import type {FinancialAccountContext,FinancialCounts,FinancialHistoryRequest,FinancialRun,FinancialRunReceipt,FinancialWorkflowResult,FinancialPaymentMappingResult} from './model';
@@ -43,7 +44,7 @@ function context(value:unknown,hotel:FinancialHotel,accountId:string):FinancialA
 async function stageRows(env:FinancialIngestionEnv,actor:string,runId:string,accountId:string,kind:'invoice'|'payment'|'application',rows:(FinancialInvoice|FinancialPayment|AppliedPaymentLink)[]){
  for(let at=0;at<rows.length;at+=500)await rpc(env,'ar_financial_stage_batch',{p_actor:actor,p_run_id:runId,p_account:accountId,p_kind:kind,p_batch:at/500,p_rows:rows.slice(at,at+500)});
 }
-async function mapFinancialInvoice(reader:OperaReader,invoice:FinancialInvoice,observedAt:string):Promise<{links:AppliedPaymentLink[];error?:string}>{
+async function mapFinancialInvoice(reader:FinancialProofReader,invoice:FinancialInvoice,observedAt:string):Promise<{links:AppliedPaymentLink[];error?:string}>{
  try{
   const mapping=await readCorroboratedApplications(reader,{hotel:invoice.hotel,accountId:invoice.accountId,invoiceTransactionId:invoice.transactionId,...(invoice.invoiceNo!==null&&/^[0-9]+$/.test(invoice.invoiceNo)?{invoiceNo:invoice.invoiceNo}:{})},{observedAt},undefined,invoice);
   if(invoice.currentAmount===null||invoice.openAmount===null||invoice.cumulativePayments===null)throw new OperaError('invalid_response',undefined,'financial_mapping_history_unknown');
@@ -52,7 +53,7 @@ async function mapFinancialInvoice(reader:OperaReader,invoice:FinancialInvoice,o
   return {links:mapping.links};
  }catch(error){if(!(error instanceof OperaError))throw error;return {links:[],error:/^financial_[a-z_]{1,80}$/.test(error.stage??'')?error.stage!:'financial_mapping_'+error.code};}
 }
-async function mapFinancialPayment(reader:OperaReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>{
+async function mapFinancialPayment(reader:FinancialProofReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>{
  try{const verified=await readPaymentApplications(reader,payment,{observedAt,maxRows:5000,maxPages:250});return {payment:verified.payment,invoices:verified.invoices,links:verified.links};}
  catch(error){if(!(error instanceof OperaError))throw error;return {paymentId:payment.transactionId,error:/^financial_[a-z_]{1,80}$/.test(error.stage??'')?error.stage!:'financial_payment_'+error.code};}
 }

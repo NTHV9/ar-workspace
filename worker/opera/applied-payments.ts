@@ -8,7 +8,8 @@ const magnitude=(value:bigint)=>value<0n?-value:value;
 const decimal=(value:bigint)=>`${value<0n?'-':''}${magnitude(value)/100n}.${String(magnitude(value)%100n).padStart(2,'0')}`;
 const identity=(value:unknown)=>{if(typeof value==='number'&&Number.isSafeInteger(value)&&value>0)return String(value);if(typeof value==='string'&&/^[1-9][0-9]{0,79}$/.test(value))return value;return bad('financial_mapping_identity');};
 const invoiceFacts=(value:FinancialInvoice)=>JSON.stringify([value.hotel,value.accountId,value.transactionId,value.invoiceNo,value.currentAmount,value.cumulativePayments,value.openAmount,value.collectionRole]);
-async function invoiceDetail(reader:OperaReader,query:AppliedPaymentQuery,options:FinancialReadOptions){
+type AppliedReader=Pick<OperaReader,'financialTransactionDetail'|'appliedInvoicePayments'>;
+async function invoiceDetail(reader:AppliedReader,query:AppliedPaymentQuery,options:FinancialReadOptions){
  const response=await readFinancialTransactionDetail(reader,{hotel:query.hotel,accountId:query.accountId,kind:'invoice',transactionId:query.invoiceTransactionId},options);
  const invoice=response.transaction;if(response.status!=='found'||invoice?.kind!=='invoice')return bad('financial_mapping_invoice_identity');
  if(query.invoiceNo!==undefined&&invoice.invoiceNo!==null&&invoice.invoiceNo!==query.invoiceNo)return bad('financial_mapping_invoice_reference');
@@ -24,7 +25,7 @@ export interface CorroboratedApplications {
 /** Reads only fixed OPERA paths. Returned links are current observations, never dated application events.
  * Slim rows identify payments in this environment, unlike the inherited invoice-row schema.
  * Independent scoped invoice/payment reads and monetary reconciliation are mandatory. */
-export async function readCorroboratedApplications(reader:OperaReader,query:AppliedPaymentQuery,options:FinancialReadOptions={},responseAlreadyRead?:unknown,historyInvoice?:FinancialInvoice):Promise<CorroboratedApplications>{
+export async function readCorroboratedApplications(reader:AppliedReader,query:AppliedPaymentQuery,options:FinancialReadOptions={},responseAlreadyRead?:unknown,historyInvoice?:FinancialInvoice):Promise<CorroboratedApplications>{
  if(historyInvoice){
   if(historyInvoice.hotel!==query.hotel||historyInvoice.accountId!==query.accountId||historyInvoice.transactionId!==query.invoiceTransactionId||!['standalone','parent'].includes(historyInvoice.collectionRole)||query.invoiceNo!==undefined&&historyInvoice.invoiceNo!==query.invoiceNo)return bad('financial_mapping_source_identity');
   if(historyInvoice.currency==='THB'&&historyInvoice.cumulativePayments==='0.00'&&historyInvoice.currentAmount!==null&&historyInvoice.currentAmount===historyInvoice.openAmount){
