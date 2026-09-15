@@ -5,10 +5,11 @@ import {readFinancialHistory,type FinancialInvoice,type FinancialPayment,type Ap
 import type {OperaReader} from '../opera/client';
 import type {FinancialIngestionEnv} from './refresh';
 import type {FinancialRun,FinancialAccountContext,FinancialCounts,FinancialWorkflowResult,FinancialPaymentMappingResult} from './model';
+import type {HotelId} from '../../src/domain/hotels';
 interface Ports{
  rpc<T>(name:string,args?:Record<string,unknown>):Promise<T>;
  stage(accountId:string,kind:'invoice'|'payment'|'application',rows:(FinancialInvoice|FinancialPayment|AppliedPaymentLink)[]):Promise<void>;
- context(value:unknown,hotel:'KAT'|'TSK',accountId:string):FinancialAccountContext;
+ context(value:unknown,hotel:HotelId,accountId:string):FinancialAccountContext;
  mapping(reader:OperaReader,invoice:FinancialInvoice,observedAt:string):Promise<{links:AppliedPaymentLink[];error?:string}>;
  paymentMapping?(reader:OperaReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>;
 }

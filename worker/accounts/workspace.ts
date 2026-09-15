@@ -2,6 +2,7 @@ import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {previewSavedDraftThread,savedDraftForReview,savedDeliveryForReview,verifiedSentMessage} from '../email/threads';
 import type {EmailEnv} from '../email/shared';
 import {parseRecipients} from '../settings/validation';
+import {isHotelId} from '../../src/domain/hotels';
 export interface SavedEmailReviewData {
  id:string;hotel:string;accountId:string;documentJobId:string;documentRevision:number;draftRevision:number;
  subject:string;body:string;purpose:'billing'|'collection';recipients:{to:string[];cc:string[];bcc:string[]};packageChanged:boolean;hasThread:boolean;threadSource:'selected'|'sent'|null;
@@ -16,12 +17,12 @@ export async function accountWorkspaceApi(request:Request,env:RefreshEnv&EmailEn
  if(!uuid.test(actor))return json({error:'unauthorized'},401);
  if(request.method!=='GET')return json({error:'method_not_allowed'},405);
  try{
-  const url=new URL(request.url),match=/^\/api\/account-workspace\/(KAT|TSK)\/([^/]+)\/(history|documents|email)(?:\/([0-9a-f-]{36})(?:\/(thread))?)?$/.exec(url.pathname);
-  if(!match)throw Error('account_workspace_invalid');
+  const url=new URL(request.url),match=/^\/api\/account-workspace\/([^/]+)\/([^/]+)\/(history|documents|email)(?:\/([0-9a-f-]{36})(?:\/(thread))?)?$/.exec(url.pathname);
+  if(!match||!isHotelId(match[1]))throw Error('account_workspace_invalid');
   const account=decodeURIComponent(match[2]);
   if(!account.trim()||account.length>200||/[\u0000-\u001f\u007f]/.test(account))throw Error('account_workspace_invalid');
   if(match[3]==='email'){
-   if(!match[4]||!uuid.test(match[4]))throw Error('account_workspace_invalid');const scope={hotel:match[1] as 'KAT'|'TSK',accountId:account,draftId:match[4]};
+   if(!match[4]||!uuid.test(match[4]))throw Error('account_workspace_invalid');const scope={hotel:match[1],accountId:account,draftId:match[4]};
    if(match[5]){
     params(url.searchParams,['revision','offset','historyId']);const revision=integer(url.searchParams.get('revision')),offset=integer(url.searchParams.get('offset'),0),historyId=url.searchParams.get('historyId')??undefined;
     if(offset>0&&!historyId||historyId!==undefined&&!/^\d{1,30}$/.test(historyId))throw Error('account_workspace_invalid');

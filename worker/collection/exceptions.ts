@@ -1,5 +1,7 @@
+import {isHotelId,type HotelId} from '../../src/domain/hotels';
+
 export type ExceptionAction='set_notes'|'hold'|'release'|'acknowledge_reopen';
-export interface ExceptionScope {hotel:'KAT'|'TSK';accountId:string;invoiceId:string}
+export interface ExceptionScope {hotel:HotelId;accountId:string;invoiceId:string}
 export interface ExceptionInput {commandId:string;revision:number;confirmed:true;action:ExceptionAction;reason:string;note?:string;dispute?:string;reviewDate?:string|null}
 export interface InvoiceException extends ExceptionScope {revision:number;note:string;dispute:string;held:boolean;holdReason:string|null;holdReviewDate:string|null;needsReview:boolean;reviewReason:string|null;reopenedAt:string|null;updatedAt:string|null;source:{open:string|null;verification:string|null;collectionRole:string|null;verifiedAt:string|null}}
 export interface ExceptionHistory {rows:{revision:number;action:string;reason:string;recordedAt:string;snapshot:InvoiceException;transition:{fromOpen:string;toOpen:string}|null}[];total:number}
@@ -7,7 +9,7 @@ const invalid=():never=>{throw Error('exception_invalid');};
 export function exceptionId(value:unknown){if(typeof value!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))return invalid();return value.toLowerCase();}
 function object(value:unknown){if(!value||typeof value!=='object'||Array.isArray(value))return invalid();return value as Record<string,unknown>;}
 function text(value:unknown,max:number){if(typeof value!=='string'||value.length>max||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value))return invalid();return value.trim();}
-export function exceptionScope(hotel:unknown,account:unknown,invoice:unknown):ExceptionScope {const identity=(v:unknown)=>{if(typeof v!=='string'||!v||v.length>200||v.trim()!==v||/[\x00-\x1f\x7f]/.test(v))return invalid();return v;};if(hotel!=='KAT'&&hotel!=='TSK')return invalid();return {hotel,accountId:identity(account),invoiceId:identity(invoice)};}
+export function exceptionScope(hotel:unknown,account:unknown,invoice:unknown):ExceptionScope {const identity=(v:unknown)=>{if(typeof v!=='string'||!v||v.length>200||v.trim()!==v||/[\x00-\x1f\x7f]/.test(v))return invalid();return v;};if(!isHotelId(hotel))return invalid();return {hotel,accountId:identity(account),invoiceId:identity(invoice)};}
 export function parseExceptionCommand(value:unknown):ExceptionInput {
  const v=object(value);if(typeof v.action!=='string'||!['set_notes','hold','release','acknowledge_reopen'].includes(v.action))return invalid();const action=v.action as ExceptionAction;
  const allowed=['commandId','revision','confirmed','action','reason',...(action==='set_notes'?['note','dispute']:action==='hold'?['reviewDate']:[])];if(Object.keys(v).some(k=>!allowed.includes(k))||v.confirmed!==true||!Number.isSafeInteger(v.revision)||Number(v.revision)<0||Number(v.revision)>2147483647)return invalid();

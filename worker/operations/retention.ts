@@ -1,6 +1,7 @@
 import type {AcceptanceEnv} from '../acceptance/routing';
 import {acceptanceRpc} from '../acceptance/routing';
 import {boundedBody} from '../email/shared';
+import {isHotelId} from '../../src/domain/hotels';
 
 export interface RetentionEnvironment extends AcceptanceEnv {SUPABASE_URL?:string;SUPABASE_SECRET_KEY?:string;RETENTION_ENABLED?:string;RETENTION_SOURCE_MAX_AGE_SECONDS?:string;RETENTION_MAX_CONCURRENT?:string;RETENTION_LEASE_SECONDS?:string}
 export interface RetentionInvoice {hotel:string;accountId:string;invoiceId:string;open:string|null;verified:boolean;collectionRole:string;verifiedAt:string|null;zeroSince:string|null;held:boolean;disputed:boolean;needsReview:boolean}
@@ -37,7 +38,7 @@ export function retentionDecision(snapshot:RetentionSnapshot,now=Date.now(),sour
  if(snapshot.pendingDocuments!==false||snapshot.pendingMail!==false)return failure('retention_pending_work');
  let floor=timestamp(snapshot.minimumEligibleAt),stale=false;if(floor>now)return failure('retention_source_unknown');
  for(const link of snapshot.links){
-  if(!['KAT','TSK'].includes(link.hotel)||!link.accountId||!link.invoiceId||link.verified!==true||!['standalone','parent'].includes(link.collectionRole)||link.open===null||!link.verifiedAt||!link.zeroSince)return failure('retention_source_unknown');
+  if(!isHotelId(link.hotel)||!link.accountId||!link.invoiceId||link.verified!==true||!['standalone','parent'].includes(link.collectionRole)||link.open===null||!link.verifiedAt||!link.zeroSince)return failure('retention_source_unknown');
   if(link.open!=='0.00')return failure('retention_source_open');
   if(link.held!==false||link.disputed!==false||link.needsReview!==false)return failure('retention_held');
   const verified=timestamp(link.verifiedAt),zero=timestamp(link.zeroSince);

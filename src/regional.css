@@ -1,0 +1,17 @@
+
+.region-select{max-width:112px;padding:7px 9px;border:1px solid #dde5ef;border-radius:8px;background:#fff;color:#36516b;font:inherit;font-size:11px}
+.header-right{flex-wrap:nowrap;flex-shrink:0}.property-pair{flex-wrap:wrap}.property-pair>div{min-width:0}
+.tlkl{--hotel-color:#397ba8}.wakl{--hotel-color:#8b60ad}.tlfo{--hotel-color:#a77821}.tsan{--hotel-color:#b76471}
+:is(.hotel-split-name,.aging-property-label,.queue-hotel,.comparison td):is(.tlkl,.wakl,.tlfo,.tsan){color:var(--hotel-color)}
+.hotel-comparison-track :is(.tlkl,.wakl,.tlfo,.tsan),.hotel-split-name:is(.tlkl,.wakl,.tlfo,.tsan) i,.aging-publications i:is(.tlkl,.wakl,.tlfo,.tsan){background:var(--hotel-color)}
+.aging-v4-property-tlkl{color:#397ba8}.aging-v4-property-wakl{color:#8b60ad}.aging-v4-property-tlfo{color:#a77821}.aging-v4-property-tsan{color:#b76471}
+.aging-v4-property-tlkl i{background:#397ba8}.aging-v4-property-wakl i{background:#8b60ad}.aging-v4-property-tlfo i{background:#a77821}.aging-v4-property-tsan i{background:#b76471}
+@media(max-width:600px){.region-select{min-height:38px}.four-hotels .aging-mobile-table .aging-mobile-range-col{width:16%}.current-aging .four-hotels .aging-all-table :is(th,td){padding-left:2px;padding-right:2px}.current-aging .four-hotels .aging-all-table .aging-count-button{font-size:9px}.current-aging .four-hotels .aging-all-table .aging-value-button strong,.current-aging .four-hotels .aging-all-table .aging-net-value strong{font-size:10px}}
+
+@media(max-width:600px){.four-hotels .aging-mobile-table .aging-mobile-total-col{width:20%}}
+
+@media(min-width:901px){.app-header{gap:16px}}
+@media(max-width:900px){.header-right{flex-wrap:wrap}}
+
+@media(min-width:901px){.app-shell[data-region="khao-lak"] .brand{min-width:240px}.app-shell[data-region="khao-lak"] .main-nav button{padding-left:10px;padding-right:10px}}
+@media(min-width:901px) and (max-width:1350px){.app-shell .app-header{height:auto;min-height:66px;flex-wrap:wrap;gap:10px;padding-top:12px;padding-bottom:12px}.app-shell .main-nav{order:3;width:100%;justify-content:space-between}}

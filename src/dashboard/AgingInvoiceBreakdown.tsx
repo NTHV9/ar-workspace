@@ -1,3 +1,4 @@
+import type {HotelId} from '../domain/hotels';
 import {useEffect,useId,useRef,useState} from 'react';
 import {ArrowUpRight,RefreshCw,X} from 'lucide-react';
 import type {RefreshState} from '../domain/portfolio';
@@ -7,7 +8,7 @@ import {agingDetailsResult,agingTargetPublicationMatches,agingSourceRevision,typ
 import {amount,number,percent} from './period-data';
 import './aging-invoice-breakdown.css';
 
-interface Props {initialFilters?:AgingStatusFilters;onFiltersChange?:(filters:AgingStatusFilters)=>void;target:AgingStatusTarget;token:string;revision:number;refresh?:RefreshState;onClose:()=>void;onOpenInvoice:(hotel:'KAT'|'TSK',accountId:string,invoiceId:string)=>void}
+interface Props {initialFilters?:AgingStatusFilters;onFiltersChange?:(filters:AgingStatusFilters)=>void;target:AgingStatusTarget;token:string;revision:number;refresh?:RefreshState;onClose:()=>void;onOpenInvoice:(hotel:HotelId,accountId:string,invoiceId:string)=>void}
 const tabs:{key:AgingStatusDimension;label:string}[]=[{key:'billing',label:'Billing'},{key:'followup',label:'Latest Follow-Up'},{key:'due',label:'Due date'}];
 const billingLabels:Record<string,string>={unbilled:'Not billed',billed:'Billed',not_required:'Billing not required',setup:'Billing setup needed',credit:'Credit'};
 const dueLabels:Record<string,string>={not_due:'Not yet due',due_today:'Due today',past_due:'Past Due date',awaiting_billing:'Awaiting billing',unknown:'Due date unavailable',credit:'Credit'};

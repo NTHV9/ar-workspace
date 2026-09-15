@@ -1,5 +1,7 @@
-import type {Hotel,RemittanceInput} from '../../src/remittance/model';
+import {isHotelId,type HotelId} from '../../src/domain/hotels';
+import type {RemittanceInput} from '../../src/remittance/model';
 import {amountToSatang,parseAmount} from '../../src/remittance/money';
+import {regionalHotelScope} from '../hotels';
 export {amountToSatang,parseAmount,satangToAmount} from '../../src/remittance/money';
 
 const fail=(code='remittance_invalid'):never=>{throw Error(code);};
@@ -25,7 +27,7 @@ function identity(value:unknown,code:string):string {
  if(typeof value!=='string'||!value||value.length>200||value.trim()!==value||/[\x00-\x1f\x7f]/.test(value))return fail(code);
  return value;
 }
-function hotel(value:unknown,code:string):Hotel {if(value!=='KAT'&&value!=='TSK')return fail(code);return value;}
+function hotel(value:unknown,code:string):HotelId {if(!isHotelId(value))return fail(code);return value;}
 function date(value:unknown,code:string):string {
  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||value.startsWith('0000-'))return fail(code);
  const time=Date.parse(value+'T00:00:00Z');
@@ -93,20 +95,20 @@ export function parseRemittancePage(params:URLSearchParams,defaultLimit=50):{off
 }
 export function parseRemittanceHistoryQuery(params:URLSearchParams) {queryKeys(params,['page','limit']);return parseRemittancePage(params,20);}
 export function parseRemittanceInvoiceQuery(params:URLSearchParams) {
- queryKeys(params,['hotel','accountId','search','page','limit']);
- return {hotel:hotel(params.get('hotel'),'remittance_query_invalid'),accountId:identity(params.get('accountId'),'remittance_query_invalid'),search:text(params.get('search')??'',200,'remittance_query_invalid'),...parseRemittancePage(params)};
+ queryKeys(params,['region','hotel','accountId','search','page','limit']);
+ const accountId=identity(params.get('accountId'),'remittance_query_invalid');let regional;try{regional=regionalHotelScope(params,accountId);}catch{return fail('remittance_query_invalid');}
+ if(!regional.hotel)return fail('remittance_query_invalid');
+ return {hotel:regional.hotel,accountId,search:text(params.get('search')??'',200,'remittance_query_invalid'),...parseRemittancePage(params)};
 }
 export function parseRemittanceFilters(params:URLSearchParams) {
- queryKeys(params,['view','hotel','accountId','type','search','from','to','includeVoided','page','limit']);
+ queryKeys(params,['region','view','hotel','accountId','type','search','from','to','includeVoided','page','limit']);
  const view=params.get('view')??'pending';if(!['pending','activity','all'].includes(view))return fail('remittance_query_invalid');
- const hotelValue=params.get('hotel'),account=params.get('accountId');
- const scopeHotel=hotelValue?hotel(hotelValue,'remittance_query_invalid'):null,accountId=account?identity(account,'remittance_query_invalid'):null;
- if(accountId&&!scopeHotel)return fail('remittance_query_invalid');
+ const account=params.get('accountId'),accountId=account?identity(account,'remittance_query_invalid'):null;let regional;try{regional=regionalHotelScope(params,accountId);}catch{return fail('remittance_query_invalid');}
  const fromValue=params.get('from'),toValue=params.get('to');
  const from=fromValue?date(fromValue,'remittance_query_invalid'):null,to=toValue?date(toValue,'remittance_query_invalid'):null;
  if(view==='activity'&&(!from||!to||from>to))return fail('remittance_query_invalid');
  const includeVoided=params.get('includeVoided')??'false';if(!['true','false'].includes(includeVoided))return fail('remittance_query_invalid');
- return {view:view as 'pending'|'activity'|'all',hotel:scopeHotel,accountId,type:params.get('type')?text(params.get('type'),200,'remittance_query_invalid'):null,search:text(params.get('search')??'',200,'remittance_query_invalid'),from:view==='activity'?from:null,to:view==='activity'?to:null,includeVoided:includeVoided==='true',...parseRemittancePage(params)};
+ return {view:view as 'pending'|'activity'|'all',hotel:regional.reportHotel,accountId,type:params.get('type')?text(params.get('type'),200,'remittance_query_invalid'):null,search:text(params.get('search')??'',200,'remittance_query_invalid'),from:view==='activity'?from:null,to:view==='activity'?to:null,includeVoided:includeVoided==='true',...parseRemittancePage(params)};
 }
 
 /** JSON commands and file byte uploads have separate explicit resource budgets. */

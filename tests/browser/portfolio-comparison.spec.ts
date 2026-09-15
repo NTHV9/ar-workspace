@@ -45,7 +45,7 @@ for(const width of [1440,1280])test(`comparison ${width}: paired rows, zero vs a
   await expect(rows).toHaveCount(3);
  }
  await panel.getByRole('button',{name:'Total open',exact:true}).click();
- await page.screenshot({path:`evidence/portfolio-comparison-${width}.png`,animations:'disabled',fullPage:false});
+ await page.screenshot({path:`${process.env.AR_TEST_CAPTURE_DIR??'evidence'}/portfolio-comparison-${width}.png`,animations:'disabled',fullPage:false});
  // Either hotel's alias or Account No. must retain the full comparison row.
  await page.getByPlaceholder('Search Account / Account ID').fill('Azure Travel TSK');await expect(rows).toHaveCount(1);await expect(azure.locator('.total-cell')).toHaveText('THB 300');
  await page.getByPlaceholder('Search Account / Account ID').fill('syn-a');await expect(rows).toHaveCount(1);await expect(azure.locator('.percentage')).toHaveText('100.0%');

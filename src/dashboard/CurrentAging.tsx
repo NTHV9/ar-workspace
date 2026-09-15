@@ -1,7 +1,8 @@
+import {isHotelId,regionHotels,hotelInRegion,type RegionId} from '../domain/hotels';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowUpRight,ChevronDown,ChevronRight,Columns3,RefreshCw} from 'lucide-react';
 import {sourceAging,type Account,type AgingBucket,type RefreshState} from '../domain/portfolio';
-import {agingBucketKey,agingColumns,agingComparison,agingHotels,agingInvoiceEvidence,agingOverview,parseAgingInvoices,type AgingCell,type AgingComparisonRow,type AgingHotel,type AgingInvoice} from './aging-model';
+import {agingBucketKey,agingColumns,agingComparison,comparisonHotels,agingInvoiceEvidence,agingOverview,parseAgingInvoices,type AgingCell,type AgingComparisonRow,type AgingHotel,type AgingInvoice} from './aging-model';
 import './aging.css';
 import AgingAllTable from './AgingAllTable';
 import AgingOverview from './AgingOverview';
@@ -11,14 +12,15 @@ import {AgingInvoiceBreakdown} from './AgingInvoiceBreakdown';
 
 interface AgingColumnVisibility {bucketKeys:string[]|null;net:boolean;percentages:boolean}
 export interface AgingContext {hotel:string;type?:string;accountKey?:string;search:string;page:number;sort:{key:string;hotel:AgingHotel;descending:boolean};bucketKey:string;invoiceHotel:AgingHotel;invoiceView:'bucket'|'unassigned';invoicePage:number;invoiceDescending:boolean;columnVisibility?:AgingColumnVisibility;comparisonView?:'range'|'matrix';countSelection?:{rowKey:string;hotel:AgingHotel;bucketKey:string|null}|null;countFilters?:{key:string;filters:AgingStatusFilters}|null}
-interface Props {revision?:number;token:string;hotel:string;accounts:Account[];refresh?:RefreshState|null;onOpenInvoice:(hotel:string,accountId:string,invoiceId?:string)=>void;initialContext?:AgingContext;onContextChange?:(context:AgingContext)=>void}
+interface Props {region?:RegionId;revision?:number;token:string;hotel:string;accounts:Account[];refresh?:RefreshState|null;onOpenInvoice:(hotel:string,accountId:string,invoiceId?:string)=>void;initialContext?:AgingContext;onContextChange?:(context:AgingContext)=>void}
 const amount=(n:number|null)=>n===null?'—':new Intl.NumberFormat('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
 const stamp=(value?:string|null)=>value&&Number.isFinite(Date.parse(value))?new Date(value).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'})+' ICT':'Publication unavailable';
 const stateLabel:Record<AgingCell['state'],string>={verified:'',absent:'No matching account',outside:'Outside scope',unavailable:'Source unverified'};
 const pageSize=25;
 
-export default function CurrentAging(props:Props){return <AgingWorkspace key={props.token+'|'+props.hotel} {...props}/>;}
-function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,initialContext,onContextChange}:Props){
+export default function CurrentAging(props:Props){return <AgingWorkspace key={props.token+'|'+props.hotel+'|'+props.region} {...props}/>;}
+function AgingWorkspace({region='phuket',revision=0,token,hotel,accounts,refresh,onOpenInvoice,initialContext,onContextChange}:Props){
+ const agingHotels=comparisonHotels(accounts,region);
  const initial=initialContext?.hotel===hotel?initialContext:undefined;
  const columns=useMemo(()=>agingColumns(accounts),[accounts]);
  const [type,setType]=useState<string|undefined>(initial?.type),[accountKey,setAccountKey]=useState<string|undefined>(initial?.accountKey),[search,setSearch]=useState(initial?.search??''),[page,setPage]=useState(initial?.page??1);
@@ -30,7 +32,7 @@ function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,i
  const [countFilters,setCountFilters]=useState<{key:string;filters:AgingStatusFilters}|null>(initial?.countFilters??null);
  const countTrigger=useRef<HTMLElement|null>(null);
  const countScope=JSON.stringify([hotel,type,accountKey,search]),previousCountScope=useRef(countScope);
- const counts=useSource(accounts.length?'/api/dashboard/aging-invoices'+(hotel==='KAT'||hotel==='TSK'?'?hotel='+hotel:''):null,token,agingSourceRevision(revision+countRevision+agingCatalogRevision(accounts),refresh??undefined),agingInvoicesResult,true);
+ const counts=useSource(accounts.length?'/api/dashboard/aging-invoices'+(region==='khao-lak'?'?region=khao-lak'+(isHotelId(hotel)?'&hotel='+hotel:''):isHotelId(hotel)?'?hotel='+hotel:''):null,token,agingSourceRevision(revision+countRevision+agingCatalogRevision(accounts),refresh??undefined),agingInvoicesResult,true);
  useEffect(()=>{if(previousCountScope.current!==countScope){previousCountScope.current=countScope;setCountSelection(null);setCountFilters(null);}},[countScope]);
  const comparisonView='matrix' as const;
  const rows=useMemo(()=>agingComparison(accounts,hotel,type),[accounts,hotel,type]);
@@ -78,11 +80,11 @@ function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,i
  };
  const changeSort=(key:string,h:AgingHotel='Total')=>{setSort({key,hotel:h,descending:activeSort.key===key&&activeSort.hotel===h?!activeSort.descending:true});setPage(1);};
  const types=[...new Set(accounts.filter(a=>hotel==='All'||a.hotel===hotel).map(a=>a.type))].sort();
- const published=(refresh?.hotels??[]).filter(h=>hotel==='All'||h.hotel===hotel);
+ const published=(refresh?.hotels??[]).filter(h=>hotelInRegion(h.hotel,region)&&(hotel==='All'||h.hotel===hotel));
  return <section className="current-aging" aria-labelledby="current-aging-title">
-  <header className="aging-heading"><div><h2 id="current-aging-title">Current Aging</h2><p>Latest saved OPERA balances · separate from the Dashboard date range.</p></div><span className="aging-scope">{hotel==='All'?'KAT + TSK':hotel} · THB</span></header>
+  <header className="aging-heading"><div><h2 id="current-aging-title">Current Aging</h2><p>Latest saved OPERA balances · separate from the Dashboard date range.</p></div><span className="aging-scope">{hotel==='All'?regionHotels(region).join(' + '):hotel} · THB</span></header>
   <div className="aging-publications">{published.length?published.map(h=><span key={h.hotel}><i className={h.hotel.toLowerCase()}/>{h.hotel} · {stamp(h.last_success_at)}{h.status==='failed'?' · latest refresh failed':''}</span>):<span>Publication timestamps unavailable. Amounts require verified account source data.</span>}{refresh?.running&&<span>Refresh in progress · showing the saved publication</span>}</div>
-  {columns.length>0&&<AgingOverview counts={{Total:agingCountFor(overview,'Total',undefined,counts,refresh??undefined),KAT:agingCountFor(overview,'KAT',undefined,counts,refresh??undefined),TSK:agingCountFor(overview,'TSK',undefined,counts,refresh??undefined)}} data={overview} columns={columns} selectedKey={effectiveBucketKey} onSelect={selectRange} label={selected?.name??(type?`${type}${search?' · search results':''}`:search?'Search results':'All account types')}/>}
+  {columns.length>0&&<AgingOverview region={region} counts={Object.fromEntries(agingHotels.map(h=>[h,agingCountFor(overview,h,undefined,counts,refresh??undefined)]))} data={overview} columns={columns} selectedKey={effectiveBucketKey} onSelect={selectRange} label={selected?.name??(type?`${type}${search?' · search results':''}`:search?'Search results':'All account types')}/>}
   <nav className="aging-breadcrumbs" aria-label="Current Aging drilldown"><button onClick={()=>chooseType()} disabled={type===undefined}>All account types</button>{type!==undefined&&<><ChevronRight size={13}/><button onClick={()=>setAccountKey(undefined)} disabled={!selected}>{type}</button></>}{selected&&<><ChevronRight size={13}/><span>{selected.name}</span></>}</nav>
   {!selected&&<div className="aging-controls"><label>Current Account Type<select aria-label="Current Account Type" value={type??''} onChange={e=>chooseType(e.target.value||undefined)}><option value="">All account types</option>{types.map(t=><option key={t}>{t}</option>)}</select></label><label className="aging-search">Search {type===undefined?'types or accounts':'matched accounts'}<input aria-label="Search current aging" type="search" value={search} placeholder="Name or Account No." onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label><span>{sorted.length} {type===undefined?'account types':'matched accounts'} · every row available</span></div>}
   {selected&&<button className="aging-back" onClick={()=>setAccountKey(undefined)}><ArrowLeft size={14}/> Back to {type} accounts</button>}
@@ -97,7 +99,7 @@ function AgingWorkspace({revision=0,token,hotel,accounts,refresh,onOpenInvoice,i
    </div></details></div>
   </div>
   {counts.state==='error'&&<p className="aging-notice" role="status">Invoice counts could not be updated. Verified Aging balances remain visible. <button onClick={()=>setCountRevision(n=>n+1)}>Retry invoice counts</button></p>}
-  {columns.length?<AgingAllTable rows={shown} columns={visibleColumns} allColumns={columns} showNet={showNetOpen} percentages={columnVisibility.percentages} hotel={hotel} type={type} selectedKey={effectiveBucketKey} sort={activeSort} onSort={key=>changeSort(key,activeSort.hotel)} onDrill={drill} getCount={(row,h,bucket)=>agingCountFor(row,h,bucket,counts,refresh??undefined)} onCounts={(row,h,bucket)=>{countTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;setCountFilters(null);setCountSelection({rowKey:row.key,hotel:h,bucketKey:bucket?agingBucketKey(bucket):null});if(bucket)selectRange(agingBucketKey(bucket));}}/>:<p className="aging-notice" role="status">Source aging buckets are unavailable. Refresh OPERA data from the main refresh control, then return here.</p>}
+  {columns.length?<AgingAllTable region={region} rows={shown} columns={visibleColumns} allColumns={columns} showNet={showNetOpen} percentages={columnVisibility.percentages} hotel={hotel} type={type} selectedKey={effectiveBucketKey} sort={activeSort} onSort={key=>changeSort(key,activeSort.hotel)} onDrill={drill} getCount={(row,h,bucket)=>agingCountFor(row,h,bucket,counts,refresh??undefined)} onCounts={(row,h,bucket)=>{countTrigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;setCountFilters(null);setCountSelection({rowKey:row.key,hotel:h,bucketKey:bucket?agingBucketKey(bucket):null});if(bucket)selectRange(agingBucketKey(bucket));}}/>:<p className="aging-notice" role="status">Source aging buckets are unavailable. Refresh OPERA data from the main refresh control, then return here.</p>}
   {countTarget&&<AgingInvoiceBreakdown key={countTarget.key} target={countTarget} token={token} revision={revision+countRevision+agingCatalogRevision(accounts)} refresh={refresh??undefined} initialFilters={countFilters?.key===countTarget.key?countFilters.filters:undefined} onFiltersChange={filters=>setCountFilters(previous=>previous?.key===countTarget.key&&JSON.stringify(previous.filters)===JSON.stringify(filters)?previous:{key:countTarget.key,filters})} onClose={()=>{setCountSelection(null);setCountFilters(null);requestAnimationFrame(()=>{const label=`View invoice statuses for ${countTarget.title} · ${countTarget.hotel} · ${countTarget.bucketLabel==='All ages'?'All ages':countTarget.bucketLabel}`;const trigger=countTrigger.current?.isConnected?countTrigger.current:[...document.querySelectorAll<HTMLButtonElement>('.aging-count-button')].find(button=>button.getAttribute('aria-label')===label&&button.getClientRects().length>0);trigger?.focus();});}} onOpenInvoice={onOpenInvoice}/>}
   {!selected&&columns.length>0&&<Pagination page={currentPage} pages={maxPage} count={sorted.length} label={type===undefined?'account types':'matched accounts'} change={setPage}/>}
   <p className="aging-footnote">All amounts in THB. “No matching account” is different from a verified 0.00. No account means no matching hotel ledger; Unverified means source data needs verification.</p>

@@ -5,6 +5,7 @@ import type {RefreshEnv} from '../refresh/backend';
 import {documentSource} from './source-policy';
 import {PDFDocument} from 'pdf-lib';
 import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput} from './jobs';
+import {isHotelId} from '../../src/domain/hotels';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 async function bodyBytes(request:Request,max:number){
  const declared=Number(request.headers.get('Content-Length'));if(declared>max)throw new Error('document_upload_too_large');
@@ -32,7 +33,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
     if(!response.ok)return json({error:'document_service_unavailable'},503);const rows=await response.json();if(!Array.isArray(rows))throw new Error('document_service_unavailable');return json({jobs:rows.slice(0,20),hasMore:rows.length>20});
    }
    if(request.method!=='POST')return json({error:'method_not_allowed'},405);
-   const input=await bodyJson(request,1024*1024);if(typeof input.commandKey!=='string'||!uuidPattern.test(input.commandKey)||!['KAT','TSK'].includes(String(input.hotel))||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>200||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>4000||input.ids.some(id=>typeof id!=='string'||!id||id.length>200)||new Set(input.ids).size!==input.ids.length||!['statement','invoices','both'].includes(String(input.content))||!['combined','statement_bundle','separate'].includes(String(input.layout))||!['billing','collection'].includes(String(input.purpose)))return json({error:'document_request_invalid'},400);
+   const input=await bodyJson(request,1024*1024);if(typeof input.commandKey!=='string'||!uuidPattern.test(input.commandKey)||!isHotelId(input.hotel)||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>200||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>4000||input.ids.some(id=>typeof id!=='string'||!id||id.length>200)||new Set(input.ids).size!==input.ids.length||!['statement','invoices','both'].includes(String(input.content))||!['combined','statement_bundle','separate'].includes(String(input.layout))||!['billing','collection'].includes(String(input.purpose)))return json({error:'document_request_invalid'},400);
    input.statementSource=documentSource({content:String(input.content),statementSource:input.statementSource,ids:input.ids});
    return json(await createDocumentJob(env,owner,input as unknown as DocumentCreateInput),202);
   }

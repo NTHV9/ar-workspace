@@ -1,4 +1,5 @@
 import type {ActivitySummary,ExternalSummary} from '../../src/dashboard/model';
+import type {HotelId,RegionId} from '../../src/domain/hotels';
 import type {FinancialReport} from '../financial/model';
 import type {DashboardBalancesResponse,DashboardPaymentInvoicesResponse} from './model';
 
@@ -13,5 +14,5 @@ export interface DashboardOverviewScope {
  payments:DashboardOverviewFinancial|null;
  paid:DashboardPaymentInvoicesResponse|null;
 }
-export interface DashboardHotelOverview extends DashboardOverviewScope {hotel:'KAT'|'TSK'}
-export interface DashboardHotelOverviewResponse {from:string;to:string;total:DashboardOverviewScope;hotels:DashboardHotelOverview[]}
+export interface DashboardHotelOverview extends DashboardOverviewScope {hotel:HotelId}
+export interface DashboardHotelOverviewResponse {region?:RegionId;from:string;to:string;total:DashboardOverviewScope;hotels:DashboardHotelOverview[]}

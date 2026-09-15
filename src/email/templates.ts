@@ -1,3 +1,4 @@
+import {isHotelId} from '../domain/hotels';
 import {isCollectionStageKey,type CollectionStageKey} from '../domain/collection-policy';
 import {parseRichMessage,plainMessage,richText,type RichMessage} from './rich-message';
 export type TemplateStage=CollectionStageKey;
@@ -15,7 +16,7 @@ export function parseTemplate(input:unknown):TemplateInput{
  return {name:v.name.trim(),purpose:v.purpose as TemplateInput['purpose'],stage:v.stage as TemplateStage|null,subject:v.subject,richBody,archived:v.archived};
 }
 export function applyTemplate(template:TemplateInput,context:{accountName:string;hotel:string;invoiceCount:number}){
- if(/[\x00-\x1f\x7f]/.test(context.accountName)||!['KAT','TSK'].includes(context.hotel)||!Number.isSafeInteger(context.invoiceCount)||context.invoiceCount<1)throw Error('template_context_invalid');
+ if(/[\x00-\x1f\x7f]/.test(context.accountName)||!isHotelId(context.hotel)||!Number.isSafeInteger(context.invoiceCount)||context.invoiceCount<1)throw Error('template_context_invalid');
  const values:Record<string,string>={account_name:context.accountName,hotel:context.hotel,invoice_count:String(context.invoiceCount)};
  const replace=(s:string)=>s.replace(/\{\{(account_name|hotel|invoice_count)\}\}/g,(_,key:string)=>values[key]);
  const subject=replace(template.subject);if(subject.length>998)throw Error('template_context_invalid');

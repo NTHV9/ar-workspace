@@ -4,6 +4,7 @@ import {boundedBody} from '../email/shared';
 import type {BudgetEnvironment} from '../operations/budget';
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
+import {isHotelId} from '../../src/domain/hotels';
 export interface RefreshParams { acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
@@ -32,7 +33,7 @@ export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<strin
 export interface RefreshJob {id?:string;status:string;created:boolean}
 export interface PreviousInvoice {id:string;invoice_no:string|null;open:number}
 export async function previousInvoices(env:RefreshEnv,hotel:string,accountId:string):Promise<PreviousInvoice[]> {
-  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw new OperaError('invalid_configuration');
+  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY||!isHotelId(hotel))throw new OperaError('invalid_configuration');
   const results:PreviousInvoice[]=[];
   for(let offset=0;;offset+=500){
     const rows=await backendRpc<PreviousInvoice[]>(env,'ar_refresh_previous_invoices',{p_hotel:hotel,p_account_id:accountId,p_offset:offset});
@@ -40,12 +41,13 @@ if(!Array.isArray(rows))throw new OperaError('invalid_response');results.push(..
   }
 }
 export async function requestRefresh(env:RefreshEnv,hotel:string,accountId:string|null,reason:string,recovery=0):Promise<RefreshJob> {
-  if(!env.AR_REFRESH||!env.OPERA_CLIENT_ID||!env.OPERA_CLIENT_SECRET||!env.OPERA_APP_KEY)throw new OperaError('invalid_configuration');
+  if(!env.AR_REFRESH||!env.OPERA_CLIENT_ID||!env.OPERA_CLIENT_SECRET||!env.OPERA_APP_KEY||!isHotelId(hotel))throw new OperaError('invalid_configuration');
   const staleMinutes=Number(env.REFRESH_STALE_MINUTES??30);
   if(!Number.isSafeInteger(staleMinutes)||staleMinutes<1||staleMinutes>2147483647)throw new OperaError('invalid_configuration');
   const job=await backendRpc<RefreshJob>(env,'ar_request_refresh',{p_hotel:hotel,p_account_id:accountId,p_reason:reason,p_stale_minutes:staleMinutes});
   if(job.id&&['queued','running'].includes(job.status)) {
     const canonical=await backendRpc<{hotel:string;account_id:string|null;reason:string}>(env,'ar_refresh_job',{p_run_id:job.id});
+    if(canonical.hotel!==hotel||!isHotelId(canonical.hotel))throw new OperaError('invalid_response',undefined,'refresh_scope');
     try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:canonical.hotel,accountId:canonical.account_id??undefined,refreshReason:canonical.reason}});}
     catch{
       // A retry joins the durable instance with this exact database run ID.

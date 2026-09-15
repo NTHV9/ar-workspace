@@ -1,8 +1,9 @@
+import type {HotelId} from '../domain/hotels';
 import {useEffect,useRef,useState} from 'react';
 import {checkedException,type InvoiceException,type ExceptionInput,type ExceptionAction,type ExceptionHistory} from '../../worker/collection/exceptions';
 import './invoice-exceptions.css';
 const messages:Record<string,string>={exception_revision_conflict:'This invoice status changed. Refresh its status before preparing another command.',exception_command_conflict:'The pending command has different details. Keep its original request and check its result.',exception_source_unverified:'Refresh OPERA and verify this invoice before acknowledging its reopening.',exception_state_conflict:'The action no longer matches the current invoice status. Refresh the status.'};
-export function InvoiceExceptions({hotel,accountId,invoiceId,token,onSaved,onDirtyChange}:{hotel:'KAT'|'TSK';accountId:string;invoiceId:string;token:string;onSaved?:()=>void;onDirtyChange?:(dirty:boolean)=>void}){
+export function InvoiceExceptions({hotel,accountId,invoiceId,token,onSaved,onDirtyChange}:{hotel:HotelId;accountId:string;invoiceId:string;token:string;onSaved?:()=>void;onDirtyChange?:(dirty:boolean)=>void}){
  const [saved,setSaved]=useState<InvoiceException|null>(null),[note,setNote]=useState(''),[dispute,setDispute]=useState(''),[reason,setReason]=useState(''),[reviewDate,setReviewDate]=useState('');
  const [preview,setPreview]=useState<ExceptionInput|null>(null),[pending,setPending]=useState<ExceptionInput|null>(null),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState(''),[history,setHistory]=useState<ExceptionHistory|null>(null),[historyPage,setHistoryPage]=useState(0);
  const auth=useRef(token);auth.current=token;const alive=useRef(true),lock=useRef(false),callbacks=useRef({onSaved,onDirtyChange});callbacks.current={onSaved,onDirtyChange};

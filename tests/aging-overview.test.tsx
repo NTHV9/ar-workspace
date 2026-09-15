@@ -5,7 +5,7 @@ import {agingBucketKey,type AgingCell,type agingOverview} from '../src/dashboard
 import type {AgingBucket} from '../src/domain/portfolio';
 
 const cell=(amount:number|null,state:AgingCell['state']='verified'):AgingCell=>({state,amount,debit:null,credit:null});
-const group=(amount:number|null,state:AgingCell['state']='verified')=>({Total:cell(amount,state),KAT:cell(amount,state),TSK:cell(null,'absent')});
+const group=(amount:number|null,state:AgingCell['state']='verified')=>({Total:cell(amount,state),KAT:cell(amount,state),TSK:cell(null,'absent'),TLKL:cell(null,'outside'),WAKL:cell(null,'outside'),TLFO:cell(null,'outside'),TSAN:cell(null,'outside')});
 const columns:AgingBucket[]=['0–30','31–60','61–90','91–120','121–150','151+'].map((label,index)=>({label,start:index*30,end:index===5?null:index*30+29,sequence:index,amount:0,debit:0,credit:0}));
 function render(values:(number|null)[],net:number|null,states:AgingCell['state'][]=[]){
  const data:ReturnType<typeof agingOverview>={members:[],net:group(net,net===null?'unavailable':'verified'),cells:values.map((value,index)=>group(value,states[index]??'verified'))};

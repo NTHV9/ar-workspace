@@ -1,9 +1,10 @@
+import {isHotelId,hotelInRegion,regionHotels,resolveRegion,type HotelId} from '../domain/hotels';
 import type {Account,AgingBucket,RefreshState} from '../domain/portfolio';
-import {agingBucketKey,type AgingComparisonRow,type AgingHotel} from './aging-model';
+import {agingBucketKey,agingRegion,type AgingComparisonRow,type AgingHotel} from './aging-model';
 import type {AgingInvoicesResponse} from '../../worker/dashboard/aging-model';
 import type {Source} from './data';
 
-export interface AgingStatusTarget {key:string;title:string;hotel:AgingHotel;hotels:('KAT'|'TSK')[];bucketLabel:string;query:string;sourceAmount:number|null;accountPublications:{hotel:string;accountId:string;accountType:string;sourceAt:string|null}[]}
+export interface AgingStatusTarget {key:string;title:string;hotel:AgingHotel;hotels:HotelId[];bucketLabel:string;query:string;sourceAmount:number|null;accountPublications:{hotel:string;accountId:string;accountType:string;sourceAt:string|null}[]}
 export interface AgingCount {count:number|null;state:'ready'|'loading'|'unavailable'|'absent';reason?:string}
 export type AgingStatusDimension='billing'|'followup'|'due';
 export interface AgingStatusFilters {dimension:AgingStatusDimension;status:string;flag:string;page:number}
@@ -23,9 +24,9 @@ function normalizedBucketKey(value:unknown):string|null{
 export function agingInvoicesResult(value:unknown):AgingInvoicesResponse{
  if(!object(value)||typeof value.asOfDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value.asOfDate)||!Array.isArray(value.publications)||!Array.isArray(value.accounts)||!object(value.summary)||!Array.isArray(value.rows)||!integer(value.total)||typeof value.complete!=='boolean')return invalid();
  const hotels=new Set<string>(),accounts=new Set<string>(),invoices=new Set<string>();
- for(const p of value.publications){if(!object(p)||!['KAT','TSK'].includes(String(p.hotel))||!stamp(p.sourceAt)||hotels.has(String(p.hotel)))return invalid();hotels.add(String(p.hotel));}
+ for(const p of value.publications){if(!object(p)||!isHotelId(p.hotel)||!stamp(p.sourceAt)||hotels.has(String(p.hotel)))return invalid();hotels.add(String(p.hotel));}
  for(const a of value.accounts){
-  if(!object(a)||!['KAT','TSK'].includes(String(a.hotel))||typeof a.accountId!=='string'||!a.accountId||typeof a.accountType!=='string'||!stamp(a.syncedAt)||typeof a.complete!=='boolean'||!integer(a.unverified)||!Array.isArray(a.buckets))return invalid();
+  if(!object(a)||!isHotelId(a.hotel)||typeof a.accountId!=='string'||!a.accountId||typeof a.accountType!=='string'||!stamp(a.syncedAt)||typeof a.complete!=='boolean'||!integer(a.unverified)||!Array.isArray(a.buckets))return invalid();
   const id=JSON.stringify([a.hotel,a.accountId]);if(accounts.has(id))return invalid();accounts.add(id);const keys=new Set<string|null>();
   for(const b of a.buckets){if(!object(b)||!nullableCount(b.count)||!nullableAmount(b.amount)||!nullableAmount(b.creditAmount)||typeof b.complete!=='boolean'||b.complete&&(b.count===null||b.amount===null))return invalid();const key=normalizedBucketKey(b.key);if(keys.has(key))return invalid();keys.add(key);}
  }
@@ -35,7 +36,7 @@ export function agingInvoicesResult(value:unknown):AgingInvoicesResponse{
   for(const m of s[dimension]){if(!object(m)||typeof m.key!=='string'||!m.key||typeof m.label!=='string'||!nullableCount(m.count)||!nullableAmount(m.amount)||seen.has(m.key))return invalid();seen.add(m.key);}
  }
  for(const r of value.rows){
-  if(!object(r)||!['KAT','TSK'].includes(String(r.hotel))||!['accountId','accountName','accountType','invoiceId','billingStatus','latestStage','latestStageLabel','dueStatus'].every(k=>typeof r[k]==='string')||!r.invoiceId||!decimal(r.open)||Number(r.open)===0||r.age!==null&&!integer(r.age)||r.dueDate!==null&&(typeof r.dueDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(r.dueDate))||typeof r.held!=='boolean'||typeof r.needsReview!=='boolean'||!['invoiceNo','folioNo','guest'].every(k=>r[k]===null||typeof r[k]==='string'))return invalid();
+  if(!object(r)||!isHotelId(r.hotel)||!['accountId','accountName','accountType','invoiceId','billingStatus','latestStage','latestStageLabel','dueStatus'].every(k=>typeof r[k]==='string')||!r.invoiceId||!decimal(r.open)||Number(r.open)===0||r.age!==null&&!integer(r.age)||r.dueDate!==null&&(typeof r.dueDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(r.dueDate))||typeof r.held!=='boolean'||typeof r.needsReview!=='boolean'||!['invoiceNo','folioNo','guest'].every(k=>r[k]===null||typeof r[k]==='string'))return invalid();
   if(Number(r.open)<0?['billingStatus','latestStage','dueStatus'].some(key=>r[key]!=='credit')||r.dueDate!==null:['billingStatus','latestStage','dueStatus'].some(key=>r[key]==='credit'))return invalid();
   const id=JSON.stringify([r.hotel,r.accountId,r.invoiceId]);if(invoices.has(id))return invalid();invoices.add(id);
  }
@@ -43,15 +44,15 @@ export function agingInvoicesResult(value:unknown):AgingInvoicesResponse{
  const result=value as unknown as AgingInvoicesResponse;
  return {...result,accounts:result.accounts.map(a=>({...a,buckets:a.buckets.map(b=>({...b,key:normalizedBucketKey(b.key)}))}))};
 }
-export function agingPublicationMatches(data:AgingInvoicesResponse,refresh:RefreshState|undefined,hotel:AgingHotel|'All'|readonly ('KAT'|'TSK')[]){
- const wanted=Array.isArray(hotel)?hotel:hotel==='KAT'||hotel==='TSK'?[hotel]:['KAT','TSK'];
+export function agingPublicationMatches(data:AgingInvoicesResponse,refresh:RefreshState|undefined,hotel:AgingHotel|'All'|readonly HotelId[]){
+ const wanted=Array.isArray(hotel)?hotel:isHotelId(hotel)?[hotel]:['KAT','TSK'];
  return wanted.every(h=>{const expected=refresh?.hotels.find(p=>p.hotel===h)?.last_success_at,actual=data.publications.find(p=>p.hotel===h)?.sourceAt;return !!expected&&!!actual&&Date.parse(expected)===Date.parse(actual);});
 }
 export function agingCountFor(row:Pick<AgingComparisonRow,'members'>,hotel:AgingHotel,bucket:AgingBucket|undefined,source:Source<AgingInvoicesResponse>,refresh?:RefreshState):AgingCount{
  const members=row.members.filter(a=>hotel==='Total'||a.hotel===hotel);
  if(!members.length)return {count:null,state:'absent'};
  if(!source.data)return {count:null,state:source.state==='loading'?'loading':'unavailable',reason:'Invoice counts are unavailable'};
- for(const h of new Set(members.map(a=>a.hotel))){if((h!=='KAT'&&h!=='TSK')||!agingPublicationMatches(source.data,refresh,h))return {count:null,state:source.state==='loading'?'loading':'unavailable',reason:'Reload counts and saved data to use the same OPERA publication'};}
+ for(const h of new Set(members.map(a=>a.hotel))){if(!isHotelId(h)||!agingPublicationMatches(source.data,refresh,h))return {count:null,state:source.state==='loading'?'loading':'unavailable',reason:'Reload counts and saved data to use the same OPERA publication'};}
  const key=bucket?agingBucketKey(bucket):null;let count=0;
  for(const a of members){
   if(a.verification_state!=='verified'&&!(a.verification_state==='cleared'&&a.open===0))return {count:null,state:'unavailable',reason:'Account source verification is incomplete'};
@@ -63,16 +64,16 @@ export function agingCountFor(row:Pick<AgingComparisonRow,'members'>,hotel:Aging
  return Number.isSafeInteger(count)?{count,state:'ready'}:{count:null,state:'unavailable'};
 }
 export function agingStatusTarget(row:AgingComparisonRow,hotel:AgingHotel,bucket:AgingBucket|undefined,byType:boolean,columns:AgingBucket[]):AgingStatusTarget{
- const query=new URLSearchParams();if(hotel!=='Total')query.set('hotel',hotel);
+ const region=agingRegion(row.members),query=new URLSearchParams(region==='khao-lak'?{region}:{});if(hotel!=='Total')query.set('hotel',hotel);
  if(byType)query.set('type',row.key);else{
   const members=row.members.filter(a=>hotel==='Total'||a.hotel===hotel);
   const kat=members.filter(a=>a.hotel==='KAT'),tsk=members.filter(a=>a.hotel==='TSK');
-  if(kat.length<=1&&tsk.length<=1){if(kat[0])query.set('katAccount',kat[0].id);if(tsk[0])query.set('tskAccount',tsk[0].id);}
+  if(region==='phuket'&&kat.length<=1&&tsk.length<=1){if(kat[0])query.set('katAccount',kat[0].id);if(tsk[0])query.set('tskAccount',tsk[0].id);}
   else query.set('accounts',JSON.stringify(members.map(a=>[a.hotel,a.id])));
  }
  if(bucket)query.set('bucket',agingBucketKey(bucket));
  const cell=bucket?row.cells[columns.findIndex(b=>agingBucketKey(b)===agingBucketKey(bucket))]?.[hotel]:row.net[hotel];
- const hotels:('KAT'|'TSK')[]=hotel!=='Total'?[hotel]:byType?['KAT','TSK']:['KAT','TSK'].filter(h=>row.members.some(a=>a.hotel===h)) as ('KAT'|'TSK')[];
+ const hotels:HotelId[]=hotel!=='Total'?[hotel]:byType?[...regionHotels(region)]:regionHotels(region).filter(h=>row.members.some(a=>a.hotel===h)) as HotelId[];
  const accountPublications=row.members.filter(a=>hotel==='Total'||a.hotel===hotel).map(a=>({hotel:a.hotel,accountId:a.id,accountType:a.type,sourceAt:a.synced_at??null}));
  return {key:query.toString(),title:row.name,hotel,hotels,bucketLabel:bucket?.label??'All ages',query:query.toString(),sourceAmount:cell?.amount??null,accountPublications};
 }
@@ -88,7 +89,7 @@ export function agingDetailsResult(query:URLSearchParams){
  const dimension=query.get('dimension'),status=query.get('status'),flag=query.get('flag');
  return (value:unknown)=>{
   const result=agingInvoicesResult(value);
-  const inScope=(r:{hotel:string;accountId:string;accountType:string})=>(!hotel||r.hotel===hotel)&&(!type||r.accountType===type)&&(!kat&&!tsk||r.hotel==='KAT'&&r.accountId===kat||r.hotel==='TSK'&&r.accountId===tsk)&&(!members||members.has(JSON.stringify([r.hotel,r.accountId])));
+  const inScope=(r:{hotel:string;accountId:string;accountType:string})=>hotelInRegion(r.hotel,resolveRegion(query))&&(!hotel||r.hotel===hotel)&&(!type||r.accountType===type)&&(!kat&&!tsk||r.hotel==='KAT'&&r.accountId===kat||r.hotel==='TSK'&&r.accountId===tsk)&&(!members||members.has(JSON.stringify([r.hotel,r.accountId])));
   if(result.accounts.some(r=>!inScope(r))||result.rows.length>Number(query.get('limit')??50))return invalid();
   for(const row of result.rows){
    if(!inScope(row)||bucket&&(row.age===null||row.age<bucket[1]||bucket[2]!==null&&row.age>bucket[2])||flag==='held'&&!row.held||flag==='needs_review'&&!row.needsReview)return invalid();

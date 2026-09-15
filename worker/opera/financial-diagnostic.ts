@@ -4,6 +4,7 @@ import {makeReader} from './probe';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {readBusinessDate} from '../refresh/read-snapshot';
 import {readFinancialHistory,readFinancialTransactionDetail,parseAppliedPaymentMapping,parseFinancialMoney,type FinancialHotel,type FinancialInvoice,type FinancialPayment,type FinancialHistoryResult,type FinancialReadOptions} from './financial-history';
+import {isHotelId} from '../../src/domain/hotels';
 
 export interface FinancialDiagnosticOptions {maxAccounts?:1|2;maxPages?:number;maxRows?:number}
 type DiagnosticStage='candidates'|'business_date'|'history_20'|'history_10'|'adjacent_days'|'detail'|'mapping';
@@ -98,7 +99,7 @@ function sample(index:number):FinancialDiagnosticSample {
 /** All returned fields are categorical/aggregate. Candidate identities and source rows stay in memory. */
 export async function runFinancialDiagnostic(env:RefreshEnv,hotel:FinancialHotel,options:FinancialDiagnosticOptions={}):Promise<FinancialDiagnosticResult> {
  const maxAccounts=options.maxAccounts??2,maxPages=options.maxPages??50,maxRows=options.maxRows??5000;
- if(!['KAT','TSK'].includes(hotel)||![1,2].includes(maxAccounts)||!Number.isSafeInteger(maxPages)||maxPages<1||!Number.isSafeInteger(maxRows)||maxRows<1)throw new OperaError('invalid_request',undefined,'financial_diagnostic_options');
+ if(!isHotelId(hotel)||![1,2].includes(maxAccounts)||!Number.isSafeInteger(maxPages)||maxPages<1||!Number.isSafeInteger(maxRows)||maxRows<1)throw new OperaError('invalid_request',undefined,'financial_diagnostic_options');
  const result:FinancialDiagnosticResult={hotel,status:'unavailable',windowDays:7,accountsChecked:0,candidatesSelected:0,readChecksPassed:false,financialPeriodCoverageVerified:false,applicationDatesVerified:false,samples:[]};
  let selected:Candidate[];try{selected=candidates(await backendRpc(env,'ar_financial_diagnostic_candidates',{p_hotel:hotel,p_limit:maxAccounts}),hotel,maxAccounts);}catch(e){result.error=error('candidates',e);return result;}
  result.candidatesSelected=selected.length;if(!selected.length){result.status='no_candidates';return result;}

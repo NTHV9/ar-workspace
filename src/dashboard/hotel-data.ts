@@ -1,3 +1,4 @@
+import {regionHotels,type RegionId} from '../domain/hotels';
 import type {DashboardHotelOverviewResponse,DashboardOverviewScope} from '../../worker/dashboard/hotel-model';
 import {activityResult,externalResult,financialResult,type Source} from './data';
 import {balancesResult,paidInvoicesResult} from './period-data';
@@ -19,10 +20,11 @@ function scopeResult(value:unknown):DashboardOverviewScope {
   paid:value.paid===null?null:paidInvoicesResult(value.paid),
  } as DashboardOverviewScope;
 }
-export function hotelOverviewResult(value:unknown,from:string,to:string):HotelOverview {
- if(!object(value)||value.from!==from||value.to!==to||!validDay(from)||!validDay(to)||!Array.isArray(value.hotels)||value.hotels.length!==2)throw Error('dashboard_overview_invalid');
- const hotels=value.hotels.map(h=>{if(!object(h)||h.hotel!=='KAT'&&h.hotel!=='TSK')throw Error('dashboard_overview_invalid');return {...scopeResult(h),hotel:h.hotel};});
- if(new Set(hotels.map(h=>h.hotel)).size!==2)throw Error('dashboard_overview_invalid');
+export function hotelOverviewResult(value:unknown,from:string,to:string,region:RegionId='phuket'):HotelOverview {
+ const expected=regionHotels(region);
+ if(!object(value)||value.from!==from||value.to!==to||!validDay(from)||!validDay(to)||!Array.isArray(value.hotels)||value.hotels.length!==expected.length)throw Error('dashboard_overview_invalid');
+ const hotels=value.hotels.map((h,index)=>{if(!object(h)||h.hotel!==expected[index])throw Error('dashboard_overview_invalid');return {...scopeResult(h),hotel:h.hotel};});
+ if(new Set(hotels.map(h=>h.hotel)).size!==expected.length)throw Error('dashboard_overview_invalid');
  return {from,to,total:scopeResult(value.total),hotels} as DashboardHotelOverviewResponse;
 }
 export function overviewSource<K extends keyof DashboardOverviewScope>(source:Source<HotelOverview>,key:K):Source<NonNullable<DashboardOverviewScope[K]>> {
@@ -32,7 +34,7 @@ export function overviewSource<K extends keyof DashboardOverviewScope>(source:So
 
 /** Retain a complete hotel comparison group together; never splice new totals with old hotel parts. */
 export function mergeHotelOverview(next:HotelOverview,previous:HotelOverview|undefined):HotelOverview {
- if(!previous||previous.from!==next.from||previous.to!==next.to)return next;
+ if(!previous||previous.from!==next.from||previous.to!==next.to||previous.hotels.map(h=>h.hotel).join()!==next.hotels.map(h=>h.hotel).join())return next;
  const merged:HotelOverview={...next,total:{...next.total},hotels:next.hotels.map(h=>({...h})),retained:[]};
  for(const key of ['balances','activity','external','entries','payments','paid'] as const){
   if(next.total[key]!==null&&next.hotels.every(h=>h[key]!==null))continue;

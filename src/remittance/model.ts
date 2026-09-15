@@ -1,4 +1,5 @@
-export type Hotel = 'KAT' | 'TSK';
+import type {HotelId} from '../domain/hotels';
+export type Hotel = HotelId;
 /** Decimal THB strings preserve satang exactly across the API/database boundary. */
 export type Amount = string;
 export interface RemittanceLineInput {invoiceId:string;reportedAmount:Amount|null}

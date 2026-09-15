@@ -9,6 +9,7 @@ import {OperaError,type OperaReader} from '../opera/client';
 import {discoverAccountIds,readBusinessDate} from '../refresh/read-snapshot';
 import {readFinancialHistory,type FinancialHotel,type FinancialInvoice,type FinancialPayment,type AppliedPaymentLink} from '../opera/financial-history';
 import type {FinancialAccountContext,FinancialCounts,FinancialHistoryRequest,FinancialRun,FinancialRunReceipt,FinancialWorkflowResult,FinancialPaymentMappingResult} from './model';
+import {isHotelId} from '../../src/domain/hotels';
 export type {FinancialHistoryRequest,FinancialRunReceipt,FinancialWorkflowResult} from './model';
 export interface FinancialIngestionEnv extends RefreshEnv {AR_FINANCIAL?:RefreshEnv['AR_REFRESH'];FINANCIAL_HISTORY_ENABLED?:string;FINANCIAL_HISTORY_WINDOW_DAYS?:string;FINANCIAL_HISTORY_DATE_FILTER_PROOF?:string}
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -22,7 +23,7 @@ function enabled(env:FinancialIngestionEnv){return env.FINANCIAL_HISTORY_ENABLED
 async function rpc<T>(env:FinancialIngestionEnv,name:string,args:Record<string,unknown>):Promise<T>{const v=await backendRpc<unknown>(env,name,args);if(v&&typeof v==='object'&&'error' in v)throw Error(typeof v.error==='string'&&/^financial_[a-z_]{1,80}$/.test(v.error)?v.error:'financial_unavailable');return v as T;}
 function safeError(value:unknown):string {if(value instanceof OperaError)return value.code;return value instanceof Error&&/^financial_[a-z_]{1,80}$/.test(value.message)?value.message:'financial_unavailable';}
 function requestInput(actor:string,input:FinancialHistoryRequest){
- if(!uuid.test(actor)||!uuid.test(input.commandId)||!['KAT','TSK'].includes(input.hotel)||!['manual','scheduled','backfill','open'].includes(input.reason))return fail();
+ if(!uuid.test(actor)||!uuid.test(input.commandId)||!isHotelId(input.hotel)||!['manual','scheduled','backfill','open'].includes(input.reason))return fail();
  const from=input.from===undefined?null:date(input.from),to=input.to===undefined?null:date(input.to);
  if((from===null)!==(to===null)||input.reason==='backfill'&&from===null||from!==null&&to!==null&&(from>to||(Date.parse(to)-Date.parse(from))/86400000>=366))return fail();
  return {hotel:input.hotel,reason:input.reason,from,to};
@@ -65,7 +66,7 @@ export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{act
  if(!enabled(env)){try{await rpc(env,'ar_financial_fail',{...args,p_code:'financial_history_disabled'});}catch{/* source reads and publication remain disabled */}return {status:'not_enabled',accounts:0,...zeroCounts};}
  let accountCount=0;
  try{
-  const run=await rpc<FinancialRun>(env,'ar_financial_run_get',args);if(!run||run.owner!==actor||run.id!==runId||!['KAT','TSK'].includes(run.hotel)||!run.proof||!['queued','running','succeeded','failed'].includes(run.status))return fail('financial_run_invalid');
+  const run=await rpc<FinancialRun>(env,'ar_financial_run_get',args);if(!run||run.owner!==actor||run.id!==runId||!isHotelId(run.hotel)||!run.proof||!['queued','running','succeeded','failed'].includes(run.status))return fail('financial_run_invalid');
   date(run.from);date(run.to);if(run.status==='succeeded')return {status:'succeeded',accounts:run.accounts,...run.counts};if(run.status==='failed')return fail('financial_run_failed');
   if(run.stepsVersion===2||run.stepsVersion===3)return await runGranularFinancialHistory(env,run,step,{rpc:(name,extra={})=>rpc(env,name,{...extra,...args}),stage:(account,kind,rows)=>stageRows(env,actor,runId,account,kind,rows),context,mapping:mapFinancialInvoice,paymentMapping:mapFinancialPayment});
   const reader=makeReader(env,run.hotel);

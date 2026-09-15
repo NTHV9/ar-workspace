@@ -1,4 +1,5 @@
 import {parseSettings,parseRecipients,validMailbox,type SettingsInput} from './validation';
+import {isHotelId} from '../../src/domain/hotels';
 export interface AgentSheetRow {row:number;number:unknown;agent:unknown;term:unknown;type:unknown;billing:unknown;collection:unknown}
 export interface ParsedAgentRow extends Omit<SettingsInput,'revision'> {row:number;accountNo:string;sourceName:string;warnings:string[];billingMethod:'email'|'system';billingPortal:string|null;billingInstructions:string;collectionInstructions:string}
 export interface ImportAccount {hotel:string;id:string;account_no:string|null;name:string;revision:number}
@@ -23,7 +24,7 @@ export function parseAgentRow(r:AgentSheetRow):ParsedAgentRow{
  return {...settings,row:r.row,accountNo:r.number.trim().toUpperCase(),sourceName:r.agent.trim(),billingMethod:method,billingPortal:checked.billingPortal??null,billingInstructions:checked.billingInstructions??'',collectionInstructions:checked.collectionInstructions??'',warnings};
 }
 export function matchAgentRows(rows:ParsedAgentRow[],accounts:ImportAccount[],hotels:string[]){
- if(!hotels.length||new Set(hotels).size!==hotels.length||hotels.some(h=>!['KAT','TSK'].includes(h)))throw Error('import_scope_invalid');
+ if(!hotels.length||new Set(hotels).size!==hotels.length||hotels.some(h=>!isHotelId(h)))throw Error('import_scope_invalid');
  const seen=new Set<string>(),matched:{row:ParsedAgentRow;account:ImportAccount}[]=[],missing:{row:number;accountNo:string;hotel:string}[]=[];
  for(const row of rows){if(seen.has(row.accountNo))throw Error('import_duplicate_account_number');seen.add(row.accountNo);
   for(const hotel of hotels){const list=accounts.filter(a=>a.hotel===hotel&&a.account_no?.trim().toUpperCase()===row.accountNo);if(list.length>1)throw Error('import_ambiguous_account');if(!list.length){missing.push({row:row.row,accountNo:row.accountNo,hotel});continue;}matched.push({row,account:list[0]});}
