@@ -7,7 +7,8 @@ const account: Account = {hotel:'KAT',id:'synthetic',name:'Synthetic test',type:
 it('does not invent live aging when the source has no buckets',()=>{
   const html=renderToStaticMarkup(<Portfolio accounts={[account]} hotel="All" review={false} params={new URLSearchParams()} update={()=>{}} openAccount={()=>{}}/>);
   expect(html).not.toContain('width:43%');
-  expect(html).toContain('Aging unavailable');
+  expect(html.match(/class="portfolio-aging-unknown"/g)).toHaveLength(12);
+  expect(html).toContain('Unavailable');
 });
 it('distinguishes unavailable due data from confirmed not billed',()=>{
   const invoice: Invoice={id:'test',hotel:'KAT',accountId:'synthetic',guest:'Example',invoiceNo:'test',folioNo:'test',date:'2026-09-08',due:null,original:100,open:100,aging:'Unknown',stage:'Not available'};

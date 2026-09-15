@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Regional Portfolio overview — 15 กันยายน 2026
+
+- Implemented: แบบที่เจ้าของเลือกใช้ทั้ง Phuket/Khao Lak มี total strip, hotel cards 2/4 ใบ, source Aging matrix และ freshness ต่อโรงแรม. การ์ดแสดง regional comparison; total/Aging ตาม selected hotel. คง table filters/sorts/account navigation เดิม และไม่มี mockup data ใน live path.
+- กด Aging/Net open เปิด protected Invoice breakdown เดิมแบบ lazy พร้อมตรวจ Hotel/range/date/publication. ไม่มี request เพิ่มก่อนกด; Review mode ไม่อ่านบริการจริง. Exact/compact amounts และ debit/credit ใช้ค่า source เดิม. Unavailable, verified zero, signed/offset และ source range differences คงแยก.
+- Local browser 21 cases ผ่านหลังแก้ selector เดิม รวมทั้งสองพื้นที่ 1440/1280/390, hotel selection, exact values, drill/navigation, partial/zero/retained, signed/older highlighting และ failed chunk containment. เปิดตรวจภาพใหม่แล้วและคง tracked reference captures เดิม. Independent review พบ missing lazy error boundary หนึ่งจุด; แก้ด้วย LazyPanel และ re-review ผ่าน.
+- 1,185 unit tests/117 files และ TypeScript/build/public-asset validation ผ่าน. Deployed source `37d4432f447d2672c2718adaacf472f5de93ff29`, Worker `7812c8a1-7c29-4080-95a8-0ae92527b714`. Production assets ผ่าน browser อีก 21 cases และ health/database/19 anonymous boundaries ผ่าน. Integration: [PR40](https://github.com/NTHV9/ar-workspace/pull/40). ไม่มี schema, provider capacity, financial write, email หรือ file lifecycle เปลี่ยน.
+
 ## App database allowance — 15 กันยายน 2026
 
 - Implemented: production configuration `OPS_BUDGET_DATABASE_BYTES=1073741824` เพิ่ม app allowance เป็น 1 GiB ผ่าน validator/atomic budget RPC เดิม. คง safetyPercent=20; ไม่มี schema, physical Disk, paid plan หรือโควต้าอื่นเปลี่ยน.
