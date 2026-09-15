@@ -1,5 +1,14 @@
 # สถานะโครงการใหม่
 
+## Phuket / Khao Lak — 15 กันยายน 2026
+
+- Implemented/deployed/enabled: แยก Phuket (KAT/TSK) และ Khao Lak (TLKL/WAKL/TLFO/TSAN) ในระบบเดิม พร้อมตัวเลือกพื้นที่และการเทียบโรงแรมใน Dashboard, Aging, Portfolio และงานที่เกี่ยวข้อง. ตัวตนธุรกรรมยังแยก Hotel + Account; URL เดิมยังเปิด Phuket.
+- ตั้งค่า Account ของ Khao Lak แยกตามคำยืนยัน ไม่คัดลอก Billing Required, Credit Term หรือผู้รับจาก Phuket. ใช้แม่แบบ Statement ที่เจ้าของส่งครบทั้งสี่โรงแรม โดยตรวจโลโก้และข้อมูลธนาคารแบบ private. Gmail connection เดิมคงไว้; ยังไม่มีการระบุหรือเชื่อม mailbox ใหม่.
+- Live refresh ทั้งหกโรงแรมสำเร็จ. แก้ TLFO ที่ Summary ส่งเครดิตติดลบ โดยยอมรับเฉพาะเมื่อ Account และ Aging ยืนยันยอดตรงครบทุกส่วน; คง currency, pagination, history และ zero checks. ตรวจจำนวน/ยอดค้างของ Dashboard และจำนวน Aging เทียบข้อมูล Invoice ต้นทางแล้วตรงทั้งหกโรงแรมและสองพื้นที่ รวมเครดิตและไม่รวม child.
+- สร้าง Statement และ native Invoice จริงหนึ่งชุดต่อโรงแรมใหม่ เปิดตรวจภาพใน PDF editor ได้ครบ. อีกหนึ่ง TSAN trial ถูกหยุดอย่างถูกต้องเมื่อ OPERA เปลี่ยนยอดเป็นศูนย์ระหว่างทดสอบ; เปลี่ยนเป็นรายการใหม่หลัง refresh แล้วผ่าน. ไม่ส่งอีเมลหรือแก้ประวัติวางบิล/ผู้รับจริง. Discard ทุก preparation ทดสอบแล้ว ติดตาม exact file IDs แบบ private เพื่อยืนยัน cleanup.
+- Tests: 1,113 unit tests/113 files, TypeScript/build, independent reviews และ SyntheticRestore 77 migrations/32 registered SQL suites ผ่าน. Full deployed browser 409 ผ่าน + 4 expectation เก่าถูกแก้และทวนผ่าน; expanded regional suite 58 ผ่าน และ final deployed regional/refresh/Aging 27 ผ่าน. ไม่แก้ visual baseline เพื่อหลบ failure.
+- Runtime `228ab836f110cf2ac22a5258a6643b53de190aab`, Worker `59c2643b-8569-4058-a646-f62a35a33d5f`, acceptance disabled. Health/database และ 19 anonymous boundaries ผ่าน. ไม่เพิ่ม paid capacity; quota guards/concurrency/schedules เดิมคงอยู่. รายละเอียดใน [HOTEL_REGIONS_20260915.md](HOTEL_REGIONS_20260915.md), integration [PR33](https://github.com/NTHV9/ar-workspace/pull/33).
+
 ## Full system audit — 14–15 กันยายน 2026
 
 - ตรวจ Dashboard, Portfolio/Account, Collections, Reports, Remittances, Templates, Storage และ PDF/Email flows ด้วย browser regressions และ acceptance data แยกจากบัญชีลูกค้าจริง. แก้บริบท Remittance ข้ามโรงแรม, Collections selection หายระหว่าง refresh, คำเตือนก่อนออกจาก email/template/review ที่ยังมีงานค้าง, การเปิดคำตอบของ first-send conversation, Invoice/Folio identifiers ใน external billing review, recovery เมื่อ Gmail เปลี่ยน Draft message ID, ชื่อรอบทวงที่ต้องคงหลัง reload และหน้ากู้คืนเมื่อ lazy page รุ่นเก่าโหลดไม่ได้หลัง deploy.
