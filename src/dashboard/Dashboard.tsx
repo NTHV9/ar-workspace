@@ -29,8 +29,8 @@ export default function Dashboard({token,hotel,accounts,params,update,refresh,on
  const detailScope=detailHotel?{...scope,hotel:detailHotel,account:''}:scope;
  const detailKind=params.get('dashboardDetail')??'',detail:PeriodDetail|null=['balance','sent','invoice_entries','payments','payment_invoices'].includes(detailKind)?{kind:detailKind as PeriodDetail['kind'],metric:params.get('dashboardMetric')??undefined,stage:params.get('dashboardStage')??undefined}:null;
  const detailPage=Math.max(0,Math.min(100000,Number(params.get('dashboardPage'))||0)),priorDetail=useRef(''),detailScroll=useRef(0);
- const publication=(refresh?.hotels??[]).filter(r=>r.last_success_at).map(r=>r.hotel+':'+r.last_success_at).sort().join('|'),seenPublication=useRef<string|null>(null);
- useEffect(()=>{if(!publication||refresh?.running)return;if(seenPublication.current===null){seenPublication.current=publication;return;}if(seenPublication.current!==publication){seenPublication.current=publication;setRevision(n=>n+1);}},[publication,refresh?.running]);
+ const publication=(refresh?.hotels??[]).filter(r=>r.last_success_at).map(r=>r.hotel+':'+r.last_success_at).sort().join('|'),publicationKnown=!!refresh,seenPublication=useRef<string|null>(null);
+ useEffect(()=>{if(!publicationKnown)return;if(seenPublication.current===null){seenPublication.current=publication;return;}if(seenPublication.current!==publication){seenPublication.current=publication;setRevision(n=>n+1);}},[publication,publicationKnown]);
  useEffect(()=>{const timer=setInterval(()=>setToday(thaiToday()),60000);return()=>clearInterval(timer);},[]);
  useEffect(()=>{const controller=new AbortController();setOptionsError(false);void readDashboardOptions(token,controller.signal,region).then(setOptions).catch(()=>{if(!controller.signal.aborted)setOptionsError(true);});return()=>controller.abort();},[token,revision,region]);
  useEffect(()=>{if(priorDetail.current&&!detailKind)window.scrollTo(0,detailScroll.current);priorDetail.current=detailKind;},[detailKind]);

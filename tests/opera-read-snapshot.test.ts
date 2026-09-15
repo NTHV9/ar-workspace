@@ -20,14 +20,15 @@ function history(invoices: ReturnType<typeof invoice>[]) {
   return { details: invoices.length ? [{ hotelId: 'KAT', accountId: { id: 'account-1' }, invoices, payments: [] }] : [],
     totalResults: invoices.length, hasMore: false, offset: invoices.length ? 20 : 0, limit: 20 };
 }
-function harness(raw = current(), open = history([invoice()]), closed = history([]), closedStatus = 200) {
+function harness(raw = current(), open = history([invoice()]), closed = history([]), closedStatus = 200, scoped?:ReturnType<typeof history>) {
   const requests: URL[] = [];
   const reader = new OperaReader({ origin: 'https://synthetic.example.invalid', appKey: 'synthetic-app-key', hotelId: 'KAT' },
     async () => 'synthetic-token', async (request) => {
       const url = new URL(request.url); requests.push(url);
       if (url.pathname === '/ars/v1/hotels/KAT/accounts/account-1') return Response.json(raw);
       if (url.pathname !== '/ars/v1/invoicePayments/accounts/account-1') throw new Error('Unexpected synthetic route');
-      return url.searchParams.get('inclZeroBalance') === 'false' ? Response.json(open) : Response.json(closed, { status: closedStatus });
+      const invoiceOnly=url.searchParams.getAll('fetchInstructions').join(',')==='Invoices';
+      return url.searchParams.get('inclZeroBalance') === 'false' ? Response.json(open) : Response.json(invoiceOnly&&scoped?scoped:closed, { status: closedStatus });
     });
   return { reader, requests };
 }
@@ -118,6 +119,28 @@ describe('verified OPERA snapshot reads', () => {
     expect(result.invoices.map(i=>i.open)).toEqual([60,-60]);
     expect(result.account.items).toBe(2);
     expect(requests[2].searchParams.get('inclZeroBalance')).toBe('true');
+  });
+  it('reuses complete zero-inclusive evidence when every missing transaction is explicitly closed',async()=>{
+    const pair=[{...invoice(123,60),invoiceNo:'456',compressed:false},{...invoice(124,-60),invoiceNo:'457',compressed:false}],closed={...invoice(125,0),invoiceNo:'458',compressed:false};
+    const {reader,requests}=harness(current(pair,0),history([]),history([...pair,closed]));
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'125',invoice_no:'458',open:100}]);
+    expect(result.invoices.find(i=>i.id==='125')).toMatchObject({open:0,collection_role:'standalone'});expect(result.account.items).toBe(2);expect(requests).toHaveLength(3);expect(requests.some(r=>r.searchParams.has('invoiceNo'))).toBe(false);
+  });
+  it('keeps strict closed-history validation when the full audit tolerated understated counts',async()=>{
+    const pair=[invoice(123,60),invoice(124,-60)],closed=invoice(125,0),audit={...history([...pair,closed]),totalResults:2};
+    const {reader,requests}=harness(current(pair,0),history([]),audit);
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'125',invoice_no:'456',open:100}])).rejects.toThrow();expect(requests).toHaveLength(4);
+  });
+  it('does not reuse a closed row whose hotel disagrees with the scoped account',async()=>{
+    const pair=[invoice(123,60),invoice(124,-60)],closed={...invoice(125,0),hotelId:'TSK'};
+    const {reader,requests}=harness(current(pair,0),history([]),history([...pair,closed]));
+    await expect(readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'125',invoice_no:'456',open:100}])).rejects.toMatchObject({stage:'history_scope'});expect(requests).toHaveLength(4);
+  });
+  it.each(['459',null])('does not reuse a subset of zeros when an unresolved invoice requires another query (%s)',async(invoiceNo)=>{
+    const pair=[{...invoice(123,60),invoiceNo:'456'},{...invoice(124,-60),invoiceNo:'457'}],closed={...invoice(125,0),invoiceNo:'458'};
+    const {reader,requests}=harness(current(pair,0),history([]),history([...pair,closed]),200,history([]));
+    const result=await readVerifiedAccount(reader,'KAT','account-1','2026-09-08',[{id:'125',invoice_no:'458',open:0},{id:'126',invoice_no:invoiceNo,open:10}]);
+    expect(result.invoices.map(i=>i.id)).toEqual(['123','124']);expect(result.unconfirmedInvoiceIds).toEqual(['125']);expect(requests).toHaveLength(4);
   });
   it.each([
     { label: 'same total with a different transaction ID', rows: [invoice(999)] },

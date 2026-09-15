@@ -36,3 +36,9 @@ Production metadata before changes (15 September evening, ICT): one financial Wo
 - The first 19 matching invoice-mapping step names with identical aggregate results took 122.151 seconds in the prior run and 44.057 seconds in the new run (63.9% less elapsed time). This is a production sample with the same result counts, not a guarantee about entire-run duration or identical source bytes. Provider latency can vary.
 - Eight unverified payment-detail mappings in this sample remain explicitly unverified; they are not treated as successful/zero. Aggregate outcomes match the corresponding old checkpoints. Private prior per-row mapping staging had already been cleaned, so no claim of exact per-row identity equality is made.
 - The full KAT and TLFO history runs were still in progress at closeout. Full-run duration and whether the previously timed-out large payment batch completes are not yet verified. They continue in the existing durable queue; no additional run, cancellation, or automatic email was created.
+
+## Subsequent completion verified
+
+- KAT completed at 01:50:29 ICT on 16 September: 105/105 accounts, 5,595 invoice observations, 369 payment observations and 4,830 application links; succeeded with no run error. Elapsed time was 65.1 minutes. The old 180.9-minute run had failed rather than finished, so it is not an equivalent whole-run speed benchmark.
+- The same formerly failing payment batch completed in 482.8 seconds, with five verified payments, 1,226 links and no unknown result. Both old attempts had timed out at 600 seconds each.
+- TLFO's previously queued historical run completed in 14.2 minutes. All historical work discussed in this rollout has finished; no outstanding verification remains for the former timeout batch.

@@ -39,6 +39,7 @@ interface PortfolioResponse { accounts: Account[]; status?: 'connected' | 'not_c
 type SavedInvoice = Omit<Invoice, 'accountId' | 'invoiceNo' | 'folioNo' | 'date' | 'due' | 'stage'> & { account_id: string; invoice_no: string; folio_no: string; transaction_date: string };
 interface InvoiceResponse { invoices: SavedInvoice[] }
 interface RefreshJobsResponse { jobs?: { id?: string; status: string; created: boolean }[] }
+const publicationKey=(refresh?:RefreshState)=>JSON.stringify((refresh?.hotels??[]).map(h=>[h.hotel,h.last_success_at] as const).sort(([a],[b])=>a.localeCompare(b)));
 async function readJson<T extends object>(response: Response): Promise<T> {
   const data: unknown = await response.json();
   if(!data || typeof data !== 'object' || Array.isArray(data))throw new Error('The data service returned an invalid response. Please retry.');
@@ -71,6 +72,8 @@ export function App() {
   const [connected,setConnected]=useState(false);
   const openedOwner=useRef<string|null>(null);
   const loadAbort=useRef<AbortController|null>(null);
+  const loadedCatalog=useRef<{owner:string;region:string;publication:string}|null>(null);
+  const pendingPublication=useRef<{owner:string;region:string;publication:string;force:boolean}|null>(null);
   const refreshAbort=useRef<AbortController|null>(null);
   const refreshRevision=useRef(0);
   const [reloadVersion,setReloadVersion]=useState(0);
@@ -134,11 +137,11 @@ export function App() {
   useEffect(()=>{const pop=()=>{if((templateDirty.current||remittanceDirty.current||accountDirty.current||policyDirty.current||documentDirty.current)&&!window.confirm(documentDirty.current&&documentEditing.current==='pdf'?'Leave this preparation and discard tab-only PDF edits?':'Leave without saving or resolving the current changes?')){history.pushState(null,'',`?${paramsRef.current}`);return;}const next=normalizedDashboardParams(new URLSearchParams(location.search));if(next.toString()!==new URLSearchParams(location.search).toString())history.replaceState(null,'','?'+next);paramsRef.current=next;setParams(next);};addEventListener('popstate',pop);return()=>removeEventListener('popstate',pop);},[]);
   useEffect(()=>{let alive=true;let unsubscribe:(()=>void)|undefined;fetch('/api/config').then(r=>{if(!r.ok)throw new Error();return readJson<ConfigResponse>(r);}).then(config=>{if(!alive)return;setGoogleEnabled(config.googleEnabled===true);setWriteHold(config.writeHold===true);setAcceptanceSelected(config.acceptanceSelected===true);if(typeof config.documentEditorMaxBytes==='number'&&config.documentEditorMaxBytes>0)setDocumentEditorMaxBytes(config.documentEditorMaxBytes);if(!config.supabaseUrl||!config.publishableKey){setAuthReady(true);setState('unavailable');return;}const c=createClient(config.supabaseUrl,config.publishableKey,{auth:{flowType:'pkce',detectSessionInUrl:true}});setClient(c);c.auth.getSession().then(({data})=>{if(alive){setSession(data.session);setAuthReady(true);setState('ready');}});unsubscribe=c.auth.onAuthStateChange((event,s)=>{if(event==='PASSWORD_RECOVERY')setRecovery(true);setSession(s);}).data.subscription.unsubscribe;}).catch(()=>{if(alive){setAuthReady(true);setState('unavailable');}});return()=>{alive=false;unsubscribe?.();};},[]);
   const load=async()=>{
-    if(!session||resolveRegion(paramsRef.current)!==region)return;
+    if(!session||sessionRef.current?.access_token!==session.access_token||resolveRegion(paramsRef.current)!==region)return;
     const token=session.access_token, owner=session.user.id, revision=refreshRevision.current;
-    let accessLost=false;
+    let accessLost=false,loaded=false;
     loadAbort.current?.abort(); const controller=new AbortController();loadAbort.current=controller;
-    setReloadVersion(v=>v+1);setState('loading');setError('');
+    if(loadedCatalog.current?.owner!==owner||loadedCatalog.current.region!==region)setState('loading');setError('');
     try {
       const response=await fetch('/api/portfolio'+(region==='khao-lak'?'?region=khao-lak':''),{signal:controller.signal,headers:{Authorization:`Bearer ${token}`}});
       if(!response.ok){
@@ -147,16 +150,30 @@ export function App() {
       }
       const data=await readJson<PortfolioResponse>(response);
       if(controller.signal.aborted||sessionRef.current?.access_token!==token||resolveRegion(paramsRef.current)!==region)return;
-      setAccounts(data.accounts);setAccountsOwner(owner);setState('ready');setConnected(data.status==='connected');if(data.refresh&&revision===refreshRevision.current)setRefresh(data.refresh);
+      loadedCatalog.current={owner,region,publication:publicationKey(data.refresh)};
+      loaded=true;
+      setAccounts(data.accounts);setAccountsOwner(owner);setState('ready');setConnected(data.status==='connected');if(data.refresh&&revision===refreshRevision.current)setRefresh(data.refresh);setReloadVersion(v=>v+1);
     } catch(error) {
       if(controller.signal.aborted||sessionRef.current?.access_token!==token||resolveRegion(paramsRef.current)!==region)return;
-      if(accessLost){setAccounts([]);setAccountsOwner(null);}
+      if(accessLost){setAccounts([]);setAccountsOwner(null);loadedCatalog.current=null;}
       setError((error as Error).message);setState('error');
+    } finally {
+      if(loadAbort.current===controller){
+        loadAbort.current=null;const pending=pendingPublication.current;pendingPublication.current=null;
+        // A hotel may finish while this response is in flight. Reload once only
+        // if that newer publication was not already included in the response.
+        if(loaded&&pending?.owner===owner&&pending.region===region&&(pending.force||pending.publication!==loadedCatalog.current?.publication))void load();
+      }
     }
+  };
+  const reloadForRefresh=(next:RefreshState,force=false)=>{
+    if(!session||!force&&loadedCatalog.current?.publication===publicationKey(next))return;
+    if(loadAbort.current)pendingPublication.current={owner:session.user.id,region,publication:publicationKey(next),force};
+    else void load();
   };
   useEffect(()=>{if(session&&!review&&!recovery)void load();return()=>loadAbort.current?.abort();},[session?.access_token,review,recovery,region]);
   useEffect(()=>{setRequestingRefresh(false);return()=>refreshAbort.current?.abort();},[session?.access_token,region]);
-  useEffect(()=>{setAccounts([]);setAccountsOwner(null);setInvoices([]);setError('');setRefresh(undefined);setProbeResult(null);setCheckingOpera(false);setRefreshError('');setConnected(false);setRequestingRefresh(false);openedOwner.current=null;return()=>{loadAbort.current?.abort();refreshAbort.current?.abort();};},[session?.user.id]);
+  useEffect(()=>{loadedCatalog.current=null;pendingPublication.current=null;setAccounts([]);setAccountsOwner(null);setInvoices([]);setError('');setRefresh(undefined);setProbeResult(null);setCheckingOpera(false);setRefreshError('');setConnected(false);setRequestingRefresh(false);openedOwner.current=null;return()=>{loadAbort.current?.abort();refreshAbort.current?.abort();};},[session?.user.id]);
   const visible=useMemo(()=>(review?demoAccounts:accountsOwner===session?.user.id?accounts:[]).filter(a=>hotelInRegion(a.hotel,region)),[review,accountsOwner,session?.user.id,accounts,region]);
   const active=visible.find(a=>a.id===params.get('account')&&a.hotel===params.get('property'));
   useEffect(()=>{let alive=true;const controller=new AbortController();const ownerKey=`${session?.user.id}/${active?.hotel}/${active?.id}`;if(invoiceOwner.current!==ownerKey){setInvoices([]);invoiceOwner.current=ownerKey;}setInvoiceState('ready');if(active&&!review&&session&&!recovery){setInvoiceState('loading');fetch(`/api/accounts/${encodeURIComponent(active.hotel)}/${encodeURIComponent(active.id)}`,{signal:controller.signal,headers:{Authorization:`Bearer ${session.access_token}`}}).then(async r=>{if(!r.ok)throw new Error();return readJson<InvoiceResponse>(r);}).then(d=>{if(alive){setInvoiceState('ready');setInvoices(d.invoices.map((i)=>({...i,accountId:i.account_id,invoiceNo:i.invoice_no,folioNo:i.folio_no,date:i.transaction_date,due:i.workflow?.due_date??null,stage:latestInvoiceActivity(i.workflow)})));}}).catch(()=>{if(alive){setInvoiceState('error');setError('Invoice data is unavailable. Please retry.');}});}return()=>{alive=false;controller.abort();};},[active?.id,active?.hotel,review,session?.access_token,reloadVersion]);
@@ -179,6 +196,8 @@ export function App() {
       const next=await readJson<RefreshState>(status);
       if(controller.signal.aborted||sessionRef.current?.access_token!==token||resolveRegion(paramsRef.current)!==region)return;
       setRefresh({...next,running:next.running||running});
+      // Fast jobs may finish before the polling effect gets its first turn.
+      reloadForRefresh(next,!next.running&&!running&&refresh?.running===true);
     } catch { if(!controller.signal.aborted&&sessionRef.current?.access_token===token&&resolveRegion(paramsRef.current)===region)setRefreshError('OPERA refresh is unavailable. Saved data is retained.'); }
     finally { if(!controller.signal.aborted&&sessionRef.current?.access_token===token&&resolveRegion(paramsRef.current)===region)setRequestingRefresh(false); }
   };
@@ -197,7 +216,10 @@ export function App() {
         const next=await readJson<RefreshState>(response);
         if(controller.signal.aborted||sessionRef.current?.access_token!==token||resolveRegion(paramsRef.current)!==region)return;
         setRefresh(next);setRefreshError('');
-        if(!next.running){void load();return;}
+        // A completed hotel can be displayed while other hotels are still reading.
+        // Keep a pending catalog request intact rather than restarting it every poll.
+        reloadForRefresh(next,!next.running);
+        if(!next.running)return;
       } catch { if(controller.signal.aborted||sessionRef.current?.access_token!==token||resolveRegion(paramsRef.current)!==region)return;setRefreshError('Refresh status is temporarily unavailable. Saved data is retained.'); }
       timer=setTimeout(poll,3000);
     };
