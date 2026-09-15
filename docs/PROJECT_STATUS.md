@@ -6,7 +6,7 @@
 - กรอบ/เครื่องหมาย + แสดงเฉพาะ editor. ช่องว่างที่ยังไม่กรอกไม่ทำให้หน้าต้นฉบับถูกแปลงเป็นภาพ; เมื่อแก้จริงยังใช้ Preview และ export ที่ปิด source text เดิมตามหลักเดิม. ไม่เปลี่ยน OPERA, การส่งอีเมล หรือการเก็บไฟล์.
 - Native PDF ตรวจพบ Arial Bold subset ที่ขาดเลขบางตัว. ยืนยัน glyph programs ของตัวเลขที่มีอยู่ตรงกับ Arial Bold ที่ติดตั้งในเครื่อง; เติมเฉพาะเลขที่ขาดจาก named local face หลังตรวจ native advance widths. คง glyph เดิม baseline/ขนาด/สี/ระยะห่าง ไม่แจกจ่ายฟอนต์หรือดาวน์โหลดจากภายนอก. หากเครื่องไม่มี face ตรงกันจะไม่เดาฟอนต์แทน; original-font validation ยังคงอยู่.
 - Tests: 1,120 unit tests/115 files, TypeScript/build, PDF browser regressions 50 cases ผ่าน. Native private Invoice กรอกครบ 0–9 และ export/Preview ผ่านที่ 8 pt, bold, black และ native baseline; เปิดตรวจภาพจริงแล้ว. Independent review พบและแก้ self-collision warning กับช่องซ้ำหลังเปลี่ยนฟอนต์ และ re-review ผ่าน 31 focused tests. Original visual baselines คงไว้; เอกสารลูกค้า/font binaries ไม่เข้า Git.
-- Deployment verification pending; runtime and integration receipt are added after the deployed checks.
+- Deployed source `53e1ad488f3bcee1e3528e32c255da2c6d0f0240`, Worker `5f25faea-509e-4282-852b-ed49a14eeab4`. Health/database และ 19 anonymous boundaries ผ่าน. Deployed browser 4 cases (KAT/TLKL, 1440/1280 และ PDF regression) ผ่าน; อีกหนึ่ง private native Invoice ทดสอบกรอก 0–9 และ Final Preview บน production assets ผ่านด้วย ภาพตรวจแล้ว. ไม่มี API write, email หรือ cloud file ถูกสร้างในการตรวจนี้. Integration: [PR35](https://github.com/NTHV9/ar-workspace/pull/35).
 
 ## Phuket / Khao Lak — 15 กันยายน 2026
 
