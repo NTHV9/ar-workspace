@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 16 September 2026 — Further financial proof throughput
+
+- Implemented continuous three-worker proof processing, a shared per-step three-call scheduler, queued-only identical read sharing, concurrent payment proofs and aggregate timing/count telemetry. Every existing freshness barrier, endpoint check, source window and publication condition remains.
+- Controlled payment workload returned identical proof objects with 219→153 source calls and 10.2→5.3 seconds synthetic time. Initial full 1,220 tests and subsequent payment/lease refinement passed, along with seven browser cases and builds. Review approved; live deployment/measurement pending. See [FINANCIAL_PROOF_SPEED_20260916](FINANCIAL_PROOF_SPEED_20260916.md).
+
 ## 16 September 2026 — Website loading and current OPERA refresh
 
 - Implemented: keep same-owner/region catalog usable during reload; publish completed hotel data to Portfolio/Dashboard without waiting for other hotels; handle first-ever and fast/in-flight completion; current account verification in durable pairs; reuse strictly complete explicit-zero evidence only when it resolves every missing transaction.
