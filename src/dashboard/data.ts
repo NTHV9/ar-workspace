@@ -26,7 +26,7 @@ export function queueResult(value:unknown):DashboardQueueRow[] {
  for(const row of value.rows){if(!object(row)||!isHotelId(row.hotel)||typeof row.account_id!=='string'||typeof row.id!=='string'||typeof row.account_name!=='string'||typeof row.account_type!=='string'||typeof row.open!=='number'||!Number.isFinite(row.open)||decimal(row.open)===null||typeof row.transaction_date!=='string'||typeof row.collection_role!=='string'||typeof row.collection_selectable!=='boolean'||row.workflow!==null&&!object(row.workflow)||typeof row.verification_state!=='string'||!('workflow'in row))throw Error('dashboard_response_invalid');const key=JSON.stringify([row.hotel,row.account_id,row.id]);if(seen.has(key))throw Error('dashboard_duplicate_invoice');seen.add(key);}
  return value.rows as DashboardQueueRow[];
 }
-async function read(path:string,token:string,signal:AbortSignal):Promise<unknown>{const r=await fetch(path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.any([signal,AbortSignal.timeout(30000)])});if(!r.ok)throw Error('dashboard_unavailable');return r.json();}
+async function read(path:string,token:string,signal:AbortSignal):Promise<unknown>{const r=await fetch(path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.any([signal,AbortSignal.timeout(30000)])});if(path.startsWith('/api/dashboard/hotel-overview?')){const label=(key:string)=>{const value=r.headers.get(key);return value&&/^[A-Za-z0-9_-]{1,100}$/.test(value)?value:'absent';};console.warn('[DEBUG-khao-period]',JSON.stringify({status:r.status,stage:label('X-AR-Overview-Stage'),upstream:label('X-AR-Overview-Upstream-Status'),detail:label('X-AR-Overview-Database-Stage')}));}if(!r.ok)throw Error('dashboard_unavailable');return r.json();}
 export function useSource<T>(path:string|null,token:string,revision:number,check:(value:unknown)=>T,retain=false,merge?:(next:T,previous:T|undefined)=>T):Source<T>{
  // A response belongs to one exact request and authenticated session. Retention never crosses that boundary.
  const key=JSON.stringify([path,token]),[stored,setStored]=useState<Source<T>&{key:string}>({key,state:path?'loading':'idle'});
@@ -36,7 +36,7 @@ export function useSource<T>(path:string|null,token:string,revision:number,check
   setStored(previous=>({key,state:path?'loading':'idle',data:retain&&path&&previous.key===key?previous.data:undefined}));
   if(path)void read(path,token,controller.signal).then(value=>checker.current(value)).then(data=>{
    if(!controller.signal.aborted)setStored(previous=>({key,state:'ready',data:merger.current?merger.current(data,retain&&previous.key===key?previous.data:undefined):data}));
-  }).catch(()=>{if(!controller.signal.aborted)setStored(previous=>({key,state:'error',data:retain&&previous.key===key?previous.data:undefined}));});
+  }).catch(error=>{if(path?.startsWith('/api/dashboard/hotel-overview?')&&!controller.signal.aborted)console.warn('[DEBUG-khao-period]',JSON.stringify({failure:error instanceof Error&&/^[A-Za-z]{1,30}$/.test(error.name)?error.name:'unknown',reason:error instanceof Error&&/^dashboard_[a-z_]{1,100}$/.test(error.message)?error.message:'unavailable'}));if(!controller.signal.aborted)setStored(previous=>({key,state:'error',data:retain&&previous.key===key?previous.data:undefined}));});
   return()=>controller.abort();
  },[path,token,revision,key,retain]);
  return stored.key===key?stored:{state:path?'loading':'idle'};

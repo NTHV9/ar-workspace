@@ -46,3 +46,32 @@ it('rejects mismatched periods, missing/duplicate hotel scope and leaked detail 
  const malformed=[{...payload(),from:'2026-08-01'},{...payload(),hotels:[{hotel:'KAT',...scope()}]},{...payload(),hotels:[{hotel:'KAT',...scope()},{hotel:'KAT',...scope()}]},{...payload(),total:{}},{...payload(),total:{...scope(),activity:{rows:[{customer:'detail'}],total:1,summary:{}}}}];
  for(const value of malformed){vi.stubGlobal('fetch',async()=>Response.json(value));expect((await dashboardHotelOverviewApi(new Request(path),env,actor)).status).toBe(503);}
 });
+
+it('marks the safe overview stage on successful and malformed regional results',async()=>{
+ const regionalPath=path+'&region=khao-lak';
+ vi.stubGlobal('fetch',async()=>Response.json({region:'khao-lak',from:'2026-09-01',to:'2026-09-11',total:scope(),hotels:['TLKL','WAKL','TLFO','TSAN'].map(hotel=>({hotel,...scope()}))}));
+ const okay=await dashboardHotelOverviewApi(new Request(regionalPath),env,actor);
+ expect(okay.status).toBe(200);expect(okay.headers.get('X-AR-Overview-Stage')).toBe('done');
+ vi.stubGlobal('fetch',async()=>Response.json({region:'khao-lak',from:'2026-09-01',to:'2026-09-11',total:scope(),hotels:[{hotel:'TLKL',...scope()}]}));
+ const malformed=await dashboardHotelOverviewApi(new Request(regionalPath),env,actor);
+ expect(malformed.status).toBe(503);expect(malformed.headers.get('X-AR-Overview-Stage')).toBe('shape');
+});
+
+it('marks database transport failures with static stage and numeric upstream status only',async()=>{
+ vi.stubGlobal('fetch',async()=>new Response('private provider content',{status:404}));
+ const response=await dashboardHotelOverviewApi(new Request(path+'&region=khao-lak'),env,actor);
+ expect(response.status).toBe(503);expect(response.headers.get('X-AR-Overview-Stage')).toBe('database');
+ expect(response.headers.get('X-AR-Overview-Database-Stage')).toBe('database_ar_dashboard_region_overview');
+ expect(response.headers.get('X-AR-Overview-Upstream-Status')).toBe('404');
+ expect(await response.text()).not.toContain('private provider content');
+});
+
+it('marks invalid query and early denial without database diagnostics',async()=>{
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ for(const [request,owner,status] of [[new Request(path+'&region=unknown'),actor,400],[new Request(path), 'bad-actor',401],[new Request(path,{method:'POST'}),actor,405]] as const){
+  const response=await dashboardHotelOverviewApi(request,env,owner);
+  expect(response.status).toBe(status);expect(response.headers.get('X-AR-Overview-Stage')).toBe('query');
+  expect(response.headers.get('X-AR-Overview-Database-Stage')).toBeNull();
+ }
+ expect(fetcher).not.toHaveBeenCalled();
+});
