@@ -2,6 +2,8 @@ import { OPS, Util, type PDFPageProxy } from 'pdfjs-dist';
 import type { DetectedText, PdfProjectPage } from './types';
 import { registerSourceStyle, type SourceGlyph, type SourceStyle } from './source-text';
 import { StandardFontEmbedder, StandardFonts } from 'pdf-lib';
+import {voucherFields} from './voucher-field';
+import {completeVoucherDigits} from './voucher-digits';
 type Font = {composite?:boolean;toUnicode?:{_map?:string[]};toFontChar?:number[];widths?:Record<number,number>;defaultWidth?:number;loadedName?:string;fallbackName?:string;name?:string;bold?:boolean;black?:boolean;italic?:boolean;disableFontFace?:boolean;isType3Font?:boolean;vertical?:boolean;systemFontInfo?:{css?:string}};
 export async function extractSourceImages(pdfPage:PDFPageProxy){
  const ops=await pdfPage.getOperatorList(),viewport=pdfPage.getViewport({scale:1}),stack:number[][]=[],rects:{x:number;y:number;width:number;height:number}[]=[];
@@ -42,7 +44,7 @@ export async function extractSourceText(page: PdfProjectPage,pdfPage: PDFPagePro
   }
  }
 
- return content.items.flatMap((item,runIndex)=>{
+ const runs:DetectedText[]=content.items.flatMap((item,runIndex)=>{
   if(!('str'in item)||!item.str.trim())return [];
   const tx=Util.transform(viewport.transform,item.transform),height=Math.hypot(tx[2],tx[3]),style=content.styles[item.fontName];
   // Match text AND its physical source position. PDF.js can trim whitespace or
@@ -101,4 +103,7 @@ export async function extractSourceText(page: PdfProjectPage,pdfPage: PDFPagePro
   const runtime:SourceStyle={font:typeface,fontSize:height,bold:!!font.bold||!!font.black,italic:!!font.italic,color:run.color!,baseline,hScale:horizontalScale,charSpacing:chunk?.state.charSpacing??0,wordSpacing:chunk?.state.wordSpacing??0,glyphs:glyphMap,sequence:chunk?.sequence??[],supported,run};
   registerSourceStyle(ref,runtime);return [run];
  });
+ const fields=voucherFields(page,runs);
+ await Promise.all(fields.filter(run=>run.field==='voucher-number').map(run=>completeVoucherDigits(run)));
+ return fields;
 }

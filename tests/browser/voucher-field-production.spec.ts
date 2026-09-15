@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+import {PDFDocument,StandardFonts} from 'pdf-lib';
+import {mkdirSync} from 'node:fs';
+import {policyFixture} from './fixtures/collection-policy';
+
+for(const [hotel,width] of [['KAT',1440],['TLKL',1280]] as const)test(`deployed ${hotel} blank Voucher remains editable and previews at ${width}`,async({page})=>{
+ test.setTimeout(60000);await page.setViewportSize({width,height:900});
+ const doc=await PDFDocument.create(),p=doc.addPage([612,792]),regular=await doc.embedFont(StandardFonts.Helvetica),bold=await doc.embedFont(StandardFonts.HelveticaBold);
+ for(const [text,x,y,font,size] of [['COPY OF INVOICE',382.5,124,regular,11],['Voucher No.',382.5,140,bold,8],[':',465,141,regular,8],['Room No.',382.5,152,regular,8],['1234',472.5,152,regular,8],['Folio No.',382.5,194,bold,8],[':',465,195.5,regular,8],['54321',472.5,194,bold,8],['SYNTHETIC VOUCHER TEST',40,300,regular,10]] as const)p.drawText(text,{x,y:792-y,font,size});
+ const pdf=Buffer.from(await doc.save()),jobId='a0000000-0000-4000-8000-000000000011',fileId='a0000000-0000-4000-8000-000000000012';
+ const user={id:'a0000000-0000-4000-8000-000000000013',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-15T00:00:00Z'};
+ const job={id:jobId,owner:user.id,hotel,account_id:'synthetic',account_name:'Synthetic voucher account',lifecycle:'transient',content:'invoices',layout:'combined',purpose:'billing',invoice_ids:['one'],manifest:[{id:'one',invoice_no:'1234'}],state:'ready',revision:0,project_key:null,exports:[],acknowledged:false,files:[{id:fileId,kind:'invoice',invoice_id:'one',ordinal:1,state:'ready',storage_key:`jobs/${jobId}/originals/${fileId}.pdf`,error_code:null,byte_count:pdf.length,sha256:'synthetic'}],created_at:'2026-09-15T00:00:00Z'};
+ const errors:string[]=[],unexpected:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(value=>localStorage.setItem('sb-example-auth-token',JSON.stringify(value)),{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user});
+ await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
+ await page.route('**/api/**',r=>{const path=new URL(r.request().url()).pathname;
+  if(path==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+  if(path==='/api/collection-policy')return r.fulfill({json:policyFixture});
+  if(path==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
+  if(path==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
+  if(path===`/api/documents/${jobId}`)return r.fulfill({json:job});
+  if(path===`/api/documents/${jobId}/files/${fileId}`)return r.fulfill({contentType:'application/pdf',body:pdf});
+  unexpected.push(path);return r.fulfill({status:501,json:{error:'unmocked_api'}});
+ });
+ await page.goto(`/?documentJob=${jobId}`);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ const field=page.getByRole('button',{name:'Enter Voucher No.',exact:true});await expect(field).toBeVisible();await field.click();await page.getByRole('textbox',{name:'Edit document text',exact:true}).fill('0123456789');
+ await expect(page.getByRole('spinbutton',{name:'Font size',exact:true})).toHaveValue('8');await expect(page.getByRole('button',{name:'Bold',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByText('Text overlaps another field. Add a row, move the box, or shorten the text.',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
+ mkdirSync('.tmp/voucher-production',{recursive:true});await page.screenshot({path:`.tmp/voucher-production/${hotel}-${width}.png`});expect(errors).toEqual([]);expect(unexpected).toEqual([]);
+});

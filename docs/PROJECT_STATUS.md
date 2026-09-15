@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## Voucher No. entry — 15 กันยายน 2026
+
+- Implemented: Invoice header ที่เว้น Voucher No. ว่างมีช่องคลิกพิมพ์ โดยอ้างอิง native Folio value face และ relative colon baseline ของหน้าเดียวกัน. คงเลขที่มีอยู่ ไม่สร้างซ้ำ; ลบแล้วกลับมากรอกได้ และตัวตนช่องคงอยู่หลังเปลี่ยนฟอนต์/เปิด draft ซ้ำ. ไม่เพิ่มช่องใน Statement หรือเอกสารที่ไม่ยืนยันโครงหัว Invoice.
+- กรอบ/เครื่องหมาย + แสดงเฉพาะ editor. ช่องว่างที่ยังไม่กรอกไม่ทำให้หน้าต้นฉบับถูกแปลงเป็นภาพ; เมื่อแก้จริงยังใช้ Preview และ export ที่ปิด source text เดิมตามหลักเดิม. ไม่เปลี่ยน OPERA, การส่งอีเมล หรือการเก็บไฟล์.
+- Native PDF ตรวจพบ Arial Bold subset ที่ขาดเลขบางตัว. ยืนยัน glyph programs ของตัวเลขที่มีอยู่ตรงกับ Arial Bold ที่ติดตั้งในเครื่อง; เติมเฉพาะเลขที่ขาดจาก named local face หลังตรวจ native advance widths. คง glyph เดิม baseline/ขนาด/สี/ระยะห่าง ไม่แจกจ่ายฟอนต์หรือดาวน์โหลดจากภายนอก. หากเครื่องไม่มี face ตรงกันจะไม่เดาฟอนต์แทน; original-font validation ยังคงอยู่.
+- Tests: 1,120 unit tests/115 files, TypeScript/build, PDF browser regressions 50 cases ผ่าน. Native private Invoice กรอกครบ 0–9 และ export/Preview ผ่านที่ 8 pt, bold, black และ native baseline; เปิดตรวจภาพจริงแล้ว. Independent review พบและแก้ self-collision warning กับช่องซ้ำหลังเปลี่ยนฟอนต์ และ re-review ผ่าน 31 focused tests. Original visual baselines คงไว้; เอกสารลูกค้า/font binaries ไม่เข้า Git.
+- Deployment verification pending; runtime and integration receipt are added after the deployed checks.
+
 ## Phuket / Khao Lak — 15 กันยายน 2026
 
 - Implemented/deployed/enabled: แยก Phuket (KAT/TSK) และ Khao Lak (TLKL/WAKL/TLFO/TSAN) ในระบบเดิม พร้อมตัวเลือกพื้นที่และการเทียบโรงแรมใน Dashboard, Aging, Portfolio และงานที่เกี่ยวข้อง. ตัวตนธุรกรรมยังแยก Hotel + Account; URL เดิมยังเปิด Phuket.

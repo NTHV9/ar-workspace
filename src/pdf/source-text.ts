@@ -2,7 +2,7 @@ import { wrapText } from './model';
 import type { DetectedText, PdfLayer } from './types';
 
 export type SourceTextReference = { sourceId: string; sourcePage: number; runIndex: number; scope?: string };
-export type SourceGlyph = { unicode: string; fontChar: string; width: number; isSpace?: boolean; isInFont?: boolean; accent?: unknown };
+export type SourceGlyph = { unicode: string; fontChar: string; width: number; isSpace?: boolean; isInFont?: boolean; accent?: unknown; fallbackFont?:string };
 export type SourceStyle = { font: string; fontSize: number; bold: boolean; italic: boolean; color: string; baseline: number; hScale: number; charSpacing: number; wordSpacing: number; glyphs: Map<string, SourceGlyph>; sequence: (SourceGlyph | number)[]; supported: boolean; run: DetectedText };
 const styles = new Map<string, SourceStyle>();
 const key = (r: SourceTextReference) => JSON.stringify([r.scope,r.sourceId,r.sourcePage,r.runIndex]);
@@ -13,7 +13,7 @@ export function sourceStyle(layer: PdfLayer): SourceStyle | undefined {
  return s && layer.original && s.run.text===layer.original.text && Math.abs(s.run.x-layer.original.x)<.01 && Math.abs(s.run.y-layer.original.y)<.01 ? s : undefined;
 }
 export function createReplacementLayer(run: DetectedText,id: string): PdfLayer {
- return {id,kind:'replacement',x:run.x,y:run.y,width:run.width,height:run.height,text:run.text,color:run.color??'#000000',fill:'#ffffff',font:'Arial',fontSize:run.fontSize,bold:run.bold??false,italic:run.italic??false,original:{text:run.text,x:run.x,y:run.y,width:run.width,height:run.height},...(run.sourceText?{sourceText:{...run.sourceText}}:{})};
+  return {id,kind:'replacement',x:run.x,y:run.y,width:run.width,height:run.height,text:run.text,color:run.color??'#000000',fill:'#ffffff',font:'Arial',fontSize:run.fontSize,bold:run.bold??false,italic:run.italic??false,original:{text:run.text,x:run.x,y:run.y,width:run.width,height:run.height},...(run.sourceText?{sourceText:{...run.sourceText}}:{}),...(run.maskOriginal===false?{maskOriginal:false}:{})};
 }
 export function sourceFont(layer: PdfLayer,s: SourceStyle) {
  // PDF.js already knows whether the loaded face requires synthetic weight/slant.
@@ -70,7 +70,7 @@ export function drawSourceText(ctx: CanvasRenderingContext2D,layer: PdfLayer): b
  for(const [n,line] of metrics.lines.entries()){
   let x=0; const sequence=layer.text===s.run.text&&metrics.lines.length===1?s.sequence:Array.from(line).map(c=>s.glyphs.get(c)!);
   for(const g of sequence){if(typeof g==='number'){x-=g*layer.fontSize/1000*s.hScale;continue;}
-   ctx.save();ctx.translate(layer.x+x,layer.y+s.baseline*layer.fontSize/s.fontSize+n*layer.fontSize*1.25);ctx.scale(s.hScale,1);if(g.isInFont!==false)ctx.fillText(g.fontChar,0,0);ctx.restore();x+=glyphWidth(g,s,layer.fontSize);
+   ctx.save();if(g.fallbackFont)ctx.font=sourceFont(layer,{...s,font:g.fallbackFont});ctx.translate(layer.x+x,layer.y+s.baseline*layer.fontSize/s.fontSize+n*layer.fontSize*1.25);ctx.scale(s.hScale,1);if(g.isInFont!==false)ctx.fillText(g.fontChar,0,0);ctx.restore();x+=glyphWidth(g,s,layer.fontSize);
   }
  }
  return true;
