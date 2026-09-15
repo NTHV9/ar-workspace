@@ -4,7 +4,7 @@
 
 - Implemented: keep same-owner/region catalog usable during reload; publish completed hotel data to Portfolio/Dashboard without waiting for other hotels; handle first-ever and fast/in-flight completion; current account verification in durable pairs; reuse strictly complete explicit-zero evidence only when it resolves every missing transaction.
 - Tested: 1,212 unit tests, TypeScript/build/assets/dry run, and 67 unique relevant browser cases including corrected fast-completion edge. Existing source verification, owner/region guards, SQL leases, deduplication and final publication barrier retained. No SQL/resource/capacity changes.
-- Deployment/live timing pending. Details: [WORKSPACE_LOAD_SPEED_20260916](WORKSPACE_LOAD_SPEED_20260916.md).
+- Deployed/enabled source `169c0ff2c7184f4c4cbcf2d67d60a9ffa9335c30`, Worker `90ce3610-624b-4b12-94dd-e167d744418e`. CI, health/database and 19 anonymous boundaries passed. All six live current refreshes succeeded with matching published run IDs. KAT observed 247.1 seconds versus prior 427.7; TSK 79.3 versus 112.9. Live signed-in Portfolio/Dashboard confirmed per-hotel updates and usable reload, without console errors. Details and timing caveats: [WORKSPACE_LOAD_SPEED_20260916](WORKSPACE_LOAD_SPEED_20260916.md).
 
 ## 16 September 2026 — OPERA financial-history queue speed
 
@@ -12,6 +12,7 @@
 - Tested: 1,204 unit tests, seven financial/region browser tests, TypeScript and production/connector builds. Synthetic 60-invoice payment proof reduced 192 seconds to 75 seconds with the same 192 source reads.
 - Deployed/enabled source `fa24e42d633ebd85ea5a84dad09d39cf304dc827`, Worker `dfaf5083-351b-4891-89c0-846bf00293c5`. Health/database and 19 anonymous boundaries passed. Production confirmed KAT/TLFO running together; 19 matching mapping checkpoints reduced 122.151 seconds to 44.057 seconds (63.9%). Full KAT/TLFO runs continue, so final duration and completion of the former timeout batch remain unverified.
 - No database migration, added cloud resource or subscription/capacity purchase. Details: [FINANCIAL_QUEUE_SPEED_20260916](FINANCIAL_QUEUE_SPEED_20260916.md).
+- Follow-up verified: the prior KAT historical run succeeded for all 105 accounts in 65.1 minutes; its formerly timed-out payment batch completed in 482.8 seconds. TLFO also succeeded. This historical workload is separate from the current-refresh timings above.
 
 ## Full system regression audit — 15 กันยายน 2026
 
