@@ -1,5 +1,12 @@
 # ข้อสรุปล่าสุด ข้อเสนอ และเรื่องที่ต้องยืนยัน
 
+## ยืนยันล่าสุด — Portfolio overview ทั้งสองพื้นที่ — 15 กันยายน 2026
+
+- เจ้าของเลือกแบบจาก local preview แล้วให้ใช้ทั้ง Phuket (KAT/TSK) และ Khao Lak (TLKL/WAKL/TLFO/TSAN): แถบยอดรวมแนวนอนพร้อมจำนวนบัญชี/Invoice, การ์ดโรงแรมเต็มแถว, ตาราง Aging ครบ source ranges และป้ายอัปเดตแยกโรงแรม.
+- การ์ดคงยอด/สัดส่วนทั้งพื้นที่สำหรับเปรียบเทียบเมื่อเลือกโรงแรม; แถบยอดรวมกับ Aging ใช้โรงแรมที่เลือก. กดการ์ดเดิมซ้ำกลับ All Hotels. บัญชีและการเปิด ledger ยังคงตัวตน Hotel + Account.
+- ใช้ข้อมูล Portfolio เดิม ไม่ใช้ตัวเลข mockup. แยก unavailable จาก verified zero; คงยอดเครดิต/ช่วงอายุจริงที่ต่างกัน. ช่อง Aging เปิด breakdown ของ Invoice ผ่าน endpoint และ publication checks เดิมเมื่อผู้ใช้กดเท่านั้น. Review mode ไม่อ่าน Invoice จริง.
+- มีตัวเลือก Exact amounts และ Show debit / credit; desktop แสดงหกช่วงมาตรฐานครบ ส่วนมือถือเลื่อนภายในตาราง. ไม่เปลี่ยนยอด OPERA, การตั้งค่า Account, นโยบาย Snapshot/Log/ไฟล์ หรือ paid capacity.
+
 ## ยืนยันล่าสุด — App database allowance 1 GiB — 15 กันยายน 2026
 
 - เจ้าของอนุมัติเพิ่มเพดานฐานข้อมูลของแอปจาก 256 MiB เป็น 1 GiB (1,073,741,824 bytes) และคงพื้นที่สำรอง 20%. เปลี่ยนชื่อในหน้า Storage เป็น **App database allowance** เพื่อแยกจากความจุ Disk ของ Supabase.

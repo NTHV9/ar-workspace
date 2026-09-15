@@ -14,9 +14,9 @@ test('Portfolio and Account Detail preserve navigation, filtering, sorting and s
   await page.evaluate(()=>document.fonts.ready);
   mkdirSync('evidence',{recursive:true});
   await page.screenshot({path:'evidence/portfolio-1440.png',animations:'disabled'});
-  await page.getByRole('button',{name:'Expand Aging',exact:true}).click();
-  await expect(page.getByText('Aging by hotel',{exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Collapse Aging',exact:true}).click();
+  await page.getByRole('button',{name:'Show debit / credit',exact:true}).click();
+  await expect(page.getByText('Aging by hotel',{exact:true})).toBeVisible();await expect(page.locator('.portfolio-aging-components').first()).toContainText('Debit');
+  await page.getByRole('button',{name:'Hide debit / credit',exact:true}).click();
   await page.getByLabel('Account Type',{exact:true}).selectOption('OTA / Agent');
   await page.getByPlaceholder('Search Account / Account ID').fill('Account A');
   await expect(page.locator('.accounts-panel tbody tr')).toHaveCount(1);
