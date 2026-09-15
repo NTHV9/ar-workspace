@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Aging Hide ยอด 0 — 15 กันยายน 2026
+
+- Implemented: checkbox ข้าง Sort hotel สำหรับรายการ Aging แบบเลือกเอง เริ่มปิด. ซ่อนเฉพาะกลุ่มที่ทุก ledger มี open/items ศูนย์ และ all-age invoice count ยืนยันศูนย์ด้วย Hotel/Account publication เดียวกัน. คงเครดิต, offsetting balances, Net ศูนย์ที่ยังมี Invoice และข้อมูลไม่ครบ.
+- กรองก่อน pagination, reset page เมื่อเลือก, แสดงจำนวนกลุ่มที่ซ่อน และเก็บค่าใน AgingContext. ยอดสรุป/เปอร์เซ็นต์ยังใช้รายการที่ตรงกับตัวกรองเดิมก่อนซ่อน; ไม่แก้ข้อมูลหรือเพิ่ม request เมื่อสลับ checkbox.
+- Tests: 1,124 unit tests/115 files, TypeScript/build และ browser 27 cases ผ่าน รวมทั้งสองพื้นที่ 1440/1280/390, loading/failure, pagination, การกลับจาก Period analysis และ Aging/credit/count regressions. ตรวจภาพแล้วและคง visual baseline เดิม. Independent review ผ่าน 22 focused tests ไม่มีประเด็นค้าง.
+- Deployment verification pending. ไม่มี database migration, OPERA write, email หรือ cloud file mutation.
+
 ## Voucher No. entry — 15 กันยายน 2026
 
 - Implemented: Invoice header ที่เว้น Voucher No. ว่างมีช่องคลิกพิมพ์ โดยอ้างอิง native Folio value face และ relative colon baseline ของหน้าเดียวกัน. คงเลขที่มีอยู่ ไม่สร้างซ้ำ; ลบแล้วกลับมากรอกได้ และตัวตนช่องคงอยู่หลังเปลี่ยนฟอนต์/เปิด draft ซ้ำ. ไม่เพิ่มช่องใน Statement หรือเอกสารที่ไม่ยืนยันโครงหัว Invoice.

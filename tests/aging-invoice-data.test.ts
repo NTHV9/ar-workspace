@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {agingCountFor,agingDetailsResult,agingInvoicesResult,agingPublicationMatches,agingStatusTarget,agingTargetPublicationMatches,agingCatalogRevision} from '../src/dashboard/aging-invoice-data';
+import {agingCountFor,agingDetailsResult,agingInvoicesResult,agingPublicationMatches,agingStatusTarget,agingTargetPublicationMatches,agingCatalogRevision,isEmptyAgingRow} from '../src/dashboard/aging-invoice-data';
 import {agingColumns,agingComparison,agingBucketKey} from '../src/dashboard/aging-model';
 import type {Account,RefreshState} from '../src/domain/portfolio';
 import type {AgingInvoicesResponse} from '../worker/dashboard/aging-model';
@@ -10,6 +10,15 @@ const accounts:Account[]=(['KAT','TSK'] as const).map(hotel=>({hotel,id:hotel+'-
 const rows=agingComparison(accounts,'All'),columns=agingColumns(accounts);
 function response():AgingInvoicesResponse{return {asOfDate:'2026-09-13',publications:(['KAT','TSK'] as const).map(hotel=>({hotel,sourceAt:at})),accounts:accounts.map((a,i)=>({hotel:a.hotel as 'KAT'|'TSK',accountId:a.id,accountType:a.type,syncedAt:at,complete:true,unverified:0,buckets:[{key:null,count:i+2,amount:'100.00',creditAmount:'0.00',complete:true},{key:agingBucketKey(bucket),count:i+2,amount:'100.00',creditAmount:'0.00',complete:true}]})),summary:{complete:true,count:5,amount:'200.00',creditAmount:'0.00',billing:[{key:'billed',label:'Billed',count:5,amount:'200.00'}],followup:[],due:[],flags:[]},rows:[],total:5,complete:true};}
 const detail=()=>({hotel:'KAT' as const,accountId:'KAT-A',accountName:'KAT account',accountType:'OTA',invoiceId:'I-1',invoiceNo:'INV-1',folioNo:'F-1',guest:'Synthetic guest',open:'100.00',age:100,billingStatus:'billed',latestStage:'Follow 2',latestStageLabel:'Follow-Up 2',dueStatus:'past_due',dueDate:'2026-08-01',held:false,needsReview:false});
+
+describe('hide empty Aging accounts',()=>{
+ const empty=()=>agingComparison(accounts.map(a=>({...a,open:0,items:0})),'All','OTA')[0];
+ const zero=()=>{const r=response();r.accounts.forEach(a=>a.buckets.forEach(b=>{b.count=0;b.amount='0.00';}));return r;};
+ it('hides only confirmed zero balances with no invoices',()=>{expect(isEmptyAgingRow(empty(),{state:'ready',data:zero()},refresh)).toBe(true);});
+ it('keeps offsetting balances across hotels even when Total is zero',()=>{const row=agingComparison(accounts.map((a,i)=>({...a,open:i?-100:100,items:0})),'All','OTA')[0];expect(row.net.Total.amount).toBe(0);expect(isEmptyAgingRow(row,{state:'ready',data:zero()},refresh)).toBe(false);});
+ it('keeps zero net with invoices and credit balances',()=>{const r=zero();r.accounts[0].buckets[0].count=2;expect(isEmptyAgingRow(empty(),{state:'ready',data:r},refresh)).toBe(false);const row=agingComparison(accounts.map(a=>({...a,open:-100,items:1})),'All','OTA')[0];expect(isEmptyAgingRow(row,{state:'ready',data:zero()},refresh)).toBe(false);expect(isEmptyAgingRow({...empty(),members:empty().members.map(a=>({...a,items:2}))},{state:'ready',data:zero()},refresh)).toBe(false);});
+ it('keeps unavailable, incomplete and stale counts visible',()=>{expect(isEmptyAgingRow(empty(),{state:'loading'},refresh)).toBe(false);expect(isEmptyAgingRow(empty(),{state:'error'},refresh)).toBe(false);const r=zero();r.accounts[0].buckets[0].complete=false;expect(isEmptyAgingRow(empty(),{state:'ready',data:r},refresh)).toBe(false);r.accounts[0].buckets[0].complete=true;r.publications[0].sourceAt='2026-09-01T00:00:00Z';expect(isEmptyAgingRow(empty(),{state:'ready',data:r},refresh)).toBe(false);});
+});
 describe('current Aging invoice data',()=>{
  it('normalizes database JSON whitespace while preserving source bucket identity',()=>{const r=response();r.accounts[0].buckets[1].key=JSON.stringify(['91–120',91,120,3],null,1);const parsed=agingInvoicesResult(r);expect(parsed.accounts[0].buckets[1].key).toBe(agingBucketKey(bucket));expect(agingCountFor(rows[0],'Total',bucket,{state:'ready',data:parsed},refresh)).toMatchObject({count:5,state:'ready'});});
  it('rejects duplicate bucket identities even with different JSON whitespace',()=>{const r=response();r.accounts[0].buckets.push({...r.accounts[0].buckets[1],key:JSON.stringify(['91–120',91,120,3],null,1)});expect(()=>agingInvoicesResult(r)).toThrow();});
