@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Technical financial Log retention — 15 กันยายน 2026
+
+- Implemented: เก็บ `ar_private.financial_changes` หนึ่งเดือนปฏิทินนับจาก `observed_at` ตาม Asia/Bangkok. Service-only pruning RPC ล้าง exact expired IDs ไม่เกิน 1,000 แถวต่อครั้ง ใช้ private transaction/PID claim และ index ตามวันครบกำหนด. ปิด claim หลังสำเร็จ/ผิดพลาด; เก็บสถานะรวมเพียงหนึ่งแถว ไม่มี payload ใน maintenance log.
+- Worker ใช้รอบเดิมทุก 15 นาที ผ่าน `FINANCIAL_LOG_RETENTION_ENABLED` และ write hold. Gmail, transient file cleanup และ technical log cleanup ได้รับการทำงานแยกกันแม้บริการอื่นล้มเหลว. Snapshot และทุกประวัติธุรกิจ/ไฟล์คงนโยบายเดิม.
+- Tested: 1,167 tests/116 files, TypeScript, build/public-asset check ผ่าน. Local PostgreSQL SyntheticRestore ผ่าน 78 migrations/33 registered SQL suites รวม month-end/leap-year/timezone, ACL, bounded batching, immutability, failure rollback และ fingerprints ของตารางอื่นทั้งหมดใน public/ar_private. สอง session จำลองยืนยัน busy overlap, skip locked rows, retry และ claim cleanup ผ่าน. Independent review ไม่มี defect ค้าง.
+- Applied schema `20260915094316_ar_financial_log_retention` และตรวจ service RPC จริงสำเร็จโดยไม่มี expired Log ให้ลบ. Function definitions เดิมทุกตัวคง hash เดิม; ตรวจสิทธิ์และ claim reset ผ่าน. ยังไม่อ้างพื้นที่ลดลง เพราะ Log ยังไม่ครบเดือน. สถานะ Worker rollout/เปิดใช้งานจะบันทึกหลังตรวจ deployment.
+
 ## Aging label and database meter clarification — 15 กันยายน 2026
 
 - เปลี่ยนชื่อ checkbox เป็น **Hide empty accounts** ตามคำขอใช้อังกฤษล้วน. เงื่อนไขการซ่อนและการคำนวณคงเดิม; ปรับ selector ของ tests เดิมให้ตรงข้อความ.

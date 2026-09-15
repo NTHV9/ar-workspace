@@ -14,6 +14,7 @@
     "OPERATIONS_BUDGET_ENABLED": "true",
     "ACCEPTANCE_ENABLED": "false",
     "RETENTION_ENABLED": "true",
+    "FINANCIAL_LOG_RETENTION_ENABLED": "true",
     "SUPABASE_URL": "https://jmyvpurzmoiecpydjrci.supabase.co",
     "OPERA_BASE_URL": "https://mtcb2pr.hospitality-api.ap-mumbai-1.ocs.oraclecloud.com",
     "OPERA_ENTERPRISE_ID": "TSTLKL",

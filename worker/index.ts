@@ -3,6 +3,7 @@ import {dashboardInvoiceEntriesApi} from './dashboard/invoice-entries-api';
 import {dashboardBalancesApi,dashboardPaymentInvoicesApi} from './dashboard/api';
 import {agingInvoicesApi} from './dashboard/aging-api';
 import {sweepTransientDocuments} from './operations/retention-sweep';
+import {sweepFinancialLogs,type FinancialLogRetentionEnv} from './operations/financial-log-retention';
 import {acceptanceApi} from './acceptance/api';
 import {acceptanceCookie} from './acceptance/routing';
 import {acceptanceEnvironment,acceptanceRows} from './acceptance/context';
@@ -32,7 +33,7 @@ import type {EmailEnv} from './email/shared';
 import {rendererProof} from './statement/proof';
 import {isHotelId,regionHotels} from '../src/domain/hotels';
 import {configuredOperaHotels,hotelBelongsToRegion,regionalHotelScope,resultMatchesHotelScope} from './hotels';
-interface Env extends FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
+interface Env extends FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function upstream(url: string, options: RequestInit) {
   const controller = new AbortController();
@@ -218,7 +219,16 @@ export default {
   },
   async scheduled(event:{cron?:string},env:Env) {
     if(writesHeld(env))return;
-    if(event.cron===gmailReconcileCron){if(env.GMAIL_RECONCILE_ENABLED==='true')await requestMailReconcile(env,'scheduled');try{await sweepTransientDocuments(env);}catch{/* Durable exact candidates retry on the next cron. */}return;}
+    if(event.cron===gmailReconcileCron){
+      // Each maintenance task gets one attempt even when another service fails.
+      // Durable candidates retry on the next cron; no private failures are logged.
+      await Promise.allSettled([
+        ...(env.GMAIL_RECONCILE_ENABLED==='true'?[requestMailReconcile(env,'scheduled')]:[]),
+        sweepTransientDocuments(env),
+        sweepFinancialLogs(env),
+      ]);
+      return;
+    }
     if(event.cron!=='0 0,12 * * *'||env.OPERA_REFRESH_ENABLED!=='true')return;
     for(const hotel of configuredOperaHotels(env.OPERA_HOTEL_IDS))await requestRefresh(env,hotel,null,'scheduled');
   },
