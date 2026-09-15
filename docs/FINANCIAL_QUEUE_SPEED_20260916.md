@@ -26,4 +26,13 @@ Production metadata before changes (15 September evening, ICT): one financial Wo
 - Red tests reproduced serial execution and the premature busy-claim failure before their fixes.
 - Synthetic payment proof with 60 invoice links and one-second provider latency: 192 seconds serial versus 75 seconds bounded (60.9% less waiting). Both versions perform exactly 192 source reads. This is a controlled latency comparison, not a production throughput guarantee.
 - Full unit suite: 1,204 tests across 119 files passed. Covers 25-minute same-hotel contention, terminal claim errors, ordered results, failure draining, before/after proof barriers, incomplete/changed source data and replay without duplicate completed mappings.
-- TypeScript, Vite build and connector public-asset build passed. Seven existing browser financial/region tests passed. Wrangler dry run validated the initial concurrency change; final deployment and live timing remain pending.
+- TypeScript, Vite build, connector public-asset build and final Wrangler dry run passed. Seven existing browser financial/region tests passed. Independent code review approved the final change; GitHub CI passed for source `fa24e42d633ebd85ea5a84dad09d39cf304dc827`.
+
+## Production rollout
+
+- Deployed/enabled source `fa24e42d633ebd85ea5a84dad09d39cf304dc827`; Worker version `dfaf5083-351b-4891-89c0-846bf00293c5` at approximately 00:44 ICT on 16 September. Existing configuration and provider secrets retained.
+- Deployment health and database verification passed; all 19 anonymous boundary probes were rejected. Live Cloudflare and SQL metadata both confirmed two simultaneous financial runs (KAT and TLFO), with no queued instance at the observation time.
+- A fresh KAT read for the same 16 August–15 September source window began at 00:45:22 ICT. It progressed through completed account checkpoints and into a large account's invoice mapping batches; no failed Workflow step or provider-unavailable/timeout mapping category was observed in the sampled portion.
+- The first 19 matching invoice-mapping step names with identical aggregate results took 122.151 seconds in the prior run and 44.057 seconds in the new run (63.9% less elapsed time). This is a production sample with the same result counts, not a guarantee about entire-run duration or identical source bytes. Provider latency can vary.
+- Eight unverified payment-detail mappings in this sample remain explicitly unverified; they are not treated as successful/zero. Aggregate outcomes match the corresponding old checkpoints. Private prior per-row mapping staging had already been cleaned, so no claim of exact per-row identity equality is made.
+- The full KAT and TLFO history runs were still in progress at closeout. Full-run duration and whether the previously timed-out large payment batch completes are not yet verified. They continue in the existing durable queue; no additional run, cancellation, or automatic email was created.

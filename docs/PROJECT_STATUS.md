@@ -4,7 +4,8 @@
 
 - Implemented bounded parallel source verification (three independent reads) and two financial Workflow slots, with durable waiting for distinct date windows of the same hotel. Document/interactive refresh queues, source checks and SQL publication rules remain intact.
 - Tested: 1,204 unit tests, seven financial/region browser tests, TypeScript and production/connector builds. Synthetic 60-invoice payment proof reduced 192 seconds to 75 seconds with the same 192 source reads.
-- Deployment and live throughput verification pending. No database migration, added cloud resource or subscription/capacity purchase. Details: [FINANCIAL_QUEUE_SPEED_20260916](FINANCIAL_QUEUE_SPEED_20260916.md).
+- Deployed/enabled source `fa24e42d633ebd85ea5a84dad09d39cf304dc827`, Worker `dfaf5083-351b-4891-89c0-846bf00293c5`. Health/database and 19 anonymous boundaries passed. Production confirmed KAT/TLFO running together; 19 matching mapping checkpoints reduced 122.151 seconds to 44.057 seconds (63.9%). Full KAT/TLFO runs continue, so final duration and completion of the former timeout batch remain unverified.
+- No database migration, added cloud resource or subscription/capacity purchase. Details: [FINANCIAL_QUEUE_SPEED_20260916](FINANCIAL_QUEUE_SPEED_20260916.md).
 
 ## Full system regression audit — 15 กันยายน 2026
 
