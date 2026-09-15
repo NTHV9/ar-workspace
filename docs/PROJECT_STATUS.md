@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## App database allowance — 15 กันยายน 2026
+
+- Implemented: production configuration `OPS_BUDGET_DATABASE_BYTES=1073741824` เพิ่ม app allowance เป็น 1 GiB ผ่าน validator/atomic budget RPC เดิม. คง safetyPercent=20; ไม่มี schema, physical Disk, paid plan หรือโควต้าอื่นเปลี่ยน.
+- หน้า Storage ใช้ชื่อ **App database allowance** และแสดงหน่วย GiB เมื่อถึง 1 GiB. คงตัววัด usage, headroom, pending reservations และ retention เดิม.
+- Tested: unit boundary ยืนยันรับการเติบโตเกินเพดานเก่า และหยุดเมื่อ projected usage เกิน 80% ของ 1 GiB. Full unit, TypeScript/build/public assets และ browser 5 cases ผ่าน รวม unknown usage, exact upload reconciliation และ 1440/1280/390; เปิดตรวจภาพ desktop/mobile แล้ว. สถานะ production rollout จะบันทึกหลังตรวจจริง.
+
 ## Technical financial Log retention — 15 กันยายน 2026
 
 - Implemented: เก็บ `ar_private.financial_changes` หนึ่งเดือนปฏิทินนับจาก `observed_at` ตาม Asia/Bangkok. Service-only pruning RPC ล้าง exact expired IDs ไม่เกิน 1,000 แถวต่อครั้ง ใช้ private transaction/PID claim และ index ตามวันครบกำหนด. ปิด claim หลังสำเร็จ/ผิดพลาด; เก็บสถานะรวมเพียงหนึ่งแถว ไม่มี payload ใน maintenance log.
