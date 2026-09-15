@@ -9,4 +9,4 @@ Constraints: reuse existing overview source, hotelMeasures/paymentMeasures, sour
 - [x] Implement a reusable `PeriodHotelMatrix` presentation with exact hotel/column identity, count/amount units, optional aggregate row, and forwarded drill actions. Unit verification covers unknown, zero/credit, hotel ordering and no fabricated fallback.
 - [x] Recompose PeriodBalances/PeriodActivity comparison mode, remove duplicated small HotelSplit blocks, retain all metrics/actions and add scoped composition CSS.
 - [x] Add regional browser checks: matrices visible for both regions, scope/date-preserving drill and filters, no duplicate source reads, desktop/mobile bounds, failed/partial data. Run existing period/hotel/date/credit regressions and inspect before/after captures.
-- [ ] Review, resolve concrete findings, build/deploy, verify production assets/health/auth, merge after CI and update PROJECT_STATUS.
+- [x] Review, resolve concrete findings, build/deploy, verify production assets/health/auth and update PROJECT_STATUS. Integration follows PR42 after final CI.

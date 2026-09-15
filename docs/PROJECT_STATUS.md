@@ -5,7 +5,7 @@
 - Implemented: All Hotels comparison ย้ายรายโรงแรมออกจากกล่อง KPI/กิจกรรมเล็กเป็น matrix เต็มความกว้าง; ยอด payment รวมกับรายโรงแรมอยู่ที่เดียว. Billing และ Follow-Up แยกเป็นส่วนเต็มแถว; รองรับ Phuket/Khao Lak และ mobile blocks. ข้อมูลทั้งหมดใช้ readers/measure helpers/formatters/drill callbacks เดิม.
 - เก็บวันที่, source completeness, credit/positive basis, retired stages, unknown/zero และตัวเลือก Account/Hotel เดิม. ไม่มี schema, financial write, email, file lifecycle หรือ capacity change. Single-hotel/account และ Current Aging ไม่เปลี่ยนดีไซน์.
 - Tested: 1,190 unit tests และ browser 41 cases ผ่าน รวม date/read/drill regressions, missing history, source failures, credits, zero/negative net, retired labels, desktop/mobile. TypeScript/build/public assets ผ่าน. เปิดตรวจ captures แล้ว; independent review พบและแก้ payment cell alignment กับ positional hotel colors; re-review ผ่าน.
-- Initial read assertion ของ browser test ปรับรองรับ StrictMode เฉพาะ local dev หลังยืนยันว่า base commit เดิมมี mount replay เช่นกัน. Production ยังตรวจ initial read หนึ่งครั้ง และ user reload เพิ่มหนึ่งครั้ง. Production rollout อยู่ในขั้นปิดงาน.
+- Initial read assertion ของ browser test ปรับรองรับ StrictMode เฉพาะ local dev หลังยืนยันว่า base commit เดิมมี mount replay เช่นกัน. Production ยังตรวจ initial read หนึ่งครั้ง และ user reload เพิ่มหนึ่งครั้ง. Deployed source `8b75406eb7c6866e7442baf4af96cc0895f530e4`, Worker `da075b39-4135-4492-95d0-97cbc98ddf9b`; production assets ผ่าน browser อีก 41 cases, health/database และ 19 anonymous boundaries ผ่าน. Integration: [PR42](https://github.com/NTHV9/ar-workspace/pull/42).
 
 ## Portfolio table consistency — 15 กันยายน 2026
 
