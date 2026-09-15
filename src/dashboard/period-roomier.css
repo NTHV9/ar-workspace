@@ -1,0 +1,64 @@
+/* Comparison mode has one home for each hotel breakdown, outside the summary cards. */
+#root .period-comparison .dashboard-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
+#root .period-comparison .dashboard-kpi-card{display:flex;flex-direction:column}
+#root .period-comparison .dashboard-kpi-card>button.dashboard-kpi{width:100%;padding:20px;min-height:176px;gap:10px}
+#root .period-comparison .dashboard-kpi strong{font-size:36px}
+#root .period-comparison .dashboard-kpi.primary strong{font-size:44px}
+#root .period-comparison .dashboard-kpi>b,#root .period-comparison .dashboard-kpi.primary>b{font-size:21px;line-height:1.4;overflow-wrap:anywhere}
+#root .period-comparison .dashboard-period-balances>.period-hotel-matrix{margin-bottom:22px}
+#root .period-comparison .dashboard-activity-highlights{gap:16px;background:none;border:0;box-shadow:none;overflow:visible;margin-bottom:18px}
+#root .period-comparison .dashboard-activity-highlights>article{border:1px solid var(--period-line);border-radius:14px;overflow:hidden;box-shadow:var(--ar-shadow-surface)}
+#root .period-comparison .dashboard-activity-highlights article>button{padding:20px;min-height:160px}
+#root .period-comparison .dashboard-period-activity>.period-hotel-matrix{margin-bottom:24px}
+#root .period-comparison .dashboard-payment-summary{background:#fff;padding:22px;margin-bottom:26px}
+#root .period-comparison .dashboard-payment-summary>header{margin-bottom:12px}
+#root .period-analysis.period-comparison .period-hotel-matrix.embedded .period-hotel-matrix-heading{display:none}
+#root .period-analysis.period-comparison .period-hotel-matrix .hotel-split{display:block;margin:0;padding:0;border:0}
+#root .period-analysis.period-comparison .period-hotel-matrix .hotel-split>button,
+#root .period-analysis.period-comparison .period-hotel-matrix .hotel-split>div{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;width:100%;margin:0;padding:5px 0;gap:3px}
+#root .period-analysis.period-comparison .period-hotel-matrix .hotel-split b{font-size:14px;margin:0;text-align:right;white-space:normal;overflow-wrap:anywhere}
+#root .period-comparison .dashboard-insights{grid-template-columns:minmax(0,1fr);gap:24px}
+#root .period-comparison .dashboard-insights>.dashboard-surface{padding:24px}
+#root .period-comparison .dashboard-insights>section>header{margin-bottom:14px}
+#root .period-comparison .dashboard-insights>section>header h3{font-size:18px}
+#root .period-comparison .period-billing-progress{max-width:620px;padding:4px 0 18px}
+#root .period-comparison .dashboard-period-details{margin-top:8px}
+#root .period-comparison .dashboard-activity-table table{table-layout:fixed}
+#root .period-comparison .dashboard-activity-table th:first-child{width:29%}
+#root .period-comparison .dashboard-activity-table :is(th,td){padding:14px 16px}
+#root .period-comparison .dashboard-activity-table thead th{color:var(--period-muted)}
+#root .period-analysis.period-comparison .dashboard-activity-table thead th[data-hotel]{color:var(--period-muted)}
+#root .period-comparison .dashboard-activity-table [data-hotel=KAT]{--sent-hotel-tint:#f1f5ff}
+#root .period-comparison .dashboard-activity-table [data-hotel=TSK]{--sent-hotel-tint:#eaf8f6}
+#root .period-comparison .dashboard-activity-table [data-hotel=TLKL]{--sent-hotel-tint:#eef6fc}
+#root .period-comparison .dashboard-activity-table [data-hotel=WAKL]{--sent-hotel-tint:#f5f0fa}
+#root .period-comparison .dashboard-activity-table [data-hotel=TLFO]{--sent-hotel-tint:#fcf6e8}
+#root .period-comparison .dashboard-activity-table [data-hotel=TSAN]{--sent-hotel-tint:#fbf0f2}
+#root .period-comparison .dashboard-activity-table td[data-hotel]{background:var(--sent-hotel-tint)}
+#root .period-comparison .dashboard-activity-table .hotel-split b{font-size:13px;line-height:1.5}
+@media(max-width:1100px){
+ #root .period-comparison .dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #root .period-comparison .dashboard-kpi-card>button.dashboard-kpi{min-height:160px}
+}
+@media(max-width:700px){
+ #root .period-comparison .dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ #root .period-comparison .dashboard-kpi-card>button.dashboard-kpi{padding:15px 13px;min-height:0}
+ #root .period-comparison .dashboard-kpi-card.primary{grid-column:1/-1}
+ #root .period-comparison .dashboard-kpi-card:last-child{grid-column:1/-1}
+ #root .period-comparison .dashboard-kpi strong{font-size:30px}
+ #root .period-comparison .dashboard-kpi.primary strong{font-size:40px}
+ #root .period-comparison .dashboard-kpi>b,#root .period-comparison .dashboard-kpi.primary>b{font-size:18px}
+ #root .period-comparison .dashboard-activity-highlights{grid-template-columns:1fr;gap:12px}
+ #root .period-comparison .dashboard-activity-highlights article>button{padding:18px;min-height:0}
+ #root .period-comparison .dashboard-payment-summary,#root .period-comparison .dashboard-insights>.dashboard-surface{padding:16px}
+ #root .period-comparison .dashboard-activity-table tbody tr{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px}
+ #root .period-comparison .dashboard-activity-table tbody th:first-child{width:100%;padding:0}
+ #root .period-comparison .dashboard-activity-table tbody td{grid-row:auto;padding:10px;border-radius:8px;height:auto}
+ #root .period-comparison .dashboard-activity-table td.period-activity-value{grid-column:1/-1;background:#f2f6f8}
+ #root .period-comparison .dashboard-activity-table td::before{color:var(--period-muted)}
+ #root .period-analysis.period-comparison .dashboard-activity-table td[data-hotel]::before{color:var(--period-muted)}
+ #root .period-analysis.period-comparison .period-hotel-matrix .hotel-split>button,
+ #root .period-analysis.period-comparison .period-hotel-matrix .hotel-split>div{align-items:flex-start;justify-content:flex-start}
+ #root .period-analysis.period-comparison .period-hotel-matrix .hotel-split b{text-align:left;font-size:13px}
+ #root .period-comparison .dashboard-activity-table .hotel-split b{font-size:13px}
+}
