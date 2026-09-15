@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## Portfolio table consistency — 15 กันยายน 2026
+
+- Implemented: Account Type overview และ Accounts ใช้ treatment เดียวกันทั้งสองพื้นที่: พื้นคอลัมน์สีอ่อนแยกโรงแรมและตัวเลขสีปกติ. เพิ่มสีพื้น TLKL/WAKL/TLFO/TSAN โดยคงสีพื้น KAT/TSK เดิม และทำ hotel legend dots ให้เห็นครบ.
+- เป็น scoped CSS ของ Portfolio เท่านั้น. ตารางใช้โครง/typography/spacing เดิมร่วมกันอยู่แล้ว; ไม่เปลี่ยนข้อมูล คำนวณ columns sorting filters navigation หรือ Aging overview.
+- Tested: TypeScript/build/public assets และ browser regressions เดิม 21 cases ผ่าน. เปิดตรวจภาพ 1280 ทั้งสองพื้นที่และ mobile แล้ว; tracked baselines คงเดิม. Production rollout อยู่ในขั้นปิดงาน.
+
 ## Regional Portfolio overview — 15 กันยายน 2026
 
 - Implemented: แบบที่เจ้าของเลือกใช้ทั้ง Phuket/Khao Lak มี total strip, hotel cards 2/4 ใบ, source Aging matrix และ freshness ต่อโรงแรม. การ์ดแสดง regional comparison; total/Aging ตาม selected hotel. คง table filters/sorts/account navigation เดิม และไม่มี mockup data ใน live path.

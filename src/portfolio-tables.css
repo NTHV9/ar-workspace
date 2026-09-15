@@ -1,0 +1,13 @@
+/* The same comparison-table treatment for every hotel: tinted columns, neutral amounts. */
+.portfolio .comparison td.kat{--portfolio-hotel-fill:#f1f5ff}
+.portfolio .comparison td.tsk{--portfolio-hotel-fill:#eaf8f6}
+.portfolio .comparison td.tlkl{--portfolio-hotel-fill:#eef6fc}
+.portfolio .comparison td.wakl{--portfolio-hotel-fill:#f5f0fa}
+.portfolio .comparison td.tlfo{--portfolio-hotel-fill:#fcf6e8}
+.portfolio .comparison td.tsan{--portfolio-hotel-fill:#fbf0f2}
+.portfolio .comparison td:is(.kat,.tsk,.tlkl,.wakl,.tlfo,.tsan){
+ background:var(--portfolio-hotel-fill);
+ color:inherit;
+}
+.portfolio .property-key>span{display:inline-flex;align-items:center;gap:5px}
+.portfolio .property-key i{display:inline-block;flex-shrink:0}

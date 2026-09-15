@@ -9,6 +9,7 @@ import {agingBucketKey} from './dashboard/aging-model';
 import {agingCatalogRevision,type AgingStatusTarget} from './dashboard/aging-invoice-data';
 const AgingInvoiceBreakdown=lazy(()=>import('./dashboard/AgingInvoiceBreakdown').then(m=>({default:m.AgingInvoiceBreakdown})));
 import { SourceWarning, SearchBox, SortHead } from './ui';
+import './portfolio-tables.css';
 const hotelColors:Record<HotelId,string>={KAT:'#4169ff',TSK:'#13b7ac',TLKL:'#397ba8',WAKL:'#8b60ad',TLFO:'#b88427',TSAN:'#b76471'};
 export function Portfolio({ accounts, hotel, review, refresh, params, update, openAccount, token }: { accounts: Account[]; hotel: string; review: boolean; refresh?: RefreshState; params: URLSearchParams; update: (k:string,v:string)=>void; openAccount:(a:Account,invoiceId?:string)=>void;token?:string }) {
   const hotels=regionHotels(resolveRegion(params));
