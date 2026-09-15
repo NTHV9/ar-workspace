@@ -20,7 +20,7 @@ test('modern charts retain billing basis and exact details',async({page})=>{
  await setupDashboard(page);
  // Fixed synthetic source rows: one billed required invoice and one unbilled required invoice.
  await page.goto('/?dashboard=1');await expect(page.getByRole('img',{name:'50% of billing-required invoices billed'})).toBeVisible();
- await expect(page.getByRole('region',{name:'Closing-date follow-up stages'}).locator('.dashboard-stage-row').filter({hasText:'Final'})).toContainText('66.7% of open');
+ await expect(page.getByRole('region',{name:'Closing-date follow-up stages'}).getByRole('button',{name:/^Final · All hotels/})).toContainText('66.7% of open');
  await page.getByRole('button',{name:'View not yet billed',exact:true}).click();await expect(page.getByRole('region',{name:'Dashboard invoice details'})).toContainText('INV-kat-parent');
  await page.getByText('All status counts, amounts & percentages',{exact:true}).click();await expect(page.getByRole('region',{name:'Closing-date status breakdown'})).toContainText('Over 60 days · not billed');
 });

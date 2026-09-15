@@ -7,7 +7,7 @@ test('signed outstanding count and hotel totals include credit rows while positi
  await expect(page.getByTestId('dashboard-closing-count')).toHaveText('3 invoices');await expect(page.getByTestId('dashboard-closing-amount')).toHaveText('฿280.00');
  const all=page.getByRole('button',{name:'View invoices',exact:true});await expect(all).toContainText('Net open balance');await expect(all).toContainText('Includes 1 credit item · -฿20.00');
  await expect(page.getByTestId('metric-open-KAT')).toContainText('2 invoices');await expect(page.getByTestId('metric-open-KAT')).toContainText('฿80.00');await expect(page.getByTestId('metric-open-TSK')).toContainText('฿200.00');
- const stage=page.locator('.dashboard-stage-row').filter({hasText:'Final'});await expect(stage).toContainText('1 invoices');await expect(stage).toContainText('66.7% of positive open');
+ const stage=page.getByRole('button',{name:/^Final · All hotels/});await expect(stage).toContainText('1 invoices');await expect(stage).toContainText('66.7% of positive open');
  await expect(page.getByRole('img',{name:'50% of billing-required invoices billed'})).toBeVisible();await all.click();const detail=page.getByRole('region',{name:'Dashboard invoice details'});await expect(detail.locator('tbody tr')).toHaveCount(3);await expect(detail).toContainText('INV-kat-credit');await expect(detail).toContainText('Open -฿20.00');
  await page.getByRole('button',{name:'View not yet billed',exact:true}).click();await expect(detail.locator('tbody tr')).toHaveCount(1);await expect(detail).not.toContainText('INV-kat-credit');
  await page.getByText('All status counts, amounts & percentages',{exact:true}).click();const breakdown=page.getByRole('region',{name:'Closing-date status breakdown'});await expect(breakdown.getByRole('row').filter({hasText:'Billing required · billed'})).toContainText('66.7%');
@@ -16,13 +16,13 @@ test('signed outstanding count and hotel totals include credit rows while positi
 
 for(const creditAmount of [-300,-500])test('zero or negative net retains positive work proportions '+creditAmount,async({page})=>{
  const c=await setupDashboard(page,{creditAmount});await page.goto('/?dashboard=1');await expect(page.getByTestId('dashboard-closing-amount')).toHaveText(creditAmount===-300?'฿0.00':'-฿200.00');
- const stage=page.locator('.dashboard-stage-row').filter({hasText:'Final'});await expect(stage).toContainText('66.7% of positive open');expect(await stage.locator('.dashboard-stage-track i').evaluate(e=>parseFloat((e as HTMLElement).style.width))).toBeCloseTo(66.6667,2);
+ const stage=page.getByRole('button',{name:/^Final · All hotels/});await expect(stage).toContainText('66.7% of positive open');await expect(page.getByTestId('stage-Final-TSK')).toContainText('฿200.00');
  await expect(page.getByTestId('metric-open-KAT')).toContainText(creditAmount===-300?'-฿200.00':'-฿400.00');await expect(page.locator('.dashboard-kpi-card').first().locator('.hotel-comparison-track')).toHaveCount(0);expect(c.errors).toEqual([]);
 });
 
 test('credit-only balance has no collection work and no invalid percentages',async({page})=>{
  const c=await setupDashboard(page,{creditAmount:-20,creditOnly:true});await page.goto('/?dashboard=1');await expect(page.getByTestId('dashboard-closing-count')).toHaveText('1 invoices');await expect(page.getByTestId('dashboard-closing-amount')).toHaveText('-฿20.00');
- await expect(page.getByRole('button',{name:'View not yet billed',exact:true})).toContainText('0 invoices');const stage=page.locator('.dashboard-stage-row').filter({hasText:'Final'});await expect(stage).toContainText('0 invoices');await expect(stage).toContainText('— of positive open');await expect(stage.locator('.dashboard-stage-track i')).toHaveAttribute('style','width: 0%;');expect(c.errors).toEqual([]);
+ await expect(page.getByRole('button',{name:'View not yet billed',exact:true})).toContainText('0 invoices');const stage=page.getByRole('button',{name:/^Final · All hotels/});await expect(stage).toContainText('0 invoices');await expect(stage).toContainText('— of positive open');await expect(stage).toContainText('฿0.00');expect(c.errors).toEqual([]);
 });
 
 test('legacy captures keep net totals unknown and positive work visible without a credit-coverage notice',async({page})=>{

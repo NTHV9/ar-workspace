@@ -1,0 +1,93 @@
+/* A shared reading grid for regional comparisons. Values keep their source identity. */
+#root .period-analysis .period-hotel-matrix {
+ width: 100%; min-width: 0; margin: 20px 0 0; padding: 20px 0 0;
+ background: #fff; border: 1px solid var(--period-line); border-radius: 14px;
+ color: var(--period-ink); overflow: hidden;
+}
+#root .period-analysis .period-hotel-matrix.embedded {
+ margin: 20px 0 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-heading {
+ display: block; margin: 0 20px 18px; padding: 0; border: 0; background: none;
+}
+#root .period-analysis .period-hotel-matrix.embedded .period-hotel-matrix-heading {margin-right: 0; margin-left: 0}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-heading h3 {
+ margin: 0; color: var(--period-ink); font-size: 15px; font-weight: 700; line-height: 1.5; letter-spacing: -.02em;
+}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-heading p {
+ margin: 4px 0 0; color: var(--period-muted); font-size: 12px; line-height: 1.6;
+}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-scroll {
+ width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain;
+ scrollbar-color: #b4c6cf #f1f6f8; scrollbar-width: thin;
+}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-scroll:focus-visible {outline: 3px solid #4169dd; outline-offset: -3px}
+#root .period-analysis .period-hotel-matrix table {
+ width: 100%; min-width: var(--matrix-min-width); margin: 0; table-layout: fixed;
+ border-collapse: collapse; font-variant-numeric: tabular-nums;
+}
+#root .period-analysis .period-hotel-matrix thead {background: #f6f9fa; border-top: 1px solid var(--period-line); border-bottom: 1px solid var(--period-line)}
+#root .period-analysis .period-hotel-matrix th,
+#root .period-analysis .period-hotel-matrix td {
+ height: auto; min-width: 0; padding: 10px 16px; text-align: right; vertical-align: middle;
+ white-space: normal; border: 0; border-bottom: 1px solid var(--period-line); background: transparent;
+}
+#root .period-analysis .period-hotel-matrix thead th {
+ color: var(--period-muted); font-size: 11px; line-height: 1.6; font-weight: 600;
+ letter-spacing: 0; text-transform: none; overflow-wrap: anywhere;
+}
+#root .period-analysis .period-hotel-matrix th:first-child {width: 96px; padding-left: 20px; text-align: left}
+#root .period-analysis .period-hotel-matrix tbody th {color: var(--period-ink); font-size: 12px; font-weight: 700; line-height: 1.6}
+#root .period-analysis .period-hotel-matrix tbody tr:last-child :is(th,td) {border-bottom: 0}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel {display: inline-flex; align-items: center; gap: 8px; color: var(--hotel-color); white-space: nowrap}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel.kat {--hotel-color: #4169ff}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel.tsk {--hotel-color: #16897d}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel.tlkl {--hotel-color: #397ba8}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel.wakl {--hotel-color: #8b60ad}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel.tlfo {--hotel-color: #a77821}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel.tsan {--hotel-color: #b76471}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-hotel i {width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: currentColor}
+#root .period-analysis .period-hotel-matrix .hotel-split {display: block; margin: 0; padding: 0; border: 0; background: none}
+#root .period-analysis .period-hotel-matrix .hotel-split-name {display: none}
+#root .period-analysis .period-hotel-matrix .hotel-split>button,
+#root .period-analysis .period-hotel-matrix .hotel-split>div,
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-value {
+ display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+ width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 5px 0; gap: 3px;
+ border: 0; border-radius: 5px; background: transparent; box-shadow: none;
+ color: var(--period-ink); text-align: right; font-size: 13px; font-weight: 500; line-height: 1.5;
+}
+#root .period-analysis .period-hotel-matrix .hotel-split-count,
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-count {color: var(--period-ink); font-size: 15px; font-weight: 650; line-height: 1.5; white-space: normal}
+#root .period-analysis .period-hotel-matrix .hotel-split small,
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-value small {display: inline; color: var(--period-muted); font-size: 11px; line-height: 1.5; font-weight: 500}
+#root .period-analysis .period-hotel-matrix .hotel-split b,
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-value b {
+ width: auto; margin: 0; color: var(--period-ink); font-size: 13px; font-weight: 650;
+ line-height: 1.6; white-space: nowrap;
+}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-total {background: #edf5f7}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-total .period-hotel-matrix-value b {font-size: 14px; font-weight: 700}
+#root .period-analysis .period-hotel-matrix .period-hotel-matrix-value .period-hotel-matrix-note {display: block; max-width: 28ch; margin-top: 2px; overflow-wrap: anywhere}
+#root .period-analysis .period-hotel-matrix button:hover:not(:disabled) {background: #e9f1f6; color: var(--period-ink); box-shadow: none}
+#root .period-analysis .period-hotel-matrix button:focus-visible {outline: 3px solid #4169dd; outline-offset: 2px}
+#root .period-analysis .period-hotel-matrix button:disabled {opacity: 1; cursor: default}
+
+@media (max-width: 699px) {
+ #root .period-analysis .period-hotel-matrix {padding-top: 16px; margin-top: 16px}
+ #root .period-analysis .period-hotel-matrix .period-hotel-matrix-heading {margin: 0 16px 14px}
+ #root .period-analysis .period-hotel-matrix .period-hotel-matrix-scroll {overflow: visible}
+ #root .period-analysis .period-hotel-matrix table {display: block; min-width: 0; width: 100%}
+ #root .period-analysis .period-hotel-matrix thead {position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0}
+ #root .period-analysis .period-hotel-matrix tbody {display: block}
+ #root .period-analysis .period-hotel-matrix tbody tr {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px 18px; padding: 18px 16px; border-top: 1px solid var(--period-line)}
+ #root .period-analysis .period-hotel-matrix tbody th {grid-column: 1/-1; width: auto; padding: 0; text-align: left; font-size: 13px; border: 0}
+ #root .period-analysis .period-hotel-matrix tbody td {display: block; width: auto; padding: 0; text-align: left; border: 0}
+ #root .period-analysis .period-hotel-matrix tbody td::before {content: attr(data-label); display: block; min-height: 36px; margin-bottom: 5px; color: var(--period-muted); font-size: 11px; line-height: 1.6; font-weight: 600; overflow-wrap: anywhere}
+ #root .period-analysis .period-hotel-matrix .hotel-split>button,
+ #root .period-analysis .period-hotel-matrix .hotel-split>div,
+ #root .period-analysis .period-hotel-matrix .period-hotel-matrix-value {align-items: flex-start; justify-content: flex-start; padding: 2px 0; text-align: left}
+ #root .period-analysis .period-hotel-matrix .hotel-split b,
+ #root .period-analysis .period-hotel-matrix .period-hotel-matrix-value b {max-width: 100%; white-space: normal; overflow-wrap: anywhere; font-size: 13px}
+ #root .period-analysis .period-hotel-matrix .period-hotel-matrix-total .period-hotel-matrix-value b {font-size: 13px}
+}
