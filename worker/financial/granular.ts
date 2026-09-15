@@ -6,6 +6,7 @@ import type {OperaReader} from '../opera/client';
 import type {FinancialIngestionEnv} from './refresh';
 import type {FinancialRun,FinancialAccountContext,FinancialCounts,FinancialWorkflowResult,FinancialPaymentMappingResult} from './model';
 import type {HotelId} from '../../src/domain/hotels';
+import {mapFinancialReads} from '../opera/bounded-read';
 interface Ports{
  rpc<T>(name:string,args?:Record<string,unknown>):Promise<T>;
  stage(accountId:string,kind:'invoice'|'payment'|'application',rows:(FinancialInvoice|FinancialPayment|AppliedPaymentLink)[]):Promise<void>;
@@ -15,9 +16,19 @@ interface Ports{
 }
 const config={retries:{limit:1,delay:'5 seconds' as const,backoff:'constant' as const},timeout:'10 minutes' as const};
 /** Durable outputs are counts only; exact source identities/rows live in private SQL staging. */
-export async function runGranularFinancialHistory(env:FinancialIngestionEnv,run:FinancialRun,step:Pick<WorkflowStep,'do'>,ports:Ports):Promise<FinancialWorkflowResult>{
+export async function runGranularFinancialHistory(env:FinancialIngestionEnv,run:FinancialRun,step:Pick<WorkflowStep,'do'|'sleep'>,ports:Ports):Promise<FinancialWorkflowResult>{
  const reader=()=>makeReader(env,run.hotel),observedAt=run.startedAt?new Date(run.startedAt).toISOString():new Date().toISOString();
- await step.do('financial-v2-claim',{retries:{limit:20,delay:'30 seconds',backoff:'constant'},timeout:'12 minutes'},async()=>{if(!await ports.rpc<boolean>('ar_financial_claim'))throw Error('financial_lease_busy');return {claimed:true};});
+ // Different date ranges of the same hotel must wait for its SQL lease. Durable
+ // sleeps release this Workflow's slot so other hotels can run in the meantime.
+ // Only a busy claim waits; terminal RPC errors retain the short retry budget.
+ for(let attempt=0;attempt<1440;attempt++){
+  const claim=await step.do(attempt===0?'financial-v2-claim':`financial-v2-claim-${attempt}`,{retries:{limit:1,delay:'5 seconds',backoff:'constant'},timeout:'2 minutes'},async()=>{
+   const claimed=await ports.rpc<boolean>('ar_financial_claim');if(typeof claimed!=='boolean')throw Error('financial_claim_invalid');return {claimed};
+  });
+  if(claim.claimed)break;
+  if(attempt===1439)throw Error('financial_queue_timeout');
+  await step.sleep(`financial-v2-claim-wait-${attempt}`,'1 minute');
+ }
  const discovery=await step.do('financial-v2-discovery',config,async()=>{if(run.discovered)return {accounts:run.accounts};const ids=(await discoverAccountIds(reader(),run.hotel)).sort();return ports.rpc<{accounts:number}>('ar_financial_discovery_set',{p_accounts:ids});});
  if(!Number.isSafeInteger(discovery.accounts)||discovery.accounts<0)throw Error('financial_discovery_invalid');
  for(let ordinal=0;ordinal<discovery.accounts;ordinal++){
@@ -38,7 +49,8 @@ export async function runGranularFinancialHistory(env:FinancialIngestionEnv,run:
    if(work.saved)return {verified:work.verified??0,unknown:work.unknown??0,links:work.links??0};
    if(!Array.isArray(work.invoices)||!work.invoices.length||work.invoices.length>10||work.invoices.some(i=>i.hotel!==run.hotel||i.accountId!==saved.accountId))throw Error('financial_mapping_batch_invalid');
    const links:AppliedPaymentLink[]=[],verified:string[]=[],failures:{invoiceId:string;code:string}[]=[],source=reader();
-   for(const invoice of work.invoices){const result=await ports.mapping(source,invoice,observedAt);if(result.error)failures.push({invoiceId:invoice.transactionId,code:result.error});else{verified.push(invoice.transactionId);links.push(...result.links);}}
+   const mapped=await mapFinancialReads(work.invoices,invoice=>ports.mapping(source,invoice,observedAt));
+   for(const [index,result]of mapped.entries()){const invoice=work.invoices[index];if(result.error)failures.push({invoiceId:invoice.transactionId,code:result.error});else{verified.push(invoice.transactionId);links.push(...result.links);}}
    return ports.rpc<{verified:number;unknown:number;links:number}>('ar_financial_mapping_batch_save',{p_account:saved.accountId,p_batch:batch,p_ids:work.invoices.map(i=>i.transactionId),p_verified:verified,p_links:links,p_failures:failures});
   });
   if(run.stepsVersion===3){

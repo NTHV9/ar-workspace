@@ -59,7 +59,7 @@ async function mapFinancialPayment(reader:OperaReader,payment:FinancialPayment,o
 const stepConfig={retries:{limit:1,delay:'5 seconds' as const,backoff:'constant' as const},timeout:'20 minutes' as const};
 const zeroCounts:FinancialCounts={invoices:0,payments:0,applications:0};
 /** Private source rows stay inside callbacks/DB staging; durable step outputs are counts only. */
-export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{actor:string;runId:string},step:Pick<WorkflowStep,'do'>):Promise<FinancialWorkflowResult>{
+export async function runFinancialHistory(env:FinancialIngestionEnv,payload:{actor:string;runId:string},step:Pick<WorkflowStep,'do'|'sleep'>):Promise<FinancialWorkflowResult>{
  assertWritesEnabled(env);
  const {actor,runId}=payload;if(!uuid.test(actor)||!uuid.test(runId))return fail();
  const args={p_actor:actor,p_run_id:runId};

@@ -3,7 +3,7 @@ import {WorkflowEntrypoint,type WorkflowEvent,type WorkflowStep} from 'cloudflar
 import {runFinancialHistory,type FinancialIngestionEnv} from './refresh';
 import type {RefreshParams} from '../refresh/backend';
 import {isHotelId} from '../../src/domain/hotels';
-/** A single background-history slot cannot occupy the interactive document/refresh queue. */
+/** Two background-history slots stay separate from interactive document/refresh work. */
 export class ArFinancialWorkflow extends WorkflowEntrypoint<FinancialIngestionEnv,RefreshParams>{
  async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep){
   const payload=typeof event.payload==='string'?JSON.parse(event.payload):event.payload;
