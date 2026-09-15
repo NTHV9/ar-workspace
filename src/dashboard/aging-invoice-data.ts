@@ -63,6 +63,13 @@ export function agingCountFor(row:Pick<AgingComparisonRow,'members'>,hotel:Aging
  }
  return Number.isSafeInteger(count)?{count,state:'ready'}:{count:null,state:'unavailable'};
 }
+/** A zero regional sum alone is insufficient: every represented ledger must be
+ * empty, with invoice counts verified against the same saved publication. */
+export function isEmptyAgingRow(row:AgingComparisonRow,source:Source<AgingInvoicesResponse>,refresh?:RefreshState):boolean{
+ if(!row.members.length||row.net.Total.state!=='verified'||row.net.Total.amount!==0||row.members.some(a=>a.open!==0||a.items!==0))return false;
+ const count=agingCountFor(row,'Total',undefined,source,refresh);
+ return count.state==='ready'&&count.count===0;
+}
 export function agingStatusTarget(row:AgingComparisonRow,hotel:AgingHotel,bucket:AgingBucket|undefined,byType:boolean,columns:AgingBucket[]):AgingStatusTarget{
  const region=agingRegion(row.members),query=new URLSearchParams(region==='khao-lak'?{region}:{});if(hotel!=='Total')query.set('hotel',hotel);
  if(byType)query.set('type',row.key);else{
