@@ -91,8 +91,8 @@ function signedCreditSummary(account:RecordValue,summary:RecordValue,currency:'T
     const debit=amountCents(summary.debit,currency),credit=amountCents(summary.credit,currency),total=amountCents(summary.total,currency);
     if(credit>=0||sumCents([debit,credit])!==total||account.balance===undefined||account.balance===null||amountCents(account.balance,currency)!==total)return null;
     const agingInfo=record(account.agingInfo),outstanding=record(agingInfo.totalOutstanding);
-    // This exceptional path requires independent explicit THB evidence for every totalOutstanding component.
-    for(const key of ['debit','credit','total'])if(record(outstanding[key]).currencyCode!=='THB')return null;
+    // Summary total explicitly asserted THB above. Aging components use the same
+    // inherited-currency policy as the ordinary Aging path, while empty or foreign codes fail.
     const corroborated=balances(outstanding,currency);
     if(corroborated.debit!==debit||corroborated.credit!==-credit||corroborated.total!==total)return null;
     if(!Array.isArray(agingInfo.aging)||agingInfo.aging.length===0)return null;
