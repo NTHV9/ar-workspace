@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## Aging label and database meter clarification — 15 กันยายน 2026
+
+- เปลี่ยนชื่อ checkbox เป็น **Hide empty accounts** ตามคำขอใช้อังกฤษล้วน. เงื่อนไขการซ่อนและการคำนวณคงเดิม; ปรับ selector ของ tests เดิมให้ตรงข้อความ.
+- TypeScript/build และ browser เดิม 9 cases ผ่าน รวม desktop/mobile และทั้ง Phuket/Khao Lak. ไม่มี logic, database หรือ quota change.
+- Deployed source `c91cd21663a72aa7d903df260495ce65cd5ad9b8`, Worker `f2f3d0d4-0534-46a4-8bfa-ca881d382cbb`. Deployed browser อีก 4 cases ผ่านที่ 1280/390 ทั้งสองพื้นที่; health/database และ 19 anonymous boundaries ผ่าน. Independent review ยืนยันข้อความอ่านได้ไม่ถูกตัด. Integration: [PR37](https://github.com/NTHV9/ar-workspace/pull/37).
+- ตรวจ meter แบบ read-only: Logical database ใช้ `pg_database_size(current_database())` รวมพื้นที่ตารางและดัชนี. ตัวหาร 256 MiB มาจาก app budget configuration พร้อม 20% headroom ไม่ใช่ยอดบิล Supabase. แถบเหลืองเป็น information note คงที่. Database ยังอยู่ภายใน app allowance; พื้นที่หลักอยู่ในตารางประวัติการเงิน. ไม่ลบประวัติหรือเพิ่ม paid capacity.
+
 ## Aging Hide ยอด 0 — 15 กันยายน 2026
 
 - Implemented: checkbox ข้าง Sort hotel สำหรับรายการ Aging แบบเลือกเอง เริ่มปิด. ซ่อนเฉพาะกลุ่มที่ทุก ledger มี open/items ศูนย์ และ all-age invoice count ยืนยันศูนย์ด้วย Hotel/Account publication เดียวกัน. คงเครดิต, offsetting balances, Net ศูนย์ที่ยังมี Invoice และข้อมูลไม่ครบ.
