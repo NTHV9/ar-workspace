@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 16 September 2026 — Website loading and current OPERA refresh
+
+- Implemented: keep same-owner/region catalog usable during reload; publish completed hotel data to Portfolio/Dashboard without waiting for other hotels; handle first-ever and fast/in-flight completion; current account verification in durable pairs; reuse strictly complete explicit-zero evidence only when it resolves every missing transaction.
+- Tested: 1,212 unit tests, TypeScript/build/assets/dry run, and 67 unique relevant browser cases including corrected fast-completion edge. Existing source verification, owner/region guards, SQL leases, deduplication and final publication barrier retained. No SQL/resource/capacity changes.
+- Deployment/live timing pending. Details: [WORKSPACE_LOAD_SPEED_20260916](WORKSPACE_LOAD_SPEED_20260916.md).
+
 ## 16 September 2026 — OPERA financial-history queue speed
 
 - Implemented bounded parallel source verification (three independent reads) and two financial Workflow slots, with durable waiting for distinct date windows of the same hotel. Document/interactive refresh queues, source checks and SQL publication rules remain intact.

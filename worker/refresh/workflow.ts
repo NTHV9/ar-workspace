@@ -13,8 +13,9 @@ import { OperaError } from '../opera/client';
 import {assertStatementWorkflowPolicy} from '../documents/source-policy';
 import {runDocumentJob} from '../documents/jobs';
 import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
-import { backendRpc,previousInvoices, type RefreshEnv, type RefreshParams } from './backend';
-import { discoverAccountIds, readBusinessDate, readVerifiedAccount } from './read-snapshot';
+import { backendRpc, type RefreshEnv, type RefreshParams } from './backend';
+import { discoverAccountIds, readBusinessDate } from './read-snapshot';
+import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
@@ -63,23 +64,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(accountId)return [accountId];
         return discoverAccountIds(reader,hotel);
       });
-      let invalidAccounts=0;
-      for(let index=0;index<ids.length;index++){
-        const outcome=await step.do(`account-${index}`,{retries:{limit:3,delay:'5 seconds',backoff:'exponential'},timeout:'8 minutes'},async()=>{
-          if(!await backendRpc<boolean>(runtime,'ar_renew_refresh',{p_run_id:runId}))throw new Error('refresh_lease_expired');
-          try {
-            const previous=await previousInvoices(runtime,hotel,ids[index]);
-            const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate,previous);
-            await backendRpc(runtime,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
-            // Financial payloads remain only in private Supabase staging, not step output.
-            return {ok:true,invoices:snapshot.invoices.length,code:'',stage:'',diagnostics:null};
-          }catch(error){
-            if(error instanceof OperaError&&['invalid_response','pagination_changed','pagination_incomplete','duplicate_member'].includes(error.code))return {ok:false,invoices:0,code:error.code,stage:error.stage??'',diagnostics:error.diagnostics??null};
-            throw error;
-          }
-        });
-        if(!outcome.ok)invalidAccounts++;
-      }
+      const invalidAccounts=await stageRefreshAccounts(runtime,runId,hotel,ids,businessDate,step);
       if(payload.validateOnly){
         await step.do('finish-validation-only',async()=>{await backendRpc(runtime,'ar_fail_refresh',{p_run_id:runId,p_error_code:'validation_only_finished'});return {validated:invalidAccounts===0};});
         return {hotel,status:invalidAccounts?'validation_failed':'validated',accounts:ids.length};

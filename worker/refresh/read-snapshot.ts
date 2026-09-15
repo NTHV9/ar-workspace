@@ -35,10 +35,11 @@ export async function readBusinessDate(reader:OperaReader,hotel:string):Promise<
 export async function readVerifiedAccount(reader:OperaReader,hotel:string,accountId:string,businessDate:string,previous:PreviousInvoice[]=[]):Promise<AccountSnapshot> {
   let current=await reader.account(accountId);
   let snapshot=normalizeAccount(current,hotel,businessDate);
+  let reusableZeroHistory:Row[]|undefined;
   if(snapshot.account.id!==accountId)throw new OperaError('invalid_response',undefined,'account_identity');
   const readAuditHistory=async(includeZero:boolean)=>{
-    let oldBalanceRows=0;const oldBalanceForms:Record<string,number>={};let firstPageRows=0;const transactionKinds=new Map<string,Set<string>>();let maxPageRows=0;
-    try{return await collectPages(async(offset,limit)=>{
+    let oldBalanceRows=0,strictCounts=true;const oldBalanceForms:Record<string,number>={};let firstPageRows=0;const transactionKinds=new Map<string,Set<string>>();let maxPageRows=0;
+    try{const collected=await collectPages(async(offset,limit)=>{
     const page=asObject(includeZero?await reader.history(accountId,offset,limit):await reader.openHistory(accountId,offset,limit));
     if(!Array.isArray(page.details))throw new OperaError('invalid_response',undefined,'history_shape');
     const rows:{kind:'invoice'|'payment';value:Row}[]=[];
@@ -46,7 +47,10 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
       for(const [field,kind]of [['invoices','invoice'],['payments','payment']] as const){if(group[field]===undefined)continue;if(!Array.isArray(group[field]))throw new OperaError('invalid_response');for(const row of group[field]){const value=asObject(row);const txn=String(value.transactionNo);const kinds=transactionKinds.get(txn)??new Set<string>();kinds.add(kind);transactionKinds.set(txn,kinds);if(kind==='invoice'&&value.invoiceType==='OldBalance'){oldBalanceRows++;const form=JSON.stringify({transactionSign:Number(value.transactionNo)<0?'negative':Number(value.transactionNo)===0?'zero':'positive',invoiceNoPresent:value.invoiceNo!==undefined,invoiceNoZero:value.invoiceNo===0,originalZero:value.originalAmount&&asObject(value.originalAmount).amount===0,amountZero:value.amount&&asObject(value.amount).amount===0,balanceZero:value.balance&&asObject(value.balance).amount===0,paymentsZero:value.payments&&asObject(value.payments).amount===0,datePresent:typeof value.transactionDate==='string'&&value.transactionDate.length>0,inCurrent:snapshot.invoices.some(i=>i.id===String(value.transactionNo)),keys:Object.keys(value).sort().join(',')});oldBalanceForms[form]=(oldBalanceForms[form]??0)+1;}rows.push({kind,value});}}}
     if(offset===0)firstPageRows=rows.length;maxPageRows=Math.max(maxPageRows,rows.length);
     return {rows,logicalCount:historyRootCount(rows),hasMore:page.hasMore as boolean|undefined,totalResults:page.totalResults as number|undefined,nextOffset:nextCursor(page,offset,limit,rows.length)};
-  },r=>{const t=r.value.transactionNo;if((typeof t!=='number'&&typeof t!=='string')||String(t)===''||(typeof t==='number'&&!Number.isSafeInteger(t)))throw new OperaError('invalid_response');return `${r.kind}:${t}`;},20,{allowExtraUniqueRows:true,onExtraRows:counts=>{snapshot.account.sourceWarnings??=[];snapshot.account.sourceWarnings.push({code:'history_total_understated',...counts,includeZero});}});
+  },r=>{const t=r.value.transactionNo;if((typeof t!=='number'&&typeof t!=='string')||String(t)===''||(typeof t==='number'&&!Number.isSafeInteger(t)))throw new OperaError('invalid_response');return `${r.kind}:${t}`;},20,{allowExtraUniqueRows:true,onExtraRows:counts=>{strictCounts=false;snapshot.account.sourceWarnings??=[];snapshot.account.sourceWarnings.push({code:'history_total_understated',...counts,includeZero});}});
+      const invoiceRows=collected.filter(r=>r.kind==='invoice').map(r=>r.value);
+      if(includeZero&&strictCounts&&invoiceRows.every(row=>row.hotelId===undefined||row.hotelId===hotel))reusableZeroHistory=invoiceRows;
+      return collected;
     }catch(error){if(error instanceof OperaError)throw new OperaError(error.code,error.upstreamStatus,error.stage,error.providerMessage,{...error.diagnostics,oldBalanceRows,includeZero,firstPageRows,oldBalanceForms:JSON.stringify(oldBalanceForms),distinctTransactions:transactionKinds.size,crossKindTransactions:[...transactionKinds.values()].filter(k=>k.size>1).length,maxPageRows});throw error;}
   };
   let history=await readAuditHistory(false);
@@ -63,6 +67,8 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
     const account=asObject(asObject(current).accountDetails);
     const candidates=printedCandidates(account,history.filter(r=>r.kind==='invoice').map(r=>r.value));
     if(candidates.length){
+      // Later printed-history confirmation takes precedence over this broad read.
+      reusableZeroHistory=undefined;
       const after=await reader.account(accountId),afterAccount=asObject(asObject(after).accountDetails);
       if(currentFingerprint(account)!==currentFingerprint(afterAccount))throw new OperaError('pagination_changed',undefined,'printed_current_changed');
       const confirmed=await readScopedInvoiceHistory(reader,hotel,accountId,[...new Set(candidates.map(r=>String(r.invoiceNo)))]);
@@ -81,15 +87,20 @@ export async function readVerifiedAccount(reader:OperaReader,hotel:string,accoun
   const present=new Set(snapshot.invoices.map(i=>i.id));
   const missing=previous.filter(i=>!present.has(i.id));
   if(missing.length){
+    const wanted=new Set(missing.map(i=>i.id));
+    const reusable=reusableZeroHistory?.filter(row=>wanted.has(transactionId(row))&&amountCents(row.balance,'THB')===0);
+    const reusableIds=new Set(reusable?.map(transactionId));
+    // All or nothing: if another strict lookup is needed, let that newer result
+    // decide every missing row, including any previously observed zero it omits.
+    const canReuse=missing.every(row=>reusableIds.has(row.id));
     const numbers=missing.every(i=>i.invoice_no&&/^\d+$/.test(i.invoice_no))?[...new Set(missing.map(i=>i.invoice_no!))]:[];
-    const closedCandidates:Row[]=[];
-    const groups=numbers.length?Array.from({length:Math.ceil(numbers.length/20)},(_,i)=>numbers.slice(i*20,i*20+20)):[[]];
+    const closedCandidates:Row[]=canReuse?reusable!:[];
+    const groups=canReuse?[]:numbers.length?Array.from({length:Math.ceil(numbers.length/20)},(_,i)=>numbers.slice(i*20,i*20+20)):[[]];
     const seenClosed=new Map<string,Row>();
     for(const group of groups)for(const row of await readScopedInvoiceHistory(reader,hotel,accountId,group)){
       const key=transactionId(row),existing=seenClosed.get(key);if(existing&&invoiceFingerprint(existing)!==invoiceFingerprint(row))throw new OperaError('pagination_changed',undefined,'closed_history_changed');
       if(!existing){seenClosed.set(key,row);closedCandidates.push(row);}
     }
-    const wanted=new Set(missing.map(i=>i.id));
     const closed=closedCandidates.filter(row=>wanted.has(String(row.transactionNo))&&amountCents(row.balance,'THB')===0);
     if(closed.length){
       const currentAccount=asObject(asObject(current).accountDetails);
