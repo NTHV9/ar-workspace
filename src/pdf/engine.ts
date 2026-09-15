@@ -65,9 +65,10 @@ export type RenderIssue={layerId:string;message:string};
 export type RenderOptions={tolerant?:boolean};
 async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,tolerant=false){
  const issues:RenderIssue[]=[],valid:PdfLayer[]=[];
- const runs=page.layers.some(l=>l.sourceText||l.deleted!==undefined)?await detectText(page,documents):[];
+ const runs=page.layers.some(l=>l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
  for(const layer of page.layers){try{
   validateDeletedLayer(layer);
+  if(layer.formField&&!runs.some(run=>run.field===layer.formField!.type&&run.sourceText?.runIndex===layer.formField!.runIndex))throw Error('Document field no longer matches this source. Reopen the original.');
   if(layer.sourceText||layer.deleted){
    const ref=layer.sourceText;
    const run=ref?runs.find(r=>r.sourceText?.runIndex===ref.runIndex):runs.find(r=>layer.original&&r.text===layer.original.text&&Math.abs(r.x-layer.original.x)<.01&&Math.abs(r.y-layer.original.y)<.01);
@@ -169,10 +170,10 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
   for (const [index, group] of groups.entries()) {
     const output = await PDFDocument.create();
     for (const page of group.pages) {
-      if (page.layers.length || page.rowEdits?.length || page.sourcePage === null) {
+      const {valid}=await bindLayers(page,documents);
+      if (valid.some(layer=>hasLayerInk(layer)||!!layer.original&&layer.maskOriginal!==false) || page.rowEdits?.length || page.sourcePage === null) {
         // Only a new opaque bitmap is copied into edited pages. No source streams,
         // hidden OCR/text, annotations or attachments are retained on those pages.
-        const {valid}=await bindLayers(page,documents);
         const runs=await detectText(page,documents);
         const images=page.sourcePage?await extractSourceImages(await documents.get(page.sourceId)!.getPage(page.sourcePage)):[];
         const protectedAreas=[...images.flatMap(r=>{const mapped=mapSourceRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...runs.flatMap(r=>{if(replacementForRun(page,r))return [];const mapped=mapSourceTextRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...valid.flatMap(l=>!hasLayerInk(l)?[]:['image','shape','whiteout','note','stamp'].includes(l.kind)?[l]:measureLayerText(l).lines.flatMap((line,n)=>line.trim()?[{y:l.y+n*l.fontSize*1.25,height:l.fontSize*1.25}]:[]))];

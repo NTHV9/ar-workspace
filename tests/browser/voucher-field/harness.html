@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Voucher field fixture</title></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';
+import {PdfWorkspace} from '/src/pdf/PdfWorkspace.tsx';
+import * as engine from '/src/pdf/engine.ts';
+import * as source from '/src/pdf/source-text.ts';
+import {restoreProject} from '/src/pdf/model.ts';
+import {getDocument} from 'pdfjs-dist';
+async function make(voucher){
+ const doc=await PDFDocument.create(),p=doc.addPage([612,792]),bold=await doc.embedFont(StandardFonts.HelveticaBold),normal=await doc.embedFont(StandardFonts.Helvetica);
+ const draw=(text,x,y,font=normal,size=8)=>p.drawText(text,{x,y:792-y,font,size,color:rgb(0,0,0)});
+ draw('COPY OF INVOICE',382.5,124,normal,11);draw('Voucher No.',382.5,140,bold);draw(':',465,141);
+ if(voucher)draw(voucher,472.5,139.5,bold);
+ draw('Room No.',382.5,152);draw(':',465,152);draw('1234',472.5,152);
+ draw('Folio No.',382.5,194,bold);draw(':',465,195.5);draw('54321',472.5,194,bold);
+ draw('SYNTHETIC INVOICE',40,120);draw('0123456789',40,250,bold);draw('UNCHANGED BODY',40,300);
+ return [{id:'invoice',name:'Synthetic Invoice.pdf',kind:'invoice',invoiceId:'synthetic',bytes:await doc.save()}];
+}
+const query=new URLSearchParams(location.search),sources=query.has('private')?[{id:'invoice',name:'Private Invoice.pdf',kind:'invoice',bytes:new Uint8Array(await(await fetch('/__voucher_source.pdf')).arrayBuffer())}]:await make(query.has('filled')?'87654321':'');
+const root=createRoot(document.getElementById('root'));
+const mount=(initialProject)=>root.render(React.createElement(PdfWorkspace,{documents:sources,initialProject,hotel:'KAT',accountName:'Synthetic account',selectedCount:1,onClose:()=>{},onSaveDraft:async(project)=>{window.fixture.draft=project;},onSave:async(files,project)=>{window.fixture.saved={files,project};}}));
+window.fixture={...engine,...source,restoreProject,getDocument,make,sources,mount};mount();
+</script></body></html>

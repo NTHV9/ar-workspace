@@ -64,3 +64,6 @@
 @media(max-width:700px){.pdf-preview-controls{flex-wrap:wrap;gap:6px}.pdf-preview-controls .pdf-preview-files{flex-basis:100%}}
 
 .pdf-layer-target.empty-cell::after{font-size:inherit;line-height:1}
+
+.pdf-voucher-field{border:1px dashed #5264ce!important;background:#eef1ff66!important}
+.pdf-voucher-field::after{content:'+';position:absolute;inset:0;display:grid;place-items:center;color:#4054c7;font-size:10px;line-height:1;pointer-events:none}

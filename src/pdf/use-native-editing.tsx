@@ -53,7 +53,7 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
    const current=rowGeometry(base,compacted.anchor,runs,barriers),y=current.end,tableRow=crypto.randomUUID();
    if(!current.separable)throw Error('This row overlaps the next text or border. Move the overlapping object before adding a row.');
    const originals=current.template.map(c=>({run:c.run,rect:c.rect}));
-   const blank:PdfLayer[]=originals.length?originals.map(({run,rect})=>({...createReplacementLayer(run,crypto.randomUUID()),x:rect.x,y:y+(rect.y-current.top),text:'',maskOriginal:false,tableRow})):base.layers.filter(l=>(l.maskOriginal===false||l.tableRow===anchor.tableRow&&!!anchor.tableRow)&&Math.abs(l.y-anchor.y)<Math.max(2,anchor.fontSize*.35)).map(l=>({...l,id:crypto.randomUUID(),y:y+(l.y-current.top),text:'',tableRow}));
+   const blank:PdfLayer[]=originals.length?originals.map(({run,rect})=>({...createReplacementLayer(run,crypto.randomUUID()),x:rect.x,y:y+(rect.y-current.top),text:'',maskOriginal:false,tableRow})):base.layers.filter(l=>(l.maskOriginal===false||l.tableRow===anchor.tableRow&&!!anchor.tableRow)&&Math.abs(l.y-anchor.y)<Math.max(2,anchor.fontSize*.35)).map(l=>({...l,id:crypto.randomUUID(),y:y+(l.y-current.top),text:'',tableRow,formField:undefined}));
    const flowed=applyFlowEdit(base,{id:tableRow,kind:'insert',y,height:current.spacing},current.members.map(l=>l.id));
    return {...flowed,layers:[...flowed.layers,...blank]};
   });

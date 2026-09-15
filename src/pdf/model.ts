@@ -54,6 +54,13 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
         sourceText = { sourceId, sourcePage, runIndex };
       }
       const tableRow=l.tableRow===undefined?undefined:string(l.tableRow,200);if(tableRow!==undefined&&!tableRow)return fail();
+      let formField:PdfLayer['formField'];
+      if(l.formField!==undefined){
+        if(!l.formField||typeof l.formField!=='object'||!['text','replacement'].includes(String(l.kind)))return fail();
+        const f=l.formField as Record<string,unknown>,runIndex=number(f.runIndex,0,1000000);
+        if(f.type!=='voucher-number'||!Number.isInteger(runIndex)||sourcePage===null||sourceText&&sourceText.runIndex!==runIndex)return fail();
+        formField={type:'voucher-number',runIndex};
+      }
       let textFlow:PdfLayer['textFlow'];
       if(l.textFlow!==undefined){
         if(!l.textFlow||typeof l.textFlow!=='object')return fail();
@@ -62,7 +69,7 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
       }
       if (l.maskOriginal !== undefined && (typeof l.maskOriginal !== 'boolean' || !source || l.maskOriginal === false && !sourceText)) return fail();
       if (l.deleted !== undefined && (l.deleted !== true || l.kind !== 'replacement' || !source || l.maskOriginal === false || l.text !== '')) return fail();
-      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, .1, 1440), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}), ...(sourceText ? { sourceText } : {}), ...(typeof l.maskOriginal === 'boolean' ? { maskOriginal: l.maskOriginal } : {}), ...(l.deleted === true ? { deleted: true } : {}),...(tableRow?{tableRow}:{}),...(textFlow?{textFlow}:{}) };
+      return { id: layerId, kind: l.kind as PdfLayer['kind'], x: number(l.x), y: number(l.y), width: number(l.width, .1), height: number(l.height, .1), text: string(l.text), color: color(l.color), fill: color(l.fill), font: l.font as string, fontSize: number(l.fontSize, .1, 1440), bold: l.bold, italic: l.italic, ...(image ? { image } : {}), ...(source ? { original: source } : {}), ...(sourceText ? { sourceText } : {}), ...(typeof l.maskOriginal === 'boolean' ? { maskOriginal: l.maskOriginal } : {}), ...(l.deleted === true ? { deleted: true } : {}),...(tableRow?{tableRow}:{}),...(textFlow?{textFlow}:{}),...(formField?{formField}:{}) };
     });
     const flowHeight=p.flowHeight===undefined?undefined:number(p.flowHeight,height,MAX_FLOW_HEIGHT);
     let extent=height;
