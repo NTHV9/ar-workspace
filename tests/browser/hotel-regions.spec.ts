@@ -106,3 +106,26 @@ test('legacy property-only valid account context keeps region after returning th
  await page.getByRole('button',{name:'Back to document preparation',exact:true}).click();await page.getByRole('button',{name:'Back to account',exact:true}).click();await expect(page.locator('.account-page')).toBeVisible();await page.locator('.account-page .breadcrumb').click();
  await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');await expect(page.getByRole('region',{name:'Accounts comparison'}).locator('tbody .total-cell')).toContainText('10.8K');expect(c.errors).toEqual([]);
 });
+
+for(const publication of ['missing','verified-zero','retained'] as const)test('Portfolio distinguishes '+publication+' hotel publication from a zero balance',async({page})=>{
+ const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page),at='2026-09-12T02:59:00Z';
+ const accounts=regionalAccounts.filter(a=>!['KAT','TSK'].includes(a.hotel)&&(publication==='retained'||a.hotel!=='TLFO'));
+ const refresh={running:false,hotels:['TLKL','WAKL','TLFO','TSAN'].map(hotel=>({hotel,status:hotel==='TLFO'&&publication!=='verified-zero'?'failed':'succeeded',last_success_at:hotel==='TLFO'&&publication==='missing'?null:at}))};
+ await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts,status:'connected',refresh}}));await page.route('**/api/refresh**',r=>r.fulfill({json:{...refresh,jobs:[]}}));
+ await page.goto('/?region=khao-lak');const contribution=page.locator('.property-pair>div').filter({has:page.getByText(/^TLFO ·/)}),hero=page.locator('.total-summary'),table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');
+ await expect(table.locator('tbody tr')).toHaveCount(1);
+ if(publication==='missing'){
+  await expect(hero).toContainText('Partial open AR');await expect(hero.locator('strong')).toHaveText('THB 7.8K');await expect(contribution).toContainText('Unavailable');await expect(contribution.locator('strong')).toHaveText('—');await expect(contribution).not.toContainText('0%');await expect(page.getByRole('status').filter({hasText:'Partial portfolio'})).toContainText('TLFO');await expect(table.locator('thead')).toContainText('Partial total open');
+  await expect(page.getByRole('region',{name:'Account type comparison'}).locator('tbody .tlfo')).toContainText('Unavailable');await page.screenshot({path:'.tmp/khao-lak-ui-results/portfolio-partial-1440.png',fullPage:true});
+ }else{
+  await expect(hero).toContainText('Total open AR');await expect(hero).not.toContainText('Partial');await expect(contribution.locator('strong')).toHaveText(publication==='verified-zero'?'THB 0':'THB 3K');await expect(hero.locator('strong')).toHaveText(publication==='verified-zero'?'THB 7.8K':'THB 10.8K');
+  if(publication==='verified-zero')await expect(table.locator('tbody .tlfo')).toHaveText('—');
+ }
+ expect(c.errors).toEqual([]);
+});
+
+for(const published of [false,true])test('empty regional Portfolio distinguishes unavailable from verified zero '+published,async({page})=>{
+ await setupRegional(page);const refresh={running:false,hotels:['TLKL','WAKL','TLFO','TSAN'].map(hotel=>({hotel,status:published?'succeeded':'failed',last_success_at:published?'2026-09-12T02:59:00Z':null}))};
+ await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts:[],status:'connected',refresh}}));await page.route('**/api/refresh**',r=>r.fulfill({json:{...refresh,jobs:[]}}));await page.goto('/?region=khao-lak');
+ await expect(page.locator('.total-summary strong')).toHaveText(published?'THB 0':'—');await expect(page.locator('.total-summary .metric-label')).toHaveText(published?'Total open AR':'Open AR unavailable');
+});

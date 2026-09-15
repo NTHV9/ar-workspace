@@ -114,7 +114,7 @@ for(const width of [1440,1280,390])test(`positive aging balances above 90 days s
  await page.locator('.aging-comparison-frame').scrollIntoViewIfNeeded();
  // Account names label the clipped artifact as synthetic; the fixed test badge would cover a value.
  await page.getByLabel('Synthetic test data',{exact:true}).evaluate(element=>element.style.visibility='hidden');
- await page.locator('.aging-comparison-frame').screenshot({path:`evidence/aging-column-order-${width}.png`,animations:'disabled'});
+ await page.locator('.aging-comparison-frame').screenshot({path:`${process.env.AR_TEST_CAPTURE_DIR??'evidence'}/aging-column-order-${width}.png`,animations:'disabled'});
 
  await value(table,'Azure Travel · Synthetic','TSK','151+').click();
  await page.mouse.move(0,0);
@@ -127,6 +127,6 @@ for(const width of [1440,1280,390])test(`positive aging balances above 90 days s
  await page.getByRole('button',{name:'Back to Agent accounts',exact:true}).click();
  await expect(table.locator('tbody[data-aging-group]')).toHaveCount(2);
  await fits(page,table);
- expect(writes).toEqual([]);expect(openRefreshes).toEqual([{hotel:'All',reason:'open'}]);
+ expect(writes).toEqual([]);expect(openRefreshes).toEqual([{hotel:'All',reason:'open',region:'phuket'}]);
  expect(controls.errors).toEqual([]);expect(controls.unexpected).toEqual([]);
 });
