@@ -11,10 +11,10 @@ it('drains all admitted reads after failure and does not start the next batch',a
  await vi.runAllTimersAsync();expect((await checked).message).toBe('synthetic failure');expect(finished).toEqual([0,1,2]);expect(started).toEqual([0,1,2]);
 });
 
-it('handles synchronous reader failures without leaving peer promises unobserved',async()=>{
+it('stops admission immediately when the first reader throws synchronously',async()=>{
  const finished:number[]=[];
  await expect(mapFinancialReads([0,1,2,3],n=>{if(n===0)throw Error('synthetic failure');return Promise.resolve().then(()=>{finished.push(n);return n;});})).rejects.toThrow('synthetic failure');
- expect(finished).toEqual([1,2]);
+ expect(finished).toEqual([]);
 });
 
 it('keeps the history queue separate and bounds two hotels to at most six financial read chains',()=>{

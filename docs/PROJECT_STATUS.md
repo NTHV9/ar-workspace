@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## 16 September 2026 — Further financial proof throughput
+
+- Implemented continuous three-worker proof processing, a shared per-step three-call scheduler, queued-only identical read sharing, concurrent payment proofs and aggregate timing/count telemetry. Every existing freshness barrier, endpoint check, source window and publication condition remains.
+- Controlled payment workload returned identical proof objects with 219→153 source calls and 10.2→5.3 seconds synthetic time. Initial full 1,220 tests and subsequent payment/lease refinement passed, along with seven browser cases and builds. See [FINANCIAL_PROOF_SPEED_20260916](FINANCIAL_PROOF_SPEED_20260916.md).
+- First live attempt hit a CPU limit after 43.5 minutes; no incomplete data was published and all baseline fingerprints remained unchanged. Production was temporarily rolled back while repairing needless full-body copies for single consumers. The repaired 1,223-test suite/build/review passed; CPU limit unchanged.
+- Deployed/enabled repair `12078d5964e6be3c2c5090788ce314e44b6efe10`, Worker `2774224b-659e-4b2e-b36d-7f1577a64a20`. Handoff verification confirmed database health, 19 anonymous boundaries, deployed-source CI and 105 focused tests plus TypeScript.
+- Live repaired KAT history run completed all 105 accounts / 1,033 steps with no failed attempts or retries and SQL-confirmed complete publication. Observed time: 65m11s → 46m05s, about 29.3% less; baseline includes one CPU retry and provider latency varies. Every durable result matches, and retained account membership/counts/mapping identities/context/coverage match after excluding observation time. No source-data/status changes were recorded by the tested run. Later scheduled data uses a different date window, so current whole-table fingerprints are not presented as identical. Evidence and limits: [FINANCIAL_PROOF_SPEED_20260916](FINANCIAL_PROOF_SPEED_20260916.md); integration [PR46](https://github.com/NTHV9/ar-workspace/pull/46).
+
 ## 16 September 2026 — Website loading and current OPERA refresh
 
 - Implemented: keep same-owner/region catalog usable during reload; publish completed hotel data to Portfolio/Dashboard without waiting for other hotels; handle first-ever and fast/in-flight completion; current account verification in durable pairs; reuse strictly complete explicit-zero evidence only when it resolves every missing transaction.

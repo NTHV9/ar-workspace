@@ -2,7 +2,7 @@ import type {WorkflowStep} from 'cloudflare:workers';
 import {makeReader} from '../opera/probe';
 import {discoverAccountIds} from '../refresh/read-snapshot';
 import {readFinancialHistory,type FinancialInvoice,type FinancialPayment,type AppliedPaymentLink} from '../opera/financial-history';
-import type {OperaReader} from '../opera/client';
+import {createFinancialProofReader,type FinancialProofReader} from '../opera/proof-reader';
 import type {FinancialIngestionEnv} from './refresh';
 import type {FinancialRun,FinancialAccountContext,FinancialCounts,FinancialWorkflowResult,FinancialPaymentMappingResult} from './model';
 import type {HotelId} from '../../src/domain/hotels';
@@ -11,8 +11,8 @@ interface Ports{
  rpc<T>(name:string,args?:Record<string,unknown>):Promise<T>;
  stage(accountId:string,kind:'invoice'|'payment'|'application',rows:(FinancialInvoice|FinancialPayment|AppliedPaymentLink)[]):Promise<void>;
  context(value:unknown,hotel:HotelId,accountId:string):FinancialAccountContext;
- mapping(reader:OperaReader,invoice:FinancialInvoice,observedAt:string):Promise<{links:AppliedPaymentLink[];error?:string}>;
- paymentMapping?(reader:OperaReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>;
+ mapping(reader:FinancialProofReader,invoice:FinancialInvoice,observedAt:string):Promise<{links:AppliedPaymentLink[];error?:string}>;
+ paymentMapping?(reader:FinancialProofReader,payment:FinancialPayment,observedAt:string):Promise<FinancialPaymentMappingResult>;
 }
 const config={retries:{limit:1,delay:'5 seconds' as const,backoff:'constant' as const},timeout:'10 minutes' as const};
 /** Durable outputs are counts only; exact source identities/rows live in private SQL staging. */
@@ -48,10 +48,11 @@ export async function runGranularFinancialHistory(env:FinancialIngestionEnv,run:
    const work=await ports.rpc<{saved:boolean;invoices?:FinancialInvoice[];verified?:number;unknown?:number;links?:number}>('ar_financial_mapping_batch_get',{p_account:saved.accountId,p_batch:batch});
    if(work.saved)return {verified:work.verified??0,unknown:work.unknown??0,links:work.links??0};
    if(!Array.isArray(work.invoices)||!work.invoices.length||work.invoices.length>10||work.invoices.some(i=>i.hotel!==run.hotel||i.accountId!==saved.accountId))throw Error('financial_mapping_batch_invalid');
-   const links:AppliedPaymentLink[]=[],verified:string[]=[],failures:{invoiceId:string;code:string}[]=[],source=reader();
-   const mapped=await mapFinancialReads(work.invoices,invoice=>ports.mapping(source,invoice,observedAt));
+   const links:AppliedPaymentLink[]=[],verified:string[]=[],failures:{invoiceId:string;code:string}[]=[],source=createFinancialProofReader(reader());
+   const mapped=await mapFinancialReads(work.invoices,invoice=>ports.mapping(source.reader,invoice,observedAt));
    for(const [index,result]of mapped.entries()){const invoice=work.invoices[index];if(result.error)failures.push({invoiceId:invoice.transactionId,code:result.error});else{verified.push(invoice.transactionId);links.push(...result.links);}}
-   return ports.rpc<{verified:number;unknown:number;links:number}>('ar_financial_mapping_batch_save',{p_account:saved.accountId,p_batch:batch,p_ids:work.invoices.map(i=>i.transactionId),p_verified:verified,p_links:links,p_failures:failures});
+   const savedResult=await ports.rpc<{verified:number;unknown:number;links:number}>('ar_financial_mapping_batch_save',{p_account:saved.accountId,p_batch:batch,p_ids:work.invoices.map(i=>i.transactionId),p_verified:verified,p_links:links,p_failures:failures});
+   return {...savedResult,reads:source.stats()};
   });
   if(run.stepsVersion===3){
    if(!ports.paymentMapping)throw Error('financial_payment_mapping_not_configured');
@@ -67,9 +68,10 @@ export async function runGranularFinancialHistory(env:FinancialIngestionEnv,run:
     const work=await ports.rpc<{saved:boolean;payments?:FinancialPayment[];verified?:number;unknown?:number;links?:number}>('ar_financial_payment_batch_get',{p_account:saved.accountId,p_batch:batch});
     if(work.saved)return {verified:work.verified??0,unknown:work.unknown??0,links:work.links??0};
     if(!Array.isArray(work.payments)||!work.payments.length||work.payments.length>5||work.payments.some(p=>p.hotel!==run.hotel||p.accountId!==saved.accountId||p.kind!=='payment'))throw Error('financial_payment_batch_invalid');
-    const results:FinancialPaymentMappingResult[]=[],source=reader();
-    for(const payment of work.payments){if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');results.push(await ports.paymentMapping!(source,payment,observedAt));}
-    return ports.rpc<{verified:number;unknown:number;links:number}>('ar_financial_payment_batch_save',{p_account:saved.accountId,p_batch:batch,p_results:results});
+    const source=createFinancialProofReader(reader());
+    const results=await mapFinancialReads(work.payments,async payment=>{if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');return ports.paymentMapping!(source.reader,payment,observedAt);});
+    const savedResult=await ports.rpc<{verified:number;unknown:number;links:number}>('ar_financial_payment_batch_save',{p_account:saved.accountId,p_batch:batch,p_results:results});
+    return {...savedResult,reads:source.stats()};
    });
   }
   await step.do(`financial-v2-finalize-${ordinal}`,config,async()=>{if(!await ports.rpc<boolean>('ar_financial_renew'))throw Error('financial_lease_invalid');const saved=await ports.rpc<{accountId:string}>('ar_financial_account_get',{p_ordinal:ordinal});return ports.rpc<FinancialCounts>('ar_financial_history_finalize',{p_account:saved.accountId});});

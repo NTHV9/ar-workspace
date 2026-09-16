@@ -60,4 +60,32 @@ it('version3 maps payment-date rows in batches independently of invoice Bill Dat
  await runGranularFinancialHistory(env,current,h.step,ports);
  expect(records.map(r=>r.p_results.length)).toEqual([5,1]);expect(paymentMapping.mock.calls.filter(([,p])=>Number(p.transactionId)<905)).toHaveLength(5);expect(paymentMapping.mock.calls.filter(([,p])=>p.transactionId==='905')).toHaveLength(2);
  expect(records[0].p_results[0].invoices[0].transactionDate).toBe('2020-01-01');expect(records[0].p_results[1].error).toBe('financial_payment_pair_missing');expect(JSON.stringify([...h.cache.values()])).not.toMatch(/SYNTHETIC-A|transactionId|2020-01-01/);
+ expect(new Set(paymentMapping.mock.calls.slice(0,5).map(([reader])=>reader)).size).toBe(1);
+ expect(paymentMapping.mock.calls[5][0]).not.toBe(paymentMapping.mock.calls[6][0]);
+});
+
+it('does not start a payment proof or save when its lease renewal fails',async()=>{
+ const h=setup(),original=h.ports.rpc;let paymentPhase=false;
+ h.ports.rpc=async(name,args={})=>{
+  if(name==='ar_financial_payment_prepare')return {mappingCount:1} as never;
+  if(name==='ar_financial_payment_batch_get'){paymentPhase=true;return {saved:false,payments:[{hotel:'KAT',accountId:'SYNTHETIC-A',kind:'payment',transactionId:'900'}]} as never;}
+  if(name==='ar_financial_renew'&&paymentPhase)return false as never;
+  return original(name,args);
+ };
+ const paymentMapping=vi.fn();await expect(runGranularFinancialHistory(env,{...run,stepsVersion:3},h.step,{...h.ports,paymentMapping})).rejects.toThrow('financial_lease_invalid');
+ expect(paymentMapping).not.toHaveBeenCalled();expect(h.calls.some(c=>c.name==='ar_financial_publish')).toBe(false);
+});
+
+it('drains admitted payment proofs before failing and never saves their partial results',async()=>{
+ vi.useFakeTimers();const h=setup(),original=h.ports.rpc,finished:string[]=[];let paymentSaved=false,settled=false;
+ h.ports.rpc=async(name,args={})=>{
+  if(name==='ar_financial_payment_prepare')return {mappingCount:5} as never;
+  if(name==='ar_financial_payment_batch_get')return {saved:false,payments:Array.from({length:5},(_,n)=>({hotel:'KAT',accountId:'SYNTHETIC-A',kind:'payment',transactionId:String(900+n)}))} as never;
+  if(name==='ar_financial_payment_batch_save'){paymentSaved=true;return {} as never;}
+  return original(name,args);
+ };
+ const paymentMapping=vi.fn(async(_reader:unknown,payment:FinancialPayment)=>{await new Promise(resolve=>setTimeout(resolve,payment.transactionId==='900'?10:100));finished.push(payment.transactionId);if(payment.transactionId==='900')throw Error('financial_test_failure');return {paymentId:payment.transactionId,error:'financial_test_unknown'};});
+ const pending=runGranularFinancialHistory(env,{...run,stepsVersion:3},h.step,{...h.ports,paymentMapping}).catch(error=>{settled=true;return error;});
+ await vi.advanceTimersByTimeAsync(20);expect(settled).toBe(false);await vi.runAllTimersAsync();expect((await pending).message).toBe('financial_test_failure');
+ expect(finished).toEqual(['900','901','902']);expect(paymentSaved).toBe(false);expect(h.calls.some(c=>c.name==='ar_financial_publish')).toBe(false);
 });
