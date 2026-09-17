@@ -3,7 +3,8 @@
 ## 17 September 2026 — Match Phuket navigation to Khao Lak
 
 - Implemented the owner's screenshot request by sharing Khao Lak's desktop brand width, menu-button spacing and full-row header breakpoint through 1500px with Phuket. The administrator menu including Settings fits consistently in both regions. Khao Lak's existing desktop behavior, mobile scrolling, summary gradients/depth and application behavior are preserved.
-- Tested: 34 existing regional/Portfolio browser cases passed, including 1440/1280/390 layouts, eight-button navigation, region switching, document return context and financial display states. Compared both desktop headers and inspected mobile capture; TypeScript/build/public assets passed. Deployment pending at this checkpoint. CSS only; no data, permission or service-configuration changes.
+- Tested: 34 existing regional/Portfolio browser cases passed, including 1440/1280/390 layouts, eight-button navigation, region switching, document return context and financial display states. Compared both desktop headers and inspected mobile capture; TypeScript/build/public assets passed. CSS only; no data, permission or service-configuration changes.
+- Deployed/enabled: source `80c509da1a0b28b822f1617125eb137513c36500`, Worker `d82691ed-8caf-43af-999d-1889f85e7b80`; [PR51](https://github.com/NTHV9/ar-workspace/pull/51) merged as `9e98cb991aaab4816da175ef99ba177fc0de2562`. Push/PR CI and deployment dry run passed. Live authenticated 1440px screenshots confirmed the matching full menu row and visible Settings in both regions. Restored Phuket and the normal viewport after inspection. Health/database, 26 anonymous protected-route checks and login method guard passed.
 
 ## 17 September 2026 — Portfolio gradients and depth follow-up
 
