@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## 17 September 2026 — Regional users and Phuket-only email
+
+- Implemented administrator-only Users & Access, protected `ar@katathani.com` access to both regions, approved-email registration, revision/idempotency controls and suspension. Ordinary members use the shared AR workspace only after a finite Worker route check and canonical SQL hotel authorization. Real actors remain in private authorization audit; existing direct table/RPC/storage permissions remain administrator-only.
+- Implemented Phuket-only Send Now/Gmail Draft gates in Worker and SQL. Khao Lak retains document review/download and external billing. No additional real user, invitation, email send, mailbox connection or paid service was created.
+- Tested: 79 migrations / 34 synthetic rollback suites passed for the final SQL; full 1,265 unit tests plus subsequent focused access/delivery checks and TypeScript passed. Browser verification passed 49 unique cases, including administration at 1440/390, explicit password enrollment, suspension, region restriction/revocation, document flow and existing refresh behavior. Desktop/mobile captures inspected; original tracked evidence images restored after capture-generating tests. Build/public assets passed.
+- Live preflight: current deployed source `12078d5`, database health verified, signup currently disabled, Google/email providers enabled and email autoconfirm disabled. Migration must precede controlled signup enablement. Deployment/live enablement pending. Details: [REGIONAL_USER_ACCESS_20260917](REGIONAL_USER_ACCESS_20260917.md).
+
 ## 16 September 2026 — Further financial proof throughput
 
 - Implemented continuous three-worker proof processing, a shared per-step three-call scheduler, queued-only identical read sharing, concurrent payment proofs and aggregate timing/count telemetry. Every existing freshness barrier, endpoint check, source window and publication condition remains.

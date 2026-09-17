@@ -9,7 +9,7 @@ it('rejects every unauthenticated remittance surface before source/storage acces
  expect(fetcher).not.toHaveBeenCalled();
 });
 it('rejects other verified users before remittance lookup or diagnostic writes',async()=>{
- const fetcher=vi.fn(async(_url:string)=>Response.json({id,email:'other@example.test',email_confirmed_at:'2026-01-01'}));vi.stubGlobal('fetch',fetcher);
- for(const [path,method] of [['/options','GET'],['/diagnostic','POST']])expect((await handleApi(new Request('https://app.test/api/remittances'+path,{method,headers:{Authorization:'Bearer synthetic-session'}}),{SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public'})).status).toBe(403);
- expect(fetcher).toHaveBeenCalledTimes(2);expect(fetcher.mock.calls.every(c=>String(c[0]).endsWith('/auth/v1/user'))).toBe(true);
+ const fetcher=vi.fn(async(url:string)=>url.endsWith('/auth/v1/user')?Response.json({id,email:'other@example.test',email_confirmed_at:'2026-01-01'}):Response.json(null));vi.stubGlobal('fetch',fetcher);
+ for(const [path,method] of [['/options','GET'],['/diagnostic','POST']])expect((await handleApi(new Request('https://app.test/api/remittances'+path,{method,headers:{Authorization:'Bearer synthetic-session'}}),{SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic-public',SUPABASE_SECRET_KEY:'synthetic-server'})).status).toBe(403);
+ expect(fetcher).toHaveBeenCalledTimes(3);expect(fetcher.mock.calls.every(c=>String(c[0]).endsWith('/auth/v1/user')||String(c[0]).endsWith('/ar_access_authorize'))).toBe(true);
 });

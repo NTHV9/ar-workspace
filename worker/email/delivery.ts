@@ -1,4 +1,5 @@
 import {assertAcceptanceRecipient} from '../acceptance/recipient';
+import {requireRegionalDelivery} from './regional-delivery';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {readPolicyForHandoff} from '../collection/policy-api';
 import {isCollectionStageKey,parseStageSnapshot,policyStageLabel} from '../../src/domain/collection-policy';
@@ -39,6 +40,7 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
  if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return deliveryView(existing);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
+ await requireRegionalDelivery(env,draft);
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  parseRecipients(draft.recipients);if(mode==='send'&&(!draft.recipients.to.length||!draft.subject.trim()||!draft.body.trim()))throw Error('email_incomplete');
  if(draft.purpose==='collection'&&!isCollectionStageKey(stage))throw Error('email_stage_required');
@@ -46,6 +48,7 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
  if(draft.purpose==='billing')stage=null;
  const id=crypto.randomUUID(),messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,token=await gmailToken(env,actor);
  const {raw,expected}=await prepareMail(env,actor,draft,messageId);
+ await requireRegionalDelivery(env,draft);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:draftId,p_revision:revision,p_mode:mode,p_stage:stage,p_message_id:messageId,p_expected:{...expected,...(stagePolicy?{policyVersion:stagePolicy.policyVersion}:{})}});
  return submit(env,actor,claim,raw,token);
 }
@@ -58,7 +61,7 @@ export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipie
  const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals)||!!existing.snapshot.expected.richBody!==rich||existing.snapshot.expected.replyToDeliveryId!==replyToDeliveryId)throw Error('email_test_command_conflict');return deliveryView(existing);}
- const extraFiles:MailFile[]=[];if(supplementals){const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:supplementals.draftId});if(!draft)throw Error('email_missing');if(draft.revision!==supplementals.revision)throw Error('email_revision_conflict');const selected=supplementals.ids.map(fileId=>{const file=draft.attachments.find(a=>a.id===fileId);if(!file)throw Error('email_attachment_missing');return file;});if(selected.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');for(const file of selected)extraFiles.push(await readMailFile(env,draft,file));}
+ const extraFiles:MailFile[]=[];if(supplementals){const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:supplementals.draftId});if(!draft)throw Error('email_missing');await requireRegionalDelivery(env,draft);if(draft.revision!==supplementals.revision)throw Error('email_revision_conflict');const selected=supplementals.ids.map(fileId=>{const file=draft.attachments.find(a=>a.id===fileId);if(!file)throw Error('email_attachment_missing');return file;});if(selected.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');for(const file of selected)extraFiles.push(await readMailFile(env,draft,file));}
  const reply=replyToDeliveryId?(await syntheticConversation(env,actor,replyToDeliveryId,recipientHash)).choice:null;
  const thread:ThreadProof|null=reply?{threadId:reply.threadId,parentMessageId:reply.parentMessageId,rfcMessageId:reply.rfcMessageId,references:reply.references,subject:reply.subject,parentDate:reply.parentDate}:null;
  const messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,subject=reply?reply.subject:supplementals?'Katathani AR Workspace — attachment verification':'Katathani AR Workspace — direct send verification';

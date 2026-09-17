@@ -7,6 +7,7 @@ import type { OperaEnv } from '../opera/probe';
 import {isHotelId} from '../../src/domain/hotels';
 export interface RefreshParams { acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
+  REQUEST_ACCESS?:import('../access/api').AccessGrant;
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
   AR_DOCUMENTS?:RefreshEnv['AR_REFRESH'];
@@ -25,6 +26,7 @@ export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<strin
   if(!response.ok){
     let message:unknown;try{message=(JSON.parse(new TextDecoder().decode(await boundedBody(response,8192))) as {message?:unknown}).message;}catch{await response.body?.cancel().catch(()=>{});}
     if(message==='budget_database_exceeded'||message==='retention_busy')throw Error(message);
+    if(name.startsWith('ar_access_')&&typeof message==='string'&&/^(access_[a-z_]+|email_region_disabled)$/.test(message))throw Error(message);
     if(name.startsWith('ar_financial_')&&typeof message==='string'&&/^financial_[a-z_]{1,80}$/.test(message))throw Error(message);
     throw new OperaError('provider_unavailable',response.status,`database_${name}`);
   }

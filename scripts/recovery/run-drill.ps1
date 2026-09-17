@@ -148,6 +148,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_acceptance_invoice_child_filter'){$fixtures+='acceptance-invoice-filter-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_hotel_regions'){$fixtures+='hotel-regions-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_financial_log_retention'){$fixtures+='financial-log-retention-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_regional_user_access'){$fixtures+='regional-user-access-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture
