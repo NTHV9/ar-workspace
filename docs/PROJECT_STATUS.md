@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 17 September 2026 — Portfolio summary contrast
+
+- Implemented the owner's requested stronger colors only between Total open AR and the start of Aging: navy total strip with light text, clearer hotel-colored fills/borders, darker small labels and visible keyboard focus. Hotel identities, layout, values, interactions and Aging/table styling remain unchanged.
+- Tested: 11 existing Portfolio overview browser cases passed at 1440/1280/390 across both regions, including hotel selection, invoice drill-down, missing ranges, signed balances and chunk-failure recovery. Batched desktop/mobile captures inspected; calculated small-label contrast is at least 4.87:1 including hotel-card hover stops. TypeScript/build and public-asset preparation passed. No new test or baseline replacement was needed for this CSS-only change.
+- Deployment pending at this checkpoint; no database, permissions, email or financial-data changes.
+
 ## 17 September 2026 — Username/password accounts and user deletion
 
 - Implemented administrator Create user with a short username or real email, initial password, and regional grants; same-email Google sign-in uses the existing Supabase identity-linking mechanism. Existing email approval remains available. Passwords are transient and never saved in application SQL/audit/idempotency records. Existing registered or unconfirmed Auth identities cannot be overwritten by Create user.
