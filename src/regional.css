@@ -15,3 +15,4 @@
 
 @media(min-width:901px){.app-shell[data-region="khao-lak"] .brand{min-width:240px}.app-shell[data-region="khao-lak"] .main-nav button{padding-left:10px;padding-right:10px}}
 @media(min-width:901px) and (max-width:1350px){.app-shell .app-header{height:auto;min-height:66px;flex-wrap:wrap;gap:10px;padding-top:12px;padding-bottom:12px}.app-shell .main-nav{order:3;width:100%;justify-content:space-between}}
+@media(min-width:1351px) and (max-width:1500px){.app-shell[data-region="khao-lak"] .app-header{height:auto;min-height:66px;flex-wrap:wrap;gap:10px;padding-top:12px;padding-bottom:12px}.app-shell[data-region="khao-lak"] .main-nav{order:3;width:100%;justify-content:space-between}}

@@ -1,0 +1,25 @@
+# User creation and deletion — 17 September 2026
+
+## Confirmed requirements
+
+The owner requested deleting users and creating accounts with a username/password. The owner clarified that the login may be a short username or an email; email accounts must also support Google sign-in against the same user. Preserve the protected administrator, region grants, existing shared business ownership, Phuket mailbox and disabled Khao Lak delivery.
+
+## Contract
+
+- Administrator-only Create user accepts a short case-insensitive username or a real email, an initial password and allowed regions. Existing Google/email approval remains available. Existing registered accounts are never overwritten or have their passwords reset by a repeated creation request.
+- Supabase Auth remains the password/session store. Short usernames map privately to an opaque non-deliverable Auth routing address; no email address is required from the person. Email accounts retain their real address and normal Google identity linking. Administrator-provisioned accounts are confirmed through the trusted server create API, so their assigned password is usable immediately; this does not alter global self-service email-confirmation settings or send an invitation.
+- Bind grants to immutable Auth user IDs. Reserve the intended ID before provider creation; reject public signup against reserved username identities. Activate a new grant only after the exact provider user is confirmed. Passwords appear only in request memory and Supabase Auth, never application tables, audit/idempotency records, logs, storage or source artifacts.
+- Username login resolves privately in the Worker, uses the normal Supabase password grant, checks the returned identity and current access, and returns the caller's own session. Apply bounded atomic login-attempt limits using private hashed buckets. Return generic credential errors, never an unauthenticated username/email lookup.
+- Delete shows the exact login for confirmation, revokes access first, then deletes only its bound Auth ID through the provider API. Retain a private removal/audit record and all billing, collection, documents, remittance and financial history. Never delete/reassign business files to force Auth deletion. Administrator deletion remains forbidden in UI, SQL and server code.
+- Creation/deletion commands have stable identities. A lost create response is checked before any further provider action; never resend a dispatched create or reset a password as a retry. Incomplete entries can be checked and explicitly deleted. Deletion retries inspect the exact same Auth ID, with provider errors kept distinct from confirmed absence.
+
+## Provider evidence
+
+Supabase documents server-only [admin creation](https://supabase.com/docs/reference/javascript/auth-admin-createuser), [admin deletion](https://supabase.com/docs/reference/javascript/auth-admin-deleteuser), and [automatic identity linking for the same email](https://supabase.com/docs/guides/auth/auth-identity-linking). The installed Auth SDK supports specifying the intended user ID. [User management guidance](https://supabase.com/docs/guides/auth/managing-user-data) explains that access JWTs can outlive Auth deletion, so immediate application-grant revocation remains necessary.
+
+## Validation and rollout status
+
+- Implemented and locally verified. Full 1,276-test unit run plus 15 final focused lifecycle cases (four additional identity/revocation negatives) passed; TypeScript, production build and 48 public-asset preparation passed. Final SQL replay applied 80 migrations and passed 35 synthetic rollback suites, including reserved ID enforcement, immediate revocation, protected admin, re-created login isolation, pending/confirmed email behavior and rate limits.
+- Final browser run: 46/46 passed across Create/Delete at 1440/390, short-username successful/failed login, email creation, pending reconciliation, password mismatch/clearance, unchanged administrator session, region grants, sign-out guards, header fit and regional return paths. Desktop/mobile screenshots inspected. Existing Khao Lak composer tests were updated to assert the owner's email prohibition while retaining return-context checks; existing Phuket composition tests remain unchanged.
+- Read-only production preflight: 79 installed migrations, two members and two Auth users, one confirmed member, protected administrator present. Migration preserves all existing identity records and grant fields; it does not confirm or change the password of existing users.
+- **Not deployed or enabled yet.** No real user or credential has been created/deleted, and no email was sent by this task. Production migration/application rollout awaits the required action-time browser confirmation. Actual provider account creation/deletion and Google sign-in have not been exercised against production in this task.

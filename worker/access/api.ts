@@ -4,13 +4,14 @@ import {acceptanceCookie} from '../acceptance/routing';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {boundedBody} from '../email/shared';
 import {containsOutsideHotel,requestAccessIntent} from './scope';
+import {lifecycleApi} from './lifecycle';
 export interface AccessGrant extends UserAccess {actorId:string;workspaceOwnerId:string;scopeHotels:HotelId[];missingCommand?:boolean}
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 export function accessError(error:unknown):Response {
  const requested=error instanceof Error?error.message:'';
- const code=['access_forbidden','access_invalid','access_revision_conflict','access_command_conflict','access_administrator_locked','email_region_disabled'].includes(requested)?requested:'access_unavailable';
- return json({error:code},code==='access_forbidden'?403:code==='access_invalid'?400:code==='access_unavailable'?503:409);
+ const code=['access_forbidden','access_invalid','access_login_invalid','access_password_invalid','access_delete_confirmation','access_revision_conflict','access_command_conflict','access_administrator_locked','access_user_missing','access_user_exists','access_lifecycle_pending','access_auth_unavailable','access_auth_unverified','email_region_disabled'].includes(requested)?requested:'access_unavailable';
+ return json({error:code},code==='access_forbidden'?403:['access_invalid','access_login_invalid','access_password_invalid','access_delete_confirmation'].includes(code)?400:code==='access_user_missing'?404:['access_unavailable','access_auth_unavailable','access_auth_unverified'].includes(code)?503:409);
 }
 function sameOrigin(request:Request){if(request.method!=='GET'&&(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin||request.headers.get('Sec-Fetch-Site')==='cross-site'))throw Error('access_forbidden');}
 export async function accessApi(request:Request,env:RefreshEnv,actor:string,email:string):Promise<Response>{try{
@@ -21,6 +22,7 @@ export async function accessApi(request:Request,env:RefreshEnv,actor:string,emai
   const data=await backendRpc<unknown>(env,'ar_access_self',{p_actor:actor});if(!data)throw Error('access_forbidden');return json(parseAccess(data));
  }
  if(email.toLowerCase()!==administratorEmail)throw Error('access_forbidden');
+ const lifecycle=await lifecycleApi(request,env,actor);if(lifecycle)return lifecycle;
  if(url.pathname!=='/api/access/users')return json({error:'not_found'},404);
  if(request.method==='GET'){
   for(const k of url.searchParams.keys())if(!['page','search'].includes(k)||url.searchParams.getAll(k).length!==1)throw Error('access_invalid');

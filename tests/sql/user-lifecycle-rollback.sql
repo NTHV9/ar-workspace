@@ -1,0 +1,44 @@
+-- Synthetic account lifecycle only. No passwords, provider calls or actual deletions persist.
+begin;
+do $$
+declare admin uuid;c uuid:=gen_random_uuid();d uuid:=gen_random_uuid();e uuid:=gen_random_uuid();c2 uuid:=gen_random_uuid();m uuid;uid uuid;uid2 uuid;auth_address text;r jsonb;r2 jsonb;blocked boolean;i integer;before_accounts bigint;
+begin
+ select id into admin from auth.users where lower(email)='ar@katathani.com';select count(*) into before_accounts from public.ar_accounts;
+ r:=public.ar_access_create_begin(admin,c,' Synthetic.User ',array['phuket']);m:=(r->>'memberId')::uuid;uid:=(r->>'authUserId')::uuid;auth_address:=r->>'authEmail';
+ if r->'member'->>'username'<>'synthetic.user' or r->'member'->'email'<>'null'::jsonb or r->'member'->>'active'<>'false' then raise exception 'username reservation leaked address or activated early';end if;
+ r2:=public.ar_access_create_begin(admin,c,'synthetic.user',array['phuket']);if r2 is distinct from r then raise exception 'create command replay changed';end if;
+ blocked:=false;begin perform public.ar_access_create_begin(admin,c,'synthetic.user',array['khao-lak']);exception when others then blocked:=sqlerrm='access_command_conflict';end;if not blocked then raise exception 'create command scope changed';end if;
+ if public.ar_access_create_dispatch(admin,c) is distinct from true or public.ar_access_create_dispatch(admin,c) is distinct from false then raise exception 'create dispatched more than once';end if;
+ blocked:=false;begin insert into auth.users(id,email,email_confirmed_at) values(gen_random_uuid(),auth_address,now());exception when others then blocked:=true;end;if not blocked then raise exception 'public signup claimed reserved identity';end if;
+ insert into auth.users(id,email,email_confirmed_at) values(uid,auth_address,null);
+ if public.ar_access_self(uid) is not null then raise exception 'unfinished user authorized';end if;
+ blocked:=false;begin perform public.ar_access_create_finish(admin,c);exception when others then blocked:=sqlerrm='access_auth_unverified';end;if not blocked then raise exception 'unconfirmed identity activated';end if;
+ update auth.users set email_confirmed_at=now() where id=uid;
+ r:=public.ar_access_create_finish(admin,c);if r->>'state'<>'complete' or public.ar_access_password_target('SYNTHETIC.USER')->>'authUserId'<>uid::text or public.ar_access_self(uid)->>'username'<>'synthetic.user' then raise exception 'username not activated';end if;
+ if public.ar_access_create_finish(admin,c) is distinct from r then raise exception 'finish replay changed';end if;
+ blocked:=false;begin perform public.ar_access_create_begin(admin,gen_random_uuid(),'synthetic.user',array['phuket']);exception when others then blocked:=sqlerrm='access_user_exists';end;if not blocked then raise exception 'registered password could be overwritten';end if;
+ blocked:=false;begin perform public.ar_access_create_begin(uid,gen_random_uuid(),'synthetic.escalate',array['phuket']);exception when others then blocked:=sqlerrm='access_forbidden';end;if not blocked then raise exception 'ordinary user created accounts';end if;
+ blocked:=false;begin perform public.ar_access_delete_begin(admin,gen_random_uuid(),(select member_id from ar_private.access_members where administrator),1);exception when others then blocked:=sqlerrm='access_administrator_locked';end;if not blocked then raise exception 'administrator deletion allowed';end if;
+ r:=public.ar_access_delete_begin(admin,d,m,2);
+ if public.ar_access_self(uid) is not null or public.ar_access_password_target('synthetic.user') is not null then raise exception 'delete did not revoke before provider cleanup';end if;
+ blocked:=false;begin perform public.ar_access_edit(admin,gen_random_uuid(),m,array['phuket'],true,3);exception when others then blocked:=sqlerrm='access_lifecycle_pending';end;if not blocked then raise exception 'pending delete reactivated';end if;
+ blocked:=false;begin perform public.ar_access_delete_finish(admin,d);exception when others then blocked:=sqlerrm='access_auth_unverified';end;if not blocked then raise exception 'provider error treated as absence';end if;
+ delete from auth.users where id=uid;
+ r:=public.ar_access_delete_finish(admin,d);if r->>'state'<>'complete' or exists(select 1 from ar_private.access_members where member_id=m) or not exists(select 1 from ar_private.access_removed where member_id=m and auth_user_id=uid and login='synthetic.user') then raise exception 'delete did not retain identity audit';end if;
+ if public.ar_access_delete_finish(admin,d) is distinct from r then raise exception 'delete completion not idempotent';end if;
+ r:=public.ar_access_create_begin(admin,c2,'synthetic.user',array['khao-lak']);uid2:=(r->>'authUserId')::uuid;
+ if uid2=uid or r->>'authEmail'=auth_address then raise exception 'recreated username reused old auth identity';end if;
+ insert into auth.users(id,email,email_confirmed_at) values(uid2,r->>'authEmail',now());perform public.ar_access_create_finish(admin,c2);
+ if public.ar_access_self(uid) is not null or public.ar_access_self(uid2)->'regions'<>'["khao-lak"]'::jsonb then raise exception 'deleted token regained access';end if;
+ r:=public.ar_access_create_begin(admin,e,'synthetic.email@example.invalid',array['phuket','khao-lak']);uid2:=(r->>'authUserId')::uuid;
+ insert into auth.users(id,email,email_confirmed_at) values(uid2,'synthetic.email@example.invalid',now());perform public.ar_access_create_finish(admin,e);
+ update auth.users set email=email where id=uid2;
+ if public.ar_access_self(uid2)->>'email'<>'synthetic.email@example.invalid' then raise exception 'email account lost Google-compatible identity';end if;
+ blocked:=false;begin insert into auth.users(id,email,email_confirmed_at) values(gen_random_uuid(),'synthetic.email@example.invalid',now());exception when others then blocked:=true;end;if not blocked then raise exception 'duplicate provider identity admitted';end if;
+ for i in 1..10 loop if public.ar_access_login_limit(repeat('a',64),repeat('b',64))<>0 then raise exception 'login limit started too early';end if;end loop;
+ if public.ar_access_login_limit(repeat('a',64),repeat('b',64)) not between 1 and 60 then raise exception 'login attempts not bounded';end if;
+ if exists(select 1 from ar_private.access_lifecycle_commands where request ? 'password') then raise exception 'password persisted in commands';end if;
+ if has_function_privilege('authenticated','public.ar_access_password_target(text)','execute') or has_function_privilege('anon','public.ar_access_create_begin(uuid,uuid,text,text[],integer)','execute') then raise exception 'credential route database ACL leaked';end if;
+ if (select count(*) from public.ar_accounts)<>before_accounts then raise exception 'account lifecycle changed business data';end if;
+end$$;
+rollback;

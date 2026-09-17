@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## 17 September 2026 — Username/password accounts and user deletion
+
+- Implemented administrator Create user with a short username or real email, initial password, and regional grants; same-email Google sign-in uses the existing Supabase identity-linking mechanism. Existing email approval remains available. Passwords are transient and never saved in application SQL/audit/idempotency records. Existing registered or unconfirmed Auth identities cannot be overwritten by Create user.
+- Implemented immutable Auth ID binding, reserve/verify/activate creation, reconciliation without repeating a dispatched create, and confirmation/revoke/delete/verify cleanup. The administrator is protected; business ownership/history stays intact; provider errors never mean deletion succeeded. Username login checks identity/current access and uses bounded private login-attempt buckets.
+- Tested: full 1,276 unit tests plus 15 final focused lifecycle cases (four additional negatives), final 80-migration/35-suite SQL replay, TypeScript/build/public assets, and 46 browser cases passed. Desktop/mobile Create/Delete captures inspected. Existing regional browser cases now assert the confirmed Khao Lak email prohibition and eight administrator navigation controls; a narrow Khao Lak header wrap fixes Settings overflow at 1440px.
+- Not deployed/enabled yet. Read-only production preflight found 79 migrations, two access members/two Auth identities, one confirmed identity and the protected administrator. This task has not created/deleted any real login or sent email. Existing accounts must be preserved by the migration. Details: [USER_LIFECYCLE_20260917](USER_LIFECYCLE_20260917.md).
+
 ## 17 September 2026 — Regional users and Phuket-only email
 
 - Implemented administrator-only Users & Access, protected `ar@katathani.com` access to both regions, approved-email registration, revision/idempotency controls and suspension. Ordinary members use the shared AR workspace only after a finite Worker route check and canonical SQL hotel authorization. Real actors remain in private authorization audit; existing direct table/RPC/storage permissions remain administrator-only.
