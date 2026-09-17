@@ -13,7 +13,7 @@ test('refresh is shared on open, polls only active jobs, then supports scoped ma
   });
   await page.route('**/api/portfolio',r=>{portfolioReads++;return r.fulfill({json:{status:'connected',accounts:[{hotel:'KAT',id:'fictional',name:'Fictional refresh account',type:'Agent',open:100,over90:0,items:1}],refresh:statusReads===1?{...idle,running:true}:idle}});});
   await page.route('**/api/accounts/KAT/fictional',r=>r.fulfill({json:{invoices:[]}}));
-  await page.goto('/');
+  await page.goto('/?portfolio=1');
   await expect(page.locator('.accounts-panel')).toContainText('Fictional refresh account');
   await expect.poll(()=>portfolioReads).toBe(2);
   expect(commands).toEqual([{hotel:'All',reason:'open',region:'phuket'}]);

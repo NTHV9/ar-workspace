@@ -17,7 +17,7 @@ test('child rows are hidden and unverified rows cannot enter selection or its to
   {...base,id:'2',guest:'Synthetic standalone',invoice_no:'ROOT-2',collection_role:'standalone',collection_selectable:true},
   {...base,id:'3',guest:'Synthetic unknown',invoice_no:'UNKNOWN-3',collection_role:'unverified',collection_selectable:false}
  ]}}));
- await page.goto('/');await page.locator('.accounts-panel td.kat button').click();
+ await page.goto('/?portfolio=1');await page.locator('.accounts-panel td.kat button').click();
  await expect(page.getByLabel('Select CHILD-1',{exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Synthetic child',exact:true})).toHaveCount(0);
  await expect(page.getByLabel('Select UNKNOWN-3',{exact:true})).toBeDisabled();

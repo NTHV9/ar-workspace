@@ -30,7 +30,7 @@ for(const [region,hotels] of Object.entries(regions)){
 test('Portfolio source range differences and missing buckets remain distinct',async({page})=>{
  const c=await setupRegional(page);const accounts=regionalAccounts.filter(a=>a.hotel==='KAT'||a.hotel==='TSK').map(a=>structuredClone(a));
  accounts[1].agingBuckets![0]={...accounts[1].agingBuckets![0],label:'0–15',end:15};
- await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts,status:'connected',refresh:{running:false,hotels:[]}}}));await page.goto('/');
+ await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts,status:'connected',refresh:{running:false,hotels:[]}}}));await page.goto('/?portfolio=1');
  const table=page.getByRole('table',{name:'Portfolio aging by hotel'});await expect(table.locator('thead th')).toHaveCount(9);await expect(table).toContainText('0–15');await expect(table).toContainText('0–30');
  await expect(table).toContainText('Not in source');expect(c.errors).toEqual([]);
 });
@@ -45,7 +45,7 @@ test('an invoice detail chunk failure leaves Portfolio usable and can be dismiss
 
 test('signed Portfolio amounts stay visible and only positive older buckets are highlighted',async({page})=>{
  await setupRegional(page);const accounts=regionalAccounts.filter(a=>a.hotel==='KAT'||a.hotel==='TSK').map(a=>({...a,open:a.hotel==='KAT'?-600:600,agingBuckets:a.agingBuckets!.map(b=>({...b,amount:a.hotel==='KAT'?-100:100,debit:a.hotel==='KAT'?0:100,credit:a.hotel==='KAT'?-100:0}))}));
- await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts,status:'connected',refresh:{running:false,hotels:[]}}}));await page.goto('/');
+ await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts,status:'connected',refresh:{running:false,hotels:[]}}}));await page.goto('/?portfolio=1');
  const table=page.getByRole('table',{name:'Portfolio aging by hotel'});await expect(page.locator('.portfolio-total-amount>strong')).toHaveText('0');await expect(table.locator('tr[data-hotel=KAT]')).toContainText('-100');
   await expect(table.locator('tr[data-hotel=KAT] .portfolio-aged-amount')).toHaveCount(0);await expect(table.locator('tr[data-hotel=TSK] .portfolio-aged-amount')).toHaveCount(3);await expect(page.locator('.portfolio-hotel-share')).toHaveText(['—','—']);
  await page.getByRole('button',{name:'Show debit / credit',exact:true}).click();await expect(table.locator('tr[data-hotel=KAT]')).toContainText('Credit -100');
