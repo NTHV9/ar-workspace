@@ -4,7 +4,7 @@
 
 - Implemented the owner's requested stronger colors only between Total open AR and the start of Aging: navy total strip with light text, clearer hotel-colored fills/borders, darker small labels and visible keyboard focus. Hotel identities, layout, values, interactions and Aging/table styling remain unchanged.
 - Tested: 11 existing Portfolio overview browser cases passed at 1440/1280/390 across both regions, including hotel selection, invoice drill-down, missing ranges, signed balances and chunk-failure recovery. Batched desktop/mobile captures inspected; calculated small-label contrast is at least 4.87:1 including hotel-card hover stops. TypeScript/build and public-asset preparation passed. No new test or baseline replacement was needed for this CSS-only change.
-- Deployment pending at this checkpoint; no database, permissions, email or financial-data changes.
+- Deployed/enabled: source `b1f3f6e70deacb77a06665cb1d85dcc36e034576`, Worker `e7d6bdc4-1824-4fb4-8be1-53a8731b3a25`; [PR49](https://github.com/NTHV9/ar-workspace/pull/49) merged as `601cf630039f8c1771934bc0e462c29ad612dc33`. Final-source push/PR CI and deployment dry run passed. Live authenticated Portfolio screenshot verified the stronger summary colors with no console errors; health/database, 26 anonymous protected-route checks and the login method guard passed. No database, permissions, email or financial-data changes.
 
 ## 17 September 2026 — Username/password accounts and user deletion
 
