@@ -52,9 +52,9 @@ test('refresh completion after region switch reloads only the active regional ca
  await page.getByLabel('Region',{exact:true}).selectOption('khao-lak');await expect(table.locator('tbody .total-cell')).toContainText('10.8K');running=false;
  await expect.poll(()=>catalogRegions.length).toBeGreaterThan(2);expect(catalogRegions).toEqual(['phuket','khao-lak','khao-lak']);await expect(table.locator('tbody .total-cell')).toContainText('10.8K');await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');expect(c.errors).toEqual([]);
 });
-test('Phuket desktop navigation keeps all seven controls inside the header',async({page})=>{
+test('Phuket desktop navigation keeps all eight administrator controls inside the header',async({page})=>{
  await setupRegional(page);await page.setViewportSize({width:1280,height:900});await page.goto('/');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
- const nav=page.getByRole('navigation',{name:'Main navigation'});await expect(nav.getByRole('button')).toHaveCount(7);expect(await nav.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ const nav=page.getByRole('navigation',{name:'Main navigation'});await expect(nav.getByRole('button')).toHaveCount(8);expect(await nav.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:'.tmp/khao-lak-ui-results/phuket-header-1280.png',fullPage:false});
 });
 
@@ -79,15 +79,14 @@ async function regionalDocument(page:import('@playwright/test').Page){
  await page.route('**/api/email/open',route=>route.fulfill({json:{id:'synthetic-regional-draft',document_job_id:regionalJobId,document_revision:1,hotel:'TLKL',account_id:'same-id',account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic regional subject',body:'Synthetic regional message',exports,attachments:[],revision:0,package_changed:false}}));
  return {...c,job,reads:()=>reads};
 }
-for(const stale of ['', '&region=phuket&hotel=KAT&account=same-id&property=KAT&accountFilter=Phuket','&property=TLKL&account=stale-account'])test('verified Khao Lak job-only composer fixes region and back scope '+(stale.includes('stale-account')?'with stale same-hotel account':stale?'with stale Phuket account':'without context'),async({page})=>{
- const c=await regionalDocument(page);await page.goto('/?documentJob='+regionalJobId+'&compose=1'+stale);await expect(page.getByLabel('Email message',{exact:true})).toBeVisible();await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');
+for(const stale of ['', '&region=phuket&hotel=KAT&account=same-id&property=KAT&accountFilter=Phuket','&property=TLKL&account=stale-account'])test('verified Khao Lak email-disabled document fixes region and back scope '+(stale.includes('stale-account')?'with stale same-hotel account':stale?'with stale Phuket account':'without context'),async({page})=>{
+ const c=await regionalDocument(page);await page.goto('/?documentJob='+regionalJobId+'&compose=1'+stale);await expect(page.getByText('Email delivery is not enabled for Khao Lak.',{exact:false})).toBeVisible();await expect(page.getByLabel('Email message',{exact:true})).toHaveCount(0);await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');
  await expect(page).toHaveURL(/documentJob=/);await expect(page).toHaveURL(/compose=1/);await expect(page).not.toHaveURL(/account=|property=|hotel=KAT|accountFilter=/);expect(c.reads()).toBeLessThanOrEqual(2);if(!stale)await page.screenshot({path:'.tmp/khao-lak-ui-results/document-job-region.png'});
- await page.getByRole('button',{name:'Back to document preparation',exact:true}).click();await page.getByRole('button',{name:'Back to portfolio',exact:true}).click();await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');await expect(page.getByRole('region',{name:'Accounts comparison'}).locator('tbody .total-cell')).toContainText('10.8K');expect(c.errors).toEqual([]);
+ await page.getByRole('button',{name:'Back to portfolio',exact:true}).click();await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');await expect(page.getByRole('region',{name:'Accounts comparison'}).locator('tbody .total-cell')).toContainText('10.8K');expect(c.errors).toEqual([]);
 });
 for(const context of ['&region=khao-lak&account=same-id&property=TLKL&accountSection=Overview','&region=khao-lak&collections=1&qtype=Agent&qaccount=TLKL%3Asame-id&qwhen=Ready'])test('verified document identity preserves valid return context '+(context.includes('collections')?'Collections':'Account'),async({page})=>{
- const c=await regionalDocument(page);await page.goto('/?documentJob='+regionalJobId+'&compose=1'+context);await expect(page.getByLabel('Email message',{exact:true})).toBeVisible();const before=c.reads();
- await page.getByLabel('Email message',{exact:true}).fill('Synthetic unsaved regional edit');await expect(page.getByLabel('Email message',{exact:true})).toHaveValue('Synthetic unsaved regional edit');expect(c.reads()).toBe(before);
- page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Back to document preparation',exact:true}).click();await page.getByRole('button',{name:context.includes('collections')?'Back to Collections':'Back to account',exact:true}).click();
+ const c=await regionalDocument(page);await page.goto('/?documentJob='+regionalJobId+'&compose=1'+context);await expect(page.getByText('Email delivery is not enabled for Khao Lak.',{exact:false})).toBeVisible();await expect(page.getByLabel('Email message',{exact:true})).toHaveCount(0);expect(c.reads()).toBeLessThanOrEqual(2);
+ await page.getByRole('button',{name:context.includes('collections')?'Back to Collections':'Back to account',exact:true}).click();
  if(context.includes('collections')){await expect(page.getByRole('heading',{name:'Billing & Collection Queue'})).toBeVisible();await expect(page).toHaveURL(/qaccount=TLKL%3Asame-id/);await expect(page).toHaveURL(/qwhen=Ready/);}else{await expect(page.getByLabel('Billing requirement')).toBeVisible();await expect(page).toHaveURL(/property=TLKL/);}
  expect(c.errors).toEqual([]);
 });
@@ -102,8 +101,8 @@ test('a mismatched document response cannot publish hotel identity',async({page}
 });
 
 test('legacy property-only valid account context keeps region after returning through Account to Portfolio',async({page})=>{
- const c=await regionalDocument(page);await page.goto('/?documentJob='+regionalJobId+'&compose=1&property=TLKL&account=same-id');await expect(page.getByLabel('Email message',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to document preparation',exact:true}).click();await page.getByRole('button',{name:'Back to account',exact:true}).click();await expect(page.locator('.account-page')).toBeVisible();await page.locator('.account-page .breadcrumb').click();
+ const c=await regionalDocument(page);await page.goto('/?documentJob='+regionalJobId+'&compose=1&property=TLKL&account=same-id');await expect(page.getByText('Email delivery is not enabled for Khao Lak.',{exact:false})).toBeVisible();await expect(page.getByLabel('Email message',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Back to account',exact:true}).click();await expect(page.locator('.account-page')).toBeVisible();await page.locator('.account-page .breadcrumb').click();
  await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');await expect(page.getByRole('region',{name:'Accounts comparison'}).locator('tbody .total-cell')).toContainText('10.8K');expect(c.errors).toEqual([]);
 });
 

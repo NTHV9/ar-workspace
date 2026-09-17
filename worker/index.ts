@@ -1,5 +1,6 @@
 import {dashboardHotelOverviewApi} from './dashboard/hotel-api';
 import {administratorEmail} from '../src/access/model';
+import {usernameLogin} from './access/login';
 import {accessApi,accessError,authorizeRegionalRequest,containRegionalResponse,scopedRows,type AccessGrant} from './access/api';
 import {dashboardInvoiceEntriesApi} from './dashboard/invoice-entries-api';
 import {dashboardBalancesApi,dashboardPaymentInvoicesApi} from './dashboard/api';
@@ -49,6 +50,7 @@ async function upstream(url: string, options: RequestInit) {
 }
 export async function handleApi(request: Request, env: Env): Promise<Response> {
   const requestUrl=new URL(request.url),path=requestUrl.pathname;
+  if(path==='/api/access/login')return usernameLogin(request,env);
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
   const acceptanceRequest=path.startsWith('/api/acceptance/');
   const accessRequest=path.startsWith('/api/access/');
