@@ -10,11 +10,11 @@ it('protects all message, attachment, and Gmail routes before provider calls',as
  expect(f).not.toHaveBeenCalled();
 });
 it('rejects other verified identities from Gmail handoff',async()=>{
- const f=vi.fn().mockResolvedValue(Response.json({id,email:'other@example.test',email_confirmed_at:'2026-01-01'}));vi.stubGlobal('fetch',f);
- const r=await handleApi(new Request(`https://app.test/api/email/${id}/gmail-draft`,{method:'POST',headers:{Authorization:'Bearer synthetic'}}),{SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic'});expect(r.status).toBe(403);expect(f).toHaveBeenCalledTimes(1);
+ const f=vi.fn().mockResolvedValueOnce(Response.json({id,email:'other@example.test',email_confirmed_at:'2026-01-01'})).mockResolvedValueOnce(Response.json(null));vi.stubGlobal('fetch',f);
+ const r=await handleApi(new Request(`https://app.test/api/email/${id}/gmail-draft`,{method:'POST',headers:{Authorization:'Bearer synthetic'}}),{SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'synthetic',SUPABASE_SECRET_KEY:'synthetic-server'});expect(r.status).toBe(403);expect(f).toHaveBeenCalledTimes(2);
 });
 for(const state of ['created','creating','uncertain'])it(`does not repeat a ${state} Gmail attempt`,async()=>{
- const f=vi.fn().mockResolvedValueOnce(Response.json({id,revision:2,package_changed:false})).mockResolvedValueOnce(Response.json({id,state}));vi.stubGlobal('fetch',f);
+ const f=vi.fn().mockResolvedValueOnce(Response.json({id,hotel:'KAT',revision:2,package_changed:false})).mockResolvedValueOnce(Response.json({id,state}));vi.stubGlobal('fetch',f);
  expect(await createGmailDraft({SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic'},'owner',id,2)).toMatchObject({state,alreadyRequested:true});
  expect(f).toHaveBeenCalledTimes(2);expect(f.mock.calls.every(c=>String(c[0]).startsWith('https://example.supabase.co/rest/v1/rpc/'))).toBe(true);
 });

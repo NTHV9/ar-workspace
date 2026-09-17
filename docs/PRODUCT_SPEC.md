@@ -1,4 +1,5 @@
 # สเปกผลิตภัณฑ์ฉบับส่งต่อ — Katathani AR Clean Rebuild
+> คำยืนยัน 17 กันยายน 2026: `ar@katathani.com` เป็นผู้ดูแลทั้งสองพื้นที่. เพิ่มผู้ใช้ที่อนุมัติพร้อมสิทธิ์ Phuket/Khao Lak/ทั้งคู่ได้ภายหลัง โดยคงการทำงานภายในพื้นที่และตรวจสิทธิ์ฝั่งระบบ. Phuket ใช้กล่อง `ar@katathani.com`; Khao Lak ยังไม่เปิด Send Now/Gmail Draft จนกว่าจะเชื่อมกล่องแยกที่เจ้าของจะจัดซื้อ. รายละเอียดใน DECISIONS_AND_OPEN_ITEMS และ REGIONAL_USER_ACCESS_20260917.
 > คำยืนยัน 11 กันยายน 2026: งานเอกสารใหม่เป็น temporary preparation จาก Account/Collections ไม่มีหน้า Documents กลางหรือ saved editor project. Review แล้วไป Email ต่อ โดยพัก reviewed bytes จน Sent ที่ยืนยันแล้วหรือ explicit discard; Draft/uncertain และไฟล์เก่าคงการป้องกันเดิม. ดูนโยบายล่าสุดใน DECISIONS_AND_OPEN_ITEMS.md.
 
 > ใช้ร่วมกับคำยืนยันล่าสุดใน DECISIONS_AND_OPEN_ITEMS.md. ข้อความ handoff เรื่อง native Statement/renderer สำรองถูกแทนแล้ว: Statement ใช้ renderer ของระบบเท่านั้น ส่วน Invoice/Folio ใช้ OPERA API. ผลพัฒนาและขอบเขตที่ทดสอบจริงอยู่ใน FINAL_ACCEPTANCE_20260911.md
