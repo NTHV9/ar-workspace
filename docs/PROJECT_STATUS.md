@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 17 September 2026 — Match Phuket navigation to Khao Lak
+
+- Implemented the owner's screenshot request by sharing Khao Lak's desktop brand width, menu-button spacing and full-row header breakpoint through 1500px with Phuket. The administrator menu including Settings fits consistently in both regions. Khao Lak's existing desktop behavior, mobile scrolling, summary gradients/depth and application behavior are preserved.
+- Tested: 34 existing regional/Portfolio browser cases passed, including 1440/1280/390 layouts, eight-button navigation, region switching, document return context and financial display states. Compared both desktop headers and inspected mobile capture; TypeScript/build/public assets passed. Deployment pending at this checkpoint. CSS only; no data, permission or service-configuration changes.
+
 ## 17 September 2026 — Portfolio gradients and depth follow-up
 
 - Implemented the owner's clarification that stronger summary contrast must retain clearly visible gradients and dimensional lighting: a blue-highlighted navy/teal total, lighter-to-richer hotel color ramps, inset top edges and downward cast shadows. Corrected the shared small-button rule overriding hotel-card elevation. Keyboard focus, reduced-motion behavior, geometry, source values and Aging remain intact. Recorded this requirement in DESIGN.md to prevent flattening in later color work.
