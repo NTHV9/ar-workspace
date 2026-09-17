@@ -82,6 +82,10 @@ components:
 
 # Design System: Luminous AR interface
 
+## Portfolio summary lighting — owner clarification, 17 September 2026
+
+The summary from Total open AR through the hotel contribution cards must have visible color gradients and depth together with strong contrast. Do not flatten this area when adjusting colors. Preserve the navy/blue/teal total, each hotel's color family, directional highlights from the upper left, a crisp inset top edge, and soft downward cast shadows. Give the hotel buttons their own card elevation so the shared small-button shadow cannot override it. Keep small labels readable across the brightest highlight and deepest hotel tint, including hover. This instruction is local to the Portfolio summary; its geometry, Aging tables, values and behavior remain unchanged.
+
 ## Overview
 
 **Creative North Star: "Luminous AR"**

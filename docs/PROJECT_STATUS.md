@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 17 September 2026 — Portfolio gradients and depth follow-up
+
+- Implemented the owner's clarification that stronger summary contrast must retain clearly visible gradients and dimensional lighting: a blue-highlighted navy/teal total, lighter-to-richer hotel color ramps, inset top edges and downward cast shadows. Corrected the shared small-button rule overriding hotel-card elevation. Keyboard focus, reduced-motion behavior, geometry, source values and Aging remain intact. Recorded this requirement in DESIGN.md to prevent flattening in later color work.
+- Tested: final 11 existing Portfolio browser cases, TypeScript/build and public assets passed. Initial desktop/mobile captures inspected for both regions; tightened the total's brightest color/label combination after conservative contrast calculation (total captions ≥4.78:1, hotel badges ≥4.87:1, hotel captions ≥5.71:1). Aging/responsive/focus rules verified unchanged. Deployment pending at this checkpoint; CSS and design documentation only.
+
 ## 17 September 2026 — Portfolio summary contrast
 
 - Implemented the owner's requested stronger colors only between Total open AR and the start of Aging: navy total strip with light text, clearer hotel-colored fills/borders, darker small labels and visible keyboard focus. Hotel identities, layout, values, interactions and Aging/table styling remain unchanged.
