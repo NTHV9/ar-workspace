@@ -9,7 +9,7 @@ test('same-user snapshot survives a transient service error and invoice retry re
   let reads=0,invoiceReads=0;
   await page.route('**/api/portfolio',r=>{reads++;return r.fulfill(reads===2?{status:503,json:{error:'supabase_unavailable'}}:{json:{accounts:[{hotel:'KAT',id:'synthetic',name:'Fictional regression account',type:'Agent',open:100,over90:0,items:1}]}});});
   await page.route('**/api/accounts/KAT/synthetic',r=>{invoiceReads++;return r.fulfill(invoiceReads===1?{status:503,json:{error:'supabase_unavailable'}}:{json:{invoices:[{hotel:'KAT',account_id:'synthetic',id:'test',guest:'Fictional guest',invoice_no:'SYN-1',folio_no:'SYN-2',transaction_date:'2026-09-08',original:100,open:100,aging:'Unknown'}]}});});
-  await page.goto('/');
+  await page.goto('/?portfolio=1');
   await expect(page.locator('.accounts-panel')).toContainText('Fictional regression account');
   await page.getByRole('button',{name:'Reload saved data'}).click();
   await expect(page.getByRole('alert')).toContainText('unavailable');

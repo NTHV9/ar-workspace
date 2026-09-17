@@ -48,12 +48,12 @@ test('refresh completion after region switch reloads only the active regional ca
  const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page);let running=true;const catalogRegions:string[]=[];
  await page.route('**/api/portfolio**',route=>{const region=new URL(route.request().url()).searchParams.get('region')??'phuket';catalogRegions.push(region);return route.fulfill({json:{status:'connected',accounts:regionalAccounts.filter(a=>region==='phuket'?['KAT','TSK'].includes(a.hotel):!['KAT','TSK'].includes(a.hotel)),refresh:{running,hotels:[]}}});});
  await page.route('**/api/refresh**',route=>route.fulfill({json:{jobs:[],running,hotels:[]}}));
- await page.goto('/');const table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');await expect(table.locator('tbody .total-cell')).toContainText('1.8K');
+ await page.goto('/?portfolio=1');const table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');await expect(table.locator('tbody .total-cell')).toContainText('1.8K');
  await page.getByLabel('Region',{exact:true}).selectOption('khao-lak');await expect(table.locator('tbody .total-cell')).toContainText('10.8K');running=false;
  await expect.poll(()=>catalogRegions.length).toBeGreaterThan(2);expect(catalogRegions).toEqual(['phuket','khao-lak','khao-lak']);await expect(table.locator('tbody .total-cell')).toContainText('10.8K');await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');expect(c.errors).toEqual([]);
 });
 test('Phuket desktop navigation keeps all eight administrator controls inside the header',async({page})=>{
- await setupRegional(page);await page.setViewportSize({width:1280,height:900});await page.goto('/');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
+ await setupRegional(page);await page.setViewportSize({width:1280,height:900});await page.goto('/?portfolio=1');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
  const nav=page.getByRole('navigation',{name:'Main navigation'});await expect(nav.getByRole('button')).toHaveCount(8);expect(await nav.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:'.tmp/khao-lak-ui-results/phuket-header-1280.png',fullPage:false});
 });
@@ -65,7 +65,7 @@ for(const pending of ['status','catalog'] as const)test('region switch aborts an
   await route.fulfill({json:{status:'connected',accounts:regionalAccounts.filter(a=>region==='phuket'?['KAT','TSK'].includes(a.hotel):!['KAT','TSK'].includes(a.hotel)),refresh:{running:pending==='status'&&region==='phuket',hotels:[]}}});if(hold)released=true;
  });
  await page.route('**/api/refresh**',async route=>{const region=new URL(route.request().url()).searchParams.get('region')??'phuket';const hold=pending==='status'&&route.request().method()==='GET'&&region==='phuket'&&++phuketStatusReads===2;if(hold){held=true;await gate;}await route.fulfill({json:{jobs:[],running:!hold&&pending==='status'&&region==='phuket',hotels:[]}});if(hold)released=true;});
- await page.goto('/');const table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');await expect(table.locator('tbody .total-cell')).toContainText('1.8K');if(pending==='catalog')await page.getByRole('button',{name:'Reload saved data',exact:true}).click();await expect.poll(()=>held).toBe(true);
+ await page.goto('/?portfolio=1');const table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');await expect(table.locator('tbody .total-cell')).toContainText('1.8K');if(pending==='catalog')await page.getByRole('button',{name:'Reload saved data',exact:true}).click();await expect.poll(()=>held).toBe(true);
  await page.getByLabel('Region',{exact:true}).selectOption('khao-lak');await expect(table.locator('tbody .total-cell')).toContainText('10.8K');await expect.poll(()=>failed.includes(pending==='status'?'/api/refresh':'/api/portfolio')).toBe(true);
  release();await expect.poll(()=>released).toBe(true);await expect(table.locator('tbody .total-cell')).toContainText('10.8K');expect(catalogRegions.slice(catalogRegions.indexOf('khao-lak'))).not.toContain('phuket');expect(c.errors).toEqual([]);
 });

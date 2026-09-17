@@ -31,7 +31,7 @@ async function setup(page:Page){
 
 for(const width of [1440,1280])test(`comparison ${width}: paired rows, zero vs absent hotel, sorting and separate ledgers`,async({page})=>{
  const {errors,calls}=await setup(page);
- await page.setViewportSize({width,height:width===1440?900:800});await page.goto('/');
+ await page.setViewportSize({width,height:width===1440?900:800});await page.goto('/?portfolio=1');
  const panel=page.locator('.accounts-panel'),rows=panel.locator('tbody tr');
  await expect(rows).toHaveCount(3);
  const azure=rows.filter({hasText:'Azure Travel · Synthetic'}),birch=rows.filter({hasText:'Birch Travel · Synthetic'}),cedar=rows.filter({hasText:'Cedar Travel · Synthetic'});

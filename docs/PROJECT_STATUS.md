@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 17 September 2026 — Current Aging as the workspace home
+
+- Implemented the owner's request: bare workspace entry and root Google return open Dashboard → Current Aging after authentication. Region-restricted staff keep the Aging view when redirected into their permitted region. Explicit pages and legacy scoped/filter bookmarks retain their destinations; Portfolio navigation now uses an explicit marker so reload and history work correctly.
+- Keep Auth callback transport in the browser for the SDK and exclude one-time codes from internal route state; preserve URL fragments during entry normalization. Existing login, recovery, source refresh and data permissions remain intact.
+- Tested: 1,292 unit tests, 74 local browser cases plus the deployment-only missing/invalid-credential case against the real Worker, TypeScript/build and public assets passed. Includes root Aging at desktop/mobile, Google callback, recovery callback/fragment preservation, username login, Khao Lak-only landing, Portfolio reload/Back, explicit Period/bookmarks and regional/document flows. Inspected synthetic desktop/mobile Aging captures and restored original tracked evidence images. Deployment pending at this checkpoint; no backend or database change.
+
 ## 17 September 2026 — Match Phuket navigation to Khao Lak
 
 - Implemented the owner's screenshot request by sharing Khao Lak's desktop brand width, menu-button spacing and full-row header breakpoint through 1500px with Phuket. The administrator menu including Settings fits consistently in both regions. Khao Lak's existing desktop behavior, mobile scrolling, summary gradients/depth and application behavior are preserved.
