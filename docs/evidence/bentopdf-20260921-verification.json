@@ -1,0 +1,122 @@
+[
+  {
+    "source": "02-subset-font-five-columns.pdf",
+    "output": "02-subset-edited.pdf",
+    "bytes": 2738,
+    "sha256": "c0e0e3f80c7124c84ae7df53ce9483f724abe6fff4a64817202819552f8f5614",
+    "pageCount": 1,
+    "newTextPresent": true,
+    "oldTextAbsent": true,
+    "pages": [
+      {
+        "page": 1,
+        "pixelsIdentical": false,
+        "changedPixelBounds": [
+          699,
+          155,
+          938,
+          177
+        ],
+        "textIdentical": false,
+        "allHeadingsPresent": true,
+        "footerPreserved": true
+      }
+    ],
+    "originalRelevantRuns": [
+      {
+        "text": "Voucher No.",
+        "font": "/Helvetica",
+        "size": 10.0,
+        "x": 350.0,
+        "y": 754.0
+      },
+      {
+        "text": "D12345 - 1",
+        "font": "/PlusJakartaSans-Bold-6611",
+        "size": 10.0,
+        "x": 420.0,
+        "y": 754.0
+      }
+    ],
+    "editedRelevantRuns": [
+      {
+        "text": "Voucher No. abcdefgh",
+        "font": "/Helvetica",
+        "size": 10.0,
+        "x": 0.0,
+        "y": 0.0
+      }
+    ]
+  },
+  {
+    "source": "03-two-page-five-columns.pdf",
+    "output": "03-two-page-edited.pdf",
+    "bytes": 6391,
+    "sha256": "e80e13209be405e0d960c4192bfc964340ceb991d283eb655d02aa617e4566bd",
+    "pageCount": 2,
+    "newTextPresent": true,
+    "oldTextAbsent": null,
+    "pages": [
+      {
+        "page": 1,
+        "pixelsIdentical": true,
+        "changedPixelBounds": null,
+        "textIdentical": true,
+        "allHeadingsPresent": true,
+        "footerPreserved": true
+      },
+      {
+        "page": 2,
+        "pixelsIdentical": false,
+        "changedPixelBounds": [
+          475,
+          1511,
+          547,
+          1524
+        ],
+        "textIdentical": false,
+        "allHeadingsPresent": true,
+        "footerPreserved": true
+      }
+    ],
+    "originalRelevantRuns": [
+      {
+        "text": "Voucher No.",
+        "font": "/Helvetica",
+        "size": 10.0,
+        "x": 350.0,
+        "y": 754.0
+      },
+      {
+        "text": "D12345 - 1",
+        "font": "/PlusJakartaSans-Bold-6475",
+        "size": 10.0,
+        "x": 420.0,
+        "y": 754.0
+      },
+      {
+        "text": "Untouched page marker: SYNTHETIC-PAGE-2",
+        "font": "/Helvetica-Bold",
+        "size": 9.0,
+        "x": 42.0,
+        "y": 80.0
+      }
+    ],
+    "editedRelevantRuns": [
+      {
+        "text": "Voucher No.",
+        "font": "/Helvetica",
+        "size": 10.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      {
+        "text": "Untouched page marker: SYNTHETIC-PAGE-2-EDITED",
+        "font": "/Helvetica-Bold",
+        "size": 9.0,
+        "x": 0.0,
+        "y": 0.0
+      }
+    ]
+  }
+]

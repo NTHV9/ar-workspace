@@ -1,6 +1,7 @@
 import {mapSourceRect,mapSourceTextRect} from './row-layout';
-import {createReplacementLayer,measureLayerText,sourceEditingStyle} from './source-text';
+import {createReplacementLayer,measureLayerInk,sourceEditingStyle} from './source-text';
 import type {DetectedText,PdfLayer,PdfProjectPage} from './types';
+import {completeInvoiceColumns} from './table-columns';
 type Rect={x:number;y:number;width:number;height:number};
 
 /** A table row can contain multiple physical text lines in one or more cells. */
@@ -24,7 +25,7 @@ export function rowGeometry(page:PdfProjectPage,layer:PdfLayer,runs:DetectedText
  const continues=(base:typeof shown,other:typeof shown)=>{
   if(base.length<2||!other.length||other.length>=base.length)return false;
   const baseY=base[0].baseline,otherY=other[0].baseline;
-  if(otherY-baseY>Math.max(...base.map(c=>c.run.fontSize))*1.6||cutBetween(baseY,otherY))return false;
+  if(otherY-baseY>Math.max(...base.map(c=>c.run.fontSize))*2||cutBetween(baseY,otherY))return false;
   const columns=[...base].sort((a,b)=>a.rect.x-b.rect.x);
   return other.every(c=>columns.some((b,i)=>{
    const left=i?Math.min(b.rect.x,columns[i-1].rect.x+columns[i-1].rect.width+2):b.rect.x;
@@ -54,17 +55,21 @@ export function rowGeometry(page:PdfProjectPage,layer:PdfLayer,runs:DetectedText
  const lastBaseline=Math.max(baseline,...cells.map(c=>c.baseline));
  const members=page.layers.filter(l=>l.id===layer.id||(layer.tableRow?l.tableRow===layer.tableRow:l.y+sourceEditingStyle(l).baseline>=firstBaseline-tolerance&&l.y+sourceEditingStyle(l).baseline<=lastBaseline+tolerance));
  const visualTop=Math.min(layer.y,...cells.map(c=>c.rect.y),...members.map(l=>l.y));
- const inkBottom=Math.max(layer.y+measureLayerText(layer).height,...cells.map(c=>c.rect.y+measureLayerText(createReplacementLayer(c.run,'measure')).height),...members.map(l=>l.y+measureLayerText(l).height));
+ const ink=(c:typeof shown[number])=>{const bounds=measureLayerInk(createReplacementLayer(c.run,'measure'));return {y:bounds.y+c.rect.y-c.run.y,height:bounds.height};};
+ const bottom=(r:{y:number;height:number})=>r.y+r.height;
+ const inkBottom=Math.max(bottom(measureLayerInk(layer)),...cells.map(c=>bottom(ink(c))),...members.map(l=>bottom(measureLayerInk(l))));
  const later=shown.filter(c=>!cells.includes(c)&&c.baseline>lastBaseline+tolerance);
- const nextTextTop=Math.min(Infinity,...later.map(c=>c.rect.y-.5),...page.layers.filter(l=>!members.includes(l)&&l.y>lastBaseline+tolerance).map(l=>l.y-.5));
+ const nextTextTop=Math.min(Infinity,...later.map(c=>ink(c).y-.1),...page.layers.filter(l=>!members.includes(l)&&l.y>lastBaseline+tolerance).map(l=>measureLayerInk(l).y-.1));
  const nextRule=Math.min(Infinity,...rowGraphics.filter(r=>r.y>lastBaseline+.1).map(r=>r.y));
  const lower=Math.min(nextTextTop,nextRule);
  const previous=shown.filter(c=>!cells.includes(c)&&c.baseline<firstBaseline-tolerance);
- const previousInk=Math.max(0,...previous.map(c=>c.rect.y+measureLayerText(createReplacementLayer(c.run,'measure')).height),...rowGraphics.filter(r=>r.y+r.height<firstBaseline).map(r=>r.y+r.height));
- const top=Math.max(0,visualTop-layer.fontSize*.5,previousInk<visualTop-.5?(previousInk+visualTop-.5)/2:visualTop-.5);
+ const previousLayers=page.layers.filter(l=>!members.includes(l)&&l.y<firstBaseline-tolerance);
+ const previousInk=Math.max(0,...previous.map(c=>bottom(ink(c))),...previousLayers.map(l=>l.tableRow?l.y+l.height:bottom(measureLayerInk(l))),...rowGraphics.filter(r=>r.y+r.height<firstBaseline).map(r=>r.y+r.height));
+ const inkTop=Math.min(measureLayerInk(layer).y,...cells.map(c=>ink(c).y),...members.map(l=>measureLayerInk(l).y));
+ const top=Math.max(0,Math.min(visualTop,inkTop)-layer.fontSize*.5,(previousInk+inkTop)/2);
  // Use the gap, never the next text box's top (which can cut through its ink),
  // and never the middle of a filled Balance Due rectangle.
  const end=Number.isFinite(lower)&&lower>inkBottom?(inkBottom+lower)/2:inkBottom+.5;
  const spacing=Math.max(layer.fontSize*1.25,end-top);
- return {shown,cells,template:physical[0]??[],members,top,end,height:Math.max(.5,end-top),spacing,firstBaseline,lastBaseline,separable:lower>inkBottom+.1};
+ return {shown,cells,template:physical[0]?completeInvoiceColumns(physical[0],bands,index,page.width):[],members,top,end,height:Math.max(.5,end-top),spacing,firstBaseline,lastBaseline,separable:lower>inkBottom+.1,deletable:lower>inkBottom+.1&&inkTop>previousInk+.1};
 }

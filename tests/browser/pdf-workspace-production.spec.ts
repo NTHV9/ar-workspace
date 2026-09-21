@@ -61,6 +61,10 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await page.getByRole('button', { name: 'Open PDF Workspace', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Select page 4', exact: true })).toBeVisible();
     await expect(page.locator('.pdf-canvas canvas')).toHaveCount(5);
+    await expect(page.getByRole('button',{name:'Add text anywhere',exact:true})).toBeVisible();
+    await expect(page.locator('.pdf-workspace')).toHaveAttribute('data-guides','false');
+    await page.getByRole('button',{name:'Document package',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Package',exact:true})).toBeHidden();
     await page.getByRole('button', { name: 'Edit source text', exact: true }).click();
     await page.getByRole('button', { name: 'Edit original text: Original synthetic wording for replacement', exact: true }).click();
     await page.getByRole('textbox', { name: 'Layer text', exact: true }).fill('Edited synthetic outbound copy');

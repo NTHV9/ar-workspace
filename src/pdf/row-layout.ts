@@ -3,6 +3,19 @@ type Rect={x:number;y:number;width:number;height:number};
 export function inside(a:Rect,b:Rect){return a.x>=b.x-.5&&a.y>=b.y-.5&&a.x+a.width<=b.x+b.width+.5&&a.y+a.height<=b.y+b.height+.5;}
 export function overlaps(a:Rect,b:Rect){return a.x<b.x+b.width-.5&&a.x+a.width>b.x+.5&&a.y<b.y+b.height-.5&&a.y+a.height>b.y+.5;}
 
+/** Snap a visual selection outward until every touched text target is whole. */
+export function includeTouchedText(selection:Rect,text:Rect[]):Rect{
+ let area={...selection};
+ for(let pass=0;pass<=text.length;pass++){
+  const touched=text.filter(rect=>overlaps(rect,area)&&!inside(rect,area));
+  if(!touched.length)return area;
+  const left=Math.min(area.x,...touched.map(r=>r.x)),top=Math.min(area.y,...touched.map(r=>r.y));
+  const right=Math.max(area.x+area.width,...touched.map(r=>r.x+r.width)),bottom=Math.max(area.y+area.height,...touched.map(r=>r.y+r.height));
+  area={x:left,y:top,width:right-left,height:bottom-top};
+ }
+ return area;
+}
+
 /** Source coordinates remain immutable; overlays follow the ordered page edits. */
 export function mapSourceRect<T extends Rect>(rect:T,edits:PdfRowEdit[]):T|null {
  let r={...rect};

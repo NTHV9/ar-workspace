@@ -8,6 +8,8 @@ export class SourceFontError extends Error {
  constructor(){super('This source font cannot reproduce the edited characters. Choose a replacement font in formatting, or use characters available in the source document.');this.name='SourceFontError';}
 }
 const styles = new Map<string, SourceStyle>();
+const inkBounds=new WeakMap<SourceStyle,Map<string,{y:number;height:number}>>();
+let inkContext:CanvasRenderingContext2D|null=null;
 const key = (r: SourceTextReference) => JSON.stringify([r.scope,r.sourceId,r.sourcePage,r.runIndex]);
 export function releaseSourceStyles(scope: string) { for(const [k,s] of styles) if(s.run.sourceText?.scope===scope)styles.delete(k); }
 export function registerSourceStyle(ref: SourceTextReference, style: SourceStyle) { styles.set(key(ref), style); }
@@ -30,7 +32,7 @@ export function sourceEditingStyle(layer:PdfLayer) {
  return {fontFamily,fontSize:layer.fontSize,fontWeight:layer.bold?'bold':'normal',fontStyle:layer.italic?'italic':'normal',lineHeight:1.25,baseline:s?s.baseline*layer.fontSize/s.fontSize:layer.fontSize*.85,hScale:s?.hScale??1};
 }
 export function validateSourceText(layer:PdfLayer) {
- if(!layer.sourceText)return;
+ if(!layer.sourceText||layer.text==='')return;
  const metrics=measureLayerText(layer);
  if(metrics.unsupported)throw new SourceFontError();
  if(metrics.height>layer.height+.5||metrics.width>layer.width+.5)throw new Error('The edited text exceeds its box. Enlarge the text box before Preview.');
@@ -49,6 +51,9 @@ function wrapAtWords(text:string,width:number,measure:(line:string)=>number):str
  return lines;
 }
 export function measureLayerText(layer: PdfLayer): {lines:string[];height:number;width:number;naturalWidth:number;unsupported:boolean} {
+ // Clearing text erases its source pixels; no font or glyph is drawn. Source
+ // identity/mask ownership is still checked by the document render pipeline.
+ if(layer.text==='')return {lines:[],height:0,width:0,naturalWidth:0,unsupported:false};
  const s=sourceStyle(layer);
  if(!layer.sourceText){
   const ctx=typeof document==='undefined'?null:document.createElement('canvas').getContext('2d');
@@ -64,8 +69,37 @@ export function measureLayerText(layer: PdfLayer): {lines:string[];height:number
  if(s && layer.text===s.run.text && lines.length===1)widths[0]=naturalWidth;
  return {lines,width:Math.max(0,...widths),naturalWidth,height:(s?s.baseline*layer.fontSize/s.fontSize:layer.fontSize*.85)+layer.fontSize*.3+(lines.length-1)*layer.fontSize*1.25,unsupported:!s||!s.supported||Array.from(layer.text.replace(/\n/g,'')).some(c=>!s.glyphs.has(c))};
 }
+
+/** Vertical painted bounds, rather than caret/descent padding, for row cuts.
+ * Unknown source glyphs remain conservative; never guess their visible extent.
+ */
+export function measureLayerInk(layer:PdfLayer):{y:number;height:number}{
+ const layout=measureLayerText(layer),s=sourceStyle(layer);
+ const fallback={y:layer.y,height:layout.height};
+ if(!layer.text||!s?.supported||layout.unsupported||typeof document==='undefined')return fallback;
+ const cache=inkBounds.get(s)??new Map<string,{y:number;height:number}>(),cacheKey=JSON.stringify([layer.text,layer.fontSize,layer.bold,layer.italic]),cached=cache.get(cacheKey);
+ if(cached)return {y:layer.y+cached.y,height:cached.height};
+ const ctx=inkContext??=document.createElement('canvas').getContext('2d');if(!ctx)return fallback;
+ let top=Infinity,bottom=-Infinity;
+ for(const [n,line] of layout.lines.entries()){
+  const sequence=layer.text===s.run.text&&layout.lines.length===1?s.sequence:Array.from(line).map(c=>s.glyphs.get(c)!);
+  for(const glyph of sequence){
+   if(typeof glyph==='number'||glyph.isInFont===false||glyph.isSpace)continue;
+   // Measure at a larger size to avoid whole-pixel rounding in tiny invoice fonts.
+   ctx.font=sourceFont({...layer,fontSize:layer.fontSize*10},glyph.fallbackFont?{...s,font:glyph.fallbackFont}:s);
+   const metrics=ctx.measureText(glyph.fontChar),ascent=metrics.actualBoundingBoxAscent/10,descent=metrics.actualBoundingBoxDescent/10;
+   if(!Number.isFinite(ascent+descent))return fallback;
+   const baseline=layer.y+s.baseline*layer.fontSize/s.fontSize+n*layer.fontSize*1.25;
+   top=Math.min(top,baseline-ascent);bottom=Math.max(bottom,baseline+descent);
+  }
+ }
+ if(!Number.isFinite(top+bottom))return fallback;
+ const result={y:top-.25,height:bottom-top+.5};
+ if(cache.size>=32)cache.clear();cache.set(cacheKey,{y:result.y-layer.y,height:result.height});inkBounds.set(s,cache);return result;
+}
 export function drawSourceText(ctx: CanvasRenderingContext2D,layer: PdfLayer): boolean {
  if(!layer.sourceText)return false;
+ if(layer.text==='')return true;
  validateSourceText(layer);const s=sourceStyle(layer)!;
  const metrics=measureLayerText(layer);
  if(metrics.height>layer.height+.5 || metrics.width>layer.width+.5)throw new Error('The edited text exceeds its box. Enlarge the text box before Preview.');
