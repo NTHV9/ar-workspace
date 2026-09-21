@@ -1,11 +1,13 @@
 # สถานะโครงการใหม่
 
-## 21 September 2026 — Invoice preparation pagination recovery
+## 21 September 2026 — Invoice preparation recovery and mixed POS VAT
 
 - Confirmed two failed workspace/v2 Invoice jobs with `duplicate_member`; both need two VAT pages (62 and 57 source rows). Fresh reads of both passed with reconciled amounts, and the screenshot selection also created a ready PDF through the real Create document job button before a fix. The original responses were not retained, so the exact within-page versus cross-page cause remains unproven; this is transient-read recovery, not a claimed deterministic OPERA root-cause fix.
 - Implemented at most three complete read attempts for duplicate/changing/incomplete pagination only. Each attempt starts at the account and discards all prior rows. Identity, page counts, unique members, tax reconciliation and end-of-read AR balance checks remain; model failures/changed balances are not retried. Rendering/storage/native printing are outside the retry boundary. Persistent instability gets an actionable error.
 - Added a scoped, read-only control-plane diagnostic returning stage/counts/duplicate categories only. No source rows or customer identifiers are returned. Shared pagination rules, retained preparations and accounting are unchanged.
-- Tested: failing duplicate-recovery regressions before the fix, then 1,349 unit tests, typecheck/build/public assets/dry run passed. Final live six-hotel verification is in progress. No schema, paid dependency, email send or file cleanup.
+- The six-hotel sweep reproduced a second real failure: mixed POS revenue/SVC/separate VAT omitted the optional nested taxes array. Added exact date/check grouping and explicit TAX/VAT-code classification, preserving actual posted VAT and preventing double counting against embedded generates. Net/gross/7% checks remain. The 76-row selection now passes across all 104 source rows/three API pages and generates a three-page PDF; its headers, continuation and totals were visually inspected.
+- Tested: regressions went red before both fixes, then 1,357 full unit tests and final targeted/typecheck/build/assets/dry-run checks passed. Three deployed browser cases passed (synthetic APIs/PDFs). Live complete Invoice selections now cover all six hotels, including both original failed selections; current model/amount checks and the newly generated PDFs passed. An older TSK preparation correctly rejected a changed source; the current selection passed. This is representative coverage, not a guarantee for every historical variant.
+- Deployed/enabled source `ab9f8762f2ef1febfbc8174b9565c06e2179fabe`, Worker `5aa18cfc-06a5-4ab1-a772-cf002d8dfa51`; health/database and six anonymous boundaries passed. Existing failed/ready jobs and original files remain untouched. No schema, paid dependency, accounting/print mutation, email send or file cleanup. Private proof remains in ignored `.tmp/invoice-reliability/`.
 
 ## 21 September 2026 — RTF-based Invoice generation for all six hotels
 
