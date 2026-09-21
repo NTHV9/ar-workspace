@@ -77,11 +77,10 @@
 .pdf-package[hidden]{display:none}
 .pdf-document-tools{flex-shrink:0;padding:8px 4px 0}
 .pdf-document-tools>p{margin:4px 0 0;color:#51677e;font-size:11px}
-.pdf-document-tools .pdf-row-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:0;margin:0;padding:0}
-.pdf-document-tools .pdf-row-controls h3{margin:0;font-size:11px}
-.pdf-document-tools .pdf-row-controls p{margin:0;font-size:11px;color:#51677e}
-.pdf-document-tools .pdf-row-controls>div{margin:0;gap:5px}
-.pdf-document-tools .pdf-row-controls button{flex:none;padding:7px 9px}
+.pdf-review>.pdf-row-controls{margin:0 0 16px;padding:0 0 12px;border-top:0;border-bottom:1px solid #dce5ef}
+.pdf-review>.pdf-row-controls h3{margin:0 0 8px}
+.pdf-review>.pdf-row-controls p{color:#51677e;font-size:11px}
+.pdf-review>.pdf-row-controls button{min-height:40px}
 .pdf-document-tools .pdf-object-help p{margin:0}
 .pdf-workspace .pdf-text-placement{position:absolute;inset:0;width:100%;height:100%;z-index:8;border:0;border-radius:0;background:transparent;cursor:text}
 .pdf-workspace .pdf-text-placement:hover{background:transparent}
