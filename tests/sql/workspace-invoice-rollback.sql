@@ -1,6 +1,6 @@
 begin;
 do $$
-declare actor uuid;scope text:='SYNTHETIC-INVOICE-'||gen_random_uuid();old_cmd uuid:=gen_random_uuid();cmd uuid:=gen_random_uuid();legacy jsonb;fresh jsonb;r jsonb;next_job jsonb;
+declare actor uuid;scope text:='SYNTHETIC-INVOICE-'||gen_random_uuid();old_cmd uuid:=gen_random_uuid();cmd uuid:=gen_random_uuid();legacy jsonb;fresh jsonb;r jsonb;next_job jsonb;statement_job jsonb;statement_cmd uuid:=gen_random_uuid();
 begin
  select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
  insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state) values('KAT',scope,'Synthetic invoice renderer','SYNTHETIC',100,0,1,'verified');
@@ -14,7 +14,14 @@ begin
  r:=public.ar_document_create_v5(actor,cmd,'KAT',scope,array['A'],'invoices','combined','billing','native');if r->>'id'<>fresh->>'id' then raise exception 'new command duplicated';end if;
  r:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'invoices','combined','billing','native');if r->>'id'<>fresh->>'id' then raise exception 'active preparation duplicated';end if;
  r:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'both','statement_bundle','billing','workspace');if r->>'invoice_source'<>'workspace' or r->>'statement_source'<>'workspace' or jsonb_array_length(r->'files')<>2 then raise exception 'combined sources invalid';end if;
- r:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'statement','combined','billing','workspace');if r->>'invoice_source'<>'native' or r->'invoice_template_version'<>'null'::jsonb then raise exception 'Statement-only source polluted';end if;
+ r:=public.ar_document_create_v5(actor,statement_cmd,'KAT',scope,array['A'],'statement','combined','billing','workspace');statement_job:=r;if r->>'invoice_source'<>'native' or r->'invoice_template_version'<>'null'::jsonb then raise exception 'Statement-only source polluted';end if;
+ update ar_private.statement_templates set active=false where hotel='KAT';
+ insert into ar_private.statement_templates values('KAT','synthetic-statement-v4',true,'{"synthetic":true}');
+ r:=public.ar_document_create_v5(actor,statement_cmd,'KAT',scope,array['A'],'statement','combined','billing','workspace');
+ if r->>'id'<>statement_job->>'id' or r->>'template_version'<>statement_job->>'template_version' then raise exception 'Statement replay changed template';end if;
+ r:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'statement','combined','billing','workspace');
+ if r->>'id'=statement_job->>'id' or r->>'template_version'<>'synthetic-statement-v4' then raise exception 'new Statement template not selected';end if;
+ if nullif(current_setting('ar.statement_template_version',true),'') is not null then raise exception 'Statement version context leaked';end if;
  update ar_private.invoice_templates set active=false where hotel='KAT';insert into ar_private.invoice_templates values('KAT','synthetic-invoice-v2',true,'{"synthetic":true}');
  r:=public.ar_document_create_v5(actor,cmd,'KAT',scope,array['A'],'invoices','combined','billing','native');if r->>'id'<>fresh->>'id' or r->>'invoice_template_version'<>'synthetic-invoice-v1' then raise exception 'replay changed immutable template';end if;
  next_job:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'invoices','combined','billing','native');if next_job->>'id'=fresh->>'id' or next_job->>'invoice_template_version'<>'synthetic-invoice-v2' then raise exception 'new template not fingerprinted';end if;

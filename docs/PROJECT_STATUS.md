@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Statement footer clipping
+
+- Reproduced the screenshot directly in the active WAKL footer asset. The fixed 715 pt crop cut glyphs beginning at 714.03 pt in WAKL, TLKL and TLFO (40/45/40 characters intersected); this preceded both generation and Preview. Hosted footer checksums matched the local original assets. Header/closing crop checks found no cut characters across all six hotels.
+- Implemented private v4 footer extraction with a 3 pt glyph margin, natural image height and reserved body space. The affected footers extend to 81 pt; every previously visible pixel is preserved exactly. KAT/TSK/TSAN footer bytes and all header/closing assets are unchanged. Old v3 rendering is retained.
+- Template activation exposed an existing command-replay issue in the synthetic SQL test. Migration `20260921145500_ar_statement_template_replay` pins a replay to the old job's Statement version while new commands choose the active version. Source ownership, conflict checks and private ACLs remain.
+- Tested: clipping and version-replay regressions failed before their fixes; 1,359 unit tests, typecheck/build/assets/dry run, 82 local migrations/36 rollback fixtures passed. Twelve corrected synthetic PDFs (single-/multi-page across six hotels, 19 pages) preserve all selected rows/totals and footer clearance; all six footer renders were inspected. Old files/RTFs remain unchanged. Deployment and hosted activation are pending.
+
 ## 21 September 2026 — Invoice preparation recovery and mixed POS VAT
 
 - Confirmed two failed workspace/v2 Invoice jobs with `duplicate_member`; both need two VAT pages (62 and 57 source rows). Fresh reads of both passed with reconciled amounts, and the screenshot selection also created a ready PDF through the real Create document job button before a fix. The original responses were not retained, so the exact within-page versus cross-page cause remains unproven; this is transient-read recovery, not a claimed deterministic OPERA root-cause fix.
