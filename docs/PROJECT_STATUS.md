@@ -3,7 +3,7 @@
 ## 21 September 2026 — Account ledger date spacing
 
 - Centered Transaction date and Due date values with their sortable headings, with 16 px side padding and minimum column widths. Scoped to the Account Detail ledger; date values and sorting behavior are unchanged.
-- Existing browser checks passed at 1440/1280 and both captures were visually inspected. Typecheck/build/public assets passed. New synthetic date-spacing evidence preserves the earlier captures; deployment/live verification is pending.
+- Existing browser checks passed at 1440/1280 and both captures were visually inspected. Typecheck/build/public assets passed. New synthetic date-spacing evidence preserves the earlier captures. Deployed/enabled source `45ec819c8e797a52d2bb9ade30f13661400fb3b5`, Worker `df9de38f-c5fa-41a9-9347-d5f0fc3392c3`; dry run, health/database and six anonymous boundaries passed. Live date-text centers match their header-button centers within 0.01 px, with 16 px cell insets. No data or schema changes.
 
 ## 21 September 2026 — Aging invoice detail layout and transaction date
 
