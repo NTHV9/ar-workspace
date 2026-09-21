@@ -3,7 +3,8 @@
 ## 21 September 2026 — Restore discoverable Add row below
 
 - Reproduced the owner's report: the prior UI moved row commands above the paper and rendered them only after text selection, so the expected right-panel button was absent. Restored a single Row tools section in the right panel, directly below Preview; Add row below and Delete row remain visible and disabled with selection guidance until a valid row is selected.
-- Tested the failing right-panel selector before the fix, then **13 browser cases passed**, including before/after selection, insertion of five cells, Esc, unique button count, existing PDF editing/export and desktop/laptop visibility. TypeScript/build/public assets passed; inspected the 1280px capture. No row algorithm, source/data/retention, library or cost change. Deployment verification follows.
+- Tested the failing right-panel selector before the fix, then **13 browser cases passed**, including before/after selection, insertion of five cells, Esc, unique button count, existing PDF editing/export and desktop/laptop visibility. TypeScript/build/public assets/dry run and source/PR CI passed; inspected the 1280px capture. No row algorithm, source/data/retention, library or cost change.
+- Deployed/enabled source `ea92290947a3ad628733462df0be8bcd0b0f08e0`, Worker `9b641993-3865-4e58-8c1a-80cacb8c8110`. Live health/database and six anonymous protected-route checks passed. Two deployed browser cases at 1440/1280 verify the right-panel button is visible/disabled before selection, enabled after selection, and actual Preview works; synthetic PDFs/APIs only. Deployed capture inspected; original tracked evidence restored. [PR55](https://github.com/NTHV9/ar-workspace/pull/55) merged as `682e4907e40431a823027136d6266284d0c51458` with an identical source tree.
 
 ## 21 September 2026 — PDF editing resilience and direct document controls
 
