@@ -107,7 +107,7 @@ for(const width of [1440,1280])test(`insert/delete/review/export preserves the o
  await page.locator('.pdf-layer-target.empty-cell .pdf-layer-move').nth(3).click();await page.getByRole('button',{name:'Delete row',exact:true}).click();
  await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(0);await expect(page.getByRole('alert')).toHaveCount(0);await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
  await page.screenshot({path:`.tmp/pdf-row-lifecycle-deleted-${width}.png`,animations:'disabled'});
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await reviewPreviewPages(page);await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const proof=await page.evaluate(async()=>{
   const f=(window as any).fixture,source=await f.loadSources(f.sources),output=await f.loadSources([{id:'out',name:'reviewed.pdf',kind:'invoice',bytes:f.saved[0].bytes}]);
   const before=document.createElement('canvas'),after=document.createElement('canvas');

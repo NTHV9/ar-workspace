@@ -5,12 +5,13 @@ import type {PdfExportFile} from './types';
 
 export type PreviewZoom='fit-width'|number;
 type Loaded=Awaited<ReturnType<typeof loadSources>>;
-export function FinalPdfPreview({file,zoom,onRendered,onRendering}:{file:PdfExportFile;zoom:PreviewZoom;onRendered:()=>void;onRendering:()=>void}){
+export function FinalPdfPreview({file,zoom,onRendered,onRendering,onAllPagesViewed}:{file:PdfExportFile;zoom:PreviewZoom;onRendered:()=>void;onRendering:()=>void;onAllPagesViewed:()=>void}){
  const viewport=useRef<HTMLDivElement>(null),canvasHost=useRef<HTMLDivElement>(null);
  const [loadedFile,setLoadedFile]=useState<PdfExportFile|null>(null),[drawn,setDrawn]=useState<{file:PdfExportFile;index:number}|null>(null);
  const [loaded,setLoaded]=useState<Loaded|null>(null),[index,setIndex]=useState(0),[size,setSize]=useState({width:0,height:0}),[error,setError]=useState(''),[rendered,setRendered]=useState(false),[reviewed,setReviewed]=useState(0);
  const visits=useRef(new WeakMap<PdfExportFile,Set<number>>());
  const ready=useRef(onRendered),starting=useRef(onRendering);ready.current=onRendered;starting.current=onRendering;
+ const allViewed=useRef(onAllPagesViewed);allViewed.current=onAllPagesViewed;
  useEffect(()=>{const element=viewport.current;if(!element)return;const update=()=>setSize({width:Math.max(1,element.clientWidth-24),height:Math.max(1,element.clientHeight-24)});update();const observer=new ResizeObserver(update);observer.observe(element);return()=>observer.disconnect();},[]);
  useEffect(()=>{
   let current=true,result:Loaded|undefined;setLoaded(null);setIndex(0);setError('');setRendered(false);setReviewed(visits.current.get(file)?.size??0);starting.current();
@@ -28,7 +29,8 @@ export function FinalPdfPreview({file,zoom,onRendered,onRendering}:{file:PdfExpo
    if(!current){canvas.width=canvas.height=0;return;}
    canvas.style.width='100%';canvas.style.height='100%';canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`Final PDF page ${index+1}`);canvasHost.current?.replaceChildren(canvas);setDrawn({file,index});setRendered(true);
    const seen=visits.current.get(file)??new Set<number>();seen.add(index);visits.current.set(file,seen);setReviewed(seen.size);
-   if(seen.size===loaded.project.pages.length)ready.current();
+   ready.current();
+   if(seen.size===loaded.project.pages.length)allViewed.current();
   }).catch(()=>{if(current){setError('This page could not be rendered. Try another page or reopen Preview. Confirmation remains disabled.');setRendered(false);}});
   return()=>{current=false;};
  },[loaded,page,index,file,width,size.width,size.height]);

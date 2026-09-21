@@ -90,7 +90,7 @@
 - [x] System Statement เป็นเส้นทางที่เลือกถาวร ไม่อ้างว่าได้ PDF จาก Statement API
 - [x] Content ทั้ง3 และ arrangement ทั้ง3 ถูกต้อง รองรับ Invoice หลายหน้า
 - [x] แก้ข้อความ/รูป/font/page/ตำแหน่งได้ตาม capability ที่สาธิต; ไม่อ้าง Word reflow ถ้าทำไม่ได้
-- [x] Edited PDF มี Preview/acknowledgement และไม่เปลี่ยนยอดฐานข้อมูล/OPERA
+- [x] Edited PDF มี Preview โดยไม่บังคับดูครบ แล้วกด Download / Save / Continue ได้โดยไม่ต้องติ๊กยืนยันแยก และไม่เปลี่ยนยอดฐานข้อมูล/OPERA
 - [x] Redaction/whiteout ไม่เหลือข้อความที่ตั้งใจลบให้ copy/search ได้
 - [x] File processing ไม่ล้มจากการ buffer ซ้ำและไม่ตัดไฟล์ส่งบางส่วนโดยไม่บอก
 
