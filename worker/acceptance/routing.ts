@@ -3,7 +3,7 @@ export interface AcceptanceEnv {ACCEPTANCE?:AcceptanceContext;ACCEPTANCE_ENABLED
 const uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 // Credentials are never copied into the disposable business schema. Existing
 // grants may refresh there; OAuth setup is not part of the acceptance workspace.
-const shared=(name:string)=>name.startsWith('ar_acceptance_')||name.startsWith('ar_gmail_connection_')||name.startsWith('ar_drive_connection_')||name==='ar_financial_service_actor'||name==='ar_statement_template'||name==='ar_health';
+const shared=(name:string)=>name.startsWith('ar_acceptance_')||name.startsWith('ar_gmail_connection_')||name.startsWith('ar_drive_connection_')||name==='ar_financial_service_actor'||name==='ar_statement_template'||name==='ar_invoice_template'||name==='ar_health';
 export function acceptanceRpc(env:AcceptanceEnv,name:string,args:unknown):{name:string;args:unknown}{
  if(!env.ACCEPTANCE||shared(name))return {name,args};const scope=env.ACCEPTANCE;
  if(!uuid.test(scope.id)||!uuid.test(scope.owner)||!/^ar_[a-z0-9_]+$/.test(name)||!args||typeof args!=='object'||Array.isArray(args))throw Error('acceptance_invalid');

@@ -8,7 +8,7 @@ const sameRow=(a:DetectedText,b:DetectedText)=>Math.abs(a.y-b.y)<Math.max(a.font
 export function voucherFields(page:PdfProjectPage,runs:DetectedText[]):DetectedText[]{
  const result=[...runs];let nextIndex=Math.max(-1,...runs.map(r=>r.sourceText?.runIndex??-1))+1;
  for(const voucher of runs.filter(r=>label(r,/^Voucher\s+No\.?$/i))){
-  if(voucher.y>page.height*.5||!runs.some(r=>label(r,/^COPY\s+OF\s+INVOICE$/i)&&r.y<voucher.y&&voucher.y-r.y<60&&Math.abs(r.x-voucher.x)<10))continue;
+  if(voucher.y>page.height*.5||!runs.some(r=>label(r,/^(?:COPY\s+OF\s+)?INVOICE$/i)&&r.y<voucher.y&&voucher.y-r.y<60&&Math.abs(r.x-voucher.x)<10))continue;
   const folios=runs.filter(r=>label(r,/^Folio\s+No\.?$/i)&&r.y>voucher.y&&r.y-voucher.y<110&&Math.abs(r.x-voucher.x)<3);
   if(folios.length!==1)continue;const folio=folios[0];
   const values=runs.filter(r=>!r.rotated&&/^\d+$/.test(r.text.trim())&&r.x>folio.x+folio.width+5&&sameRow(r,folio));

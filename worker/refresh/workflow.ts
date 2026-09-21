@@ -11,12 +11,16 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloud
 import { makeReader,probeOpera } from '../opera/probe';
 import { OperaError } from '../opera/client';
 import {assertStatementWorkflowPolicy} from '../documents/source-policy';
-import {runDocumentJob} from '../documents/jobs';
+import {documentJob,runDocumentJob,uuidPattern} from '../documents/jobs';
 import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate } from './read-snapshot';
 import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
+import {readFolioReportTypes} from '../documents/folio-type-probe';
+import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
+import {readInvoicePacket} from '../invoice/read';
+import {invoiceModel,record as invoiceRecord} from '../invoice/model';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
@@ -27,6 +31,18 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     assertStatementWorkflowPolicy(payload);
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!isHotelId(hotel))throw new Error('invalid_workflow_parameters');
+    if(payload.folioTypeProbe)return step.do('folio-report-configuration',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},()=>readFolioReportTypes(makeReader(runtime,hotel),hotel));
+    if(payload.invoiceContractJob){
+      if(!uuidPattern.test(payload.invoiceContractJob))throw Error('document_probe_scope_invalid');
+      return step.do('selected-invoice-contract',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},async()=>{
+        const job=await documentJob(runtime,payload.invoiceContractJob!);
+        if(!job||job.hotel!==hotel||job.invoice_ids.length!==1)throw Error('document_probe_scope_invalid');
+        const invoice=job.manifest.find(i=>i.id===job.invoice_ids[0]);
+        if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        if(payload.invoiceModelProbe){const packet=await readInvoicePacket(makeReader(runtime,hotel),invoice);try{const model=invoiceModel(packet);return JSON.stringify({hotel:model.hotel,voucherLength:model.voucher.length,voucherHash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(model.voucher.replace(/\s+/g,''))))].map(n=>n.toString(16).padStart(2,'0')).join(''),headerIds:await Promise.all((invoiceRecord(packet.reservation).reservationIdList as unknown[]).map(invoiceRecord).map(async r=>({type:r.type,length:String(r.id??'').length,hash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(r.id??'').replace(/\s+/g,''))))].map(n=>n.toString(16).padStart(2,'0')).join('')}))),lines:model.lines.length,debit:model.debit,credit:model.credit,gross:model.gross,vat:model.vat,taxableNet:model.taxableNet,nonTaxable:model.nonTaxable,outstanding:model.outstanding,referenceHash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(model.lines.map(l=>l.reference).sort().join('|'))))].map(n=>n.toString(16).padStart(2,'0')).join('')});}catch(error){const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord),net=packet.taxRows.map(invoiceRecord).map(r=>invoiceRecord(r.posting)),ids=new Set(rows.map(r=>String(r.transactionNo))),checks=new Set(rows.map(r=>String(r.checkNo)));return JSON.stringify({hotel,error:error instanceof Error?error.message:'invalid',rows:rows.length,rootsFound:net.filter(r=>ids.has(String(r.transactionNo))).length,childrenById:net.filter(r=>ids.has(String(r.referencePackageTransactionNo))).length,childrenByCheck:net.filter(r=>checks.has(String(r.referencePackageTransactionNo))).length,sampleRoots:net.filter(r=>ids.has(String(r.transactionNo))).slice(0,2).map(r=>({id:r.transactionNo,reference:r.reference,check:r.checkNo,package:r.referencePackageTransactionNo})),sampleChildren:net.filter(r=>r.referencePackageTransactionNo).slice(0,2).map(r=>({id:r.transactionNo,package:r.referencePackageTransactionNo}))});}}
+        return JSON.stringify(await readInvoiceFolioContract(makeReader(runtime,hotel),invoice));
+      });
+    }
     if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');return runFinancialHistory(runtime,{actor:payload.actorId,runId},step);}
     if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(runtime,hotel));
     if(payload.documentJob)return runDocumentJob(runtime,runId,step);

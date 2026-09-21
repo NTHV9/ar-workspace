@@ -25,6 +25,10 @@ it('keeps an existing Voucher value instead of adding a second target',()=>{
  const input=[...header(),run('87654321',472.5,99.5,8,true)],found=voucherFields(page,input);
  expect(found).toHaveLength(input.length);expect(found.find(r=>r.field==='voucher-number')?.text).toBe('87654321');
 });
+it('keeps the same blank Voucher behavior for a workspace INVOICE heading',()=>{
+ const input=header();input[0]=run('INVOICE',382,84,0);
+ expect(voucherFields(page,input).find(r=>r.field==='voucher-number')).toMatchObject({text:'',x:472.5,y:99.5,maskOriginal:false});
+});
 it('does not invent fields in a Statement table or an ambiguous header',()=>{
  const input=header();expect(voucherFields(page,input.filter(r=>r.text!=='COPY OF INVOICE'))).toEqual(input.filter(r=>r.text!=='COPY OF INVOICE'));
  expect(voucherFields(page,input.filter(r=>r.text!=='Folio No.'))).toEqual(input.filter(r=>r.text!=='Folio No.'));
