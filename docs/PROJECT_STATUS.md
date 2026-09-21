@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — No-cost PDF editor alternatives
+
+- Researched official docs/source under the owner's no-additional-cost constraint. BentoPDF's free AGPL native editor is the leading candidate for a bounded trial, with source-sharing/integration conditions and unproven complete table-row insertion. pdfme is suitable for structured template tables; stable EmbedPDF viewing/annotations do not establish original-text editing. ONLYOFFICE Desktop is a separate free-program fallback; web Community requires Document Server infrastructure. [Research and sources](PDF_EDITOR_OPTIONS_20260921.md).
+- Ran a local synthetic probe of the existing row model: five headings plus a sparse credit row produced only three new-field templates, omitting Reference/Debit despite a separable row. This confirms the structural missing-cell issue; the customer's actual overlap rejection has not been reproduced. No app code, customer PDF, live editor, package installation, resource or deployment was changed. Replacement remains proposed, not implemented or enabled.
+
 ## 21 September 2026 — Recover from unsupported PDF source characters
 
 - Reproduced the owner's source-font banner using a synthetic embedded subset and new lowercase characters. The guard correctly blocks unavailable glyphs, but Preview previously lost the offending page/layer and left formatting closed. Implemented typed layer errors, automatic selection of the failing edit and an explicit **Use Arial for this text** action; no silent font substitution or ledger/source-file change.
