@@ -1,9 +1,9 @@
-import type {OperaReader} from '../opera/client';
+import {OperaError,type OperaReader} from '../opera/client';
 import {nativeFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
 import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {collectPages} from '../opera/pagination';
-import {invoiceModel,record,type InvoicePacket} from './model';
+import {invoiceModel,invoiceTaxEntries,record,type InvoicePacket} from './model';
 type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>;
 const fail=():never=>{throw Error('document_source_changed');};
 const list=(value:unknown)=>{if(!Array.isArray(value))return fail();return value.map(record);};
@@ -28,7 +28,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const taxRows=await collectPages(async(offset,limit)=>{const raw=record(await reader.invoicePostingBreakdown(manifest.reservation_id!,window,dates[0],endDate,offset,limit));const entries=list(raw.financialPostings);if(raw.offset!==offset||raw.limit!==limit||!Number.isSafeInteger(raw.totalResults)||typeof raw.hasMore!=='boolean')throw Error('document_invoice_pagination_changed');return {rows:entries,offset,hasMore:raw.hasMore,totalResults:raw.totalResults as number,count:raw.count as number|undefined,nextOffset:offset+limit};},e=>String(record(e.posting).transactionNo),50);
  const selectedIds=new Set(postingRows.map(p=>String(p.transactionNo))),taxByCode=new Map<string,string>();
  const packageIds=new Set(taxRows.map(e=>record(e.posting)).filter(p=>selectedIds.has(String(p.transactionNo))&&p.transactionType==='Wrapper').map(p=>String(p.referencePackageTransactionNo)));
- for(const e of taxRows){const p=record(e.posting);if(!selectedIds.has(String(p.transactionNo))&&!(p.transactionType!=='Wrapper'&&packageIds.has(String(p.referencePackageTransactionNo))))continue;if(!e.postingBreakdown)continue;for(const t of list(record(e.postingBreakdown).taxes))taxByCode.set(String(t.transactionCode),String(t.transactionNo));}
+ for(const e of taxRows){const p=record(e.posting);if(!selectedIds.has(String(p.transactionNo))&&!(p.transactionType!=='Wrapper'&&packageIds.has(String(p.referencePackageTransactionNo))))continue;if(!e.postingBreakdown)continue;for(const t of invoiceTaxEntries(record(e.postingBreakdown)))taxByCode.set(String(t.transactionCode),String(t.transactionNo));}
  const taxCodes:unknown[]=[];const ids=[...taxByCode.values()];for(let offset=0;offset<ids.length;offset+=40){const details=record(await reader.invoiceTransactionDetails(ids.slice(offset,offset+40)));taxCodes.push(...list(details.trxCodesInfo));}
  const uniqueCodes=[...new Map(taxCodes.map(record).map(c=>[String(c.hotelId)+':'+String(c.transactionCode),c])).values()];
  // Recheck the AR balance after the slower postings/tax reads to fence a payment
@@ -40,4 +40,18 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
  return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,payeeTaxNumber,customReference:customReference as string|undefined};
 }
-export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){return invoiceModel(await readInvoicePacket(reader,manifest),now);}
+export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){
+ let packet:InvoicePacket|undefined;
+ for(let attempt=0;attempt<3;attempt++){
+  try{packet=await readInvoicePacket(reader,manifest);break;}
+  catch(error){
+   // A paginated OPERA read can overlap or change while it is being read. Start
+   // from the account again; never deduplicate, merge attempts, or retry rendering.
+   const unstable=error instanceof OperaError&&['duplicate_member','pagination_changed','pagination_incomplete'].includes(error.code)||error instanceof Error&&error.message==='document_invoice_pagination_changed';
+   if(!unstable)throw error;
+   if(attempt===2)throw Error('document_invoice_source_unstable',{cause:error});
+  }
+ }
+ if(!packet)throw Error('document_invoice_source_unstable');
+ return invoiceModel(packet,now);
+}
