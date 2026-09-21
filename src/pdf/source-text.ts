@@ -4,6 +4,9 @@ import type { DetectedText, PdfLayer } from './types';
 export type SourceTextReference = { sourceId: string; sourcePage: number; runIndex: number; scope?: string };
 export type SourceGlyph = { unicode: string; fontChar: string; width: number; isSpace?: boolean; isInFont?: boolean; accent?: unknown; fallbackFont?:string };
 export type SourceStyle = { font: string; fontSize: number; bold: boolean; italic: boolean; color: string; baseline: number; hScale: number; charSpacing: number; wordSpacing: number; glyphs: Map<string, SourceGlyph>; sequence: (SourceGlyph | number)[]; supported: boolean; run: DetectedText };
+export class SourceFontError extends Error {
+ constructor(){super('This source font cannot reproduce the edited characters. Choose a replacement font in formatting, or use characters available in the source document.');this.name='SourceFontError';}
+}
 const styles = new Map<string, SourceStyle>();
 const key = (r: SourceTextReference) => JSON.stringify([r.scope,r.sourceId,r.sourcePage,r.runIndex]);
 export function releaseSourceStyles(scope: string) { for(const [k,s] of styles) if(s.run.sourceText?.scope===scope)styles.delete(k); }
@@ -29,7 +32,7 @@ export function sourceEditingStyle(layer:PdfLayer) {
 export function validateSourceText(layer:PdfLayer) {
  if(!layer.sourceText)return;
  const metrics=measureLayerText(layer);
- if(metrics.unsupported)throw new Error('This source font cannot reproduce the edited characters. Choose a replacement font in formatting, or use characters available in the source document.');
+ if(metrics.unsupported)throw new SourceFontError();
  if(metrics.height>layer.height+.5||metrics.width>layer.width+.5)throw new Error('The edited text exceeds its box. Enlarge the text box before Preview.');
 }
 function glyphWidth(g: SourceGlyph,s: SourceStyle,size: number) {return (g.width*size/1000+s.charSpacing+(g.isSpace?s.wordSpacing:0))*s.hScale;}

@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Recover from unsupported PDF source characters
+
+- Reproduced the owner's source-font banner using a synthetic embedded subset and new lowercase characters. The guard correctly blocks unavailable glyphs, but Preview previously lost the offending page/layer and left formatting closed. Implemented typed layer errors, automatic selection of the failing edit and an explicit **Use Arial for this text** action; no silent font substitution or ledger/source-file change.
+- Tested: 70 unique editor browser cases have passed, including source styles/deletion, rows, flow, review gates and the five targeted font-recovery cases. An oversized test-only screenshot interrupted one broad-run case; replacing that capture with direct rendering of the saved PDF gave three consecutive passes while retaining all acknowledgment/export assertions. Full 1,292 unit tests, TypeScript/build and public assets passed. Inspected desktop/laptop recovery screens and saved-output rendering; source-byte hashes and untouched native pages were preserved. Deployment pending at this checkpoint. Details: [PDF_FONT_RECOVERY_20260921](PDF_FONT_RECOVERY_20260921.md).
+
 ## 17 September 2026 — Current Aging as the workspace home
 
 - Implemented the owner's request: bare workspace entry and root Google return open Dashboard → Current Aging after authentication. Region-restricted staff keep the Aging view when redirected into their permitted region. Explicit pages and legacy scoped/filter bookmarks retain their destinations; Portfolio navigation now uses an explicit marker so reload and history work correctly.

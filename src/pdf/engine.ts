@@ -5,7 +5,7 @@ import type { DetectedText, PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocum
 import { deliveryGroups, wrapText } from './model';
 import { mapSourceRect, mapSourceTextRect } from './row-layout';
 import { extractSourceText, extractSourceImages } from './source-extraction';
-import { drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, measureLayerText } from './source-text';
+import { drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, measureLayerText, SourceFontError } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
 GlobalWorkerOptions.workerSrc = workerUrl;
@@ -63,6 +63,13 @@ async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer, page: P
 
 export type RenderIssue={layerId:string;message:string};
 export type RenderOptions={tolerant?:boolean};
+export class PdfLayerEditError extends Error {
+ readonly kind:'source-font'|'layer';
+ constructor(readonly pageId:string,readonly layerId:string,error:unknown){
+  super(error instanceof Error?error.message:'This edit could not be rendered.');this.name='PdfLayerEditError';
+  this.kind=error instanceof SourceFontError?'source-font':'layer';
+ }
+}
 async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,tolerant=false){
  const issues:RenderIssue[]=[],valid:PdfLayer[]=[];
  const runs=page.layers.some(l=>l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
@@ -79,7 +86,7 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
   if(!layer.sourceText&&['text','replacement','note','stamp'].includes(layer.kind)&&layer.text){const metrics=measureLayerText(layer);if(metrics.height>layer.height+.5||metrics.width>layer.width+.5)throw Error('The edited text exceeds its box. Enlarge the text box before Preview.');}
   if(layer.original&&layer.maskOriginal!==false&&!mapSourceTextRect(layer.original,page.rowEdits??[],sourceStyle(layer)?.baseline))throw Error('The original text area was removed or split. Restore the row or discard this edit.');
   valid.push(layer);
- }catch(error){if(!tolerant)throw error;issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}}
+ }catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}}
  return {valid,issues};
 }
 async function sourceRaster(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,scale:number){
@@ -150,7 +157,7 @@ async function paintSheet(page:PdfProjectPage,source:HTMLCanvasElement,canvas:HT
  for(const rule of continuedRules(page,source,sourceScale)){ctx.fillStyle=rule.fill!;ctx.fillRect(rule.x,rule.y,rule.width,rule.height);}
  for(const layer of layers){
   // Each layer is validated before its original pixels are covered.
-  try{await drawLayer(ctx,layer,page);}catch(error){if(!tolerant)throw error;issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}
+  try{await drawLayer(ctx,layer,page);}catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}
  }
  ctx.restore();
 }
