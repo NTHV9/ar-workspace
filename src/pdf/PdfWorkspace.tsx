@@ -3,7 +3,7 @@ import {pageCanvasHeight,applyFlowEdit,MAX_FLOW_HEIGHT,sourceBandIsEmpty} from '
 import {FinalPdfPreview,type PreviewZoom} from './FinalPdfPreview';
 import {useNativeEditing} from './use-native-editing';
 import {mapSourceRect,mapSourceTextRect,overlaps} from './row-layout';
-import {createReplacementLayer,measureLayerText} from './source-text';
+import {createReplacementLayer,measureLayerText,sourceStyle,sourceAppearanceUnchanged} from './source-text';
 import {insertTextLine,removeTextLine} from './text-lines';
 import {deleteTextLayer,replacementForRun,sourceRunDeleted} from './source-edits';
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
@@ -86,9 +86,10 @@ export function PdfWorkspace({ onDirtyChange, transient=false, onReview, documen
   const canvasHeight=page?pageCanvasHeight(page):1;
   useEffect(()=>{const element=stage.current;if(!element||!page)return;return observeDisplay(element,()=>setPaperScale(element.getBoundingClientRect().width/page.width));},[page?.id,page?.width,zoom,loaded]);
   const originalRun=layer?.formField?runs.find(run=>run.field===layer.formField?.type&&run.sourceText?.runIndex===layer.formField?.runIndex):layer?.sourceText?runs.find(run=>run.sourceText?.runIndex===layer.sourceText?.runIndex):layer?.original?runs.find(run=>run.text===layer.original!.text&&Math.abs(run.x-layer.original!.x)<.01&&Math.abs(run.y-layer.original!.y)<.01):undefined;
-  const textMetrics=layer&&!layer.deleted&&!['image','shape','whiteout'].includes(layer.kind)?measureLayerText(layer):null;
+  const unchangedSource=!!layer&&!!originalRun&&sourceAppearanceUnchanged(layer,originalRun,mapSourceTextRect(originalRun,page?.rowEdits??[],sourceStyle(layer)?.baseline));
+  const textMetrics=layer&&!layer.deleted&&!['image','shape','whiteout'].includes(layer.kind)?unchangedSource?{lines:[originalRun!.text],height:originalRun!.height,width:originalRun!.width,naturalWidth:originalRun!.width,unsupported:false}:measureLayerText(layer):null;
   const textOverflow=!!textMetrics&&(textMetrics.height>layer!.height+.5||textMetrics.width>layer!.width+.5);
-  const textCollision=!!layer?.sourceText&&!!textMetrics&&runs.some(run=>{if(!run.text.trim()||page&&replacementForRun(page,run)?.text==='')return false;if(layer.maskOriginal!==false&&run.sourceText?.runIndex===layer.sourceText?.runIndex)return false;const rect=mapSourceTextRect(run,page?.rowEdits??[],run.fontSize*.72);return !!rect&&overlaps({x:layer.x,y:layer.y,width:textMetrics.width,height:textMetrics.height},rect);});
+  const textCollision=!unchangedSource&&!!layer?.sourceText&&!!textMetrics&&runs.some(run=>{if(!run.text.trim()||page&&replacementForRun(page,run)?.text==='')return false;if(layer.maskOriginal!==false&&run.sourceText?.runIndex===layer.sourceText?.runIndex)return false;const rect=mapSourceTextRect(run,page?.rowEdits??[],run.fontSize*.72);return !!rect&&overlaps({x:layer.x,y:layer.y,width:textMetrics.width,height:textMetrics.height},rect);});
   const native=useNativeEditing({page,documents:loaded,runs,layer,tool,setTool,busy,setBusy,onError:setError,onChange:changed=>{if(project){const added=changed.layers.find(l=>l.tableRow&&!page?.layers.some(old=>old.id===l.id));commit({...project,pages:project.pages.map(p=>p.id===changed.id?changed:p)});if(added){setSelected(added.id);focusText(0);}else if(!changed.layers.some(l=>l.id===selected))setSelected('');}}});
   useEffect(() => { let current = true; setRuns([]); if (page) detectText(page, loaded).then(value => { if (current) setRuns(value); }).catch(() => { if (current) setError('Text detection unavailable. Use a text box or whiteout and review the exported page.'); }); return () => { current = false; }; }, [page?.id, loaded]);
   function invalidate() { revision.current++; reviewedProject.current = null; setPreview(null); setAck(false); setViewed([]); setSaved(false); setDraftSaved(false); }
@@ -127,7 +128,7 @@ export function PdfWorkspace({ onDirtyChange, transient=false, onReview, documen
       const nextY=Math.min(rowBelow?.y??Infinity,otherBelow?.y??Infinity);
       if(delta>.1){
         const at=layer.textFlow?layer.textFlow.at+layer.textFlow.height:layer.tableRow?beforeBottom:Math.min(Number.isFinite(nextY)?nextY-.1:Infinity,layer.y+layer.height);
-        try{changed=applyFlowEdit(page,{id:uid(),kind:'insert',y:at,height:delta},siblings.map(l=>l.id));next.textFlow={at:layer.textFlow?.at??at,height:(layer.textFlow?.height??0)+delta};}catch(e){setError(e instanceof Error?e.message:'Unable to flow this text.');return;}
+        try{changed=applyFlowEdit(page,{id:uid(),kind:'insert',y:at,height:delta,...(layer.tableRow&&page.rowEdits?.some(e=>e.kind==='insert'&&e.id===layer.tableRow)?{rowId:layer.tableRow}:{})},siblings.map(l=>l.id));next.textFlow={at:layer.textFlow?.at??at,height:(layer.textFlow?.height??0)+delta};}catch(e){setError(e instanceof Error?e.message:'Unable to flow this text.');return;}
       }else if(delta<-.1&&layer.textFlow){
         const remove=Math.min(-delta,layer.textFlow.height),at=layer.textFlow.at+layer.textFlow.height-remove;
         const occupied=!sourceBandIsEmpty(page,at,remove)||displayed.some(r=>r.sourceText?.runIndex!==layer.sourceText?.runIndex&&r.y+r.fontSize*.72>=at&&r.y+r.fontSize*.72<at+remove)||page.layers.some(l=>l.id!==layer.id&&l.y<at+remove&&l.y+l.height>at);

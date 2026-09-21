@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — PDF Workspace lifecycle audit and inserted-row deletion
+
+- Reproduced the exact added-row deletion warning with a tall embedded font, and separately found non-inverse row heights shifting totals after add/delete. Implemented tracked row allocations with validated ownership/legacy compatibility, exact safe reclamation, preserved unrelated content and row-cell placement inside its allocation.
+- Expanded the owner's requested audit and fixed unchanged special-text Preview errors, whitespace-only font errors, missing new fields after source-text movement, and reappearing original text after deleting a moved row. Source/glyph validation, privacy redaction, original files and reviewed-byte handoff remain. [Detailed audit](PDF_WORKSPACE_AUDIT_20260921.md).
+- Tested: **1,308 unit tests**, **90 editor browser cases**, 100 seeded mixed operation histories, TypeScript/build/assets/dry run passed. Eight complete add/delete raster roundtrips were pixel-identical; saved outputs and both desktop/laptop layouts inspected. Production verification pending. No new dependency, cost, customer PDF, data/OPERA/email/retention change.
+
 ## 21 September 2026 — Restore discoverable Add row below
 
 - Reproduced the owner's report: the prior UI moved row commands above the paper and rendered them only after text selection, so the expected right-panel button was absent. Restored a single Row tools section in the right panel, directly below Preview; Add row below and Delete row remain visible and disabled with selection guidance until a valid row is selected.

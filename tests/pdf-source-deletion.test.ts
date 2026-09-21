@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { restoreProject } from '../src/pdf/model';
 import { createReplacementLayer } from '../src/pdf/source-text';
 import type { DetectedText, PdfProject, PdfProjectPage } from '../src/pdf/types';
-import { deleteTextLayer, replacementForRun, sourceRunDeleted, validateDeletedLayer } from '../src/pdf/source-edits';
+import { deleteTextLayer, prepareRowDeletion, replacementForRun, sourceRunDeleted, validateDeletedLayer } from '../src/pdf/source-edits';
 import { applyFlowEdit } from '../src/pdf/flow';
 
 const run: DetectedText = { text: 'Voucher 1001', x: 40, y: 40, width: 80, height: 12, fontSize: 9, rotated: false, sourceText: { sourceId: 's', sourcePage: 1, runIndex: 0 } };
@@ -46,6 +46,18 @@ describe('persisted source deletion', () => {
 });
 
 describe('source deletion ownership', () => {
+  it('keeps a source mask when deleting a row containing text moved from outside the band',()=>{
+    const moved={...layer,y:180},edit={id:'delete-row',kind:'delete' as const,y:175,height:25};
+    const prepared=prepareRowDeletion({...page,layers:[moved]},edit,[moved.id]);
+    const deleted=applyFlowEdit(prepared,edit);
+    expect(deleted.layers[0]).toMatchObject({id:layer.id,y:40,text:'',deleted:true,original:{y:40}});
+    expect(sourceRunDeleted(deleted,run)).toBe(true);
+  });
+
+  it('removes an obsolete source mask when the original source band itself is deleted',()=>{
+    const edit={id:'delete-row',kind:'delete' as const,y:39,height:20};
+    expect(prepareRowDeletion({...page,layers:[layer]},edit,[layer.id]).layers).toHaveLength(0);
+  });
   it('erases the exact native source while retaining its mask and removing the editor spacer', () => {
     const edited = { ...layer, x: 120, y: 100, height: 60, text: 'Edited voucher', textFlow: { at: 52, height: 48 } };
     const input = { ...page, layers: [edited] };

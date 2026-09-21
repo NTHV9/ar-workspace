@@ -1,6 +1,7 @@
 import {rowGeometry} from './row-geometry';
 import {compactEmptyRowLines} from './row-compaction';
-import {replacementForRun} from './source-edits';
+import {deleteInsertedRow,insertedRowBands} from './inserted-rows';
+import {prepareRowDeletion,replacementForRun} from './source-edits';
 import {applyFlowEdit,pageCanvasHeight,MAX_FLOW_HEIGHT} from './flow';
 import {useEffect,useRef,useState,type PointerEvent} from 'react';
 import type {PDFDocumentProxy} from 'pdfjs-dist';
@@ -17,7 +18,8 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  const [barriers,setBarriers]=useState<GraphicTarget[]>([]),[geometryReady,setGeometryReady]=useState(false);
  const [moving,setMoving]=useState(false);
  const [notice,setNotice]=useState('');
- useEffect(()=>{setNotice('');},[page?.id,layer?.id,tool]);
+ useEffect(()=>{setNotice('');},[page?.id,tool]);
+ useEffect(()=>{if(layer?.id)setNotice('');},[layer?.id]);
  const ownedEdits=useRef(page?.rowEdits);
  useEffect(()=>{if(page?.rowEdits!==ownedEdits.current)setArea(null);ownedEdits.current=page?.rowEdits;},[page?.rowEdits]);
  const gesture=useRef<{start:{x:number;y:number};before:Area;pick:boolean;current:Area}|null>(null),alive=useRef(true),currentPage=useRef(page?.id);currentPage.current=page?.id;
@@ -53,14 +55,17 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
   if(!page||!anchor||!geometryReady)return;
   const okay=await changePage(before=>{
    const compacted=compactEmptyRowLines(before,anchor,runs,barriers),base=compacted.page;
-   const current=rowGeometry(base,compacted.anchor,runs,barriers),y=current.end,tableRow=crypto.randomUUID();
-   if(!current.separable)throw Error('This row overlaps the next text or border. Move the overlapping object before adding a row.');
+   const current=rowGeometry(base,compacted.anchor,runs,barriers),owned=anchor.tableRow?insertedRowBands(base,anchor.tableRow):[];
+   const standalone=!anchor.tableRow&&!current.template.length;
+   const y=owned.length?Math.max(...owned.map(b=>b.y+b.height)):standalone?Math.min(current.end,compacted.anchor.y+compacted.anchor.height+2):current.end,tableRow=crypto.randomUUID();
+   if(!owned.length&&!current.separable)throw Error('This row overlaps the next text or border. Move the overlapping object before adding a row.');
    const originals=current.template.map(c=>({run:c.run,rect:c.rect}));
-   const templates=originals.length?originals.map(({run,rect})=>({...createReplacementLayer(run,crypto.randomUUID()),x:rect.x,y:rect.y,width:rect.width})):base.layers.filter(l=>l.tableRow===anchor.tableRow&&!!anchor.tableRow);
+   const templates=originals.length?originals.map(({run,rect})=>({...createReplacementLayer(run,crypto.randomUUID()),x:rect.x,y:rect.y,width:rect.width})):anchor.tableRow?base.layers.filter(l=>l.tableRow===anchor.tableRow):[compacted.anchor];
    // Newly inserted content is not restricted to the glyph subset of a source
    // word. Keep its size/weight/color, using the editor's normal text font.
-   const blank:PdfLayer[]=templates.map(l=>({...l,id:crypto.randomUUID(),kind:'text',x:l.x,y:y+(l.y-current.top),text:'',height:Math.max(l.height,2+l.fontSize*1.25),tableRow,sourceText:undefined,original:undefined,maskOriginal:undefined,formField:undefined,deleted:undefined,textFlow:undefined}));
-   const height=Math.max(current.spacing,...blank.map(l=>l.y+l.height-y+2));
+   const fontSize=Math.max(...templates.map(l=>l.fontSize));
+   const blank:PdfLayer[]=templates.map(l=>({...l,id:crypto.randomUUID(),kind:'text',x:l.x,y:y+2+(fontSize-l.fontSize)*.85,text:'',height:2+l.fontSize*1.25,tableRow,sourceText:undefined,original:undefined,maskOriginal:undefined,formField:undefined,deleted:undefined,textFlow:undefined}));
+   const height=Math.max(anchor.tableRow||standalone?0:current.spacing,...blank.map(l=>l.y+l.height-y+2));
    const flowed=applyFlowEdit(base,{id:tableRow,kind:'insert',y,height},current.members.map(l=>l.id));
    return {...flowed,layers:[...flowed.layers,...blank]};
   });
@@ -75,7 +80,18 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
   });
   if(okay)setArea(null);
  }
- async function deleteRow(){if(!page||!anchor||!geometryReady)return;if(!row!.deletable){onError('This row overlaps nearby text or a border. Move the overlapping object before deleting the row.');return;}const okay=await apply({id:crypto.randomUUID(),kind:'delete',y:rowTop,height:rowHeight},[],row!.members.map(l=>l.id));if(okay)setArea(null);}
+ async function deleteRow(){
+  if(!page||!anchor||!geometryReady)return;
+  if(anchor.tableRow){
+   let keptSpace=false;
+   const okay=await changePage(before=>{const result=deleteInsertedRow(before,anchor.tableRow!);keptSpace=result.keptSpace;return result.page;});
+   if(okay){setArea(null);if(keptSpace)setNotice('Row removed. Space containing other content was kept.');}
+   return;
+  }
+  if(!row!.deletable){onError('This row overlaps nearby text or a border. Move the overlapping object before deleting the row.');return;}
+  const edit:PdfRowEdit={id:crypto.randomUUID(),kind:'delete',y:rowTop,height:rowHeight};
+  const okay=await changePage(before=>applyFlowEdit(prepareRowDeletion(before,edit,row!.members.map(l=>l.id)),edit));if(okay)setArea(null);
+ }
  function point(event:PointerEvent<HTMLElement>){const paper=event.currentTarget.closest('.pdf-paper')!.getBoundingClientRect();return {x:Math.max(0,Math.min(page!.width,(event.clientX-paper.left)/paper.width*page!.width)),y:Math.max(0,Math.min(extent,(event.clientY-paper.top)/paper.height*extent))};}
  function begin(event:PointerEvent<HTMLElement>,rect?:Area){
   if(!page||busy)return;if(rect){const whole=includeTouchedText(rect,selectionTargets);if(whole.x!==rect.x||whole.y!==rect.y||whole.width!==rect.width||whole.height!==rect.height)setNotice('Nearby text is included so it moves intact.');rect=whole;}event.preventDefault();event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId);

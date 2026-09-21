@@ -218,6 +218,8 @@ test('deleting an unsupported native text style still permits strict export',asy
  const result=await page.evaluate(async()=>{
   const f=(window as any).fixture,loaded=await f.loadSources(f.unsupportedSources),p=loaded.project.pages[0],runs=await f.detectText(p,loaded.documents);
   p.layers=[f.createReplacementLayer(runs[0],'unsupported')];
+  // Selecting unchanged native text is now safe; actual unsupported edits still block.
+  p.layers[0].text='Changed unsupported text';
   let blocked=false;try{await f.exportProject(loaded.project,f.unsupportedSources,loaded.documents);}catch{blocked=true;}
   loaded.project.pages[0]=f.deleteTextLayer(p,p.layers[0]);
   const files=await f.exportProject(loaded.project,f.unsupportedSources,loaded.documents),output=await f.loadSources([{id:'out',name:'out',kind:'invoice',bytes:files[0].bytes}]);

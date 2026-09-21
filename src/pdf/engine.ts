@@ -5,7 +5,7 @@ import type { DetectedText, PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocum
 import { deliveryGroups, wrapText } from './model';
 import { mapSourceRect, mapSourceTextRect } from './row-layout';
 import { extractSourceText, extractSourceImages } from './source-extraction';
-import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, measureLayerText, measureLayerInk, SourceFontError } from './source-text';
+import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, sourceAppearanceUnchanged, measureLayerText, measureLayerInk, SourceFontError } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
 GlobalWorkerOptions.workerSrc = workerUrl;
@@ -81,6 +81,8 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
    const run=ref?runs.find(r=>r.sourceText?.runIndex===ref.runIndex):runs.find(r=>layer.original&&r.text===layer.original.text&&Math.abs(r.x-layer.original.x)<.01&&Math.abs(r.y-layer.original.y)<.01);
    if(ref&&(ref.sourceId!==page.sourceId||ref.sourcePage!==page.sourcePage)||!run||!layer.original||run.text!==layer.original.text||Math.abs(run.x-layer.original.x)>.01||Math.abs(run.y-layer.original.y)>.01)throw Error('Source text no longer matches this document. Reopen the original.');
    if(run.sourceText)layer.sourceText={...run.sourceText};
+   const alreadyReplaced=valid.some(previous=>replacementForRun({...page,layers:[previous]},run));
+   if(!alreadyReplaced&&sourceAppearanceUnchanged(layer,run,mapSourceTextRect(run,page.rowEdits??[],sourceStyle(layer)?.baseline)))continue;
   }
   if(!layer.deleted)validateSourceText(layer);
   if(!layer.sourceText&&['text','replacement','note','stamp'].includes(layer.kind)&&layer.text){const metrics=measureLayerText(layer);if(metrics.height>layer.height+.5||metrics.width>layer.width+.5)throw Error('The edited text exceeds its box. Enlarge the text box before Preview.');}
@@ -188,7 +190,8 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         // hidden OCR/text, annotations or attachments are retained on those pages.
         const runs=await detectText(page,documents);
         const images=page.sourcePage?await extractSourceImages(await documents.get(page.sourceId)!.getPage(page.sourcePage)):[];
-        const protectedAreas=[...images.flatMap(r=>{const mapped=mapSourceRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...runs.flatMap(r=>{if(replacementForRun(page,r))return [];const mapped=mapSourceTextRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...valid.flatMap(l=>!hasLayerInk(l)?[]:['image','shape','whiteout','note','stamp'].includes(l.kind)?[l]:measureLayerText(l).lines.flatMap((line,n)=>line.trim()?[{y:l.y+n*l.fontSize*1.25,height:l.fontSize*1.25}]:[]))];
+        const renderedIds=new Set(valid.map(l=>l.id));
+        const protectedAreas=[...images.flatMap(r=>{const mapped=mapSourceRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...runs.flatMap(r=>{const replacement=replacementForRun(page,r);if(replacement&&renderedIds.has(replacement.id))return [];const mapped=mapSourceTextRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...valid.flatMap(l=>!hasLayerInk(l)?[]:['image','shape','whiteout','note','stamp'].includes(l.kind)?[l]:measureLayerText(l).lines.flatMap((line,n)=>line.trim()?[{y:l.y+n*l.fontSize*1.25,height:l.fontSize*1.25}]:[]))];
         const scale=Math.min(300/72,Math.sqrt(20_000_000/(page.width*page.height)));
         const source=await sourceRaster(page,documents,scale),canvas=document.createElement('canvas');
         const sheets=paginateFlow({...page,rowEdits:[],flowHeight:paintedExtent(page,source,scale,valid,masks)},protectedAreas);

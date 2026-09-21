@@ -77,11 +77,15 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
     if (p.rowEdits !== undefined) {
       if (!Array.isArray(p.rowEdits) || p.rowEdits.length > 500) return fail();
       const rowIds = new Set<string>();
+      const insertedIds = new Set<string>();
       rowEdits = p.rowEdits.map(raw => {
         if (!raw || typeof raw !== 'object') return fail();
         const r = raw as Record<string, unknown>, rowId = string(r.id, 200);
         if (!rowId || rowIds.has(rowId) || !['insert','delete','move'].includes(String(r.kind))) return fail();
         rowIds.add(rowId);
+        if(r.kind==='insert')insertedIds.add(rowId);
+        const owner=r.rowId===undefined?undefined:string(r.rowId,200);
+        if(owner!==undefined&&(r.kind!=='insert'||!owner||!insertedIds.has(owner)))return fail();
         const y = number(r.y, 0, extent), rowHeight = number(r.height, .1, MAX_FLOW_HEIGHT);
         if (r.kind!=='insert' && y + rowHeight > extent) return fail();
         if (r.kind === 'move') {
@@ -90,7 +94,7 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
           return {id:rowId,kind:'move' as const,x,y,width:areaWidth,height:rowHeight,dx,dy};
         }
         extent=Math.max(height,extent+(r.kind==='insert'?rowHeight:-rowHeight));if(extent>MAX_FLOW_HEIGHT)return fail();
-        return { id: rowId, kind: r.kind as 'insert' | 'delete', y, height: rowHeight };
+        return { id: rowId, kind: r.kind as 'insert' | 'delete', y, height: rowHeight,...(owner?{rowId:owner}:{}) };
       });
     }
     const page={ id, sourceId, sourcePage, width, height, layers, ...(rowEdits ? { rowEdits } : {}),...(flowHeight===undefined?{}:{flowHeight}) };
