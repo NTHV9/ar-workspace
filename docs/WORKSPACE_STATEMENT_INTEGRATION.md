@@ -49,3 +49,13 @@ Private assets were inserted through the authorized connector and are not presen
 ## Limits and remaining checks
 
 This is enabled as an explicit source option, not a claim that all AR workflows are finished. Up to 500 selected rows / 50 output pages; oversized layout, unsupported characters and ambiguous metadata fail rather than truncate. Address fields absent from the source remain absent (the TSK example has the account name only). Native Statement PDF transport remains unverified. Same-input pixel equivalence, live large multipage Statements and a new combined Statement-plus-native-Invoice run were not tested in this increment. Existing document layout/editor features remain available; the new live verification exercised Statement-only, combined delivery, preview and private persistence.
+
+## Footer crop correction — 21 September 2026
+
+The active WAKL/TLKL/TLFO image assets started at page top 715 pt, cutting first-line glyphs beginning at 714.03 pt. The defect was present before PDF generation or Preview. `scripts/statement-footer-assets.py` rebuilds private version `rtf-20260921-v4` with a three-point glyph margin; these footers now begin at 711 pt and have an 81 pt natural height. Every incumbent visible pixel matches its corresponding region exactly. KAT/TSK/TSAN footer bytes and all hotel header/closing blocks remain unchanged; crop checks found no partial characters in the other static regions.
+
+The renderer reserves footer space during row/closing pagination and preserves the legacy v3 layout. A new source-version migration keeps repeated commands attached to their original Statement version, even after a new active version is installed. No existing PDF or RTF is rewritten.
+
+Twelve corrected single-/multi-page fixtures across six hotels (19 pages) passed complete selected-row/total and footer-clearance checks; all six footer renders were inspected. The source clipping and old-command replay failures were reproduced before their fixes. 1,359 unit tests, typecheck/build/assets/dry run, 82 local migrations/36 rollback fixtures, and four deployed synthetic Statement browser regressions passed.
+
+Deployed source `b08ba0efb5c36602aaf87299597d68d8e7fd7776`, Worker `80d2670a-49f0-4cc6-8a55-5c31b2ad5ca0`; six v4 templates active and six old v3 templates retained. Hosted hashes/ACLs and health/database/anonymous checks passed. A fresh WAKL Statement completed through the live Create document job flow and its full footer was visually verified in Final PDF preview. It remains an unacknowledged preparation; no email, billing, OPERA accounting or file-retention action was taken.
