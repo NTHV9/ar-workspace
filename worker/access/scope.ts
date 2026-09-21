@@ -17,6 +17,8 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  if(!['GET','POST','PUT','DELETE'].includes(m))return denied();
  for(const key of ['region','hotel'])if(q.getAll(key).length>1)return denied();
  const regional=():AccessIntent=>{try{const s=regionalHotelScope(q);return s.hotel?hotel(s.hotel):{kind:'region',region:s.region};}catch{return denied();}};
+ if(p==='/api/invoice-register'&&m==='GET'||p==='/api/invoice-register/visibility'&&m==='POST')return regional();
+ const register=/^\/api\/invoice-register\/([^/]+)\/[^/]+\/[^/]+(\/history)?$/.exec(p);if(register&&(m==='GET'||m==='PUT'&&!register[2]))return hotel(decodeURIComponent(register[1]));
  if(m==='GET'&&/^\/api\/(reports\/(activity|current|options)|observations\/(daily_ar|balance_observations|timing|options))$/.test(p))return regional();
  if(m==='GET'&&['/api/portfolio','/api/collection-queue','/api/refresh','/api/external-billing','/api/financial/status','/api/financial/invoice_entries','/api/financial/payments','/api/financial/applications','/api/financial/coverage','/api/financial/options','/api/dashboard/balances','/api/dashboard/payment-invoices','/api/dashboard/invoice-entries','/api/dashboard/aging-invoices','/api/dashboard/hotel-overview','/api/remittances','/api/remittances/options'].includes(p))return regional();
  let match=/^\/api\/(accounts|account-settings)\/([^/]+)\/([^/]+)$/.exec(p);

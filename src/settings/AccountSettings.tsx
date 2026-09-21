@@ -1,3 +1,4 @@
+import {notifyRegisterChanged} from '../register/model';
 import {useEffect,useRef,useState} from 'react';
 import {parseSettings,parseBillingPortal,type Recipients} from '../../worker/settings/validation';
 import './account-settings.css';
@@ -22,7 +23,7 @@ export function AccountSettings({hotel,accountId,token,onSaved,onDirtyChange}:{h
  async function save(){if(saving.current||!saved)return;saving.current=true;setBusy(true);setError('');setStatus('');try{
   const profile=(purpose:string)=>Object.fromEntries(fields.map(k=>[k,(recipients[`${purpose}_${k}`]??'').split(/[,;\n]/).map(s=>s.trim()).filter(Boolean)]));
   const body=parseSettings({revision:saved.revision,billingRequired:mode==='unset'?null:mode==='required',creditTerm:term.trim()===''?null:Number(term),billingRecipients:profile('billing'),collectionRecipients:profile('collection'),billingMethod:mode==='required'?method:null,billingPortal:portal.trim()||null,billingInstructions,collectionInstructions});
-  const r=await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${auth.current}`,'Content-Type':'application/json'},body:JSON.stringify(body)});const v=await responseValue(r);apply(v);setStatus('Account settings saved. Initial rules apply to existing open invoices and new arrivals.'+(v.billing_required!==null&&v.credit_term===null?' Billing requirement is saved; add a credit term to calculate due dates.':''));onSaved?.();
+  const r=await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${auth.current}`,'Content-Type':'application/json'},body:JSON.stringify(body)});const v=await responseValue(r);apply(v);setStatus('Account settings saved. Initial rules apply to existing open invoices and new arrivals.'+(v.billing_required!==null&&v.credit_term===null?' Billing requirement is saved; add a credit term to calculate due dates.':''));onSaved?.();notifyRegisterChanged();
  }catch(e){setError(message(e instanceof Error?e.message:''));}finally{saving.current=false;setBusy(false);}}
  if(!saved)return <section className="panel account-config"><h2>Account settings</h2><p role="status">{status}</p>{error&&<p role="alert">{error}</p>}</section>;
  return <section className="panel account-config"><header><div><h2>Account settings</h2><p>{hotel} · Billing rules and purpose-specific recipients</p></div><span>Revision {saved.revision}</span></header><div className="account-config-body"><nav aria-label="Settings sections">{['Billing rules','Billing recipients','Collection recipients'].map(s=><button type="button" className={section===s?'selected':''} key={s} onClick={()=>setSection(s)}>{s}</button>)}</nav><div className="account-config-form">
