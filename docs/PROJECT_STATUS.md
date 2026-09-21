@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Aging invoice detail layout and transaction date
+
+- Reproduced mismatched header/body alignment and missing first-column inset: Dashboard's generic right-aligned numeric cells and first-child padding rule leaked into the Aging invoice list. Rebuilt the scoped detail surface with a clear amount/count summary, grouped status controls, consistent facets and list heading, proportional columns, matched header/body alignment, 20 px edge insets, sticky table headers and bounded scrolling. Long names remain complete; mobile keeps all columns in a labelled keyboard-accessible scroll region.
+- Renamed Account Detail's `Bill date` column to `Transaction date`. The displayed/sorted value is still OPERA `transactionDate` → `transaction_date` → `Invoice.date`, separate from workflow `first_billing_date`; billing/due calculations and source data were not changed.
+- Tested: alignment regression failed against the old UI, then 14 browser cases passed across 1440/1280/390, including long names, a nine-digit amount, pagination, drill/back context, status/attention filters, unavailable reads and signed/zero-net balances. Desktop/laptop/mobile captures were inspected in two bounded passes; five new evidence images are synthetic only. 44 focused unit tests, typecheck/build/assets/dry run and layout scans passed. Deployment/live verification is pending.
+
 ## 21 September 2026 — Direct PDF preview actions
 
 - Owner requested removing the final-PDF checkbox/sentence and explicitly clarified that viewing every page must be optional. Removed the acknowledgment control/state and both the all-page/all-file action gates. Actions become available when the displayed preview page renders; page/file visit indicators remain informational.

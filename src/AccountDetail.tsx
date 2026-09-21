@@ -37,7 +37,7 @@ export function AccountDetail({account, invoices:sourceInvoices, review, refresh
   useEffect(()=>()=>dirtyCallback.current?.(false),[]);
   const rows=sortInvoiceRows(invoices.filter(i=>`${i.guest} ${i.invoiceNo} ${i.folioNo}`.toLowerCase().includes(search.toLowerCase())),sort,direction,liveBuckets);
   const selectableRows=rows.filter(i=>selectableInvoice(i,review));
-  const columns:[string,keyof Invoice][]=[['Guest Name','guest'],['Invoice No.','invoiceNo'],['Folio No.','folioNo'],['Bill date','date'],['Due date','due'],['Original','original'],['Open','open'],['Aging','aging'],['Latest sent','stage']];
+  const columns:[string,keyof Invoice][]=[['Guest Name','guest'],['Invoice No.','invoiceNo'],['Folio No.','folioNo'],['Transaction date','date'],['Due date','due'],['Original','original'],['Open','open'],['Aging','aging'],['Latest sent','stage']];
   const changeSort=(key:keyof Invoice)=>{setSort(key);setDirection(sort===key&&direction==='asc'?'desc':'asc');};
   const toggle=(id:string)=>setSelected(old=>{const next=new Set(old);next.has(id)?next.delete(id):next.add(id);return next;});
   const terminal=(i:Invoice)=>i.open>0&&(i.workflow?.last_reminder_stage_snapshot??legacyStageSnapshot(i.stage))?.terminal===true;

@@ -1,10 +1,77 @@
-.aging-invoice-breakdown{margin-top:24px;padding:22px;border:1px solid #d8e4ec;border-radius:14px;background:var(--ar-light-surface,#fff);box-shadow:var(--ar-shadow-surface,0 7px 20px #1634530b);min-width:0;scroll-margin-top:20px}
-.aging-breakdown-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.aging-breakdown-heading h3{margin:0;font-size:17px;color:#193a58}.aging-breakdown-heading p{margin:6px 0 0;font-size:12px;color:#516b85}.aging-breakdown-actions{display:flex;gap:8px;flex:none}.aging-breakdown-actions button{display:flex;align-items:center;gap:7px;padding:9px 11px}
-.aging-breakdown-total{display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;padding:22px 0 18px;border-bottom:1px solid #e0e9f1;color:#1a395b;font-variant-numeric:tabular-nums}.aging-breakdown-total strong{font-size:25px}.aging-breakdown-total b{font-size:20px}.aging-breakdown-total :is(span,small){font-size:11px;font-weight:500;color:#516a82}.aging-breakdown-total>small{margin-left:auto}
-.aging-breakdown-controls{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 14px;flex-wrap:wrap}.aging-breakdown-tabs{display:flex;gap:4px;padding:4px;background:#edf2f8;border-radius:10px}.aging-breakdown-tabs button{padding:9px 14px;background:transparent;border:0;border-radius:7px;font-size:12px;color:#3c5575}.aging-breakdown-tabs button[aria-pressed=true]{background:#fff;color:#2444b0;box-shadow:0 2px 6px #213c6314;font-weight:700}.aging-breakdown-controls label{display:flex;align-items:center;gap:10px;font-size:11px;color:#506984}.aging-breakdown-controls select{font-size:12px;padding:8px 10px;min-width:145px}
-.aging-breakdown-facets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;border:1px solid #dce5f0;border-radius:10px;overflow:hidden}.aging-breakdown-facet{display:grid;grid-template-columns:1fr auto;text-align:left;gap:5px 8px;border:0;border-right:1px solid #e1e8f2;border-radius:0!important;padding:14px!important;color:#244461;background:#fff;box-shadow:none!important;font-variant-numeric:tabular-nums}.aging-breakdown-facet>span{grid-column:1/-1;font-size:11px;min-height:30px;line-height:1.4;font-weight:600}.aging-breakdown-facet strong{grid-column:1/-1;font-size:19px}.aging-breakdown-facet small{font-size:10px;font-weight:500}.aging-breakdown-facet b{font-size:12px;font-weight:600}.aging-breakdown-facet em{font-size:10px;align-self:center;font-style:normal;color:#526880}.aging-breakdown-facet[aria-pressed=true]{background:#eef2ff;box-shadow:inset 0 -3px #5665e6!important}.aging-breakdown-facet:hover:not(:disabled){background:#f2f6fc}.aging-breakdown-facet:disabled{opacity:.65;cursor:default}
-.aging-breakdown-list-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:24px}.aging-breakdown-list-heading h4{font-size:14px;margin:0}.aging-breakdown-list-heading>span{font-size:11px;color:#526a82}.aging-breakdown-caption{font-size:11px;color:#516a82;line-height:1.6;margin:8px 0 14px;max-width:100%}
-.aging-breakdown-table-scroll{overflow:auto;border:1px solid #dbe5ef;border-radius:10px;max-width:100%}.aging-invoice-breakdown .aging-breakdown-table{width:100%;min-width:970px;border-collapse:collapse;table-layout:auto;font-size:11px}.aging-invoice-breakdown .aging-breakdown-table th{padding:12px;background:#f2f6fa;color:#48617c;text-align:left;font-size:10px;font-weight:600;white-space:nowrap}.aging-invoice-breakdown .aging-breakdown-table td{padding:12px;vertical-align:top;border-top:1px solid #e9eef5;color:#24415e;white-space:normal;line-height:1.5;max-width:230px;overflow-wrap:anywhere}.aging-breakdown-table td>strong{font-size:11px;font-weight:650}.aging-breakdown-table td>small{display:block;margin-top:4px;font-size:10px;color:#556e87}.aging-invoice-breakdown .aging-breakdown-table .aging-breakdown-money{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;font-weight:650}.aging-breakdown-invoice-link{display:inline-flex;align-items:center;gap:5px;padding:0;border:0;background:none;color:#3f53c8;font-size:11px;text-align:left;box-shadow:none!important}.aging-breakdown-invoice-link:hover{text-decoration:underline}.aging-breakdown-table td>.aging-breakdown-past-due{color:#a43d40}.aging-breakdown-flag{display:block;font-size:10px;color:#65512c}.aging-breakdown-flag.review{color:#a1414a}.aging-breakdown-empty{padding:20px;text-align:center;color:#516a82;font-size:12px}
-.aging-breakdown-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;font-size:11px;color:#506984}.aging-breakdown-pagination>div{display:flex;align-items:center;gap:12px}.aging-breakdown-pagination button{padding:8px 12px;font-size:11px}.aging-breakdown-basis{margin:20px 0 0;padding-top:14px;border-top:1px solid #e3ebf3;font-size:10px;color:#556e87;line-height:1.65;max-width:110ch}.aging-invoice-breakdown button:focus-visible,.aging-invoice-breakdown select:focus-visible{outline:2px solid #5068e8;outline-offset:2px}
-@media(max-width:700px){.aging-invoice-breakdown{padding:15px}.aging-breakdown-heading{flex-wrap:wrap}.aging-breakdown-heading h3{font-size:15px}.aging-breakdown-actions{margin-left:auto}.aging-breakdown-total{gap:9px 20px}.aging-breakdown-total>small{width:100%;margin:0}.aging-breakdown-tabs{width:100%}.aging-breakdown-tabs button{flex:1;padding:8px;font-size:11px}.aging-breakdown-facets{grid-template-columns:repeat(2,minmax(0,1fr))}.aging-breakdown-facet{border-bottom:1px solid #e1e8f2}.aging-breakdown-pagination{flex-wrap:wrap}.aging-breakdown-pagination>div{margin-left:auto}.aging-breakdown-controls label{width:100%;justify-content:space-between}.aging-breakdown-controls select{font-size:16px}}
-.aging-breakdown-controls select{border:1px solid #cbdbea;border-radius:8px;background:#fff;color:#244462;min-height:38px}
+.aging-invoice-breakdown{
+  container:aging-detail / inline-size;
+  margin-top:24px;padding:24px;min-width:0;scroll-margin-top:20px;
+  border:1px solid #d8e4ec;border-radius:16px;
+  background:var(--ar-light-surface,#fff);box-shadow:var(--ar-shadow-surface,0 7px 20px #1634530b);
+  color:#193a58;
+}
+.aging-breakdown-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.aging-breakdown-heading>div:first-child{min-width:0}
+.aging-breakdown-heading h3{margin:0;font-size:20px;line-height:1.4;overflow-wrap:anywhere}
+.aging-breakdown-heading p{margin:6px 0 0;font-size:12px;color:#516b85}
+.aging-breakdown-actions{display:flex;gap:8px;flex:none}
+.aging-breakdown-actions button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:10px 12px}
+.aging-breakdown-total{display:flex;align-items:center;gap:32px;padding:22px 24px;margin-top:20px;border-radius:12px;background:linear-gradient(115deg,#edf3ff,#f5f9fc);font-variant-numeric:tabular-nums}
+.aging-breakdown-net{display:grid;gap:6px;min-width:0}
+.aging-breakdown-net>span{font-size:12px;font-weight:600;color:#496582}
+.aging-breakdown-net>b{font-size:30px;line-height:1.25;color:#19375b;overflow-wrap:anywhere}
+.aging-breakdown-count{display:grid;gap:6px;border-left:1px solid #ccdaeb;padding-left:32px}
+.aging-breakdown-count strong{font-size:25px;line-height:1.3}
+.aging-breakdown-count strong>span{font-size:13px;font-weight:500}
+.aging-breakdown-count small{font-size:11px;line-height:1.5;color:#516a82}
+.aging-breakdown-controls{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:24px 0 16px;flex-wrap:wrap}
+.aging-breakdown-tabs{display:flex;gap:4px;padding:4px;background:#edf2f8;border-radius:10px}
+.aging-breakdown-tabs button{min-height:38px;padding:9px 16px;background:transparent;border:0;border-radius:7px;font-size:12px;color:#3c5575;box-shadow:none}
+.aging-breakdown-tabs button[aria-pressed=true]{background:#fff;color:#2444b0;box-shadow:0 3px 8px #213c6314;font-weight:700}
+.aging-breakdown-controls label{display:flex;align-items:center;gap:12px;font-size:12px;color:#49617b}
+.aging-breakdown-controls select{min-width:160px;min-height:40px;padding:8px 12px;border:1px solid #cbdbea;border-radius:8px;background:#fff;color:#244462;font-size:12px}
+.aging-breakdown-facets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.aging-breakdown-facets[data-view=followup]{grid-template-columns:repeat(4,minmax(0,1fr))}
+.aging-breakdown-facets[data-view=due]{grid-template-columns:repeat(3,minmax(0,1fr))}
+.aging-invoice-breakdown .aging-breakdown-facet{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;min-width:0;padding:16px;text-align:left;border:1px solid #dae5ef;border-radius:10px;color:#244461;background:#fff;box-shadow:none;font-variant-numeric:tabular-nums}
+.aging-breakdown-facet>span{grid-column:1/-1;min-height:32px;font-size:12px;line-height:1.4;font-weight:600;overflow-wrap:anywhere}
+.aging-breakdown-facet strong{grid-column:1;grid-row:2;font-size:22px;line-height:1.25}
+.aging-breakdown-facet small{font-size:10px;font-weight:500}
+.aging-breakdown-facet b{grid-column:1/-1;grid-row:3;font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.aging-breakdown-facet em{grid-column:2;grid-row:2;align-self:center;font-size:11px;font-style:normal;color:#526880}
+.aging-invoice-breakdown .aging-breakdown-facet[aria-pressed=true]{border-color:#6175df;background:linear-gradient(145deg,#edf1ff,#f8faff);box-shadow:0 4px 10px #3655a510}
+.aging-invoice-breakdown .aging-breakdown-facet:hover:not(:disabled){background:#f1f5ff;border-color:#879ce3}
+.aging-breakdown-facet:disabled{opacity:.65;cursor:default}
+.aging-breakdown-list-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:28px 0 14px}
+.aging-breakdown-list-heading h4{margin:0;font-size:15px;line-height:1.5}
+.aging-breakdown-list-heading>span{font-size:12px;color:#526a82;text-align:right}
+.aging-breakdown-caption{font-size:12px;color:#516a82;line-height:1.6;margin:12px 0;max-width:100%}
+.aging-breakdown-scroll-hint{display:none;margin:0 0 10px;font-size:11px;color:#516a82}
+.aging-breakdown-table-scroll{overflow:auto;max-width:100%;max-height:560px;border:1px solid #dbe5ef;border-radius:12px;scrollbar-width:thin;scrollbar-color:#aebfd2 #f4f7fb}
+/* Local table rules outrank the Dashboard's generic numeric-table defaults. */
+.aging-invoice-breakdown table.aging-breakdown-table{width:100%;min-width:1120px;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:12px}
+.aging-breakdown-table .aging-col-account{width:24%}.aging-breakdown-table .aging-col-invoice{width:12%}.aging-breakdown-table .aging-col-hotel{width:6%}.aging-breakdown-table .aging-col-money{width:15%}.aging-breakdown-table .aging-col-billing{width:11%}.aging-breakdown-table .aging-col-followup{width:13%}.aging-breakdown-table .aging-col-due{width:11%}.aging-breakdown-table .aging-col-attention{width:8%}
+.aging-invoice-breakdown table.aging-breakdown-table :is(th,td){padding:16px;text-align:left;vertical-align:middle;border:0;border-bottom:1px solid #e3ebf3;line-height:1.5;color:#24415e;white-space:normal;overflow-wrap:anywhere}
+.aging-invoice-breakdown table.aging-breakdown-table th{position:sticky;top:0;z-index:1;background:#eef3f9;color:#48617c;font-size:11px;font-weight:600;padding-top:14px;padding-bottom:14px;white-space:nowrap}
+.aging-invoice-breakdown table.aging-breakdown-table :is(th,td):first-child{padding-left:20px}
+.aging-invoice-breakdown table.aging-breakdown-table :is(th,td):last-child{padding-right:20px}
+.aging-invoice-breakdown table.aging-breakdown-table :is(th,td):nth-child(3){text-align:center}
+.aging-invoice-breakdown table.aging-breakdown-table :is(th,td):nth-child(4){text-align:right;white-space:nowrap;overflow-wrap:normal}
+.aging-invoice-breakdown table.aging-breakdown-table tbody tr:last-child td{border-bottom:0}
+.aging-invoice-breakdown table.aging-breakdown-table tbody tr:hover{background:#f5f8fd}
+.aging-breakdown-table td>strong{display:block;font-size:13px;font-weight:650;line-height:1.5}
+.aging-breakdown-table td>small{display:block;margin-top:4px;font-size:11px;line-height:1.5;color:#536b83}
+.aging-breakdown-table .aging-breakdown-money{font-size:13px;font-variant-numeric:tabular-nums;font-weight:700}
+.aging-breakdown-date{white-space:nowrap;font-variant-numeric:tabular-nums}
+.aging-invoice-breakdown .aging-breakdown-invoice-link{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:0;border:0;border-radius:3px;background:none;color:#3f53c8;font-size:12px;text-align:left;box-shadow:none;overflow-wrap:anywhere}
+.aging-breakdown-invoice-link svg{flex:none}.aging-breakdown-invoice-link:hover{text-decoration:underline}
+.aging-breakdown-status{display:inline-block;font-size:11px;font-weight:600;line-height:1.5}
+.aging-breakdown-status[data-status=billed]{color:#087974}.aging-breakdown-status[data-status=setup]{color:#885517}
+.aging-breakdown-table td>.aging-breakdown-past-due{color:#a43d40}
+.aging-breakdown-flag{display:block;font-size:11px;color:#765922;font-weight:600}.aging-breakdown-flag+.aging-breakdown-flag{margin-top:4px}.aging-breakdown-flag.review{color:#a1414a}
+.aging-breakdown-empty{padding:24px;text-align:center;color:#516a82;font-size:12px}
+.aging-breakdown-pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:16px;font-size:12px;color:#506984;font-variant-numeric:tabular-nums}
+.aging-breakdown-pagination>div{display:flex;align-items:center;gap:12px}.aging-breakdown-pagination button{min-height:38px;padding:8px 14px;font-size:12px}
+.aging-breakdown-basis{margin-top:20px;padding-top:16px;border-top:1px solid #e3ebf3;color:#556e87;font-size:11px;line-height:1.6}
+.aging-breakdown-basis summary{cursor:pointer;width:fit-content}.aging-breakdown-basis p{margin:8px 0 0;font-size:11px;line-height:1.6;max-width:105ch}
+.aging-invoice-breakdown :is(button,select,summary,.aging-breakdown-table-scroll):focus-visible{outline:2px solid #5068e8;outline-offset:3px}
+@container aging-detail (max-width:1120px){.aging-breakdown-scroll-hint{display:block}}
+@container aging-detail (max-width:1000px){.aging-breakdown-facets{grid-template-columns:repeat(3,minmax(0,1fr))}.aging-breakdown-facets[data-view=followup]{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){
+  .aging-invoice-breakdown{padding:16px;border-radius:12px}.aging-breakdown-heading{flex-wrap:wrap;gap:12px}.aging-breakdown-heading h3{font-size:17px}.aging-breakdown-actions{margin-left:auto}.aging-breakdown-total{padding:16px;gap:14px;flex-wrap:wrap}.aging-breakdown-net>b{font-size:26px}.aging-breakdown-count{border:0;padding:0;width:100%}.aging-breakdown-count strong{font-size:21px}.aging-breakdown-controls{margin-top:20px}.aging-breakdown-tabs{width:100%}.aging-breakdown-tabs button{flex:1;padding:8px;font-size:11px}.aging-breakdown-controls label{width:100%;justify-content:space-between}.aging-breakdown-controls select{font-size:16px}.aging-breakdown-facets,.aging-breakdown-facets[data-view=followup],.aging-breakdown-facets[data-view=due]{grid-template-columns:repeat(2,minmax(0,1fr))}.aging-invoice-breakdown .aging-breakdown-facet{padding:12px}.aging-breakdown-facet strong{font-size:20px}.aging-breakdown-list-heading{align-items:flex-start;margin-top:24px}.aging-breakdown-list-heading>span{max-width:45%}.aging-breakdown-table-scroll{max-height:480px}.aging-breakdown-pagination{flex-wrap:wrap;gap:12px}.aging-breakdown-pagination>div{margin-left:auto;gap:8px}
+}
