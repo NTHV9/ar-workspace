@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 22 September 2026 — Desktop ledger fits without horizontal navigation
+
+- Owner clarified that the existing page/detail layout must stay, desktop rows must remain single-line, no horizontal table scrolling should be added, and Invoice numbers must remain fully visible. Added scoped column proportions and a content-sized Invoice column; redistributed date/guest space to Original/Open/Aging/Latest sent, with an inset after the final badge. The proposed scroll control was not retained and the detail panel was not moved.
+- Long guest/status labels stay on one line with their full text in native titles and the existing detail panel. Amounts, dates and Invoice numbers are not ellipsized. Desktop header typography adapts within the existing panel; the established phone companion remains unchanged.
+- Verified 87-row fixtures at 1920/1440/1280/1100/900: no table/header/cell overflow, no wrapping, right-side status inset, complete 13-digit Invoice number, working sort/selection. All 17 Account ledger cases passed; one Windows screenshot-write failure passed on a focused rerun. Typecheck/build/assets/dry run passed and synthetic desktop/laptop captures were inspected. Earlier evidence was retained. Deployment/live verification is pending.
+
 ## 21 September 2026 — Account ledger date spacing
 
 - Centered Transaction date and Due date values with their sortable headings, with 16 px side padding and minimum column widths. Scoped to the Account Detail ledger; date values and sorting behavior are unchanged.

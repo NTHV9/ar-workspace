@@ -129,3 +129,41 @@ dialog.invoice-detail:not([open]){display:none}
 .account-page .ledger th:nth-child(6){min-width:128px}
 .account-page .ledger th:nth-child(5) .sort-button,
 .account-page .ledger th:nth-child(6) .sort-button{width:100%;justify-content:center}
+
+/* Balance the complete ledger inside its working desktop panel. */
+@media(min-width:801px){
+ .account-page .ledger-panel{container:account-ledger / inline-size}
+ .account-page table.ledger{width:100%;min-width:0;table-layout:fixed}
+ .account-page .ledger-col-choice{width:32px}.account-page .ledger-col-folio{width:7%}.account-page .ledger-col-transaction{width:11.25%}.account-page .ledger-col-due{width:9.5%}.account-page .ledger-col-original,.account-page .ledger-col-open{width:10%}.account-page .ledger-col-aging{width:9%}.account-page .ledger-col-latest{width:15%}
+ .account-page table.ledger :is(th,td){min-width:0;white-space:nowrap}
+ .account-page table.ledger :is(th,td):first-child{width:auto;padding-left:6px;padding-right:6px;text-align:center}
+ .account-page table.ledger :is(th,td):nth-child(2){min-width:0;padding-left:8px;padding-right:12px}
+ .account-page table.ledger .name-link{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+ .account-page table.ledger :is(th,td):nth-child(3),.account-page table.ledger :is(th,td):nth-child(4){padding-left:6px;padding-right:6px}
+ .account-page table.ledger :is(th,td):nth-child(5),.account-page table.ledger :is(th,td):nth-child(6){min-width:0;padding-left:6px;padding-right:6px;text-align:center}
+ .account-page table.ledger th:nth-child(4),.account-page table.ledger th:nth-child(5){padding-left:0;padding-right:0}
+ .account-page table.ledger :is(th,td):nth-child(7),.account-page table.ledger :is(th,td):nth-child(8){padding-left:12px;padding-right:12px;text-align:right;font-variant-numeric:tabular-nums}
+ .account-page table.ledger :is(th,td):nth-child(9){padding-left:12px;padding-right:12px;text-align:center}
+ .account-page table.ledger :is(th,td):last-child{padding-left:12px;padding-right:20px;text-align:center}
+ .account-page table.ledger th:nth-child(9) .sort-button,.account-page table.ledger th:last-child .sort-button{width:100%;justify-content:center}
+ #root .account-page table.ledger .sort-button{max-width:100%;font-size:9px;letter-spacing:0;white-space:nowrap;gap:2px}
+ .account-page table.ledger .sort-button svg{width:8px;flex-shrink:0}
+ .account-page table.ledger td:last-child .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+ .account-page .ledger-panel .table-scroll-hint{display:none}
+ @container account-ledger (max-width:800px){
+  .account-page table.ledger th:nth-child(2){padding-right:0}
+  #root .account-page table.ledger th:nth-child(2) .sort-button{font-size:8px;gap:0}
+  .account-page table.ledger th:nth-child(2) .sort-button svg{width:6px}
+  .account-page table.ledger :is(th,td):nth-child(n+7){padding-left:6px;padding-right:6px}
+  .account-page table.ledger :is(th,td):last-child{padding-right:12px}
+  .account-page table.ledger th:nth-child(4),.account-page table.ledger th:nth-child(5){padding-left:0;padding-right:0}
+  .account-page table.ledger :is(th,td):nth-child(6){padding-left:2px;padding-right:2px}
+  .account-page table.ledger :is(th,td):nth-child(7),.account-page table.ledger :is(th,td):nth-child(8){padding-left:5px;padding-right:5px}
+  .account-page table.ledger :is(th,td):nth-child(9){padding-left:4px;padding-right:4px}
+  .account-page table.ledger th:nth-child(4) .sort-button,.account-page table.ledger th:nth-child(5) .sort-button{gap:0}
+  .account-page table.ledger th:nth-child(4) .sort-button svg,.account-page table.ledger th:nth-child(5) .sort-button svg{width:6px}
+  #root .account-page table.ledger th:nth-child(5) .sort-button{font-size:8px;letter-spacing:-.1px;gap:0}
+  #root .account-page table.ledger th:nth-child(4) .sort-button{font-size:8px;gap:0}
+  #root .account-page table.ledger .aging-badge{font-size:9.5px}
+ }
+}
