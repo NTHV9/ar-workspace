@@ -20,7 +20,7 @@ function links(value:unknown):unknown[]{
  return result;
 }
 /** Selected-invoice metadata only. The returned structure contains no PDF/customer values. */
-export async function readInvoiceFolioContract(reader:Pick<OperaReader,'reservationFolios'|'financialTransactionDetail'> & Partial<Pick<OperaReader,'invoicePostings'>>,invoice:DocumentInvoice){
+export async function readInvoiceFolioContract(reader:Pick<OperaReader,'reservationFolios'|'financialTransactionDetail'> & Partial<Pick<OperaReader,'invoicePostings'|'reservationInvoiceFolios'>>,invoice:DocumentInvoice){
  if(!invoice.reservation_id||!invoice.folio_date)throw Error('document_probe_selector_missing');
  const history=await reader.reservationFolios(invoice.reservation_id,invoice.folio_date);
  const window=nativeFolioSelector(history,invoice),info=asObject(asObject(history).reservationFolioInformation);
@@ -28,6 +28,14 @@ export async function readInvoiceFolioContract(reader:Pick<OperaReader,'reservat
  const folios=windows.flatMap(w=>Array.isArray(w.folios)?w.folios.map(asObject):[]);
  const folio=folios.find(f=>String(f.folioNo)===invoice.folio_no&&String(f.invoiceNo)===invoice.invoice_no)!;
  const detail=await reader.financialTransactionDetail({hotel:invoice.hotel as Parameters<OperaReader['financialTransactionDetail']>[0]['hotel'],accountId:invoice.account_id,transactionId:invoice.id});
- const postings=reader.invoicePostings&&invoice.invoice_no&&invoice.folio_no?await reader.invoicePostings({hotel:invoice.hotel as Parameters<OperaReader['invoicePostings']>[0]['hotel'],accountId:invoice.account_id,transactionId:invoice.id,invoiceNo:invoice.invoice_no,folioNo:invoice.folio_no}):undefined;
- return {hotel:invoice.hotel,matched:true,windowVerified:Number.isSafeInteger(window),folioTypeName:typeof folio.folioTypeName==='string'?folio.folioTypeName:undefined,folioFieldNames:Object.keys(folio),folioShape:shape(folio),reservationShape:shape(info.reservationInfo),detailShape:shape(detail),postingsShape:shape(postings),postingClasses:Array.isArray(asObject(postings??{}).invoicePostingsDetails)?(asObject(postings??{}).invoicePostingsDetails as unknown[]).map(asObject).map(p=>({code:p.transactionCode,type:p.transactionType,group:p.groupTypeInfo,debit:p.debitAmount,credit:p.creditAmount,posted:p.postedAmount,referenceIsTransactionNo:String(p.reference)===String(p.transactionNo)})):undefined,links:[...links(history),...links(detail)]};
+ let postings:unknown,fullHistory:unknown;
+ if(reader.invoicePostings&&invoice.invoice_no&&invoice.folio_no){
+  const accounts=asObject(detail).details;if(!Array.isArray(accounts)||accounts.length!==1)throw Error('document_probe_scope_invalid');
+  const account=asObject(accounts[0]);if(account.hotelId!==invoice.hotel||asObject(account.accountId).id!==invoice.account_id||!Array.isArray(account.invoices))throw Error('document_probe_scope_invalid');
+  const rows=account.invoices.map(asObject).filter(i=>String(i.transactionNo)===invoice.id&&String(i.invoiceNo)===invoice.invoice_no&&String(i.folioNo)===invoice.folio_no);
+  if(rows.length!==1||typeof rows[0].internalFolioWindowID!=='string')throw Error('document_probe_scope_invalid');
+  postings=await reader.invoicePostings({hotel:invoice.hotel as Parameters<OperaReader['invoicePostings']>[0]['hotel'],accountId:invoice.account_id,transactionId:invoice.id,invoiceNo:invoice.invoice_no,folioNo:invoice.folio_no,internalFolioWindowId:rows[0].internalFolioWindowID});
+  if(reader.reservationInvoiceFolios)fullHistory=await reader.reservationInvoiceFolios(invoice.reservation_id,window);
+ }
+ return {hotel:invoice.hotel,matched:true,windowVerified:Number.isSafeInteger(window),folioTypeName:typeof folio.folioTypeName==='string'?folio.folioTypeName:undefined,folioFieldNames:Object.keys(folio),folioShape:shape(folio),reservationShape:shape(info.reservationInfo),detailShape:shape(detail),postingsShape:shape(postings),fullHistoryShape:shape(fullHistory),postingClasses:Array.isArray(asObject(postings??{}).invoicePostingsDetails)?(asObject(postings??{}).invoicePostingsDetails as unknown[]).map(asObject).map(p=>({code:p.transactionCode,type:p.transactionType,group:p.groupTypeInfo,debit:p.debitAmount,credit:p.creditAmount,posted:p.postedAmount,referenceIsTransactionNo:String(p.reference)===String(p.transactionNo)})):undefined,links:[...links(history),...links(detail)]};
 }

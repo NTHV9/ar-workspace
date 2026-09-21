@@ -61,10 +61,10 @@ export class OperaReader {
     if(typeof scope.transactionId!=='string'||!/^-?(0|[1-9][0-9]*)$/.test(scope.transactionId)||scope.transactionId==='-0'||scope.transactionId.length>80)throw new OperaError('invalid_request',undefined,'financial_transaction_identity');
     return this.read(`/ars/v1/hotels/${this.id(scope.hotel)}/accounts/${this.id(scope.accountId)}/transactions/${this.id(scope.transactionId)}/invoicePaymentDetails`,[]);
   }
-  invoicePostings(scope:FinancialReadScope&{transactionId:string;invoiceNo:string;folioNo:string}) {
+  invoicePostings(scope:FinancialReadScope&{transactionId:string;invoiceNo:string;folioNo:string;internalFolioWindowId:string}) {
     this.financialScope(scope);
-    if([scope.transactionId,scope.invoiceNo,scope.folioNo].some(id=>typeof id!=='string'||!/^[1-9][0-9]{0,15}$/.test(id)))throw new OperaError('invalid_request',undefined,'invoice_posting_scope');
-    return this.read('/ars/v1/invoicePostings',[['hotelId',scope.hotel],['accountId',scope.accountId],['transactionNo',scope.transactionId],['invoiceNo',scope.invoiceNo],['folioNo',scope.folioNo]]);
+    if([scope.transactionId,scope.invoiceNo,scope.folioNo,scope.internalFolioWindowId].some(id=>typeof id!=='string'||!/^[1-9][0-9]{0,15}$/.test(id)))throw new OperaError('invalid_request',undefined,'invoice_posting_scope');
+    return this.read('/ars/v1/invoicePostings',[['hotelId',scope.hotel],['accountId',scope.accountId],['accountIdContext','OPERA'],['accountType','AccountId'],['transactionNo',scope.transactionId],['invoiceNo',scope.invoiceNo],['folioNo',scope.folioNo],['internalFolioWindowID',scope.internalFolioWindowId]]);
   }
   appliedInvoicePayments(scope:FinancialReadScope&{invoiceTransactionId:string;invoiceNo?:string}) {
     this.financialScope(scope);
@@ -95,6 +95,10 @@ export class OperaReader {
   reservationFolios(reservationId:string,folioDate:string) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/reservations/${this.id(reservationId)}/folios`,[['includeFolioHistory','true'],['fetchInstructions','Reservation'],['fetchInstructions','Foliohistory'],['start',folioDate],['end',folioDate]]);
+  }
+  reservationInvoiceFolios(reservationId:string,window:number,offset=0,limit=200) {
+    if(!Number.isSafeInteger(window)||window<1)throw new OperaError('invalid_request');
+    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/reservations/${this.id(reservationId)}/folios`,[['includeFolioHistory','true'],['folioWindowNo',String(window)],...['Reservation','Foliohistory','Postings','Transactioncodes','Payee','Account','Totalbalance'].map(x=>['fetchInstructions',x]),...this.page(offset,limit)]);
   }
   reports(name:string){if(!name||name.length>2000)throw new OperaError('invalid_request');return this.read('/rep/config/v1/reports',[['hotel',this.config.hotelId],['name',name],['includeInternalReports','true'],['includeUnpublished','false'],['includeWatermarkDetails','false']]);}
   allReports(name:string){if(!name||name.length>2000)throw new OperaError('invalid_request');return this.read('/rep/config/v1/allReports',[['hotel',this.config.hotelId],['name',name],['includeInternalReports','true'],['includeUnpublished','true'],['includeWatermarkDetails','false']]);}
