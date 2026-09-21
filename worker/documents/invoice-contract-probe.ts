@@ -19,7 +19,7 @@ function links(value:unknown):unknown[]{
  }
  return result;
 }
-/** Selected-invoice metadata only. The returned structure contains no PDF/customer values. */
+/** Read-only selected-invoice control-plane diagnostic; no PDFs or contact values. */
 export async function readInvoiceFolioContract(reader:Pick<OperaReader,'reservationFolios'|'financialTransactionDetail'> & Partial<Pick<OperaReader,'invoicePostings'|'reservationInvoiceFolios'|'invoicePostingBreakdown'|'invoiceTransactionDetails'>>,invoice:DocumentInvoice){
  if(!invoice.reservation_id||!invoice.folio_date)throw Error('document_probe_selector_missing');
  const history=await reader.reservationFolios(invoice.reservation_id,invoice.folio_date);

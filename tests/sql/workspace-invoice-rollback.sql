@@ -1,0 +1,28 @@
+begin;
+do $$
+declare actor uuid;scope text:='SYNTHETIC-INVOICE-'||gen_random_uuid();old_cmd uuid:=gen_random_uuid();cmd uuid:=gen_random_uuid();legacy jsonb;fresh jsonb;r jsonb;next_job jsonb;
+begin
+ select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
+ insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state) values('KAT',scope,'Synthetic invoice renderer','SYNTHETIC',100,0,1,'verified');
+ insert into public.ar_invoices(hotel,account_id,id,guest,invoice_no,folio_no,transaction_date,original,open,verification_state,collection_role,compressed,synced_at) values('KAT',scope,'A','Synthetic guest','INV-A','FOL-A',current_date,100,100,'verified','standalone',false,now());
+ insert into ar_private.invoice_templates values('KAT','synthetic-invoice-v1',true,'{"synthetic":true}');
+ legacy:=public.ar_document_create_v4(actor,old_cmd,'KAT',scope,array['A'],'invoices','combined','billing','native');
+ r:=public.ar_document_create_v5(actor,old_cmd,'KAT',scope,array['A'],'invoices','combined','billing','native');
+ if r->>'id'<>legacy->>'id' or r->>'invoice_source'<>'native' then raise exception 'old command source changed';end if;
+ fresh:=public.ar_document_create_v5(actor,cmd,'KAT',scope,array['A'],'invoices','combined','billing','native');
+ if fresh->>'id'=legacy->>'id' or fresh->>'invoice_source'<>'workspace' or fresh->>'invoice_template_version'<>'synthetic-invoice-v1' or fresh->>'lifecycle'<>'transient' or fresh->>'execution_queue'<>'documents' then raise exception 'new invoice source invalid';end if;
+ r:=public.ar_document_create_v5(actor,cmd,'KAT',scope,array['A'],'invoices','combined','billing','native');if r->>'id'<>fresh->>'id' then raise exception 'new command duplicated';end if;
+ r:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'invoices','combined','billing','native');if r->>'id'<>fresh->>'id' then raise exception 'active preparation duplicated';end if;
+ r:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'both','statement_bundle','billing','workspace');if r->>'invoice_source'<>'workspace' or r->>'statement_source'<>'workspace' or jsonb_array_length(r->'files')<>2 then raise exception 'combined sources invalid';end if;
+ r:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'statement','combined','billing','workspace');if r->>'invoice_source'<>'native' or r->'invoice_template_version'<>'null'::jsonb then raise exception 'Statement-only source polluted';end if;
+ update ar_private.invoice_templates set active=false where hotel='KAT';insert into ar_private.invoice_templates values('KAT','synthetic-invoice-v2',true,'{"synthetic":true}');
+ r:=public.ar_document_create_v5(actor,cmd,'KAT',scope,array['A'],'invoices','combined','billing','native');if r->>'id'<>fresh->>'id' or r->>'invoice_template_version'<>'synthetic-invoice-v1' then raise exception 'replay changed immutable template';end if;
+ next_job:=public.ar_document_create_v5(actor,gen_random_uuid(),'KAT',scope,array['A'],'invoices','combined','billing','native');if next_job->>'id'=fresh->>'id' or next_job->>'invoice_template_version'<>'synthetic-invoice-v2' then raise exception 'new template not fingerprinted';end if;
+ begin update public.ar_document_jobs set invoice_source='workspace',invoice_template_version='synthetic-invoice-v1' where id=(legacy->>'id')::uuid;raise exception 'old source editable';exception when others then if sqlerrm<>'document_invoice_source_immutable' then raise;end if;end;
+ begin perform public.ar_document_create_v5(actor,cmd,'KAT',scope,array['A'],'invoices','separate','billing','native');raise exception 'changed command accepted';exception when others then if sqlerrm<>'document_command_conflict' then raise;end if;end;
+ if current_setting('ar.invoice_source',true)='workspace' or nullif(current_setting('ar.invoice_template_version',true),'') is not null then raise exception 'source context leaked';end if;
+ if has_function_privilege('authenticated','public.ar_document_create_v5(uuid,uuid,text,text,text[],text,text,text,text)','execute') or has_function_privilege('anon','public.ar_invoice_template(text,text)','execute') or has_table_privilege('authenticated','ar_private.invoice_templates','select') then raise exception 'private template/source access leaked';end if;
+ if (select open from public.ar_invoices where hotel='KAT' and account_id=scope and id='A')<>100 then raise exception 'ledger changed';end if;
+end$$;
+rollback;
+select 'Workspace Invoice source/version, legacy replay, active join, permissions and ledger invariants passed; rolled back' as result;

@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — RTF-based Invoice generation for all six hotels
+
+- Owner confirmed system-generated Invoice using the same approach as Statement. Implemented private six-hotel template rendering, exact AR charge and tax reads, original package-reference mapping, printed Reference mapping, fractional VAT totals and fresh AR outstanding checks. No native-PDF fallback or OPERA accounting/print/email mutation. [Implementation and verification](WORKSPACE_INVOICE_INTEGRATION.md).
+- Both exact live KAT/WAKL selections pass all amount and Reference checks against the owner's native files. All six template layouts and one-/two-page outputs were tested privately. Title/table/total text stays editable; two generated-source browser cases pass Add row below (five fields), typed Reference, Delete row and actual Preview at desktop/laptop sizes.
+- Private schema migration and six templates are installed. Local replay passed 81 migrations and 36 rollback fixtures, including old-command replay, source/version immutability and active-job deduplication. Normal Worker integration is implemented but pending final deployment/live generated-PDF checks; older preparations retain their original files.
+
 ## 21 September 2026 — AR invoice versus historical Folio source investigation
 
 - Inspected both owner-supplied OPERA batches privately. Their invoice pages use INVOICE and nonzero outstanding balances. A matched live KAT comparison showed that the current app's unedited native source already uses COPY OF INVOICE, includes a City Ledger settlement credit and shows a zero Folio footer while the AR ledger remains open. This precedes PDF Workspace editing. Customer files/text/images remain outside Git.

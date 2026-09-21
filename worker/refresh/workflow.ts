@@ -19,7 +19,7 @@ import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
-import {readInvoiceModel,readInvoicePacket} from '../invoice/read';
+import {readInvoicePacket} from '../invoice/read';
 import {invoiceModel,record as invoiceRecord} from '../invoice/model';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {

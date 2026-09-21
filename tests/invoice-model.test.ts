@@ -2,14 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {invoiceModel} from '../worker/invoice/model';
 import {invoiceAmountWords} from '../worker/invoice/render';
 
-const money=(amount:number)=>({amount,currencyCode:'THB'});
-export function packet(count=2){
- const total=count*3315,scope={hotelId:'KAT',folioNo:88,guestInfo:{reservationId:{id:'777',type:'Reservation'}}};
- const roots=Array.from({length:count},(_,n)=>({posting:{...scope,transactionNo:10001+n,referencePackageTransactionNo:90001+n,transactionType:'Wrapper'}}));
- const parts=roots.flatMap((root,n)=>[2715,600].map((gross,k)=>{const id=30001+n*10+k,net=gross/1.177;return {posting:{...scope,transactionNo:id,referencePackageTransactionNo:root.posting.referencePackageTransactionNo,transactionType:'Revenue'},postingBreakdown:{grossAmount:money(gross),netAmount:money(net),taxes:[{transactionNo:id*10+1,referenceTransactionNo:id,transactionCode:'SVC',amount:money(net*.1)},{transactionNo:id*10+2,referenceTransactionNo:id,transactionCode:'VAT',amount:money(gross*7/107)}]}};}));
- const taxRows:Array<(typeof roots)[number]|(typeof parts)[number]>=[...roots,...parts];
- return {manifest:{id:'500',hotel:'KAT',account_id:'101',invoice_no:'99',folio_no:'88',reservation_id:'777',folio_date:'2026-01-15',open:total,collection_role:'standalone'},account:{hotelId:'KAT',accountId:{id:'101'},accountName:'Synthetic Travel',address:{address:{addressLine:['Example Road']}}},invoice:{hotelId:'KAT',transactionNo:500,invoiceNo:99,folioNo:88,folioDate:'2026-01-15',balance:money(total),amount:money(total),reference:'VOUCHER-1',guestName:'Example Guest',cashierInfo:{cashierId:1,cashierName:'Cashier'}},reservation:{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'777'},{type:'Confirmation',id:'123456'}],roomStay:{arrivalDate:'2026-01-01',departureDate:'2026-01-15',adultCount:2,childCount:0,roomId:'101'}},postings:{invoicePostingsDetails:roots.map((r,n)=>({transactionNo:r.posting.transactionNo,transactionCode:'ROOM',transactionDate:'2026-01-02',checkNo:'PRINTED-'+(n+1),reference:'different internal reference',debitAmount:money(3315)})),trxCodesInfo:[{hotelId:'KAT',transactionCode:'ROOM',description:'Accommodation charge'}]},taxRows,taxCodes:[{hotelId:'KAT',transactionCode:'VAT',transactionGroup:'TAX',description:'Room VAT'},{hotelId:'KAT',transactionCode:'SVC',transactionGroup:'SVC',description:'Service charge'}]};
-}
+import {packet,money} from './fixtures/invoice-packet';
 const now=new Date('2026-09-21T10:00:00Z');
 describe('workspace invoice financial model',()=>{
  it('uses AR outstanding, printed check references and actual VAT excluding service charge',()=>{

@@ -1,6 +1,7 @@
 import {assertWritesEnabled} from '../operations/write-hold';
 import {writeManagedStorage} from '../operations/storage';
 import {workspaceStatement} from '../statement/generate';
+import {workspaceInvoice} from '../invoice/generate';
 import {documentSource} from './source-policy';
 import type {WorkflowStep} from 'cloudflare:workers';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
@@ -9,7 +10,7 @@ import {OperaError} from '../opera/client';
 import {getNativeInvoicePdf,type DocumentInvoice} from './native-invoice';
 export interface DocumentFile {id:string;kind:'statement'|'invoice';invoice_id:string|null;ordinal:number;state:string;storage_key:string|null;error_code:string|null;byte_count:number|null;sha256:string|null}
 export interface DocumentExport {name:string;storage_key:string;byte_count:number;sha256:string}
-export interface DocumentJob {lifecycle?:'legacy'|'transient';closed_at?:string|null;closed_reason?:'sent'|'discarded'|null;execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
+export interface DocumentJob {invoice_source?:'native'|'workspace';invoice_template_version?:string|null;lifecycle?:'legacy'|'transient';closed_at?:string|null;closed_reason?:'sent'|'discarded'|null;execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
 export interface DocumentCreateInput {statementSource?:string;commandKey:string;hotel:string;accountId:string;ids:string[];content:string;layout:string;purpose:string}
 export const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export async function documentJob(env:RefreshEnv,id:string){return backendRpc<DocumentJob|null>(env,'ar_document_get',{p_job_id:id});}
@@ -33,7 +34,7 @@ export async function dispatchDocumentJob(env:RefreshEnv,job:DocumentJob){
 }
 export async function createDocumentJob(env:RefreshEnv,owner:string,input:DocumentCreateInput){
  const source=documentSource(input);
- const job=await backendRpc<DocumentJob>(env,'ar_document_create_v4',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
+ const job=await backendRpc<DocumentJob>(env,'ar_document_create_v5',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
  return dispatchDocumentJob(env,job);
 }
 export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,type:string){
@@ -53,13 +54,14 @@ export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowSt
    try{
     if(file.kind==='statement'&&job.statement_source!=='workspace')throw new OperaError('invalid_configuration',undefined,'document_statement_source_retired');
     const invoice=job.manifest.find(i=>i.id===file.invoice_id);if(file.kind!=='statement'&&(!invoice||invoice.hotel!==job.hotel||invoice.account_id!==job.account_id))throw new Error('document_manifest_invalid');
-    const pdf=file.kind==='statement'?await workspaceStatement(env,job):await getNativeInvoicePdf(makeReader(env,job.hotel),invoice!,()=>{renderStarted=true;});
+    if(file.kind==='invoice'&&job.invoice_source!==undefined&&!['native','workspace'].includes(job.invoice_source))throw Error('document_invoice_source_invalid');
+    const pdf=file.kind==='statement'?await workspaceStatement(env,job):job.invoice_source==='workspace'?await workspaceInvoice(env,job,invoice!):await getNativeInvoicePdf(makeReader(env,job.hotel),invoice!,()=>{renderStarted=true;});
     const key=`jobs/${job.id}/originals/${file.id}.pdf`;
     await uploadPrivate(env,key,pdf.bytes,'application/pdf');
     await backendRpc(env,'ar_document_finish_file',{p_job_id:job.id,p_file_id:file.id,p_storage_key:key,p_bytes:pdf.bytes.length,p_sha256:pdf.sha256});
     return {state:'ready',pages:pdf.pages};
    }catch(error){
-    const code=error instanceof OperaError?error.stage??error.code:error instanceof Error&&(/^(document_statement_[a-z_]+|document_source_changed|budget_[a-z_]+|storage_[a-z_]+)$/.test(error.message)||['document_manifest_invalid','private_storage_write_failed','private_storage_unavailable'].includes(error.message))?error.message:'document_generation_failed';
+    const code=error instanceof OperaError?error.stage??error.code:error instanceof Error&&(/^(document_(?:statement|invoice)_[a-z_]+|document_source_changed|budget_[a-z_]+|storage_[a-z_]+)$/.test(error.message)||['document_manifest_invalid','private_storage_write_failed','private_storage_unavailable'].includes(error.message))?error.message:'document_generation_failed';
     await backendRpc(env,'ar_document_fail_file',{p_job_id:job.id,p_file_id:file.id,p_code:code,p_uncertain:renderStarted});
     return {state:renderStarted?'uncertain':'unavailable',code};
    }

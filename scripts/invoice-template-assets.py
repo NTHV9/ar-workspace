@@ -61,11 +61,32 @@ if __name__=='__main__':
                 if hits:positions[field]=[{k:w[k] for k in ['x0','x1','top','bottom','size','fontname']} for w in hits]
             if any(k not in positions for k in ['TRX_DATE_SHORT','TOTAL_DEBIT','BALANCE','BILL_NUMBER_HEADER']):raise ValueError('Missing layout marker')
             layout={'width':page.width,'height':page.height,'positions':positions,'labels':[{k:w[k] for k in ['text','x0','x1','top','bottom','size']} for w in words if w['text'] in ['DATE','DESCRIPTION','REFERENCE','Total','Guest','Signature','Page','No.']]}
+            total_top=positions['TOTAL_DEBIT'][0]['top'];row_top=positions['TRX_DATE_SHORT'][0]['top']
+            closing_edges=[e['top'] for e in page.edges if e.get('orientation')=='h' and e['x0']<35 and e['x1']>575 and row_top<e['top']<total_top]
+            closing_edge=max(closing_edges) if closing_edges else total_top-9
             (a.output/f'{hotel}-layout.json').write_text(json.dumps(layout,indent=2),encoding='utf8')
         doc=pdfium.PdfDocument(str(a.output/f'{hotel}-markers.pdf'));bitmap=doc[0].render(scale=2).to_pil().convert('RGB');draw=ImageDraw.Draw(bitmap)
         for field,hits in positions.items():
             for hit in hits:draw.rectangle((hit['x0']*2-1,hit['top']*2-1,hit['x1']*2+1,hit['bottom']*2+1),fill='white')
         page_label=next(w for w in words if w['text']=='Page')
+        # Keep the title and all five table headings as real PDF text so the
+        # existing editor can identify every column, including an empty credit.
+        fixed_text=[]
+        for caption in ['INVOICE','DATE','DESCRIPTION','REFERENCE','DEBIT','CREDITS']:
+            word=next(w for w in words if w['text']==caption)
+            related=[w for w in words if abs(w['top']-word['top'])<2 and w['x0']>=word['x0'] and w['x0']<word['x0']+90] if caption in ['DEBIT','CREDITS'] else [word]
+            label=caption+' (THB)' if caption in ['DEBIT','CREDITS'] else caption
+            background=bitmap.getpixel((round((word['x0']-1)*2),round((word['top']-1)*2)))
+            for w in related:draw.rectangle((w['x0']*2-1,w['top']*2-1,w['x1']*2+1,w['bottom']*2+1),fill=background)
+            fixed_text.append({'text':label,'x':word['x0'],'top':word['top'],'size':word['size']})
+        closing_text=[]
+        for label in [w for w in words if w['text']=='Total' and w['x0']>315 and positions['TOTAL_DEBIT'][0]['top']-2<=w['top']<=positions['BALANCE'][0]['bottom']]:
+            caption_words=sorted([w for w in words if abs(w['top']-label['top'])<1.5 and 315<w['x0']<550 and w['text']!='THB' and not re.search(r'M\d{3}',w['text'])],key=lambda w:w['x0'])
+            for w in caption_words:draw.rectangle((w['x0']*2-1,w['top']*2-1,w['x1']*2+1,w['bottom']*2+1),fill='white')
+            closing_text.append({'text':' '.join(w['text'] for w in caption_words),'x':label['x0'],'top':label['top'],'size':label['size'],'bold':True})
+        for w in words:
+            if w['text']=='THB' and w['x0']>500 and positions['TOTAL_DEBIT'][0]['top']<w['top']<positions['BALANCE'][0]['bottom']:
+                draw.rectangle((w['x0']*2-1,w['top']*2-1,w['x1']*2+1,w['bottom']*2+1),fill='white');closing_text.append({'text':'THB','x':w['x0'],'top':w['top'],'size':w['size'],'bold':False})
         date=positions['SYSTEM_DATE'][0];guests=positions['NO_OF_ADULTS'][0]
         for top,bottom in [(page_label['top'],page_label['bottom']),(date['top'],date['bottom']),(guests['top'],guests['bottom'])]:draw.rectangle((472*2,top*2-1,579*2,bottom*2+1),fill='white')
         bank_text=[]
@@ -81,13 +102,13 @@ if __name__=='__main__':
                 bank_text.append({'x':133.7,'top':label['top'],'text':value})
             draw.rectangle((132*2,(labels[0]['top']-1)*2,314*2,(labels[-1]['bottom']+1)*2),fill='white')
         bitmap.save(a.output/f'{hotel}-blank.png')
-        row_top=positions['TRX_DATE_SHORT'][0]['top'];closing_top=positions['TOTAL_DEBIT'][0]['top']-5;closing_bottom=positions['BALANCE'][0]['bottom']+4;signature_top=positions['CASHIER_NAME'][0]['top']-20
+        row_top=positions['TRX_DATE_SHORT'][0]['top'];closing_top=closing_edge-.5;closing_bottom=positions['BALANCE'][0]['bottom']+4;signature_top=positions['CASHIER_NAME'][0]['top']-20
         regions={'header':(0,row_top-4),'closing':(closing_top,closing_bottom),'signature':(signature_top,signature_top+35),'footer':(687,792)}
         images={}
         for name,(top,bottom) in regions.items():
             top=round(top*2)/2;bottom=round(bottom*2)/2;part=bitmap.crop((0,round(top*2),1224,round(bottom*2)));buf=io.BytesIO();part.save(buf,format='PNG',optimize=True);raw=buf.getvalue()
             (a.output/f'{hotel}-{name}.png').write_bytes(raw)
             images[name]={'width':612,'height':bottom-top,'png':base64.b64encode(raw).decode(),'sha256':hashlib.sha256(raw).hexdigest()}
-        assets={'hotel':hotel,'version':'invoice-rtf-20260921-v1',**images,'bankText':bank_text,'layout':{'positions':positions,'rowTop':row_top,'closingTop':round(closing_top*2)/2,'signatureTop':round(signature_top*2)/2,'pageTop':page_label['top']}}
+        assets={'hotel':hotel,'version':'invoice-rtf-20260921-v1',**images,'bankText':bank_text,'fixedText':fixed_text,'closingText':closing_text,'layout':{'positions':positions,'rowTop':row_top,'closingTop':round(closing_top*2)/2,'signatureTop':round(signature_top*2)/2,'pageTop':page_label['top']}}
         (a.output/f'{hotel}-assets.json').write_text(json.dumps(assets,separators=(',',':')),encoding='utf8')
         print(json.dumps({'hotel':hotel,'layoutFields':len(positions),'templateSha256':hashlib.sha256((a.templates/TEMPLATES[hotel]).read_bytes()).hexdigest()}))

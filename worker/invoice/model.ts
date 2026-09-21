@@ -23,7 +23,7 @@ function precise(v:unknown):bigint{
 const abs=(n:bigint)=>n<0n?-n:n;
 const rounded=(units:bigint)=>{const n=Number((abs(units)+CENT/2n)/CENT)*(units<0n?-1:1);if(!Number.isSafeInteger(n))return fail('amount_invalid');return n;};
 
-export interface InvoicePacket {manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[]}
+export interface InvoicePacket {manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];payeeTaxNumber?:string}
 export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceModel{
  const {manifest:m}=packet,a=record(packet.account),i=record(packet.invoice),reservation=record(packet.reservation),postingData=record(packet.postings);
  if(a.hotelId!==m.hotel||text(record(a.accountId).id)!==m.account_id||i.hotelId!==m.hotel||id(i.transactionNo)!==m.id||text(i.invoiceNo)!==m.invoice_no||text(i.folioNo)!==m.folio_no||!m.reservation_id||!m.folio_no||!m.invoice_no||!['standalone','parent'].includes(m.collection_role)||m.open<=0||i.parentInvoiceNo!=null)return fail('scope_invalid');
@@ -66,6 +66,6 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  const billAddress=[text(a.accountName),...addressLines,[text(address.cityName),text(address.postalCode)].filter(Boolean).join(' '),text(country.value??country.code)].filter(Boolean);if(!billAddress[0])return fail('address_invalid');
  const stay=record(reservation.roomStay),ids=rows(reservation.reservationIdList),cashier=optional(i.cashierInfo);
  const printed=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now),part=(type:string)=>printed.find(p=>p.type===type)?.value??'';
- return {hotel:m.hotel,accountId:m.account_id,invoiceId:m.id,folio:m.folio_no,voucher:text(i.reference),address:billAddress,company:text(a.accountName),guest:text(i.guestName),taxId:text(a.taxNumber),room:text(stay.roomId),arrival:dateText(stay.arrivalDate),departure:dateText(stay.departureDate),adults:text(stay.adultCount),children:text(stay.childCount),confirmation:text(ids.find(r=>r.type==='Confirmation')?.id),cashierNo:text(cashier.cashierId),cashierName:text(cashier.cashierName),printDate:`${part('day')}/${part('month')}/${part('year')}`,printTime:`${part('hour')}:${part('minute')}`,lines,debit,credit,gross,taxableNet,nonTaxable,vat,outstanding};
+ return {hotel:m.hotel,accountId:m.account_id,invoiceId:m.id,folio:m.folio_no,voucher:text(i.reference),address:billAddress,company:text(a.accountName),guest:text(i.guestName),taxId:text(packet.payeeTaxNumber),room:text(stay.roomId),arrival:dateText(stay.arrivalDate),departure:dateText(stay.departureDate),adults:text(stay.adultCount),children:text(stay.childCount),confirmation:text(ids.find(r=>r.type==='Confirmation')?.id),cashierNo:text(cashier.cashierId),cashierName:text(cashier.cashierName),printDate:`${part('day')}/${part('month')}/${part('year')}`,printTime:`${part('hour')}:${part('minute')}`,lines,debit,credit,gross,taxableNet,nonTaxable,vat,outstanding};
 }
 function rowsOfText(v:unknown):string[]{if(!Array.isArray(v))return fail('address_invalid');return v.map(text);}

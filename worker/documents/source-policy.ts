@@ -1,4 +1,5 @@
-/** Owner decision: system Statements and native OPERA Invoices are separate sources. */
+/** This legacy flag describes Statement only. Invoice source/version is separately
+ * snapshotted by create_v5; all new Invoice preparations use the workspace renderer. */
 export function documentSource(input:{content:string;statementSource?:unknown;ids:unknown[]}):'native'|'workspace'{
  if(input.statementSource!==undefined&&input.statementSource!=='native'&&input.statementSource!=='workspace')throw Error('document_request_invalid');
  if(input.content==='invoices'){

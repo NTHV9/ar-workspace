@@ -7,4 +7,4 @@ export interface InvoiceModel {
 }
 export interface InvoiceImage {width:number;height:number;png:string;sha256:string}
 export interface InvoicePosition {x0:number;x1:number;top:number;bottom:number;size:number;fontname:string}
-export interface InvoiceAssets {hotel:string;version:string;header:InvoiceImage;closing:InvoiceImage;signature:InvoiceImage;footer:InvoiceImage;bankText?:{x:number;top:number;text:string}[];layout:{positions:Record<string,InvoicePosition[]>;rowTop:number;closingTop:number;signatureTop:number;pageTop:number}}
+export interface InvoiceAssets {hotel:string;version:string;header:InvoiceImage;closing:InvoiceImage;signature:InvoiceImage;footer:InvoiceImage;bankText?:{x:number;top:number;text:string}[];fixedText:{x:number;top:number;text:string;size:number}[];closingText:{x:number;top:number;text:string;size:number;bold:boolean}[];layout:{positions:Record<string,InvoicePosition[]>;rowTop:number;closingTop:number;signatureTop:number;pageTop:number}}

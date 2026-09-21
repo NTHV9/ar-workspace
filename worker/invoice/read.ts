@@ -15,7 +15,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  if(selected.length!==1)fail();const current=selected[0];
  const valid=(i:Record<string,unknown>)=>String(i.transactionNo)===manifest.id&&String(i.invoiceNo)===manifest.invoice_no&&String(i.folioNo)===manifest.folio_no&&amountCents(i.balance,'THB')===Math.round(manifest.open*100)&&i.folioDate===manifest.folio_date&&i.parentInvoiceNo==null;
  if(!valid(current)||record(current.reservationId).id!==manifest.reservation_id)fail();
- const historical=await reader.reservationFolios(manifest.reservation_id,manifest.folio_date),window=nativeFolioSelector(historical,manifest),reservation=record(record(historical).reservationFolioInformation).reservationInfo;
+ const historical=await reader.reservationFolios(manifest.reservation_id,manifest.folio_date,true),window=nativeFolioSelector(historical,manifest),folioInfo=record(record(historical).reservationFolioInformation),reservation=folioInfo.reservationInfo;
  const scope={hotel:manifest.hotel as Parameters<OperaReader['financialTransactionDetail']>[0]['hotel'],accountId:manifest.account_id,transactionId:manifest.id};
  const detail=record(await reader.financialTransactionDetail(scope)),accounts=list(detail.details);if(accounts.length!==1||accounts[0].hotelId!==manifest.hotel||record(accounts[0].accountId).id!==manifest.account_id)fail();
  const invoices=list(accounts[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(invoices.length!==1||!valid(invoices[0]))fail();const invoice=invoices[0];
@@ -31,6 +31,10 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  // Recheck the AR balance after the slower postings/tax reads to fence a payment
  // or adjustment arriving during preparation. No write or print call is made.
  const ending=list(record(await reader.financialTransactionDetail(scope)).details);if(ending.length!==1||ending[0].hotelId!==manifest.hotel||record(ending[0].accountId).id!==manifest.account_id)fail();const last=list(ending[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(last.length!==1||!valid(last[0])||amountCents(last[0].amount,'THB')!==amountCents(invoice.amount,'THB'))fail();
- return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes};
+ const profileId=account.profileId&&record(account.profileId).id;
+ const payeeWindow=Array.isArray(folioInfo.folioWindows)?list(folioInfo.folioWindows).find(w=>w.folioWindowNo===window&&w.internalFolioWindowID===invoice.internalFolioWindowID):undefined;
+ const payee=payeeWindow?.payeeInfo?record(payeeWindow.payeeInfo):undefined;
+ const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
+ return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,payeeTaxNumber};
 }
 export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){return invoiceModel(await readInvoicePacket(reader,manifest),now);}
