@@ -100,8 +100,8 @@ export class OperaReader {
     if(!Number.isSafeInteger(window)||window<1)throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/reservations/${this.id(reservationId)}/folios`,[['includeFolioHistory','true'],['folioWindowNo',String(window)],...['Reservation','Foliohistory','Postings','Transactioncodes','Payee','Account','Totalbalance'].map(x=>['fetchInstructions',x]),...this.page(offset,limit)]);
   }
-  invoicePostingBreakdown(reservationId:string,window:number,start:string,end:string,offset=0,limit=200) {
-    if(!Number.isSafeInteger(window)||window<1||![start,end].every(x=>/^\d{4}-\d{2}-\d{2}$/.test(x))||start>end)throw new OperaError('invalid_request');
+  invoicePostingBreakdown(reservationId:string,window:number,start:string,end:string,offset=0,limit=50) {
+    if(!Number.isSafeInteger(window)||window<1||limit>50||![start,end].every(x=>/^\d{4}-\d{2}-\d{2}$/.test(x))||start>end)throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/financialPostingsNetVat`,[['reservationId',reservationId],['folioWindowNo',String(window)],['startDate',start],['endDate',end],...this.page(offset,limit)]);
   }
   invoiceTransactionDetails(transactionIds:string[]) {
