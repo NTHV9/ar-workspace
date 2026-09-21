@@ -1,4 +1,4 @@
-import type {OperaReader} from '../opera/client';
+import {OperaError,type OperaReader} from '../opera/client';
 import {nativeFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
 import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
@@ -40,4 +40,18 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
  return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,payeeTaxNumber,customReference:customReference as string|undefined};
 }
-export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){return invoiceModel(await readInvoicePacket(reader,manifest),now);}
+export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){
+ let packet:InvoicePacket|undefined;
+ for(let attempt=0;attempt<3;attempt++){
+  try{packet=await readInvoicePacket(reader,manifest);break;}
+  catch(error){
+   // A paginated OPERA read can overlap or change while it is being read. Start
+   // from the account again; never deduplicate, merge attempts, or retry rendering.
+   const unstable=error instanceof OperaError&&['duplicate_member','pagination_changed','pagination_incomplete'].includes(error.code)||error instanceof Error&&error.message==='document_invoice_pagination_changed';
+   if(!unstable)throw error;
+   if(attempt===2)throw Error('document_invoice_source_unstable',{cause:error});
+  }
+ }
+ if(!packet)throw Error('document_invoice_source_unstable');
+ return invoiceModel(packet,now);
+}

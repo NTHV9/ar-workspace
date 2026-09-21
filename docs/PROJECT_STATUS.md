@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Invoice preparation pagination recovery
+
+- Confirmed two failed workspace/v2 Invoice jobs with `duplicate_member`; both need two VAT pages (62 and 57 source rows). Fresh reads of both passed with reconciled amounts, and the screenshot selection also created a ready PDF through the real Create document job button before a fix. The original responses were not retained, so the exact within-page versus cross-page cause remains unproven; this is transient-read recovery, not a claimed deterministic OPERA root-cause fix.
+- Implemented at most three complete read attempts for duplicate/changing/incomplete pagination only. Each attempt starts at the account and discards all prior rows. Identity, page counts, unique members, tax reconciliation and end-of-read AR balance checks remain; model failures/changed balances are not retried. Rendering/storage/native printing are outside the retry boundary. Persistent instability gets an actionable error.
+- Added a scoped, read-only control-plane diagnostic returning stage/counts/duplicate categories only. No source rows or customer identifiers are returned. Shared pagination rules, retained preparations and accounting are unchanged.
+- Tested: failing duplicate-recovery regressions before the fix, then 1,349 unit tests, typecheck/build/public assets/dry run passed. Final live six-hotel verification is in progress. No schema, paid dependency, email send or file cleanup.
+
 ## 21 September 2026 — RTF-based Invoice generation for all six hotels
 
 - Owner confirmed system-generated Invoice using the same approach as Statement. Implemented private six-hotel template rendering, exact AR charge and tax reads, original package-reference mapping, printed Reference mapping, fractional VAT totals and fresh AR outstanding checks. No native-PDF fallback or OPERA accounting/print/email mutation. [Implementation and verification](WORKSPACE_INVOICE_INTEGRATION.md).

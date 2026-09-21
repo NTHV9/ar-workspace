@@ -19,6 +19,29 @@ it('distinguishes a duplicate inside a VAT page from a page-boundary duplicate',
  const {p,reader}=fixture();reader.invoicePostingBreakdown.mockResolvedValue({financialPostings:[p.taxRows[0],p.taxRows[0]],offset:0,limit:50,totalResults:2,hasMore:false});
  expect(await auditInvoiceRead(reader,p.manifest)).toMatchObject({ok:false,error:'duplicate_member',pages:[{withinPage:1,acrossPages:0}]});
 });
+it('restarts the entire invoice read when OPERA overlaps a VAT page, without mixing attempts',async()=>{
+ const {p,reader}=fixture(20);let attempt=0;
+ reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,_s,_e,offset,limit)=>{
+  if(offset===0)attempt++;
+  const rows=offset===50&&attempt<3?[p.taxRows[49],...p.taxRows.slice(51)]:p.taxRows.slice(offset,offset+limit);
+  return {financialPostings:rows,offset,limit,totalResults:60,hasMore:offset===0};
+ });
+ const model=await readInvoiceModel(reader,p.manifest);
+ expect(model.lines).toHaveLength(20);expect(model.gross).toBe(6630000);
+ expect(reader.invoicePostingBreakdown.mock.calls.map(c=>c[4])).toEqual([0,50,0,50,0,50]);
+ expect(reader.account).toHaveBeenCalledTimes(3);expect(reader.invoicePostings).toHaveBeenCalledTimes(3);
+});
+it('bounds persistent duplicate recovery and never returns an incomplete model',async()=>{
+ const {p,reader}=fixture();reader.invoicePostingBreakdown.mockResolvedValue({financialPostings:[p.taxRows[0],p.taxRows[0]],offset:0,limit:50,totalResults:2,hasMore:false});
+ await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_invoice_source_unstable');
+ expect(reader.account).toHaveBeenCalledTimes(3);expect(reader.invoiceTransactionDetails).not.toHaveBeenCalled();
+});
+it('does not retry or bypass a changed AR balance after recovering from overlapping pages',async()=>{
+ const {p,reader,detail}=fixture();reader.invoicePostingBreakdown.mockResolvedValueOnce({financialPostings:[p.taxRows[0],p.taxRows[0]],offset:0,limit:50,totalResults:2,hasMore:false});
+ const changed=structuredClone(detail);changed.details[0].invoices[0].balance=money(p.manifest.open-100);
+ reader.financialTransactionDetail.mockResolvedValueOnce(detail).mockResolvedValueOnce(detail).mockResolvedValueOnce(changed);
+ await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');expect(reader.account).toHaveBeenCalledTimes(2);
+});
 it('reads all VAT pages with the original-offset contract and rechecks the current AR balance',async()=>{
  const {p,reader}=fixture(20),model=await readInvoiceModel(reader,p.manifest);
  expect(model.lines).toHaveLength(20);expect(model.gross).toBe(6630000);expect(reader.invoicePostingBreakdown.mock.calls.map(c=>c.slice(4))).toEqual([[0,50],[50,50]]);expect(reader.financialTransactionDetail).toHaveBeenCalledTimes(2);
@@ -26,10 +49,10 @@ it('reads all VAT pages with the original-offset contract and rechecks the curre
  expect(reader.invoicePostingBreakdown.mock.calls[0].slice(0,4)).toEqual(['777',1,'2026-01-02','2026-01-15']);
 });
 it('rejects a missing final VAT page rather than rendering a partial invoice',async()=>{
- const {p,reader}=fixture(20);reader.invoicePostingBreakdown.mockResolvedValue({financialPostings:p.taxRows.slice(0,50),offset:0,limit:50,hasMore:false,totalResults:60});await expect(readInvoiceModel(reader,p.manifest)).rejects.toMatchObject({code:'pagination_incomplete'});
+ const {p,reader}=fixture(20);reader.invoicePostingBreakdown.mockResolvedValue({financialPostings:p.taxRows.slice(0,50),offset:0,limit:50,hasMore:false,totalResults:60});await expect(readInvoiceModel(reader,p.manifest)).rejects.toMatchObject({message:'document_invoice_source_unstable',cause:{code:'pagination_incomplete'}});
 });
 it('does not reuse the unrelated invoicePayments next-offset convention',async()=>{
- const {p,reader}=fixture();reader.invoicePostingBreakdown.mockResolvedValue({financialPostings:p.taxRows,offset:50,limit:50,hasMore:false,totalResults:p.taxRows.length});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_invoice_pagination_changed');
+ const {p,reader}=fixture();reader.invoicePostingBreakdown.mockResolvedValue({financialPostings:p.taxRows,offset:50,limit:50,hasMore:false,totalResults:p.taxRows.length});await expect(readInvoiceModel(reader,p.manifest)).rejects.toMatchObject({message:'document_invoice_source_unstable',cause:{message:'document_invoice_pagination_changed'}});
 });
 it('stops when payment changes AR while the invoice is being prepared',async()=>{
  const {p,reader,detail}=fixture();const changed=structuredClone(detail);changed.details[0].invoices[0].balance=money(p.manifest.open-100);reader.financialTransactionDetail.mockResolvedValueOnce(detail).mockResolvedValueOnce(changed);await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');
