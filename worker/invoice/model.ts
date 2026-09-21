@@ -65,7 +65,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
     if(definitions.length!==1||p.transactionCode!==selected.transactionCode)return fail('tax_scope_invalid');
     const code=definitions[0],isTax=code.transactionGroup==='TAX',isVat=isTax&&/\bvat\b/i.test(text(code.description));
     if(isTax&&!isVat)return fail('tax_code_unsupported');
-    const check=text(selected.checkNo),groupKey=JSON.stringify([text(selected.transactionDate),check||line.id]),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check};
+    const check=text(selected.checkNo),groupKey=JSON.stringify([text(selected.transactionDate),check?'check':'posting',check||line.id]),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check};
     if(isVat){if(taxSeen.has(key))return fail('tax_scope_invalid');taxSeen.add(key);group.vat+=grossAmount;group.taxCount++;vatUnits+=grossAmount;}
     else{group.base+=grossAmount;group.baseCount++;}
     directGroups.set(groupKey,group);
