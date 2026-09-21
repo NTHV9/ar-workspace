@@ -1,5 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {readInvoiceModel} from '../worker/invoice/read';
+import {auditInvoiceRead} from '../worker/invoice/read-audit';
 import {packet,money} from './fixtures/invoice-packet';
 function fixture(count=2){
  const p=packet(count),current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
@@ -7,6 +8,17 @@ function fixture(count=2){
  const reader={invoiceReservation:vi.fn().mockResolvedValue({reservations:{reservation:[{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'777'}],customReference:'CUSTOM-VOUCHER'}]}}),account:vi.fn().mockResolvedValue({accountDetails:{...p.account,invoices:[current]}}),invoiceHistory:vi.fn(),reservationFolios:vi.fn().mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}]}}),financialTransactionDetail:vi.fn().mockImplementation(async()=>structuredClone(detail)),invoicePostings:vi.fn().mockResolvedValue(p.postings),invoicePostingBreakdown:vi.fn().mockImplementation(async(_r:string,_w:number,_s:string,_e:string,offset:number,limit:number)=>({financialPostings:p.taxRows.slice(offset,offset+limit),offset,limit,hasMore:offset+limit<p.taxRows.length,totalResults:p.taxRows.length})),invoiceTransactionDetails:vi.fn().mockResolvedValue({trxCodesInfo:p.taxCodes})};
  return {p,reader,detail};
 }
+it('reports the failing VAT page without returning customer rows or identities',async()=>{
+ const {p,reader}=fixture(20);
+ reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,_s,_e,offset,limit)=>({financialPostings:offset?[p.taxRows[49],...p.taxRows.slice(51)]:p.taxRows.slice(0,50),offset,limit,hasMore:offset===0,totalResults:60}));
+ const report=await auditInvoiceRead(reader,p.manifest);
+ expect(report).toMatchObject({ok:false,stage:'invoicePostingBreakdown',error:'duplicate_member',pages:[{rows:50,acrossPages:0,withinPage:0},{rows:10,acrossPages:1,withinPage:0,changedDuplicates:0}]});
+ expect(JSON.stringify(report)).not.toContain('Synthetic Travel');expect(JSON.stringify(report)).not.toContain('30001');
+});
+it('distinguishes a duplicate inside a VAT page from a page-boundary duplicate',async()=>{
+ const {p,reader}=fixture();reader.invoicePostingBreakdown.mockResolvedValue({financialPostings:[p.taxRows[0],p.taxRows[0]],offset:0,limit:50,totalResults:2,hasMore:false});
+ expect(await auditInvoiceRead(reader,p.manifest)).toMatchObject({ok:false,error:'duplicate_member',pages:[{withinPage:1,acrossPages:0}]});
+});
 it('reads all VAT pages with the original-offset contract and rechecks the current AR balance',async()=>{
  const {p,reader}=fixture(20),model=await readInvoiceModel(reader,p.manifest);
  expect(model.lines).toHaveLength(20);expect(model.gross).toBe(6630000);expect(reader.invoicePostingBreakdown.mock.calls.map(c=>c.slice(4))).toEqual([[0,50],[50,50]]);expect(reader.financialTransactionDetail).toHaveBeenCalledTimes(2);
