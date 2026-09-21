@@ -19,7 +19,8 @@ import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
-import {readInvoiceModel} from '../invoice/read';
+import {readInvoiceModel,readInvoicePacket} from '../invoice/read';
+import {invoiceModel,record as invoiceRecord} from '../invoice/model';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
@@ -38,7 +39,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(!job||job.hotel!==hotel||job.invoice_ids.length!==1)throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===job.invoice_ids[0]);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
-        if(payload.invoiceModelProbe){const model=await readInvoiceModel(makeReader(runtime,hotel),invoice);return JSON.stringify({hotel:model.hotel,lines:model.lines.length,debit:model.debit,credit:model.credit,gross:model.gross,vat:model.vat,taxableNet:model.taxableNet,nonTaxable:model.nonTaxable,outstanding:model.outstanding,referenceHash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(model.lines.map(l=>l.reference).sort().join('|'))))].map(n=>n.toString(16).padStart(2,'0')).join('')});}
+        if(payload.invoiceModelProbe){const packet=await readInvoicePacket(makeReader(runtime,hotel),invoice);try{const model=invoiceModel(packet);return JSON.stringify({hotel:model.hotel,lines:model.lines.length,debit:model.debit,credit:model.credit,gross:model.gross,vat:model.vat,taxableNet:model.taxableNet,nonTaxable:model.nonTaxable,outstanding:model.outstanding,referenceHash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(model.lines.map(l=>l.reference).sort().join('|'))))].map(n=>n.toString(16).padStart(2,'0')).join('')});}catch(error){const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord),net=packet.taxRows.map(invoiceRecord).map(r=>invoiceRecord(r.posting)),ids=new Set(rows.map(r=>String(r.transactionNo))),checks=new Set(rows.map(r=>String(r.checkNo)));return JSON.stringify({hotel,error:error instanceof Error?error.message:'invalid',rows:rows.length,rootsFound:net.filter(r=>ids.has(String(r.transactionNo))).length,childrenById:net.filter(r=>ids.has(String(r.referencePackageTransactionNo))).length,childrenByCheck:net.filter(r=>checks.has(String(r.referencePackageTransactionNo))).length,sampleRoots:net.filter(r=>ids.has(String(r.transactionNo))).slice(0,2).map(r=>({id:r.transactionNo,reference:r.reference,check:r.checkNo,package:r.referencePackageTransactionNo})),sampleChildren:net.filter(r=>r.referencePackageTransactionNo).slice(0,2).map(r=>({id:r.transactionNo,package:r.referencePackageTransactionNo}))});}}
         return JSON.stringify(await readInvoiceFolioContract(makeReader(runtime,hotel),invoice));
       });
     }
