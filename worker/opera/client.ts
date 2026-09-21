@@ -104,6 +104,10 @@ export class OperaReader {
     if(!Number.isSafeInteger(window)||window<1)throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/financialPostingsNetVat`,[['reservationId',reservationId],['folioWindowNo',String(window)],...this.page(offset,limit)]);
   }
+  invoiceTransactionDetails(transactionIds:string[]) {
+    if(!transactionIds.length||transactionIds.length>40||new Set(transactionIds).size!==transactionIds.length||transactionIds.some(id=>!/^[1-9][0-9]{0,15}$/.test(id)))throw new OperaError('invalid_request');
+    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/transactionDetails`,[['includeGenerates','true'],...transactionIds.map(id=>['transactionNo',id])]);
+  }
   reports(name:string){if(!name||name.length>2000)throw new OperaError('invalid_request');return this.read('/rep/config/v1/reports',[['hotel',this.config.hotelId],['name',name],['includeInternalReports','true'],['includeUnpublished','false'],['includeWatermarkDetails','false']]);}
   allReports(name:string){if(!name||name.length>2000)throw new OperaError('invalid_request');return this.read('/rep/config/v1/allReports',[['hotel',this.config.hotelId],['name',name],['includeInternalReports','true'],['includeUnpublished','true'],['includeWatermarkDetails','false']]);}
   reportParameters(id:string,context:string,type:string){if(!id||!context||!type)throw new OperaError('invalid_request');return this.read('/rep/config/v1/reportParameters',[['id',id],['idContext',context],['type',type]]);}
