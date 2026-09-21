@@ -13,7 +13,7 @@ const entries=[
  {id:'7',guest:'G Unknown · Synthetic',age:null,aging:'Unknown',workflow:null},
  {id:'8',guest:'H Range · Synthetic',age:null,aging:buckets[3].label,workflow:{...workflow,billing_required:null}},
 ];
-async function setup(page:Page,count=entries.length){
+async function setup(page:Page,count=entries.length,crowded=false){
  const invoiceRows=Array.from({length:count},(_,i)=>i<entries.length?entries[i]:{...entries[0],id:String(i+1),guest:`Extra invoice ${i+1} · Synthetic`});
  const unexpected:string[]=[];
  const user={id:'synthetic-ledger-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-11T00:00:00Z'};
@@ -25,11 +25,26 @@ async function setup(page:Page,count=entries.length){
   if(p==='/api/refresh')return r.fulfill({json:{running:false,jobs:[],hotels:[]}});
   if(p==='/api/account-settings/KAT/SYN-A')return r.fulfill({json:{billing_method:'email',billing_portal:null}});
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[{hotel:'KAT',id:'SYN-A',name:'Synthetic Ledger Account',type:'Agent',open:count*100,over90:300,items:count,agingBuckets:buckets}],refresh:{running:false,hotels:[]}}});
-  if(p==='/api/accounts/KAT/SYN-A')return r.fulfill({json:{invoices:invoiceRows.map(e=>({...e,hotel:'KAT',account_id:'SYN-A',invoice_no:'SYN-'+e.id,folio_no:'FOL-'+e.id,transaction_date:'2026-09-01',original:100,open:100,collection_role:'standalone',collection_selectable:true,verification_state:'verified'}))}});
+  if(p==='/api/accounts/KAT/SYN-A')return r.fulfill({json:{invoices:invoiceRows.map(e=>({...e,guest:crowded&&e.id==='1'?'A Pending · Synthetic Alexandra Montgomery-Wellington / Christopher Longsurname':e.guest,hotel:'KAT',account_id:'SYN-A',invoice_no:crowded&&e.id==='2'?'1234567890123':'SYN-'+e.id,folio_no:'FOL-'+e.id,transaction_date:'2026-09-01',original:crowded?123456789.12:100,open:crowded?400050:100,collection_role:'standalone',collection_selectable:true,verification_state:'verified'}))}});
   if(p.startsWith('/api/invoice-exceptions/'))return r.fulfill({status:503,json:{error:'synthetic_exception_unavailable'}});
   unexpected.push(r.request().method()+' '+p);return r.fulfill({status:501,json:{error:'unmocked_synthetic_api'}});
  });page.on('pageerror',e=>unexpected.push(e.message));return unexpected;
 }
+
+for(const width of [1920,1440,1280,1100,900])test(`ledger trailing columns have space and complete status labels at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});const errors=await setup(page,87,true);await page.goto('/?account=SYN-A&property=KAT');await expect(page.locator('.ledger tbody tr')).toHaveCount(87);
+ await expect(page.locator('.ledger')).toContainText('1234567890123');const scroll=page.getByRole('region',{name:'Invoice ledger'});
+ const measure=()=>scroll.evaluate(e=>{
+  const table=e.querySelector('table')!,row=table.querySelector('tbody tr')!,cells=[...row.querySelectorAll('td')],last=cells[9],badge=last.querySelector('.badge')!,box=e.getBoundingClientRect(),lastBox=last.getBoundingClientRect(),badgeBox=badge.getBoundingClientRect();
+  return {headerMetrics:[3,4].map(i=>{const c=table.querySelectorAll('th')[i],b=c.querySelector('button')!,s=getComputedStyle(b);return {font:s.fontSize,padding:s.padding,min:s.minWidth,width:b.clientWidth,scroll:b.scrollWidth,icon:getComputedStyle(b.querySelector('svg')!).width};}),visibleWidth:e.clientWidth,scrollWidth:e.scrollWidth,clipped:[...table.querySelectorAll('th,td')].map((c,index)=>({cell:index,width:c.clientWidth,content:c.scrollWidth})).filter(c=>c.content>c.width+1),padding:cells.slice(6).map(c=>({left:parseFloat(getComputedStyle(c).paddingLeft),right:parseFloat(getComputedStyle(c).paddingRight)})),badgeGap:lastBox.right-badgeBox.right,badgeVisible:badgeBox.right<=box.right-10,singleLine:[cells[1].querySelector('button')!,...cells.slice(6)].every(c=>getComputedStyle(c).whiteSpace==='nowrap'),dates:cells.slice(4,6).map(c=>getComputedStyle(c).textAlign)};
+ });
+ let geometry=await measure();expect(geometry.clipped,JSON.stringify(geometry.headerMetrics)).toEqual([]);for(const c of geometry.padding){expect(c.left).toBeGreaterThanOrEqual(width>=1280?12:4);expect(c.right).toBeGreaterThanOrEqual(width>=1280?12:4);}expect(geometry.dates).toEqual(['center','center']);
+ expect(geometry.singleLine).toBe(true);
+ expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.visibleWidth+1);await expect(page.getByRole('region',{name:'Invoice column scrollbar',exact:true})).toHaveCount(0);
+ expect(geometry.badgeGap).toBeGreaterThanOrEqual(12);expect(geometry.badgeVisible).toBe(true);await expect(page.locator('.ledger tbody tr').first().locator('td').last()).toContainText('No billing sent');
+ if(process.env.AR_LEDGER_COLUMNS_CAPTURE==='1'){await scroll.evaluate(e=>window.scrollTo(0,Math.max(0,e.getBoundingClientRect().top+window.scrollY-160)));await page.screenshot({path:`evidence/ledger-balanced-${width}.png`,animations:'disabled'});}
+ await page.getByRole('button',{name:'Open',exact:true}).click();await expect(page.locator('.ledger th[aria-sort="ascending"]')).toContainText('Open');await page.getByLabel('Select SYN-1',{exact:true}).check();expect(errors).toEqual([]);
+});
 
 test('Aging uses source days/ranges in both directions and missing ages stay last',async({page})=>{
  const errors=await setup(page);await page.goto('/?account=SYN-A&property=KAT');
