@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Restore discoverable Add row below
+
+- Reproduced the owner's report: the prior UI moved row commands above the paper and rendered them only after text selection, so the expected right-panel button was absent. Restored a single Row tools section in the right panel, directly below Preview; Add row below and Delete row remain visible and disabled with selection guidance until a valid row is selected.
+- Tested the failing right-panel selector before the fix, then **13 browser cases passed**, including before/after selection, insertion of five cells, Esc, unique button count, existing PDF editing/export and desktop/laptop visibility. TypeScript/build/public assets passed; inspected the 1280px capture. No row algorithm, source/data/retention, library or cost change. Deployment verification follows.
+
 ## 21 September 2026 — PDF editing resilience and direct document controls
 
 - Implemented complete five-heading invoice row templates, editable new cells without source-subset restrictions, continuation grouping, ink-based row boundaries/erasure, safe empty-text rendering and whole-object area selection. Added point-and-type text placement, optional guides, collapsible Package, contextual row controls, cell Tab navigation and persistent access to Preview. Cleared reverted warning state on Undo/Redo and fixed a new-cell focus race.

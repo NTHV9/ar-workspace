@@ -106,8 +106,8 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  </>;
  const controls=<>
   {notice&&<p role="status">{notice}</p>}
-  {anchor&&<section className="pdf-row-controls"><h3>Row tools</h3><p>{anchor.tableRow?page?.layers.filter(l=>l.tableRow===anchor.tableRow).length:row?.template.length||1} fields on this row</p><div><button disabled={busy||!geometryReady} onClick={()=>void insertRow()}>Add row below</button><button disabled={busy||!geometryReady} onClick={()=>void deleteRow()}>Delete row</button>{!anchor.tableRow&&<button disabled={busy||!geometryReady} onClick={()=>void removeEmptyLines()}>Remove empty lines</button>}</div></section>}
   {(tool==='objects'||tool==='area')&&<div className="pdf-object-help"><p>{tool==='area'?'Drag around the whole table or area, then drag it to a new position.':area?'Drag the outlined area to move it. Undo restores its previous position.':'Drag a highlighted line, or use Move table / area for a group.'}</p>{area&&<button disabled={busy} onClick={()=>setArea(null)}>Clear area selection</button>}</div>}
  </>;
- return {overlay,controls};
+ const rowControls=<section className="pdf-row-controls"><h3>Row tools</h3><p>{anchor?`${anchor.tableRow?page?.layers.filter(l=>l.tableRow===anchor.tableRow).length:row?.template.length||1} fields on this row`:'Select text in the row you want to change.'}</p><div><button disabled={busy||!geometryReady||!anchor} onClick={()=>void insertRow()}>Add row below</button><button disabled={busy||!geometryReady||!anchor} onClick={()=>void deleteRow()}>Delete row</button>{anchor&&!anchor.tableRow&&<button disabled={busy||!geometryReady} onClick={()=>void removeEmptyLines()}>Remove empty lines</button>}</div></section>;
+ return {overlay,controls,rowControls};
 }
