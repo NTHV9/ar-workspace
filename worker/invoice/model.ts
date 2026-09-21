@@ -46,7 +46,9 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
  for(const line of lines){const root=byId.get(line.id);if(!root)return fail('tax_coverage_missing');const rootPosting=record(root.posting);
   if(rootPosting.hotelId!==m.hotel||text(rootPosting.folioNo)!==m.folio_no||text(record(record(rootPosting.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
-  const components=rootPosting.transactionType==='Wrapper'?childRows.get(line.id)??[]:[root];if(!components.length)return fail('tax_coverage_missing');let rootGross=0n;
+  // OPERA groups both the visible wrapper and its component postings under the
+  // original package reference; this is distinct from the wrapper's posting ID.
+  const components=rootPosting.transactionType==='Wrapper'?(childRows.get(id(rootPosting.referencePackageTransactionNo))??[]).filter(e=>record(e.posting).transactionType!=='Wrapper'):[root];if(!components.length)return fail('tax_coverage_missing');let rootGross=0n;
   for(const component of components){const p=record(component.posting),key=id(p.transactionNo);if(componentSeen.has(key))return fail('tax_duplicate');componentSeen.add(key);
    if(p.hotelId!==m.hotel||text(p.folioNo)!==m.folio_no||text(record(record(p.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
    const breakdown=record(component.postingBreakdown),grossAmount=precise(breakdown.grossAmount),net=precise(breakdown.netAmount);let generated=0n,vat=0n;
