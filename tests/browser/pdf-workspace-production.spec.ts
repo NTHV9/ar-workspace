@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import fontkit from '@pdf-lib/fontkit';
 import {policyFixture} from './fixtures/collection-policy';
 
 // Deployment UI evidence only. Every API response and every PDF is synthetic.
@@ -11,6 +12,8 @@ const user = { id: 'synthetic-deployed-pdf-user', email: 'ar@katathani.com', aud
 
 async function fixturePdf(kind: 'statement' | 'invoice', pageCount: number, label: string) {
   const pdf = await PDFDocument.create(), regular = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  pdf.registerFontkit(fontkit);
+  const tall=kind==='invoice'?await pdf.embedFont(readFileSync('node_modules/@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-700-normal.woff'),{subset:true}):regular;
   const navy = rgb(.07, .18, .31), muted = rgb(.38, .45, .54);
   for (let index = 0; index < pageCount; index++) {
     const page = pdf.addPage([595, 842]);
@@ -29,6 +32,14 @@ async function fixturePdf(kind: 'statement' | 'invoice', pageCount: number, labe
       page.drawLine({ start: { x: 42, y: 566 - n * 30 }, end: { x: 553, y: 566 - n * 30 }, color: rgb(.8, .85, .9), thickness: .5 });
     }
     page.drawText('Original synthetic wording for replacement', { x: 42, y: 485, size: 11, font: regular, color: navy });
+    if(kind==='invoice'){
+      const columns=[42,112,310,423,505];
+      ['DATE','DESCRIPTION','REFERENCE','DEBIT','CREDITS'].forEach((text,i)=>page.drawText(text,{x:columns[i],y:400,size:8,font:bold}));
+      page.drawLine({start:{x:38,y:394},end:{x:558,y:394},thickness:.5});
+      [['01/09/26','Native charge row','REF-TEST','100.00',''],['02/09/26','Native credit row','','','100.00']].forEach((row,n)=>row.forEach((text,i)=>{if(text)page.drawText(text,{x:columns[i],y:384-n*9,size:8,font:tall});}));
+      page.drawLine({start:{x:38,y:369},end:{x:558,y:369},thickness:.5});
+      page.drawText('TOTAL ROUNDTRIP',{x:310,y:354,size:8,font:bold});
+    }
   }
   return Buffer.from(await pdf.save());
 }
@@ -67,6 +78,15 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await expect(rowAction).toBeVisible();await expect(rowAction).toBeDisabled();
     await page.getByRole('button',{name:'Document package',exact:true}).click();
     await expect(page.getByRole('heading',{name:'Package',exact:true})).toBeHidden();
+    await page.getByRole('button',{name:'Select page 2',exact:true}).click();
+    const total=page.getByRole('button',{name:'Edit original text: TOTAL ROUNDTRIP',exact:true});
+    const beforeStyle=await total.getAttribute('style');
+    await page.getByRole('button',{name:'Edit original text: Native credit row',exact:true}).click();await rowAction.click();
+    await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(5);
+    await page.locator('.pdf-layer-target.empty-cell .pdf-layer-move').nth(3).click();
+    if(viewport.width===1280)await page.getByRole('textbox',{name:'Edit document text',exact:true}).fill('123.45');
+    await page.getByRole('button',{name:'Delete row',exact:true}).click();await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(0);await expect(page.getByRole('alert')).toHaveCount(0);await expect(total).toHaveAttribute('style',beforeStyle!);
+    await page.getByRole('button',{name:'Select page 1',exact:true}).click();
     await page.getByRole('button', { name: 'Edit source text', exact: true }).click();
     await page.getByRole('button', { name: 'Edit original text: Original synthetic wording for replacement', exact: true }).click();
     await expect(rowAction).toBeEnabled();

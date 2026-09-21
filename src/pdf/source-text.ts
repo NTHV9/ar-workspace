@@ -20,6 +20,16 @@ export function sourceStyle(layer: PdfLayer): SourceStyle | undefined {
 export function createReplacementLayer(run: DetectedText,id: string): PdfLayer {
   return {id,kind:'replacement',x:run.x,y:run.y,width:run.width,height:run.height,text:run.text,color:run.color??'#000000',fill:'#ffffff',font:'Arial',fontSize:run.fontSize,bold:run.bold??false,italic:run.italic??false,original:{text:run.text,x:run.x,y:run.y,width:run.width,height:run.height},...(run.sourceText?{sourceText:{...run.sourceText}}:{}),...(run.maskOriginal===false?{maskOriginal:false}:{})};
 }
+/** Merely selecting unchanged native text must not require re-drawing its font. */
+export function sourceAppearanceUnchanged(layer:PdfLayer,run:DetectedText,position:{x:number;y:number}|null):boolean{
+ const original=layer.original,ref=layer.sourceText,target=run.sourceText;
+ return layer.kind==='replacement'&&!!original&&!!ref&&!!target&&!!position&&!layer.deleted&&layer.maskOriginal!==false
+  &&ref.sourceId===target.sourceId&&ref.sourcePage===target.sourcePage&&ref.runIndex===target.runIndex
+  &&original.text===run.text&&Math.abs(original.x-run.x)<.01&&Math.abs(original.y-run.y)<.01
+  &&layer.text===run.text&&Math.abs(layer.x-position.x)<.01&&Math.abs(layer.y-position.y)<.01
+  &&Math.abs(layer.fontSize-run.fontSize)<.01&&layer.bold===!!run.bold&&layer.italic===!!run.italic
+  &&layer.color.toLowerCase()===(run.color??'#000000').toLowerCase()&&layer.fill.toLowerCase()==='#ffffff'&&layer.width>=run.width-.01&&layer.height>=run.height-.01;
+}
 export function sourceFont(layer: PdfLayer,s: SourceStyle) {
  // PDF.js already knows whether the loaded face requires synthetic weight/slant.
  const bold=layer.bold===s.run.bold?s.bold:layer.bold,italic=layer.italic===s.run.italic?s.italic:layer.italic;
@@ -32,7 +42,7 @@ export function sourceEditingStyle(layer:PdfLayer) {
  return {fontFamily,fontSize:layer.fontSize,fontWeight:layer.bold?'bold':'normal',fontStyle:layer.italic?'italic':'normal',lineHeight:1.25,baseline:s?s.baseline*layer.fontSize/s.fontSize:layer.fontSize*.85,hScale:s?.hScale??1};
 }
 export function validateSourceText(layer:PdfLayer) {
- if(!layer.sourceText||layer.text==='')return;
+ if(!layer.sourceText||!layer.text.trim())return;
  const metrics=measureLayerText(layer);
  if(metrics.unsupported)throw new SourceFontError();
  if(metrics.height>layer.height+.5||metrics.width>layer.width+.5)throw new Error('The edited text exceeds its box. Enlarge the text box before Preview.');
@@ -53,7 +63,7 @@ function wrapAtWords(text:string,width:number,measure:(line:string)=>number):str
 export function measureLayerText(layer: PdfLayer): {lines:string[];height:number;width:number;naturalWidth:number;unsupported:boolean} {
  // Clearing text erases its source pixels; no font or glyph is drawn. Source
  // identity/mask ownership is still checked by the document render pipeline.
- if(layer.text==='')return {lines:[],height:0,width:0,naturalWidth:0,unsupported:false};
+ if(!layer.text.trim())return {lines:[],height:0,width:0,naturalWidth:0,unsupported:false};
  const s=sourceStyle(layer);
  if(!layer.sourceText){
   const ctx=typeof document==='undefined'?null:document.createElement('canvas').getContext('2d');
@@ -99,7 +109,7 @@ export function measureLayerInk(layer:PdfLayer):{y:number;height:number}{
 }
 export function drawSourceText(ctx: CanvasRenderingContext2D,layer: PdfLayer): boolean {
  if(!layer.sourceText)return false;
- if(layer.text==='')return true;
+ if(!layer.text.trim())return true;
  validateSourceText(layer);const s=sourceStyle(layer)!;
  const metrics=measureLayerText(layer);
  if(metrics.height>layer.height+.5 || metrics.width>layer.width+.5)throw new Error('The edited text exceeds its box. Enlarge the text box before Preview.');

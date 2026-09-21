@@ -1,6 +1,6 @@
 import { mapSourceTextRect } from './row-layout';
 import { sourceStyle } from './source-text';
-import type { DetectedText, PdfLayer, PdfProjectPage } from './types';
+import type { DetectedText, PdfLayer, PdfProjectPage, PdfRowEdit } from './types';
 
 /** Only an explicit, empty native replacement can act as a deletion mask. */
 export function validateDeletedLayer(layer: PdfLayer): void {
@@ -36,4 +36,15 @@ export function deleteTextLayer(page: PdfProjectPage, layer: PdfLayer): PdfProje
   const deleted: PdfLayer = { ...layer, x: mask.x, y: mask.y, width: mask.width, height: mask.height, text: '', deleted: true };
   delete deleted.textFlow;
   return { ...page, layers: page.layers.map(candidate => candidate.id === layer.id ? deleted : candidate) };
+}
+
+/** Keep a deletion mask if moved source text originated outside the removed row. */
+export function prepareRowDeletion(page:PdfProjectPage,edit:PdfRowEdit,memberIds:string[]):PdfProjectPage{
+ if(edit.kind!=='delete')throw Error('Expected a row deletion.');
+ const members=new Set(memberIds);
+ return {...page,layers:page.layers.flatMap(layer=>{
+  if(!members.has(layer.id))return [layer];
+  if(layer.original&&layer.maskOriginal!==false&&mapSourceTextRect(layer.original,[...(page.rowEdits??[]),edit],sourceStyle(layer)?.baseline))return deleteTextLayer({...page,layers:[layer]},layer).layers;
+  return [];
+ })};
 }
