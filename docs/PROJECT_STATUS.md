@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Direct PDF preview actions
+
+- Owner requested removing the final-PDF checkbox/sentence and explicitly clarified that viewing every page must be optional. Removed the acknowledgment control/state and both the all-page/all-file action gates. Actions become available when the displayed preview page renders; page/file visit indicators remain informational.
+- Download/save/continue still require a user click and use the exact current exported bytes. Rendering failure, edit invalidation, in-flight locking and retry receipt reuse remain. No automatic upload/download, email preparation or send is triggered by rendering a page; email-send confirmation is unchanged.
+- Tested: 22 focused handoff tests, typecheck/build/assets/dry run; eight browser cases on the local static build passed, including desktop/laptop captures inspected together. Two strengthened cases additionally verified downloading all three pages after viewing only page one and saving all three files/four pages without visiting the remaining files. The local Vite server initially stalled at navigation; no product assertion was evaluated in those failed attempts, and the static build used the same source. Existing tracked visual baselines are retained. Deployment/live verification is pending.
+
 ## 21 September 2026 — Statement footer clipping
 
 - Reproduced the screenshot directly in the active WAKL footer asset. The fixed 715 pt crop cut glyphs beginning at 714.03 pt in WAKL, TLKL and TLFO (40/45/40 characters intersected); this preceded both generation and Preview. Hosted footer checksums matched the local original assets. Header/closing crop checks found no cut characters across all six hotels.

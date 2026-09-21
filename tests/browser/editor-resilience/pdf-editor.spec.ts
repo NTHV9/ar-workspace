@@ -66,7 +66,7 @@ test('new rows accept new characters in every cell and wrap before the next colu
  }
  await expect(page.getByRole('alert')).toHaveCount(0);
  await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
- await reviewPreviewPages(page);await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
+ await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const result=await page.evaluate(()=>{const f=(window as any).fixture,cells=f.project.pages[0].layers.filter((l:any)=>l.tableRow).sort((a:any,b:any)=>a.x-b.x);return {values:cells.map((l:any)=>l.text),fonts:cells.map((l:any)=>l.font),plain:cells.every((l:any)=>!l.original&&!l.sourceText),inside:cells.every((l:any,i:number)=>!cells[i+1]||l.x+l.width<=cells[i+1].x),wrapped:cells[1].height>cells[0].height,exported:f.saved[0].bytes.length>0};});
  expect(result).toMatchObject({values,plain:true,inside:true,wrapped:true,exported:true});expect(result.fonts).toEqual(Array(5).fill('Arial'));
 });

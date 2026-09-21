@@ -39,7 +39,7 @@ test('recovery locates another page, is undoable, and preserves reviewed export 
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('combobox',{name:'Text font',exact:true})).toHaveValue('__source__');await expect(page.getByRole('button',{name:'Use Arial for this text',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(page.getByRole('combobox',{name:'Text font',exact:true})).toHaveValue('Arial');
  await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true})).toBeDisabled();
- await reviewPreviewPages(page);await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
+ await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const {rendered,...result}=await page.evaluate(async()=>{
   const f=(window as any).pdfTest,l=f.saved.project.pages[1].layers[0],task=f.getDocument({data:f.saved.files[0].bytes.slice()}),pdf=await task.promise,text=[];
   for(let n=1;n<=pdf.numPages;n++)text.push((await(await pdf.getPage(n)).getTextContent()).items.map((x:any)=>x.str??'').join(' '));

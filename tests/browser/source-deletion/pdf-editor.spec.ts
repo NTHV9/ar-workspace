@@ -202,7 +202,7 @@ for(const hotel of ['KAT','TSK'])test(`${hotel}: deleted source text stays absen
  await insertBelowLastRow(page);
  await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
  await reviewPreviewPages(page);
- await page.getByRole('checkbox').check();
+ await expect(page.getByRole('checkbox')).toHaveCount(0);
  await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();
  await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const proof=await preservedDocumentProof(page,true);

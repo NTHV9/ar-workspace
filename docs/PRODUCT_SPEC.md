@@ -264,7 +264,7 @@ Delivery:
 
 ต้องพิสูจน์ว่าตัว editor ที่ใช้แก้ text เดิม/reflow ได้แค่ไหน ห้ามเรียกเครื่องมือ annotation-only ว่าทำ Word-like editing ครบ ถ้าต้องใช้ paid SDK ต้องขออนุมัติก่อน ไม่รวมราคาในแผนเดิมโดยเดา
 
-ก่อนแก้ตรวจต้นฉบับตรงรายการ หลังแก้แสดง final preview และรับทราบการเปลี่ยน ไม่บังคับ final PDF ต้องมีค่าทุกตัวเท่ากับ OPERA จนแก้ไม่ได้ การแก้ PDF ไม่เปลี่ยน current accounting values/local workflow facts และไม่เขียนกลับ OPERA
+ก่อนแก้ตรวจต้นฉบับตรงรายการ หลังแก้แสดง final preview โดยไม่บังคับไล่ดูครบทุกหน้า แล้วกด Download / Save / Continue to email โดยไม่ต้องมีช่องติ๊กยืนยันแยก (คำยืนยัน 21 กันยายน 2026) ไม่บังคับ final PDF ต้องมีค่าทุกตัวเท่ากับ OPERA จนแก้ไม่ได้ การแก้ PDF ไม่เปลี่ยน current accounting values/local workflow facts และไม่เขียนกลับ OPERA
 
 ปิดข้อมูลต้อง redaction/flatten ที่ทำให้ข้อความเก่าไม่ยังถูก Copy/Search ได้โดยไม่ตั้งใจ ไม่อ้างว่า rectangle สีขาวเท่ากับลบข้อมูลต้นทางแล้ว
 
