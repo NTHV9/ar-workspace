@@ -33,6 +33,8 @@ begin
   update public.ar_invoice_workflow w set billing_required=p_billing_required,credit_term=p_credit_term,settings_revision=p_revision+1
   from public.ar_invoices i where i.hotel=p_hotel and i.account_id=p_account_id and i.collection_selectable and w.hotel=i.hotel and w.account_id=i.account_id and w.invoice_id=i.id and w.settings_revision is null;
  end if;$old$;
+ -- SQL Editor on Windows may submit CRLF inside dollar-quoted strings.
+ needle:=replace(needle,E'\r','');
  if (length(definition)-length(replace(definition,needle,'')))/length(needle)<>1 then raise exception 'partial_billing_rules_writer_drift';end if;
  execute replace(definition,needle,' perform ar_private.apply_unassigned_billing_rules(p_hotel,p_account_id);');
 end $patch$;
