@@ -1,13 +1,17 @@
 import {it,expect,vi} from 'vitest';
 import {readInvoiceModel} from '../worker/invoice/read';
 import {auditInvoiceRead} from '../worker/invoice/read-audit';
-import {packet,money} from './fixtures/invoice-packet';
-function fixture(count=2){
- const p=packet(count),current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
+import {packet,money,mixedTaxPacket} from './fixtures/invoice-packet';
+function fixture(count=2,p:ReturnType<typeof packet>|ReturnType<typeof mixedTaxPacket>=packet(count)){
+ const current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
  const detail={details:[{hotelId:'KAT',accountId:{id:'101'},invoices:[current]}]};
  const reader={invoiceReservation:vi.fn().mockResolvedValue({reservations:{reservation:[{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'777'}],customReference:'CUSTOM-VOUCHER'}]}}),account:vi.fn().mockResolvedValue({accountDetails:{...p.account,invoices:[current]}}),invoiceHistory:vi.fn(),reservationFolios:vi.fn().mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}]}}),financialTransactionDetail:vi.fn().mockImplementation(async()=>structuredClone(detail)),invoicePostings:vi.fn().mockResolvedValue(p.postings),invoicePostingBreakdown:vi.fn().mockImplementation(async(_r:string,_w:number,_s:string,_e:string,offset:number,limit:number)=>({financialPostings:p.taxRows.slice(offset,offset+limit),offset,limit,hasMore:offset+limit<p.taxRows.length,totalResults:p.taxRows.length})),invoiceTransactionDetails:vi.fn().mockResolvedValue({trxCodesInfo:p.taxCodes})};
  return {p,reader,detail};
 }
+it('reads an omitted optional taxes list and verifies separately posted VAT end-to-end',async()=>{
+ const {p,reader}=fixture(1,mixedTaxPacket()),model=await readInvoiceModel(reader,p.manifest);
+ expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledOnce();
+});
 it('reports the failing VAT page without returning customer rows or identities',async()=>{
  const {p,reader}=fixture(20);
  reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,_s,_e,offset,limit)=>({financialPostings:offset?[p.taxRows[49],...p.taxRows.slice(51)]:p.taxRows.slice(0,50),offset,limit,hasMore:offset===0,totalResults:60}));

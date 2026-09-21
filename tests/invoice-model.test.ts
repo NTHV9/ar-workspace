@@ -2,8 +2,31 @@ import {describe,it,expect} from 'vitest';
 import {invoiceModel} from '../worker/invoice/model';
 import {invoiceAmountWords} from '../worker/invoice/render';
 
-import {packet,money} from './fixtures/invoice-packet';
+import {packet,money,mixedTaxPacket} from './fixtures/invoice-packet';
 const now=new Date('2026-09-21T10:00:00Z');
+it('reconciles mixed generated VAT and separately posted VAT without treating its receipt base as non-taxable',()=>{
+ const m=invoiceModel(mixedTaxPacket(),now);expect(m.gross).toBe(454200);expect(m.vat).toBe(29387);expect(m.nonTaxable).toBe(5000);expect(m.taxableNet).toBe(419813);expect(m.lines).toHaveLength(5);
+});
+it.each(['missing-check','different-date','unknown-tax','incorrect-rate'] as const)('rejects unverified separately posted VAT (%s)',kind=>{
+ const p=mixedTaxPacket();
+ if(kind==='missing-check')p.postings.invoicePostingsDetails.at(-2)!.checkNo='';
+ if(kind==='different-date')p.postings.invoicePostingsDetails.at(-2)!.transactionDate='2026-01-04';
+ if(kind==='unknown-tax')p.postings.trxCodesInfo.find(c=>c.transactionCode==='POSTED-VAT')!.description='Other tax';
+ if(kind==='incorrect-rate')p.postings.invoicePostingsDetails[1].checkNo='UNTAXED-CHECK';
+ expect(()=>invoiceModel(p,now)).toThrow(/tax_(scope_invalid|code_unsupported|reconciliation_failed|rate_unsupported)/);
+});
+it('does not count a VAT posting both as an embedded generate and a separate AR line',()=>{
+ const p=mixedTaxPacket(),component=p.taxRows.find(e=>'postingBreakdown' in e&&'taxes' in e.postingBreakdown)!;
+ if(!('postingBreakdown' in component)||!('taxes' in component.postingBreakdown)||!Array.isArray(component.postingBreakdown.taxes))throw Error('Fixture');
+ const taxId=component.postingBreakdown.taxes[1].transactionNo;
+ p.postings.invoicePostingsDetails.at(-2)!.transactionNo=taxId;p.taxRows.at(-2)!.posting.transactionNo=taxId;
+ expect(()=>invoiceModel(p,now)).toThrow('tax_scope_invalid');
+});
+it('rejects missing generates when net and gross differ instead of assuming no tax',()=>{
+ const p=mixedTaxPacket(),row=p.taxRows.at(-1)!;
+ if(!('postingBreakdown' in row))throw Error('Fixture');row.postingBreakdown.netAmount=money(40);
+ expect(()=>invoiceModel(p,now)).toThrow('tax_reconciliation_failed');
+});
 describe('workspace invoice financial model',()=>{
  it('uses AR outstanding, printed check references and actual VAT excluding service charge',()=>{
   const p=packet(14),m=invoiceModel(p,now);expect(m.gross).toBe(4641000);expect(m.vat).toBe(303617);expect(m.taxableNet).toBe(4337383);expect(m.nonTaxable).toBe(0);expect(m.outstanding).toBe(m.gross);

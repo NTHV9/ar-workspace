@@ -6,6 +6,8 @@ const fail=(stage:string):never=>{throw Error('document_invoice_'+stage);};
 export const record=(v:unknown):Row=>{if(!v||typeof v!=='object'||Array.isArray(v))return fail('data_invalid');return v as Row;};
 const optional=(v:unknown):Row=>v==null?{}:record(v);
 const rows=(v:unknown):Row[]=>{if(!Array.isArray(v))return fail('data_invalid');return v.map(record);};
+// OPERA omits this optional field for charges whose VAT is a separate posting.
+export const invoiceTaxEntries=(breakdown:Row)=>breakdown.taxes===undefined?[]:rows(breakdown.taxes);
 const text=(v:unknown)=>{if(v==null)return '';if(!['string','number'].includes(typeof v))return fail('data_invalid');const s=String(v);if(s.length>2000||/[\u0000-\u0008\u000b-\u001f\u007f]/.test(s))return fail('data_invalid');return s.trim();};
 const id=(v:unknown)=>{const s=text(v);if(!/^[1-9][0-9]{0,15}$/.test(s))return fail('identity_invalid');return s;};
 export const dateText=(v:unknown)=>{const s=text(v);if(!s)return '';if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||!Number.isFinite(Date.parse(s+'T00:00:00Z'))||new Date(s+'T00:00:00Z').toISOString().slice(0,10)!==s)return fail('date_invalid');return s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(2,4);};
@@ -44,6 +46,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  for(const entry of netRows){const p=record(entry.posting),key=id(p.transactionNo);if(byId.has(key))return fail('tax_duplicate');byId.set(key,entry);}
  const childRows=new Map<string,Row[]>();for(const e of netRows){const p=record(e.posting),parent=text(p.referencePackageTransactionNo);if(parent){const group=childRows.get(parent)??[];group.push(e);childRows.set(parent,group);}}
  const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
+ const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean}>();
  for(const line of lines){const root=byId.get(line.id);if(!root)return fail('tax_coverage_missing');const rootPosting=record(root.posting);
   if(rootPosting.hotelId!==m.hotel||text(rootPosting.folioNo)!==m.folio_no||text(record(record(rootPosting.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
   // OPERA groups both the visible wrapper and its component postings under the
@@ -52,14 +55,33 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
   for(const component of components){const p=record(component.posting),key=id(p.transactionNo);if(componentSeen.has(key))return fail('tax_duplicate');componentSeen.add(key);
    if(p.hotelId!==m.hotel||text(p.folioNo)!==m.folio_no||text(record(record(p.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
    const breakdown=record(component.postingBreakdown),grossAmount=precise(breakdown.grossAmount),net=precise(breakdown.netAmount);let generated=0n,vat=0n;
-   for(const raw of rows(breakdown.taxes)){const key=id(raw.transactionNo);if(taxSeen.has(key)||text(raw.referenceTransactionNo)!==text(p.transactionNo))return fail('tax_scope_invalid');taxSeen.add(key);const definitions=taxCodes.filter(c=>c.hotelId===m.hotel&&c.transactionCode===raw.transactionCode);if(definitions.length!==1)return fail('tax_code_invalid');const code=definitions[0],amount=precise(raw.amount);generated+=amount;
+   const taxes=invoiceTaxEntries(breakdown);
+   for(const raw of taxes){const key=id(raw.transactionNo);if(taxSeen.has(key)||text(raw.referenceTransactionNo)!==text(p.transactionNo))return fail('tax_scope_invalid');taxSeen.add(key);const definitions=taxCodes.filter(c=>c.hotelId===m.hotel&&c.transactionCode===raw.transactionCode);if(definitions.length!==1)return fail('tax_code_invalid');const code=definitions[0],amount=precise(raw.amount);generated+=amount;
     if(code.transactionGroup==='TAX'&&/\bvat\b/i.test(text(code.description)))vat+=amount;else if(code.transactionGroup!=='SVC')return fail('tax_code_unsupported');
    }
    if(abs(grossAmount-net-generated)>10000000n)return fail('tax_reconciliation_failed');
-   if(vat!==0n){if(abs(vat*107n-grossAmount*7n)>100000000n)return fail('tax_rate_unsupported');vatUnits+=vat;}else nonTaxableUnits+=grossAmount;
+   if(!taxes.length&&rootPosting.transactionType!=='Wrapper'){
+    const selected=postings.find(row=>String(row.transactionNo)===line.id)!,definitions=codes.filter(c=>c.hotelId===m.hotel&&c.transactionCode===selected.transactionCode);
+    if(definitions.length!==1||p.transactionCode!==selected.transactionCode)return fail('tax_scope_invalid');
+    const code=definitions[0],isTax=code.transactionGroup==='TAX',isVat=isTax&&/\bvat\b/i.test(text(code.description));
+    if(isTax&&!isVat)return fail('tax_code_unsupported');
+    const check=text(selected.checkNo),groupKey=JSON.stringify([text(selected.transactionDate),check||line.id]),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check};
+    if(isVat){if(taxSeen.has(key))return fail('tax_scope_invalid');taxSeen.add(key);group.vat+=grossAmount;group.taxCount++;vatUnits+=grossAmount;}
+    else{group.base+=grossAmount;group.baseCount++;}
+    directGroups.set(groupKey,group);
+   }else if(vat!==0n){if(abs(vat*107n-grossAmount*7n)>100000000n)return fail('tax_rate_unsupported');vatUnits+=vat;}else nonTaxableUnits+=grossAmount;
    rootGross+=grossAmount;
   }
   if(rounded(rootGross)!==line.debit-line.credit)return fail('tax_reconciliation_failed');
+ }
+ for(const group of directGroups.values()){
+  if(group.taxCount){
+   // Printed POS net/SVC/VAT rows have already been rounded by OPERA. Verify
+   // each exact date/check group within one satang; sum its actual VAT, never
+   // calculate replacement VAT or infer a taxable base from a tax percentage.
+   if(!group.hasCheck||!group.baseCount)return fail('tax_scope_invalid');
+   if(abs(group.vat*100n-group.base*7n)>CENT*100n)return fail('tax_rate_unsupported');
+  }else nonTaxableUnits+=group.base;
  }
  const vat=rounded(vatUnits),nonTaxable=rounded(nonTaxableUnits),taxableNet=gross-vat-nonTaxable;if(!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
  const address=optional(optional(a.address).address),addressLines=address.addressLine==null?[]:rowsOfText(address.addressLine),country=optional(address.country);
