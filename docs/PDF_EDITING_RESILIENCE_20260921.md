@@ -47,4 +47,10 @@ Only the explicit five-heading invoice pattern gains inferred blank columns; thi
 
 ## Deployment
 
-Source and production evidence will be appended after the deployment has completed.
+- Deployed and enabled at https://ar-workspace.ar-c82.workers.dev using `--keep-vars`: source **`19d3d9a60c379b4e3e51340cd54aa0a42b6a5faa`**, Worker version **`4dea848c-fb7b-4373-a4f0-f2759941a615`**.
+- Both [source push verification](https://github.com/NTHV9/ar-workspace/actions/runs/35580246045) and [PR verification](https://github.com/NTHV9/ar-workspace/actions/runs/35580354330) passed. [PR54](https://github.com/NTHV9/ar-workspace/pull/54) merged as `1c81dfff650cda91965aeab0c289a34c847b144d`; its complete tree matches the tested/deployed source tree.
+- Production `/api/health` returned the exact source SHA and `database_verified`; six existing anonymous protected-route checks passed.
+- Two tests against deployed assets passed at 1440×900 and 1280×800, including new controls, hidden source guides, collapsed package settings, native text replacement and actual exported Preview. API responses and PDFs were fully synthetic; no customer document/session or email was used. The deployed editor capture was inspected. Original tracked production evidence images were restored.
+- Local development needed an ignored Vite config limiting dependency scanning to the test entry points because the earlier disposable third-party trial distribution lives under `.tmp`. No production Vite configuration or global setting changed.
+
+![Deployed editor using synthetic data](evidence/pdf-resilience-deployed-1440.png)
