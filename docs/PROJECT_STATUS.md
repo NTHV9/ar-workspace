@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Account ledger date spacing
+
+- Centered Transaction date and Due date values with their sortable headings, with 16 px side padding and minimum column widths. Scoped to the Account Detail ledger; date values and sorting behavior are unchanged.
+- Existing browser checks passed at 1440/1280 and both captures were visually inspected. Typecheck/build/public assets passed. New synthetic date-spacing evidence preserves the earlier captures; deployment/live verification is pending.
+
 ## 21 September 2026 — Aging invoice detail layout and transaction date
 
 - Reproduced mismatched header/body alignment and missing first-column inset: Dashboard's generic right-aligned numeric cells and first-child padding rule leaked into the Aging invoice list. Rebuilt the scoped detail surface with a clear amount/count summary, grouped status controls, consistent facets and list heading, proportional columns, matched header/body alignment, 20 px edge insets, sticky table headers and bounded scrolling. Long names remain complete; mobile keeps all columns in a labelled keyboard-accessible scroll region.
