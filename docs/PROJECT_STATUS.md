@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 22 September 2026 — Billing requirement applies before credit term is configured
+
+- Reproduced the owner's saved Billing not required / blank Credit term case on the live account and in a rollback-only SQL fixture. The settings writer and invoice trigger assigned neither field until both were present, so Invoice status still showed Billing setup needed. A differential SQL probe confirmed adding a term was the trigger; this was not a stale browser state.
+- Implemented a private shared assignment helper for settings saves/new invoices and a scoped repair of saved rules on unassigned, selectable invoices. Known billing/term fields apply immediately; due stays unknown with a missing term, and complete rule sets remain frozen. Workflow revisions increment only for changed facts. Existing terms, dates, reminder history, financial values, regional checks and writer ACLs remain. Queue rows missing only a term say Credit term needed; save feedback explains the missing due-date input.
+- Tested: the minimized SQL case failed before the fix and passed after it. All 1,359 unit tests, typecheck/build/assets/dry run, 83 local migrations and 37 rollback fixtures passed. All 22 settings/queue browser cases passed (one overly broad test assertion against every POST was narrowed to the relevant no-document/no-mail mutations). Coverage includes later completion, explicit zero days, new arrivals, established history, hotel isolation and stale revision rejection. Old visual baselines are retained. Hosted migration and deployment verification are in progress.
+
 ## 22 September 2026 — Desktop ledger fits without horizontal navigation
 
 - Owner clarified that the existing page/detail layout must stay, desktop rows must remain single-line, no horizontal table scrolling should be added, and Invoice numbers must remain fully visible. Added scoped column proportions and a content-sized Invoice column; redistributed date/guest space to Original/Open/Aging/Latest sent, with an inset after the final badge. The proposed scroll control was not retained and the detail panel was not moved.

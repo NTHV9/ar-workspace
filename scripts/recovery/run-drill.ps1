@@ -151,6 +151,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_regional_user_access'){$fixtures+='regional-user-access-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_user_lifecycle'){$fixtures+='user-lifecycle-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_workspace_invoice'){$fixtures+='workspace-invoice-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_partial_billing_rules'){$fixtures+='billing-requirement-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture
