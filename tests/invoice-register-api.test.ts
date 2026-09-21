@@ -1,0 +1,8 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {invoiceRegisterApi} from '../worker/register/api';
+import type {RefreshEnv} from '../worker/refresh/backend';
+const env:RefreshEnv={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic-server-key'};
+afterEach(()=>vi.unstubAllGlobals());
+it('routes the actual staff actor to the register and returns only the requested region',async()=>{let sent:any;vi.stubGlobal('fetch',vi.fn(async(_url,init)=>{sent=JSON.parse(init.body);return Response.json({rows:[{hotel:'KAT'}],total:1,hiddenTotal:0,summary:{open:100}});}));const scoped={...env,REQUEST_ACCESS:{actorId:'staff',workspaceOwnerId:'owner',email:'staff@example.test',administrator:false,regions:['phuket'],revision:1,scopeHotels:['KAT','TSK']}} satisfies RefreshEnv;const r=await invoiceRegisterApi(new Request('https://app.test/api/invoice-register?region=phuket'),scoped,'owner');expect(r.status).toBe(200);expect(sent.p_actor).toBe('staff');});
+it('rejects a database response containing a hotel outside the requested region',async()=>{vi.stubGlobal('fetch',vi.fn(async()=>Response.json({rows:[{hotel:'TLKL'}],total:1,hiddenTotal:0,summary:{open:100}})));const r=await invoiceRegisterApi(new Request('https://app.test/api/invoice-register?region=phuket'),env,'owner');expect(r.status).toBe(503);expect(await r.text()).not.toContain('TLKL');});
+it('does not dispatch cross-origin writes or unregistered acceptance work',async()=>{const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);const r=await invoiceRegisterApi(new Request('https://app.test/api/invoice-register/KAT/A/1',{method:'PUT',headers:{Origin:'https://elsewhere.test'}}),env,'owner');expect(r.status).toBe(403);expect(fetcher).not.toHaveBeenCalled();});

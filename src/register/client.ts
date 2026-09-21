@@ -1,0 +1,4 @@
+import type {RegisterCommand,RegisterRow} from './model';
+export const registerPath=(r:Pick<RegisterRow,'hotel'|'account_id'|'id'>)=>`/api/invoice-register/${encodeURIComponent(r.hotel)}/${encodeURIComponent(r.account_id)}/${encodeURIComponent(r.id)}`;
+export async function registerRequest<T>(url:string,token:string,init:RequestInit={}):Promise<T>{const response=await fetch(url,{...init,headers:{Authorization:`Bearer ${token}`,...init.body?{'Content-Type':'application/json'}:{},...init.headers}});const value:unknown=await response.json();if(!response.ok){const error=value&&typeof value==='object'&&'error' in value?value.error:null;throw Error(typeof error==='string'?error:'register_unavailable');}return value as T;}
+export const saveRegister=(row:RegisterRow,command:RegisterCommand,token:string)=>registerRequest<{row:RegisterRow}>(registerPath(row),token,{method:'PUT',body:JSON.stringify(command)});

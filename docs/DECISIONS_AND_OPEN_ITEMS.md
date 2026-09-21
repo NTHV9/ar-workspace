@@ -120,6 +120,12 @@ Snapshot ที่เก็บตั้งแต่รุ่นนี้มี s
 - การนับไม่เปลี่ยนยอด OPERA. ถ้าหลักฐานการแบ่งช่วงไม่ครบให้ระบุ unknown; เครดิตที่ไม่ทราบช่วงไม่ทำให้จำนวนบิลบวกที่ทราบช่วงอยู่แล้วหายไป
 - ใช้ข้อมูล publication ของ Hotel และ Account ให้ตรงกับตารางที่แสดง เก็บตัวกรองรายละเอียดเมื่อเปิด Invoice แล้วกลับมา ไม่มีการสร้างประวัติการส่งหรือเขียนบัญชีจากการเปิดดู
 
+## ยืนยันล่าสุด — Invoice Register ใน Reports (22 กันยายน 2026)
+
+เจ้าของให้เพิ่มตารางติดตาม Invoice อ้างอิงรูปแบบจาก Phuket.xlsx และ Khaolak.xlsx โดยใช้ข้อมูลปัจจุบันบนเว็บก่อน ไม่ import ค่า Manual จาก Excel. ตารางต้องแก้ Manual ได้และเชื่อมสถานะกับหน้าอื่นทั้งสองทาง พร้อม Filter, Search, ซ่อน/คืนแถว และเรียงแต่ละคอลัมน์. เพิ่ม Invoice Register คู่กับ External billing activity; ข้อกำหนด Reports เหลือหน้าเดียวด้านล่างถูกขยายตามคำสั่งนี้.
+
+Billing requirement/term/first billing/latest reminder และ note ใช้ข้อมูลร่วมกับ Invoice เดิม; Due date ยังคำนวณจากกฎเดิม. การแก้ term/requirement ราย Invoice เป็น explicit override ไม่เปลี่ยน account defaults. Owner/promise/tracking/reported receipt เป็นข้อมูลติดตามร่วมกับหน้า Account Detail; ยอด OPERA อ่านอย่างเดียว. การซ่อนเป็นมุมมองส่วนตัวในตาราง เรียกกลับได้. รายละเอียดและหลักฐาน: INVOICE_REGISTER.md.
+
 ## ยืนยันล่าสุด — Dashboard และ Reports (12 กันยายน 2026)
 
 - Reports เหลือ External billing activity เท่านั้น; ตัดหน้า Current receivables, Verified sent activity, OPERA financial history และ AR history & timing. ข้อมูลหลังบ้านยังใช้ทำสถิติและ Drill Down ใน Dashboard; ไม่ลบประวัติธุรกิจ

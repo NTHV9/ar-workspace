@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 22 September 2026 — Linked editable Invoice Register
+
+- Inspected both supplied Excel workbooks privately and implemented the owner's chosen current-data approach. Reports adds Invoice Register while retaining External billing activity. Four column sets support direct row editing, filters/search, per-column ascending/descending sorting, bounded pagination and personal hide/restore; complete Invoice numbers remain visible.
+- Reuses invoice workflow and exception-note storage, with shared tracking metadata also editable in Account Detail. Explicit per-invoice rule overrides survive refresh/default initialization. Saves are atomic, revision checked, audited and replayable; regional checks use the real staff actor. OPERA values, verified SENT history and financial clearance remain separate. [Contract](INVOICE_REGISTER.md).
+- Tested: 1,378 unit tests; typecheck/build/assets/dry run; 84 local migrations and 38 rollback fixtures passed. All 38 combined browser cases passed, then seven strengthened register cases passed after mobile touch-target/focus/sorting refinements. Desktop/laptop and phone captures were inspected in two bounded passes; synthetic-only new evidence is retained, earlier baselines unchanged. Hosted migration/deployment/live verification pending. No old workbook entries imported.
+
 ## 22 September 2026 — Billing requirement applies before credit term is configured
 
 - Reproduced the owner's saved Billing not required / blank Credit term case on the live account and in a rollback-only SQL fixture. The settings writer and invoice trigger assigned neither field until both were present, so Invoice status still showed Billing setup needed. A differential SQL probe confirmed adding a term was the trigger; this was not a stale browser state.
