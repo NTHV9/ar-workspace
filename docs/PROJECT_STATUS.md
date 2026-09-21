@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — Completed free BentoPDF local trial
+
+- Implemented only an isolated local evaluation of the official unmodified BentoPDF 2.8.8 build, with external requests blocked and synthetic PDFs. No paid plan, customer PDF, application integration, license change, external resource change or production deployment. Third-party distribution and temporary scripts remain outside tracked app source.
+- Tested native text replacement, export/reopen and Undo/Redo. Saved PDF text remains extractable. Editing page 2 preserved page 1's text and rendered pixels exactly in the two-page fixture. Subset-font replacement changed the value to regular Helvetica, losing bold styling and shifting the adjacent label; saved renders were inspected. Detailed results/hashes: [BentoPDF trial](BENTOPDF_POC_20260921.md).
+- Decision: **do not replace/enable it in production**. No complete five-column row-insertion control/API was identified, and original-font/layout fidelity failed the subset case. The existing missing Reference/Debit issue remains unfixed; next proposed work is an application-owned complete row model including empty cells. Thai/real OPERA/large-file behavior and the reviewed-byte integration adapter remain untested. Production stays on the existing font-recovery deployment below.
+
 ## 21 September 2026 — No-cost PDF editor alternatives
 
 - Researched official docs/source under the owner's no-additional-cost constraint. BentoPDF's free AGPL native editor is the leading candidate for a bounded trial, with source-sharing/integration conditions and unproven complete table-row insertion. pdfme is suitable for structured template tables; stable EmbedPDF viewing/annotations do not establish original-text editing. ONLYOFFICE Desktop is a separate free-program fallback; web Community requires Document Server infrastructure. [Research and sources](PDF_EDITOR_OPTIONS_20260921.md).
