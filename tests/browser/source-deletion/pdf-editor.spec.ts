@@ -187,7 +187,9 @@ test('compacting empty Voucher bands retains a surviving final continuation abov
   const canvas=document.createElement('canvas');await f.renderPage(p,loaded.documents,canvas,3);
   const pixels=canvas.getContext('2d')!.getImageData(Math.floor((mapped.x-1)*3),Math.floor((mapped.y-1)*3),Math.ceil((mapped.width+2)*3),Math.ceil((mapped.height+2)*3)).data;
   let ink=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]<190)ink++;
-  loaded.dispose();return {mapped:true,ink,bottom:mapped.y+mapped.height};
+  const rebound=(await f.detectText(p,loaded.documents)).find((candidate:any)=>candidate.sourceText.runIndex===run.sourceText.runIndex);
+  const inkBounds=f.measureLayerInk(f.createReplacementLayer(rebound,'retained-ink'));
+  loaded.dispose();return {mapped:true,ink,bottom:mapped.y-run.y+inkBounds.y+inkBounds.height};
  },runs.at(-1));
  expect(retained.mapped).toBe(true);expect(retained.ink).toBeGreaterThan(5);expect(retained.bottom).toBeLessThan(insert.y+.5);
  await expect(page.getByRole('button',{name:'Edit original text: '+runs.at(-1).text,exact:true})).toBeVisible();

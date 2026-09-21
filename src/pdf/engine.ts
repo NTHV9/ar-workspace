@@ -5,7 +5,7 @@ import type { DetectedText, PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocum
 import { deliveryGroups, wrapText } from './model';
 import { mapSourceRect, mapSourceTextRect } from './row-layout';
 import { extractSourceText, extractSourceImages } from './source-extraction';
-import { drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, measureLayerText, SourceFontError } from './source-text';
+import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, measureLayerText, measureLayerInk, SourceFontError } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
 GlobalWorkerOptions.workerSrc = workerUrl;
@@ -36,13 +36,13 @@ export async function detectText(page: PdfProjectPage, documents: Map<string, PD
   return extractSourceText(page, pdfPage, documentScopes.get(documents) ?? 'unregistered');
 }
 
-async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer, page: PdfProjectPage) {
+type TextMask={x:number;y:number;width:number;height:number};
+async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer, mask?:TextMask) {
   validateDeletedLayer(layer);
   if (!layer.deleted) validateSourceText(layer);
   ctx.save();
   try {
-  const mask = layer.original && layer.maskOriginal !== false ? mapSourceTextRect(layer.original, page.rowEdits ?? [], sourceStyle(layer)?.baseline) : null;
-  if (mask) { const o = mask; ctx.fillStyle = layer.fill; ctx.fillRect(o.x - 1, o.y - 1, o.width + 2, o.height + 2); }
+  if (mask) { ctx.fillStyle = layer.fill; ctx.fillRect(mask.x,mask.y,mask.width,mask.height); }
   if (layer.deleted) return;
   const { x, y, width, height } = layer;
   if (['shape', 'whiteout', 'note', 'stamp'].includes(layer.kind)) {
@@ -71,8 +71,8 @@ export class PdfLayerEditError extends Error {
  }
 }
 async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,tolerant=false){
- const issues:RenderIssue[]=[],valid:PdfLayer[]=[];
- const runs=page.layers.some(l=>l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
+ const issues:RenderIssue[]=[],valid:PdfLayer[]=[],masks=new Map<string,TextMask>();
+ const runs=page.layers.some(l=>l.original||l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
  for(const layer of page.layers){try{
   validateDeletedLayer(layer);
   if(layer.formField&&!runs.some(run=>run.field===layer.formField!.type&&run.sourceText?.runIndex===layer.formField!.runIndex))throw Error('Document field no longer matches this source. Reopen the original.');
@@ -84,10 +84,19 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
   }
   if(!layer.deleted)validateSourceText(layer);
   if(!layer.sourceText&&['text','replacement','note','stamp'].includes(layer.kind)&&layer.text){const metrics=measureLayerText(layer);if(metrics.height>layer.height+.5||metrics.width>layer.width+.5)throw Error('The edited text exceeds its box. Enlarge the text box before Preview.');}
-  if(layer.original&&layer.maskOriginal!==false&&!mapSourceTextRect(layer.original,page.rowEdits??[],sourceStyle(layer)?.baseline))throw Error('The original text area was removed or split. Restore the row or discard this edit.');
+  if(layer.original&&layer.maskOriginal!==false){
+   const original=layer.original,run=runs.find(r=>r.text===original.text&&Math.abs(r.x-original.x)<.01&&Math.abs(r.y-original.y)<.01);
+   const native=run?createReplacementLayer(run,'mask'):undefined;
+   const mapped=mapSourceTextRect(original,page.rowEdits??[],native?sourceStyle(native)?.baseline:sourceStyle(layer)?.baseline);
+   if(!mapped)throw Error('The original text area was removed or split. Restore the row or discard this edit.');
+   // Hit targets include font descent/padding. Mask only the original ink so
+   // clearing or replacing a word cannot shave the next tightly spaced line.
+   const ink=native&&sourceStyle(native)?.supported&&!measureLayerText(native).unsupported?measureLayerInk(native):{y:original.y-1,height:original.height+2};
+   masks.set(layer.id,{x:mapped.x-1,y:mapped.y+ink.y-original.y,width:mapped.width+2,height:ink.height});
+  }
   valid.push(layer);
  }catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}}
- return {valid,issues};
+ return {valid,issues,masks};
 }
 async function sourceRaster(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,scale:number){
  const canvas=document.createElement('canvas');canvas.width=Math.ceil(page.width*scale);canvas.height=Math.ceil(page.height*scale);
@@ -121,13 +130,9 @@ function continuedRules(page:PdfProjectPage,source:HTMLCanvasElement,scale:numbe
 function hasLayerInk(layer:PdfLayer){
  return !layer.deleted&&(['image','shape','whiteout','note','stamp'].includes(layer.kind)||!!layer.text.trim());
 }
-function paintedExtent(page:PdfProjectPage,source:HTMLCanvasElement,scale:number,layers:PdfLayer[]){
+function paintedExtent(page:PdfProjectPage,source:HTMLCanvasElement,scale:number,layers:PdfLayer[],textMasks:Map<string,TextMask>){
  const pixels=source.getContext('2d')!.getImageData(0,0,source.width,source.height).data;
- const masks=layers.flatMap(layer=>{
-  if(!layer.original||layer.maskOriginal===false)return [];
-  const rect=mapSourceTextRect(layer.original,page.rowEdits??[],sourceStyle(layer)?.baseline);
-  return rect?[{x:rect.x-1,y:rect.y-1,width:rect.width+2,height:rect.height+2}]:[];
- });
+ const masks=[...textMasks.values()];
  let bottom=Math.max(page.height,...layers.filter(hasLayerInk).map(l=>l.y+l.height));
  for(const f of sourceFragments(page)){
   if(f.y+f.height<=bottom)continue;
@@ -146,7 +151,7 @@ function paintedExtent(page:PdfProjectPage,source:HTMLCanvasElement,scale:number
  for(const rule of continuedRules(page,source,scale))bottom=Math.max(bottom,rule.y+rule.height);
  return bottom;
 }
-async function paintSheet(page:PdfProjectPage,source:HTMLCanvasElement,canvas:HTMLCanvasElement,scale:number,sourceScale:number,sheet:FlowSheet,layers:PdfLayer[],tolerant:boolean,issues:RenderIssue[],physicalHeight=sheet.height){
+async function paintSheet(page:PdfProjectPage,source:HTMLCanvasElement,canvas:HTMLCanvasElement,scale:number,sourceScale:number,sheet:FlowSheet,layers:PdfLayer[],masks:Map<string,TextMask>,tolerant:boolean,issues:RenderIssue[],physicalHeight=sheet.height){
  canvas.width=Math.ceil(page.width*scale);canvas.height=Math.ceil(physicalHeight*scale);
  const ctx=canvas.getContext('2d',{alpha:false})!;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
  ctx.save();ctx.scale(scale,scale);ctx.beginPath();ctx.rect(0,0,page.width,sheet.height);ctx.clip();ctx.translate(0,-sheet.top);
@@ -157,15 +162,15 @@ async function paintSheet(page:PdfProjectPage,source:HTMLCanvasElement,canvas:HT
  for(const rule of continuedRules(page,source,sourceScale)){ctx.fillStyle=rule.fill!;ctx.fillRect(rule.x,rule.y,rule.width,rule.height);}
  for(const layer of layers){
   // Each layer is validated before its original pixels are covered.
-  try{await drawLayer(ctx,layer,page);}catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}
+  try{await drawLayer(ctx,layer,masks.get(layer.id));}catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}
  }
  ctx.restore();
 }
 export async function renderPage(page: PdfProjectPage, documents: Map<string, PDFDocumentProxy>, canvas: HTMLCanvasElement, scale = 1.5, options:RenderOptions={}) {
  const height=pageCanvasHeight(page);scale=Math.min(scale,Math.sqrt(20_000_000/(page.width*height)));
- const {valid,issues}=await bindLayers(page,documents,options.tolerant);
+ const {valid,issues,masks}=await bindLayers(page,documents,options.tolerant);
  const source=await sourceRaster(page,documents,scale);
- try{await paintSheet(page,source,canvas,scale,scale,{top:0,height},valid,!!options.tolerant,issues);}finally{source.width=source.height=0;}
+ try{await paintSheet(page,source,canvas,scale,scale,{top:0,height},valid,masks,!!options.tolerant,issues);}finally{source.width=source.height=0;}
  return {issues};
 }
 
@@ -177,7 +182,7 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
   for (const [index, group] of groups.entries()) {
     const output = await PDFDocument.create();
     for (const page of group.pages) {
-      const {valid}=await bindLayers(page,documents);
+      const {valid,masks}=await bindLayers(page,documents);
       if (valid.some(layer=>hasLayerInk(layer)||!!layer.original&&layer.maskOriginal!==false) || page.rowEdits?.length || page.sourcePage === null) {
         // Only a new opaque bitmap is copied into edited pages. No source streams,
         // hidden OCR/text, annotations or attachments are retained on those pages.
@@ -186,9 +191,9 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         const protectedAreas=[...images.flatMap(r=>{const mapped=mapSourceRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...runs.flatMap(r=>{if(replacementForRun(page,r))return [];const mapped=mapSourceTextRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...valid.flatMap(l=>!hasLayerInk(l)?[]:['image','shape','whiteout','note','stamp'].includes(l.kind)?[l]:measureLayerText(l).lines.flatMap((line,n)=>line.trim()?[{y:l.y+n*l.fontSize*1.25,height:l.fontSize*1.25}]:[]))];
         const scale=Math.min(300/72,Math.sqrt(20_000_000/(page.width*page.height)));
         const source=await sourceRaster(page,documents,scale),canvas=document.createElement('canvas');
-        const sheets=paginateFlow({...page,rowEdits:[],flowHeight:paintedExtent(page,source,scale,valid)},protectedAreas);
+        const sheets=paginateFlow({...page,rowEdits:[],flowHeight:paintedExtent(page,source,scale,valid,masks)},protectedAreas);
         try{for(const sheet of sheets){
-          await paintSheet(page,source,canvas,scale,scale,sheet,valid,false,[],page.height);
+          await paintSheet(page,source,canvas,scale,scale,sheet,valid,masks,false,[],page.height);
           const png=await output.embedPng(canvas.toDataURL('image/png'));
           output.addPage([page.width,page.height]).drawImage(png,{x:0,y:0,width:page.width,height:page.height});
         }}finally{source.width=source.height=canvas.width=canvas.height=0;}

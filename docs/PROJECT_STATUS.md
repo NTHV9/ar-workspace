@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — PDF editing resilience and direct document controls
+
+- Implemented complete five-heading invoice row templates, editable new cells without source-subset restrictions, continuation grouping, ink-based row boundaries/erasure, safe empty-text rendering and whole-object area selection. Added point-and-type text placement, optional guides, collapsible Package, contextual row controls, cell Tab navigation and persistent access to Preview. Cleared reverted warning state on Undo/Redo and fixed a new-cell focus race.
+- Tested: **1,297 unit tests**, TypeScript/build/public assets/dry run and **72 editor browser cases** passed. Synthetic dense-row reproduction went from 357 changed pixels in the next word to zero; complete-row typing, wrapping, output bytes, native/source privacy, final review and handoff gates passed. Desktop/laptop renders inspected. [Evidence and limits](PDF_EDITING_RESILIENCE_20260921.md).
+- Deployment pending at this checkpoint. No paid dependency, database/OPERA/email/retention change or real customer PDF. This increment improves fixed-layout PDF interaction; it does not claim Word-style document reflow or removal of every legitimate source-font/overlap warning. The owner has not yet chosen between the two editing paradigms.
+
 ## 21 September 2026 — Completed free BentoPDF local trial
 
 - Implemented only an isolated local evaluation of the official unmodified BentoPDF 2.8.8 build, with external requests blocked and synthetic PDFs. No paid plan, customer PDF, application integration, license change, external resource change or production deployment. Third-party distribution and temporary scripts remain outside tracked app source.

@@ -131,7 +131,7 @@ test('table row insertion creates editable cells, deletion reflows, and Undo res
  await page.getByRole('button',{name:'Add row below',exact:true}).click();await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(3);
  await page.locator('.pdf-layer-target.empty-cell .pdf-layer-move').nth(1).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('ADDED ROW');
  await page.getByRole('button',{name:'Save draft',exact:true}).click();let snapshot=await page.evaluate(()=>(window as any).pdfTest.draft.pages[0]);
- expect(snapshot.rowEdits).toHaveLength(1);expect(snapshot.rowEdits[0].kind).toBe('insert');expect(snapshot.layers.some((l:any)=>l.text==='ADDED ROW'&&l.maskOriginal===false)).toBe(true);
+ expect(snapshot.rowEdits).toHaveLength(1);expect(snapshot.rowEdits[0].kind).toBe('insert');expect(snapshot.layers.some((l:any)=>l.text==='ADDED ROW'&&l.tableRow&&!l.original&&!l.sourceText)).toBe(true);
  await page.getByRole('button',{name:'Delete row',exact:true}).click();await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(0);await page.getByRole('button',{name:'Save draft',exact:true}).click();snapshot=await page.evaluate(()=>(window as any).pdfTest.draft.pages[0]);expect(snapshot.rowEdits.map((e:any)=>e.kind)).toEqual(['insert','delete']);expect(snapshot.layers.some((l:any)=>l.text==='ADDED ROW')).toBe(false);
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(2);await expect(page.locator('.pdf-differences')).toContainText('ADDED ROW');
 });
@@ -158,7 +158,7 @@ test('inserted cells retain row controls and clone all columns after a font chan
  await page.goto('/tests/browser/pdf-editor-harness.html');await page.getByRole('button',{name:'Edit original text: SYNTHETIC ROW A',exact:true}).click();await page.getByRole('button',{name:'Add row below',exact:true}).click();
  await page.locator('.pdf-layer-target.empty-cell .pdf-layer-move').nth(1).click();await page.getByRole('combobox',{name:'Text font',exact:true}).selectOption('Arial');await expect(page.getByRole('button',{name:'Add row below',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Add row below',exact:true}).click();await page.getByRole('button',{name:'Save draft',exact:true}).click();const p=await page.evaluate(()=>(window as any).pdfTest.draft.pages[0]);
- const rowIds=[...new Set(p.layers.map((l:any)=>l.tableRow).filter(Boolean))];expect(rowIds).toHaveLength(2);for(const id of rowIds)expect(p.layers.filter((l:any)=>l.tableRow===id)).toHaveLength(3);expect(p.layers.filter((l:any)=>l.tableRow===rowIds[1]&&l.kind==='text')).toHaveLength(1);
+ const rowIds=[...new Set(p.layers.map((l:any)=>l.tableRow).filter(Boolean))];expect(rowIds).toHaveLength(2);for(const id of rowIds)expect(p.layers.filter((l:any)=>l.tableRow===id)).toHaveLength(3);expect(p.layers.filter((l:any)=>l.tableRow===rowIds[1]&&l.kind==='text'&&!l.sourceText)).toHaveLength(3);
 });
 
 
