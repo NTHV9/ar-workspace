@@ -1,4 +1,5 @@
-export const INVOICE_TEMPLATE_VERSION='invoice-rtf-20260921-v1';
+export const INVOICE_TEMPLATE_VERSION='invoice-rtf-20260921-v2';
+export const supportedInvoiceTemplate=(version:unknown)=>version===INVOICE_TEMPLATE_VERSION||version==='invoice-rtf-20260921-v1';
 export interface InvoiceLine {id:string;date:string;description:string;reference:string;debit:number;credit:number}
 export interface InvoiceModel {
  hotel:string;accountId:string;invoiceId:string;folio:string;voucher:string;address:string[];
@@ -7,4 +8,4 @@ export interface InvoiceModel {
 }
 export interface InvoiceImage {width:number;height:number;png:string;sha256:string}
 export interface InvoicePosition {x0:number;x1:number;top:number;bottom:number;size:number;fontname:string}
-export interface InvoiceAssets {hotel:string;version:string;header:InvoiceImage;closing:InvoiceImage;signature:InvoiceImage;footer:InvoiceImage;bankText?:{x:number;top:number;text:string}[];fixedText:{x:number;top:number;text:string;size:number}[];closingText:{x:number;top:number;text:string;size:number;bold:boolean}[];layout:{positions:Record<string,InvoicePosition[]>;rowTop:number;closingTop:number;signatureTop:number;pageTop:number}}
+export interface InvoiceAssets {hotel:string;version:string;header:InvoiceImage;closing:InvoiceImage;signature:InvoiceImage;footer:InvoiceImage;bankText?:{x:number;top:number;text:string}[];fixedText:{x:number;top:number;text:string;size:number}[];headerText?:{x:number;top:number;text:string;size:number;bold:boolean}[];closingText:{x:number;top:number;text:string;size:number;bold:boolean}[];layout:{positions:Record<string,InvoicePosition[]>;rowTop:number;closingTop:number;signatureTop:number;pageTop:number}}

@@ -15,6 +15,11 @@ for(const width of [1440,1280])test(`workspace-generated Invoice keeps five edit
  await page.getByRole('button',{name:'Page 1 · text ADDED-REFERENCE',exact:true}).click();await page.getByRole('button',{name:'Delete row',exact:true}).click();await expect(page.locator('.pdf-layer-target')).toHaveCount(priorLayers);await expect(page.getByRole('alert')).toHaveCount(0);
  await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible({timeout:20000});await reviewPreviewPages(page);await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();expect(controls.outboundRequests).toEqual([]);
 });
+test('workspace-generated Invoice keeps an editable Voucher field when OPERA has no value',async({page})=>{
+ test.setTimeout(60000);await mockApplication(page,'combined','transient',await syntheticInvoice(3,''));await page.goto('/?documentJob='+jobId,{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await page.getByRole('button',{name:'Enter Voucher No.',exact:true}).click();await page.getByRole('textbox',{name:'Edit document text',exact:true}).fill('VCH-123456');await page.getByRole('textbox',{name:'Edit document text',exact:true}).press('Escape');
+ await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible({timeout:20000});await expect(page.getByRole('alert')).toHaveCount(0);await reviewPreviewPages(page);
+});
 
 const jobId = 'a0000000-0000-4000-8000-000000000001';
 const fileId = 'b0000000-0000-4000-8000-000000000001';

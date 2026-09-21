@@ -1,7 +1,7 @@
 import {PDFDocument,StandardFonts,type PDFFont,type PDFPage} from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import noto from '../statement/fonts/noto-thai';
-import {INVOICE_TEMPLATE_VERSION,type InvoiceAssets,type InvoiceModel} from './types';
+import {supportedInvoiceTemplate,type InvoiceAssets,type InvoiceModel} from './types';
 
 const fail=():never=>{throw Error('document_invoice_layout_invalid');};
 const money=(cents:number)=>{if(!Number.isSafeInteger(cents))return fail();return(cents/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
@@ -13,7 +13,7 @@ function words(n:number):string{
 export function invoiceAmountWords(cents:number){if(!Number.isSafeInteger(cents)||cents<0)return fail();return words(Math.floor(cents/100))+' BAHT'+(cents%100?' AND '+words(cents%100)+' SATANG':' ONLY');}
 
 export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Promise<Uint8Array>{
- if(assets.hotel!==model.hotel||assets.version!==INVOICE_TEMPLATE_VERSION||model.lines.length===0||model.lines.length>=4000||new Set(assets.fixedText.map(t=>t.text)).size!==6)fail();
+ if(assets.hotel!==model.hotel||!supportedInvoiceTemplate(assets.version)||model.lines.length===0||model.lines.length>=4000||new Set(assets.fixedText.map(t=>t.text)).size!==6)fail();
  const doc=await PDFDocument.create();doc.registerFontkit(fontkit);
  const latin=await doc.embedFont(StandardFonts.Helvetica),bold=await doc.embedFont(StandardFonts.HelveticaBold),thai=await doc.embedFont(Uint8Array.from(atob(noto),c=>c.charCodeAt(0)),{subset:true});
  const latinChars=new Set(latin.getCharacterSet()),thaiChars=new Set(thai.getCharacterSet());
@@ -32,6 +32,7 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
  const imageAt=(key:'header'|'closing'|'signature'|'footer',top:number)=>page.drawImage(images[key],{x:0,y:792-top-assets[key].height,width:612,height:assets[key].height});
  const add=()=>{if(pages.length>=100)fail();page=doc.addPage([612,792]);pages.push(page);imageAt('header',0);imageAt('footer',792-assets.footer.height);
   for(const fixed of assets.fixedText){if(!['INVOICE','DATE','DESCRIPTION','REFERENCE','DEBIT (THB)','CREDITS (THB)'].includes(fixed.text))fail();write(fixed.text,fixed.x,fixed.top,fixed.size,true);}
+  for(const label of assets.headerText??[]){if(label.text.length>80)fail();write(label.text,label.x,label.top,label.size,label.bold);}
   const a=pos('ADDRESSEE_FULL_ADDRESS'),address=model.address.flatMap(s=>wrap(s,290,8));if(address.length>11)fail();address.forEach((s,i)=>write(s,a.x0,a.top+i*9.2));
   for(const [name,value]of [['BILL_NUMBER_HEADER',model.folio],['ROOM_NUMBER',model.room],['ARRIVAL_DATE_SHORT',model.arrival],['DEPARTURE_DATE_SHORT',model.departure],['CONFIRMATION_NO',model.confirmation],['CASHIER_NO',model.cashierNo]] as const)field(name,value);
   const voucherKey=p.EXTERNAL_REFERENCE?'EXTERNAL_REFERENCE':'CUSTOM_REFERENCE';const v=pos(voucherKey);if(width(model.voucher,8,true)>106)fail();write(model.voucher,v.x0,v.top,8,true);

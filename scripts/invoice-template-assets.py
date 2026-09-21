@@ -79,6 +79,18 @@ if __name__=='__main__':
             background=bitmap.getpixel((round((word['x0']-1)*2),round((word['top']-1)*2)))
             for w in related:draw.rectangle((w['x0']*2-1,w['top']*2-1,w['x1']*2+1,w['bottom']*2+1),fill=background)
             fixed_text.append({'text':label,'x':word['x0'],'top':word['top'],'size':word['size']})
+        header_text=[];label_groups={}
+        for w in words:
+            if w['text']==':' and 450<w['x0']<475 and w['top']<row_top-25:
+                draw.rectangle((w['x0']*2-1,w['top']*2-1,w['x1']*2+1,w['bottom']*2+1),fill='white');header_text.append({'text':':','x':w['x0'],'top':w['top'],'size':w['size'],'bold':False});continue
+            if re.search(r'M\d{3}',w['text']) or w['text'] in ['INVOICE',':','/']:continue
+            right=380<w['x0'] and w['x1']<466 and w['top']<row_top-25
+            left=w['x0']<130 and positions['TAX1_NO'][0]['top']-2<=w['top']<row_top-20
+            if right or left:label_groups.setdefault((round(w['top'],1),right),[]).append(w)
+        for group in label_groups.values():
+            group.sort(key=lambda w:w['x0']);first=group[0]
+            for w in group:draw.rectangle((w['x0']*2-1,w['top']*2-1,w['x1']*2+1,w['bottom']*2+1),fill='white')
+            header_text.append({'text':re.sub(r'\s+([.,:])',r'\1',' '.join(w['text'] for w in group)),'x':first['x0'],'top':first['top'],'size':first['size'],'bold':'Bold' in first['fontname']})
         closing_text=[]
         for label in [w for w in words if w['text']=='Total' and w['x0']>315 and positions['TOTAL_DEBIT'][0]['top']-2<=w['top']<=positions['BALANCE'][0]['bottom']]:
             caption_words=sorted([w for w in words if abs(w['top']-label['top'])<1.5 and 315<w['x0']<550 and w['text']!='THB' and not re.search(r'M\d{3}',w['text'])],key=lambda w:w['x0'])
@@ -109,6 +121,6 @@ if __name__=='__main__':
             top=round(top*2)/2;bottom=round(bottom*2)/2;part=bitmap.crop((0,round(top*2),1224,round(bottom*2)));buf=io.BytesIO();part.save(buf,format='PNG',optimize=True);raw=buf.getvalue()
             (a.output/f'{hotel}-{name}.png').write_bytes(raw)
             images[name]={'width':612,'height':bottom-top,'png':base64.b64encode(raw).decode(),'sha256':hashlib.sha256(raw).hexdigest()}
-        assets={'hotel':hotel,'version':'invoice-rtf-20260921-v1',**images,'bankText':bank_text,'fixedText':fixed_text,'closingText':closing_text,'layout':{'positions':positions,'rowTop':row_top,'closingTop':round(closing_top*2)/2,'signatureTop':round(signature_top*2)/2,'pageTop':page_label['top']}}
+        assets={'hotel':hotel,'version':'invoice-rtf-20260921-v2',**images,'bankText':bank_text,'fixedText':fixed_text,'headerText':header_text,'closingText':closing_text,'layout':{'positions':positions,'rowTop':row_top,'closingTop':round(closing_top*2)/2,'signatureTop':round(signature_top*2)/2,'pageTop':page_label['top']}}
         (a.output/f'{hotel}-assets.json').write_text(json.dumps(assets,separators=(',',':')),encoding='utf8')
         print(json.dumps({'hotel':hotel,'layoutFields':len(positions),'templateSha256':hashlib.sha256((a.templates/TEMPLATES[hotel]).read_bytes()).hexdigest()}))

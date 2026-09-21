@@ -4,7 +4,7 @@ import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {collectPages} from '../opera/pagination';
 import {invoiceModel,record,type InvoicePacket} from './model';
-type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'>;
+type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>;
 const fail=():never=>{throw Error('document_source_changed');};
 const list=(value:unknown)=>{if(!Array.isArray(value))return fail();return value.map(record);};
 export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):Promise<InvoicePacket>{
@@ -20,6 +20,9 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const detail=record(await reader.financialTransactionDetail(scope)),accounts=list(detail.details);if(accounts.length!==1||accounts[0].hotelId!==manifest.hotel||record(accounts[0].accountId).id!==manifest.account_id)fail();
  const invoices=list(accounts[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(invoices.length!==1||!valid(invoices[0]))fail();const invoice=invoices[0];
  if(typeof invoice.internalFolioWindowID!=='string')fail();
+ const header=record(record(await reader.invoiceReservation(manifest.reservation_id)).reservations),reservations=list(header.reservation);
+ if(reservations.length!==1||header.hasMore===true||reservations[0].hotelId!==manifest.hotel||!list(reservations[0].reservationIdList).some(r=>r.type==='Reservation'&&String(r.id)===manifest.reservation_id))fail();
+ const customReference=reservations[0].customReference;if(customReference!=null&&typeof customReference!=='string')throw Error('document_invoice_header_invalid');
  const postings=record(await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string})),postingRows=list(postings.invoicePostingsDetails);if(!postingRows.length||postingRows.length>=4000)throw Error('document_invoice_postings_incomplete');
  const dates=postingRows.map(p=>String(p.transactionDate)).sort();
  const taxRows=await collectPages(async(offset,limit)=>{const raw=record(await reader.invoicePostingBreakdown(manifest.reservation_id!,window,dates[0],manifest.folio_date!,offset,limit));const entries=list(raw.financialPostings);if(raw.offset!==offset||raw.limit!==limit||!Number.isSafeInteger(raw.totalResults)||typeof raw.hasMore!=='boolean')throw Error('document_invoice_pagination_changed');return {rows:entries,offset,hasMore:raw.hasMore,totalResults:raw.totalResults as number,count:raw.count as number|undefined,nextOffset:offset+limit};},e=>String(record(e.posting).transactionNo),50);
@@ -35,6 +38,6 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const payeeWindow=Array.isArray(folioInfo.folioWindows)?list(folioInfo.folioWindows).find(w=>w.folioWindowNo===window&&w.internalFolioWindowID===invoice.internalFolioWindowID):undefined;
  const payee=payeeWindow?.payeeInfo?record(payeeWindow.payeeInfo):undefined;
  const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
- return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,payeeTaxNumber};
+ return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,payeeTaxNumber,customReference:customReference as string|undefined};
 }
 export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){return invoiceModel(await readInvoicePacket(reader,manifest),now);}
