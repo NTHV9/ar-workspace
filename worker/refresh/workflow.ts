@@ -19,6 +19,7 @@ import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
+import {readInvoiceModel} from '../invoice/read';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
@@ -37,6 +38,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(!job||job.hotel!==hotel||job.invoice_ids.length!==1)throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===job.invoice_ids[0]);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        if(payload.invoiceModelProbe){const model=await readInvoiceModel(makeReader(runtime,hotel),invoice);return JSON.stringify({hotel:model.hotel,lines:model.lines.length,debit:model.debit,credit:model.credit,gross:model.gross,vat:model.vat,taxableNet:model.taxableNet,nonTaxable:model.nonTaxable,outstanding:model.outstanding,referenceHash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(model.lines.map(l=>l.reference).sort().join('|'))))].map(n=>n.toString(16).padStart(2,'0')).join('')});}
         return JSON.stringify(await readInvoiceFolioContract(makeReader(runtime,hotel),invoice));
       });
     }
