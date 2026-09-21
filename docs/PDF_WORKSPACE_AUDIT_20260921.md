@@ -50,4 +50,8 @@ No OPERA/accounting/database/retention change, customer PDF test, real email or 
 
 ## Deployment
 
-Pending production verification at this checkpoint.
+- Deployed/enabled source **`292255412c17ae7a196e8f009457c368a0c4f7c2`**, Worker **`92e78fb6-f35d-4c22-a70d-87eec54e3dc8`**, at https://ar-workspace.ar-c82.workers.dev using `--keep-vars`.
+- Both [source push CI](https://github.com/NTHV9/ar-workspace/actions/runs/35585977982) and [PR CI](https://github.com/NTHV9/ar-workspace/actions/runs/35585984521) passed. [PR56](https://github.com/NTHV9/ar-workspace/pull/56) merged as `06d40993ca436abb81a51c7910f9f126f95b3680`, with an identical complete source tree.
+- Production health returned the exact source SHA and `database_verified`; six protected-route anonymous checks passed.
+- **Two deployed browser cases passed** at 1440×900 and 1280×800. Each uses a synthetic embedded-font native invoice with a credit row immediately above a total rule: Add row, select Debit, delete (empty at desktop / filled at laptop), assert no warning/no remaining cells and identical total placement, then perform actual exported Preview. This is 92 editor browser scenarios including the 90 local cases.
+- The deployed capture was inspected; existing tracked evidence files were restored. No active/private user document tab was accessed or reloaded, no real customer PDF or API data was used in the deployed UI tests, and no mail was sent.
