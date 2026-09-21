@@ -155,7 +155,7 @@ export class OperaReader {
         let providerMessage: string|undefined;
         // Discovery has only owner-confirmed hotel IDs and pagination inputs. Inspect bounded
         // validation title/detail only, never return account payloads or token endpoint bodies.
-        if(response.status===400&&(path==='/ars/v1/accounts'||/^\/csh\/v1\/hotels\/[^/]+\/folioHistory$/.test(path))&&response.body){
+        if(response.status===400&&(path==='/ars/v1/accounts'||/^\/csh\/v1\/hotels\/[^/]+\/(folioHistory|financialPostingsNetVat)$/.test(path))&&response.body){
           const reader=response.body.getReader();let text='';const decoder=new TextDecoder();let bytes=0;
           try{while(true){const p=await reader.read();if(p.done)break;bytes+=p.value.byteLength;if(bytes>4096){await reader.cancel();break;}text+=decoder.decode(p.value,{stream:true});}
             const error=JSON.parse(text);providerMessage=[error.title,error.detail,error['o:errorCode']].filter(v=>typeof v==='string').join(' · ').replaceAll(token,'[redacted]').replaceAll(this.config.appKey,'[redacted]').replace(/Bearer\s+[^\s"']+/gi,'Bearer [redacted]').slice(0,400);
