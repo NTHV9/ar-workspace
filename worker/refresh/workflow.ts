@@ -17,6 +17,7 @@ import { backendRpc, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate } from './read-snapshot';
 import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
+import {readFolioReportTypes} from '../documents/folio-type-probe';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
@@ -27,6 +28,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     assertStatementWorkflowPolicy(payload);
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!isHotelId(hotel))throw new Error('invalid_workflow_parameters');
+    if(payload.folioTypeProbe)return step.do('folio-report-configuration',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},()=>readFolioReportTypes(makeReader(runtime,hotel),hotel));
     if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');return runFinancialHistory(runtime,{actor:payload.actorId,runId},step);}
     if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(runtime,hotel));
     if(payload.documentJob)return runDocumentJob(runtime,runId,step);

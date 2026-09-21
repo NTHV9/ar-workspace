@@ -83,6 +83,10 @@ export class OperaReader {
     if(!Number.isSafeInteger(folioWindowNo)||folioWindowNo<1||!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
     return this.read(`/med/config/v1/hotels/${this.id(this.config.hotelId)}/reservations/${this.id(reservationId)}/folioReports`,[['reservationIdContext','OPERA'],['reservationIdType','Reservation'],['folioWindowNo',String(folioWindowNo)],['folioDate',folioDate],['referenceCurrency','THB']]);
   }
+  folioTypeName(group:'Guest'|'AccountsReceivables') {
+    if(!['Guest','AccountsReceivables'].includes(group))throw new OperaError('invalid_request');
+    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/folioTypeNames`,[['folioReportGroup',group]]);
+  }
   reservationFolios(reservationId:string,folioDate:string) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(folioDate))throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/reservations/${this.id(reservationId)}/folios`,[['includeFolioHistory','true'],['fetchInstructions','Reservation'],['fetchInstructions','Foliohistory'],['start',folioDate],['end',folioDate]]);

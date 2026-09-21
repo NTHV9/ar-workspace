@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 21 September 2026 — AR invoice versus historical Folio source investigation
+
+- Inspected both owner-supplied OPERA batches privately. Their invoice pages use INVOICE and nonzero outstanding balances. A matched live KAT comparison showed that the current app's unedited native source already uses COPY OF INVOICE, includes a City Ledger settlement credit and shows a zero Folio footer while the AR ledger remains open. This precedes PDF Workspace editing. Customer files/text/images remain outside Git.
+- Official Oracle guidance distinguishes AR Invoice Folios from historical front-office Folios. The current adapter uses the reservation/window/date Media endpoint. Added a control-plane-only, configuration-read Workflow diagnostic for the documented Guest/AccountsReceivables report groups; it neither renders nor posts a document. No change to the invoice generator is enabled by this diagnostic. Live metadata verification and the second property comparison are pending.
+
 ## 21 September 2026 — PDF Workspace lifecycle audit and inserted-row deletion
 
 - Reproduced the exact added-row deletion warning with a tall embedded font, and separately found non-inverse row heights shifting totals after add/delete. Implemented tracked row allocations with validated ownership/legacy compatibility, exact safe reclamation, preserved unrelated content and row-cell placement inside its allocation.
