@@ -28,6 +28,7 @@ it('rejects another hotel before reading posting or tax data',async()=>{
 it('rejects an invoice detail from another account',async()=>{
  const {p,reader,detail}=fixture();detail.details[0].accountId.id='999';reader.financialTransactionDetail.mockResolvedValue(detail);await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');expect(reader.invoicePostings).not.toHaveBeenCalled();
 });
+it('includes selected adjustments posted after the original folio date',async()=>{const {p,reader}=fixture();p.postings.invoicePostingsDetails[1].transactionDate='2026-01-20';await readInvoiceModel(reader,p.manifest);expect(reader.invoicePostingBreakdown.mock.calls[0].slice(2,4)).toEqual(['2026-01-02','2026-01-20']);});
 it('rejects a voucher response for another reservation',async()=>{const {p,reader}=fixture();reader.invoiceReservation.mockResolvedValue({reservations:{reservation:[{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'999'}],customReference:'DO-NOT-USE'}]}});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');});
 it.each([true,false])('uses payee tax identity only when the selected window and AR profile agree (%s)',async agrees=>{
  const {p,reader}=fixture();const account={...p.account,profileId:{id:'123'}};reader.account.mockResolvedValue({accountDetails:{...account,invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
