@@ -33,6 +33,15 @@ for(const width of [1440,1280])test(`settings ${width}: blank defaults, zero ter
 });
 test('settings conflict retains unsaved values',async({page})=>{await setup(page,true);await page.goto('/?account=example&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();await page.getByLabel('Credit term (calendar days)').fill('30');await page.getByRole('button',{name:'Save account settings',exact:true}).click();await expect(page.getByRole('alert')).toContainText('changed in another session');await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('30');});
 
+test('saving Billing not required without a term refreshes invoice billing status and leaves due unknown',async({page})=>{
+ const writes=await setup(page);let invoiceReads=0;
+ await page.route('**/api/accounts/KAT/example',route=>{invoiceReads++;return route.fulfill({json:{invoices:[{id:'SYN-PARTIAL',hotel:'KAT',account_id:'example',guest:'Synthetic partial rules guest',invoice_no:'12345',folio_no:'67890',transaction_date:'2026-09-01',original:100,open:100,collection_role:'standalone',collection_selectable:true,verification_state:'verified',workflow:{revision:writes.length,billing_required:writes.length?false:null,credit_term:null,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:null}}]}});});
+ await page.goto('/?account=example&property=KAT');await expect(page.locator('.ledger')).toContainText('Billing setup needed');
+ await page.getByRole('button',{name:'Overview',exact:true}).click();await page.getByLabel('Billing requirement').selectOption('not_required');await page.getByRole('button',{name:'Save account settings',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Billing requirement is saved; add a credit term');expect(writes[0]).toMatchObject({billingRequired:false,creditTerm:null});
+ await page.getByRole('button',{name:'Invoice / Folio',exact:true}).click();await expect(page.locator('.ledger')).toContainText('No reminders sent');await expect(page.locator('.ledger')).not.toContainText('Billing setup needed');await expect(page.locator('.ledger tbody tr td').nth(5)).toHaveText('Not available');expect(invoiceReads).toBeGreaterThan(1);
+});
+
 test('unsaved account settings survive background reload and same-user token renewal',async({page})=>{
  await setup(page);await page.goto('/?account=example&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();
  await page.getByLabel('Credit term (calendar days)').fill('45');
