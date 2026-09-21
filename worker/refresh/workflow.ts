@@ -11,13 +11,14 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloud
 import { makeReader,probeOpera } from '../opera/probe';
 import { OperaError } from '../opera/client';
 import {assertStatementWorkflowPolicy} from '../documents/source-policy';
-import {runDocumentJob} from '../documents/jobs';
+import {documentJob,runDocumentJob,uuidPattern} from '../documents/jobs';
 import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate } from './read-snapshot';
 import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
+import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
@@ -29,6 +30,16 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!isHotelId(hotel))throw new Error('invalid_workflow_parameters');
     if(payload.folioTypeProbe)return step.do('folio-report-configuration',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},()=>readFolioReportTypes(makeReader(runtime,hotel),hotel));
+    if(payload.invoiceContractJob){
+      if(!uuidPattern.test(payload.invoiceContractJob))throw Error('document_probe_scope_invalid');
+      return step.do('selected-invoice-contract',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},async()=>{
+        const job=await documentJob(runtime,payload.invoiceContractJob!);
+        if(!job||job.hotel!==hotel||job.invoice_ids.length!==1)throw Error('document_probe_scope_invalid');
+        const invoice=job.manifest.find(i=>i.id===job.invoice_ids[0]);
+        if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        return JSON.stringify(await readInvoiceFolioContract(makeReader(runtime,hotel),invoice));
+      });
+    }
     if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');return runFinancialHistory(runtime,{actor:payload.actorId,runId},step);}
     if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(runtime,hotel));
     if(payload.documentJob)return runDocumentJob(runtime,runId,step);
