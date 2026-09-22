@@ -10,7 +10,7 @@ function canonical(value:unknown):string {
 }
 /** Control-plane, read-only diagnostic. Never returns source rows or identifiers. */
 export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacket>[0],manifest:DocumentInvoice){
- let stage='start';const calls:Record<string,number>={},pages:Record<string,unknown>[]=[],seen=new Map<string,string>();
+ let stage='start';const calls:Record<string,number>={},pages:Record<string,unknown>[]=[],queries:Record<string,unknown>[]=[],seen=new Map<string,string>();
  let postingCodes:Record<string,unknown>[]=[],postingRows:Record<string,unknown>[]=[];const netRows:Record<string,unknown>[]=[];
  const taxClasses=new Map<string,{code:unknown;type:unknown;count:number;omittedTaxes:number;equalNetGross:number}>();
  const directGroups=()=>{
@@ -27,6 +27,7 @@ export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacke
   if(typeof value!=='function')return value;
   return async(...args:unknown[])=>{
    stage=String(key);calls[stage]=(calls[stage]??0)+1;
+   if(key==='invoicePostingBreakdown')queries.push({window:args[1],spanDays:(Date.parse(String(args[3]))-Date.parse(String(args[2])))/86400000,offset:args[4],limit:args[5]});
    const result:unknown=await Reflect.apply(value,target,args);
    if(key==='invoicePostings'){const raw=record(result);postingRows=(raw.invoicePostingsDetails as unknown[]).map(record);postingCodes=(raw.trxCodesInfo as unknown[]).map(record).map(c=>({hotelId:c.hotelId,transactionCode:c.transactionCode,description:c.description,transactionGroup:c.transactionGroup}));}
    if(key==='invoicePostingBreakdown'){
@@ -47,5 +48,5 @@ export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacke
  }});
  try{const packet=await readInvoicePacket(observed,manifest);stage='model';const model=invoiceModel(packet);
   return {ok:true,stage,calls,pages,lines:model.lines.length,gross:model.gross,vat:model.vat,outstanding:model.outstanding};
- }catch(error){return {ok:false,stage,calls,pages,postingCodes,taxClasses:[...taxClasses.values()],directGroups:directGroups(),error:error instanceof OperaError?error.code:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'};}
+ }catch(error){const covered=new Set(netRows.map(e=>String(record(e.posting).transactionNo)));const missing=postingRows.filter(p=>!covered.has(String(p.transactionNo)));return {ok:false,stage,calls,pages,queries,coverage:{selected:postingRows.length,matched:postingRows.length-missing.length,missingCodes:[...new Set(missing.map(p=>p.transactionCode))]},postingCodes,taxClasses:[...taxClasses.values()],directGroups:directGroups(),...(error instanceof OperaError?{providerStatus:error.upstreamStatus,providerValidation:error.providerMessage}:{}),error:error instanceof OperaError?error.code:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'};}
 }
