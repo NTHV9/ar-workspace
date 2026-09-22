@@ -2,8 +2,10 @@ import {describe,it,expect} from 'vitest';
 import {invoiceModel} from '../worker/invoice/model';
 import {invoiceAmountWords} from '../worker/invoice/render';
 
-import {packet,money,mixedTaxPacket} from './fixtures/invoice-packet';
+import {packet,money,mixedTaxPacket,arAdjustmentPacket} from './fixtures/invoice-packet';
 const now=new Date('2026-09-21T10:00:00Z');
+it('includes an exact AR adjustment whose complete include-generates response has no tax postings',()=>{const model=invoiceModel(arAdjustmentPacket(),now);expect(model.gross).toBe(341500);expect(model.nonTaxable).toBe(10000);expect(model.vat).toBe(invoiceModel(packet(1),now).vat);});
+it.each(['account','invoice','folio','amount','deferred','extra-generate'] as const)('rejects unverified AR tax evidence (%s)',kind=>{const p=arAdjustmentPacket(),entry=p.arDetails[0].response.transactions[0];if(kind==='account')entry.aRInfo.accountNumber='ANOTHER';if(kind==='invoice')entry.aRInfo.invoiceNo=100;if(kind==='folio')entry.folioNo=89;if(kind==='amount')entry.debitAmount=money(90);if(kind==='deferred')entry.deferredTax=true;if(kind==='extra-generate')p.arDetails[0].response.transactions.push({...entry,transactionNo:60002});expect(()=>invoiceModel(p,now)).toThrow();});
 it('reconciles mixed generated VAT and separately posted VAT without treating its receipt base as non-taxable',()=>{
  const m=invoiceModel(mixedTaxPacket(),now);expect(m.gross).toBe(454200);expect(m.vat).toBe(29387);expect(m.nonTaxable).toBe(5000);expect(m.taxableNet).toBe(419813);expect(m.lines).toHaveLength(5);
 });

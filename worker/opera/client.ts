@@ -61,10 +61,10 @@ export class OperaReader {
     if(typeof scope.transactionId!=='string'||!/^-?(0|[1-9][0-9]*)$/.test(scope.transactionId)||scope.transactionId==='-0'||scope.transactionId.length>80)throw new OperaError('invalid_request',undefined,'financial_transaction_identity');
     return this.read(`/ars/v1/hotels/${this.id(scope.hotel)}/accounts/${this.id(scope.accountId)}/transactions/${this.id(scope.transactionId)}/invoicePaymentDetails`,[]);
   }
-  invoicePostings(scope:FinancialReadScope&{transactionId:string;invoiceNo:string;folioNo:string;internalFolioWindowId:string}) {
+  invoicePostings(scope:FinancialReadScope&{transactionId:string;invoiceNo:string;folioNo?:string;internalFolioWindowId?:string}) {
     this.financialScope(scope);
-    if([scope.transactionId,scope.invoiceNo,scope.folioNo,scope.internalFolioWindowId].some(id=>typeof id!=='string'||!/^[1-9][0-9]{0,15}$/.test(id)))throw new OperaError('invalid_request',undefined,'invoice_posting_scope');
-    return this.read('/ars/v1/invoicePostings',[['hotelId',scope.hotel],['accountId',scope.accountId],['accountIdContext','OPERA'],['accountType','AccountId'],['transactionNo',scope.transactionId],['invoiceNo',scope.invoiceNo],['folioNo',scope.folioNo],['internalFolioWindowID',scope.internalFolioWindowId]]);
+    if([scope.transactionId,scope.invoiceNo,...scope.folioNo===undefined?[]:[scope.folioNo],...scope.internalFolioWindowId===undefined?[]:[scope.internalFolioWindowId]].some(id=>typeof id!=='string'||!/^[1-9][0-9]{0,15}$/.test(id)))throw new OperaError('invalid_request',undefined,'invoice_posting_scope');
+    return this.read('/ars/v1/invoicePostings',[['hotelId',scope.hotel],['accountId',scope.accountId],['accountIdContext','OPERA'],['accountType','AccountId'],['transactionNo',scope.transactionId],['invoiceNo',scope.invoiceNo],...scope.folioNo===undefined?[]:[['folioNo',scope.folioNo]],...scope.internalFolioWindowId===undefined?[]:[['internalFolioWindowID',scope.internalFolioWindowId]]]);
   }
   appliedInvoicePayments(scope:FinancialReadScope&{invoiceTransactionId:string;invoiceNo?:string}) {
     this.financialScope(scope);

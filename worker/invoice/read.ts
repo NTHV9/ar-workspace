@@ -53,6 +53,11 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  for(const e of taxRows){const p=record(e.posting);if(!selectedIds.has(String(p.transactionNo))&&!(p.transactionType!=='Wrapper'&&packageIds.has(String(p.referencePackageTransactionNo))))continue;if(!e.postingBreakdown)continue;for(const t of invoiceTaxEntries(record(e.postingBreakdown)))taxByCode.set(String(t.transactionCode),String(t.transactionNo));}
  const taxCodes:unknown[]=[];const ids=[...taxByCode.values()];for(let offset=0;offset<ids.length;offset+=40){const details=record(await reader.invoiceTransactionDetails(ids.slice(offset,offset+40)));taxCodes.push(...list(details.trxCodesInfo));}
  const uniqueCodes=[...new Map(taxCodes.map(record).map(c=>[String(c.hotelId)+':'+String(c.transactionCode),c])).values()];
+ const missingIds=[...selectedIds].filter(id=>!taxIds.has(id)),arDetails:NonNullable<InvoicePacket['arDetails']>=[];
+ // Direct AR adjustments need not appear in the reservation's net/VAT ledger.
+ // Read their exact transaction identities, including all generated postings;
+ // the model independently checks account/invoice/folio, amounts and tax facts.
+ for(let offset=0;offset<missingIds.length;offset+=40){const ids=missingIds.slice(offset,offset+40);arDetails.push({ids,response:await reader.invoiceTransactionDetails(ids)});}
  // Recheck the AR balance after the slower postings/tax reads to fence a payment
  // or adjustment arriving during preparation. No write or print call is made.
  const ending=list(record(await reader.financialTransactionDetail(scope)).details);if(ending.length!==1||ending[0].hotelId!==manifest.hotel||record(ending[0].accountId).id!==manifest.account_id)fail();const last=list(ending[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(last.length!==1||!valid(last[0])||amountCents(last[0].amount,'THB')!==amountCents(invoice.amount,'THB'))fail();
@@ -60,7 +65,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const payeeWindow=Array.isArray(folioInfo.folioWindows)?list(folioInfo.folioWindows).find(w=>w.folioWindowNo===window&&w.internalFolioWindowID===invoice.internalFolioWindowID):undefined;
  const payee=payeeWindow?.payeeInfo?record(payeeWindow.payeeInfo):undefined;
  const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
- return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,payeeTaxNumber,customReference:customReference as string|undefined};
+ return {manifest,account,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,arDetails,payeeTaxNumber,customReference:customReference as string|undefined};
 }
 export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){
  let packet:InvoicePacket|undefined;

@@ -11,6 +11,16 @@ function canonical(value:unknown):string {
 function dataShape(value:unknown,depth=0):unknown {if(value===null)return 'null';if(depth>5)return typeof value;if(Array.isArray(value))return {count:value.length,item:value.length?dataShape(value[0],depth+1):null};if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([key])=>key!=='links').map(([key,v])=>[key,dataShape(v,depth+1)]));return typeof value;}
 /** Control-plane, read-only diagnostic. Never returns source rows or identifiers. */
 export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacket>[0],manifest:DocumentInvoice){
+ if(!manifest.reservation_id||!manifest.folio_no||!manifest.folio_date){
+  try{
+   const scope={hotel:manifest.hotel as Parameters<typeof reader.financialTransactionDetail>[0]['hotel'],accountId:manifest.account_id,transactionId:manifest.id},a=record(record(await reader.account(manifest.account_id)).accountDetails),detail=record(await reader.financialTransactionDetail(scope));
+   if(a.hotelId!==manifest.hotel||String(record(a.accountId).id)!==manifest.account_id||!Array.isArray(detail.details)||detail.details.length!==1)throw Error('scope');const d=record(detail.details[0]);if(d.hotelId!==manifest.hotel||String(record(d.accountId).id)!==manifest.account_id)throw Error('scope');
+   const matches=Array.isArray(d.invoices)?d.invoices.map(record).filter(i=>String(i.transactionNo)===manifest.id&&String(i.invoiceNo)===manifest.invoice_no):[];if(matches.length!==1)throw Error('scope');
+   const i=matches[0],postings=record(await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no!})),p=Array.isArray(postings.invoicePostingsDetails)?postings.invoicePostingsDetails.map(record):[];
+   const transactions=p.length&&p.length<=40?record(await reader.invoiceTransactionDetails(p.map(t=>String(t.transactionNo)))):undefined;
+   return {ok:false,stage:'ar-selector',error:'document_invoice_selector_missing',selectorAudit:{invoiceShape:dataShape(i),invoiceType:i.invoiceType,hasReservation:!!i.reservationId,hasFolio:!!i.folioNo,hasFolioDate:!!i.folioDate,hasWindow:!!i.internalFolioWindowID,balanceMatches:record(i.balance).amount===manifest.open,postingCount:p.length,postingsShape:dataShape(postings),transactionShape:dataShape(transactions),transactionClasses:Array.isArray(transactions?.transactions)?transactions.transactions.map(record).map(t=>({selected:p.some(row=>String(row.transactionNo)===String(t.transactionNo)),type:t.transactionType,code:t.transactionCode,deferredTax:t.deferredTax,arInvoiceMatches:String(record(t.aRInfo??{}).invoiceNo)===manifest.invoice_no,arAccountMatches:String(record(t.aRInfo??{}).accountNumber)===String(a.accountNo),debit:t.debitAmount,credit:t.creditAmount})):undefined}};
+  }catch(error){return {ok:false,stage:'ar-selector',error:error instanceof OperaError?error.code:'document_probe_selector_unavailable'};}
+ }
  let stage='start';const calls:Record<string,number>={},pages:Record<string,unknown>[]=[],queries:Record<string,unknown>[]=[],seen=new Map<string,string>();
  let postingCodes:Record<string,unknown>[]=[],postingRows:Record<string,unknown>[]=[],accountMetadata:Record<string,unknown>={};const netRows:Record<string,unknown>[]=[];
  const taxClasses=new Map<string,{code:unknown;type:unknown;count:number;omittedTaxes:number;equalNetGross:number}>();

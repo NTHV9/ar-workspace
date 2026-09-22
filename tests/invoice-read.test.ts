@@ -2,7 +2,7 @@ import {it,expect,vi} from 'vitest';
 import {readInvoiceModel} from '../worker/invoice/read';
 import {auditInvoiceRead} from '../worker/invoice/read-audit';
 import {OperaError} from '../worker/opera/client';
-import {packet,money,mixedTaxPacket} from './fixtures/invoice-packet';
+import {packet,money,mixedTaxPacket,arAdjustmentPacket} from './fixtures/invoice-packet';
 function fixture(count=2,p:ReturnType<typeof packet>|ReturnType<typeof mixedTaxPacket>=packet(count)){
  const current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
  const detail={details:[{hotelId:'KAT',accountId:{id:'101'},invoices:[current]}]};
@@ -23,6 +23,7 @@ it('reads an omitted optional taxes list and verifies separately posted VAT end-
  const {p,reader}=fixture(1,mixedTaxPacket()),model=await readInvoiceModel(reader,p.manifest);
  expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledOnce();
 });
+it('reads missing AR adjustments by exact transaction ID with complete generated-posting evidence',async()=>{const p=arAdjustmentPacket(),{reader}=fixture(1,p);reader.invoiceTransactionDetails.mockImplementation(async(ids:string[])=>ids.includes('60001')?p.arDetails[0].response:{trxCodesInfo:p.taxCodes});const model=await readInvoiceModel(reader,p.manifest);expect(model.gross).toBe(341500);expect(model.nonTaxable).toBe(10000);expect(reader.invoiceTransactionDetails).toHaveBeenCalledWith(['60001']);});
 it('reports the failing VAT page without returning customer rows or identities',async()=>{
  const {p,reader}=fixture(20);
  reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,_s,_e,offset,limit)=>({financialPostings:offset?[p.taxRows[49],...p.taxRows.slice(51)]:p.taxRows.slice(0,50),offset,limit,hasMore:offset===0,totalResults:60}));
