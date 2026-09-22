@@ -14,6 +14,11 @@ it('reads invoices spanning more than 30 calendar days in complete non-overlappi
  const {reader}=fixture(2,p);reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,start,end,offset,limit)=>{if((Date.parse(end)-Date.parse(start))/86400000>=30)throw new OperaError('provider_rejected',400);const indices=start==='2026-01-01'?[0,2,3]:[1,4,5];const items=indices.map(i=>p.taxRows[i]);return {financialPostings:items,offset,limit,totalResults:items.length,hasMore:false};});
  expect((await readInvoiceModel(reader,p.manifest)).gross).toBe(663000);expect(reader.invoicePostingBreakdown.mock.calls.map(a=>a.slice(2,4))).toEqual([['2026-01-01','2026-01-30'],['2026-01-31','2026-02-05']]);
 });
+it('splits busy date windows before unstable OPERA pagination can lose package members',async()=>{
+ const p=packet(20);p.postings.invoicePostingsDetails.forEach((r,n)=>r.transactionDate=n<10?'2026-01-02':'2026-01-10');const {reader}=fixture(20,p);
+ reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,start,end,offset,limit)=>{const items=p.taxRows.filter(r=>{const date=r.posting.referencePackageTransactionNo<=90010?'2026-01-02':'2026-01-10';return date>=start&&date<=end;});const batch=offset&&items.length>50?[items[49],...items.slice(51)]:items.slice(offset,offset+limit);return {financialPostings:batch,offset,limit,totalResults:items.length,hasMore:offset+limit<items.length};});
+ expect((await readInvoiceModel(reader,p.manifest)).gross).toBe(6630000);expect(reader.invoicePostingBreakdown.mock.calls.every(a=>a[4]===0)).toBe(true);
+});
 it('reads an omitted optional taxes list and verifies separately posted VAT end-to-end',async()=>{
  const {p,reader}=fixture(1,mixedTaxPacket()),model=await readInvoiceModel(reader,p.manifest);
  expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledOnce();

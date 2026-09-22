@@ -27,13 +27,24 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const dates=postingRows.map(p=>String(p.transactionDate)).sort(),endDate=dates.at(-1)!>manifest.folio_date?dates.at(-1)!:manifest.folio_date;
  const taxRows:Record<string,unknown>[]=[],taxIds=new Set<string>();
  const day=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;
- if(!day(dates[0])||!day(endDate))throw Error('document_invoice_date_invalid');
+ if(!dates.every(day)||!day(endDate))throw Error('document_invoice_date_invalid');
  const addDays=(s:string,n:number)=>new Date(Date.parse(s+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
+ const readTaxWindow=async(start:string,end:string):Promise<Record<string,unknown>[]>=>{
+  const page=async(offset:number,limit:number)=>{const raw=record(await reader.invoicePostingBreakdown(manifest.reservation_id!,window,start,end,offset,limit));const entries=list(raw.financialPostings);if(raw.offset!==offset||raw.limit!==limit||!Number.isSafeInteger(raw.totalResults)||typeof raw.hasMore!=='boolean')throw Error('document_invoice_pagination_changed');return {rows:entries,offset,hasMore:raw.hasMore,totalResults:raw.totalResults as number,count:raw.count as number|undefined,nextOffset:offset+limit};};
+  const first=await page(0,50),selectedDates=[...new Set(dates.filter(d=>d>=start&&d<=end))];
+  if(first.hasMore&&selectedDates.length>1){
+   const middle=selectedDates[Math.floor(selectedDates.length/2)-1];
+   const left=await readTaxWindow(start,middle),right=await readTaxWindow(addDays(middle,1),end);
+   if(left.length+right.length!==first.totalResults)throw Error('document_invoice_pagination_changed');
+   return [...left,...right];
+  }
+  return collectPages((offset,limit)=>offset===0?Promise.resolve(first):page(offset,limit),e=>String(record(e.posting).transactionNo),50);
+ };
  // OPERA limits this endpoint to 30 days. Each inclusive window is fully
  // paginated, then identities are checked across the non-overlapping windows.
  for(let start=dates[0];start<=endDate;){
   const end=addDays(start,29)<endDate?addDays(start,29):endDate;
-  const batch=await collectPages(async(offset,limit)=>{const raw=record(await reader.invoicePostingBreakdown(manifest.reservation_id!,window,start,end,offset,limit));const entries=list(raw.financialPostings);if(raw.offset!==offset||raw.limit!==limit||!Number.isSafeInteger(raw.totalResults)||typeof raw.hasMore!=='boolean')throw Error('document_invoice_pagination_changed');return {rows:entries,offset,hasMore:raw.hasMore,totalResults:raw.totalResults as number,count:raw.count as number|undefined,nextOffset:offset+limit};},e=>String(record(e.posting).transactionNo),50);
+  const batch=await readTaxWindow(start,end);
   for(const row of batch){const key=String(record(row.posting).transactionNo);if(taxIds.has(key))throw new OperaError('duplicate_member');taxIds.add(key);taxRows.push(row);}
   if(end===endDate)break;start=addDays(end,1);
  }
