@@ -12,9 +12,9 @@ Owner request, 22 September 2026: add an editable spreadsheet-style invoice view
 
 ## Table behavior
 
-Reports defaults to Invoice Register; External billing activity remains a separate tab. Column sets are Billing, Follow-up, Notes & receipts and Invoice details. Invoice numbers remain complete; long names/notes have full native titles. Desktop fits the working panel; phone rows become cards with an explicit sort selector.
+Reports defaults to Invoice Register; External billing activity remains a separate tab. Following the owner's 23 September clarification, all columns now occupy one continuously scrollable sheet, with pinned identity columns and sticky headers. There are no separate column-set tabs or user page buttons. Invoice numbers remain complete; long names/notes have full native titles. Desktop and phone both support horizontal sheet scrolling; the Account Detail ledger is unchanged.
 
-Search includes invoice/folio, account, guest, owner and note. Filters cover region/hotel, account type/account, balance, billing state, tracking state and hidden/visible rows. Each data column sorts on the server, with stable identity tie-breaks and 50-row pages. Hidden rows are personal to the actual signed-in staff member and can be restored; hiding never changes receivables, collection eligibility or another staff member's view.
+Search includes invoice/folio, account, guest, owner and note. Filters cover region/hotel, account type/account, balance, billing state, tracking state and hidden/visible rows. Each data column sorts on the server, with stable identity tie-breaks. Bounded 100-row network pages share a complete-result checksum before becoming one sheet; only the visible rows mount in the UI. Up to 50,000 filtered rows can be loaded. Hidden rows are personal to the actual signed-in staff member and can be restored; hiding never changes receivables, collection eligibility or another staff member's view. Larger hide/show selections use receipt-backed 100-row batches.
 
 ## Write and access boundary
 

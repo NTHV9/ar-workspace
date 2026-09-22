@@ -24,6 +24,12 @@ test('workspace-generated Invoice keeps an editable Voucher field when OPERA has
 const jobId = 'a0000000-0000-4000-8000-000000000001';
 const fileId = 'b0000000-0000-4000-8000-000000000001';
 const user = { id: 'synthetic-document-user', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
+test('a failed source selection can create a fresh preparation without changing existing files',async({page})=>{
+ const controls=await mockApplication(page,'separate','transient'),newId='a0000000-0000-4000-8000-000000000099';
+ const failed={...controls.job,content:'both',state:'partial',files:[{...controls.job.files[0],state:'unavailable',error_code:'document_invoice_tax_coverage_missing'}]},fresh={...failed,id:newId,state:'queued',files:[{...failed.files[0],state:'pending',error_code:null}]};
+ await page.route('**/api/documents/'+jobId,r=>r.fulfill({json:failed}));await page.route('**/api/documents/'+newId,r=>r.fulfill({json:fresh}));await page.route('**/api/documents',r=>{controls.createRequests.push(r.request().postDataJSON());return r.fulfill({json:fresh});});
+ await page.goto('/?documentJob='+jobId);await page.getByRole('button',{name:'Create new preparation from this selection',exact:true}).click();await expect(page.getByRole('combobox',{name:'Document content',exact:true})).toHaveValue('both');await expect(page.getByRole('combobox',{name:'Delivery layout',exact:true})).toHaveValue('separate');await page.getByRole('button',{name:'Create document job',exact:true}).click();await expect.poll(()=>new URL(page.url()).searchParams.get('documentJob')).toBe(newId);expect(controls.createRequests[0]).toMatchObject({ids:['A'],content:'both',layout:'separate'});expect(failed.files[0].state).toBe('unavailable');expect(controls.discards).toBe(0);expect(controls.outboundRequests).toEqual([]);
+});
 function session(token: string) { return { access_token: token, refresh_token: 'synthetic-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user }; }
 
 async function mockApplication(page: Page, requestedLayout='combined', lifecycle:'legacy'|'transient'='legacy',pdfBytes?:Uint8Array) {
@@ -312,12 +318,16 @@ for(const hotel of ['KAT','TSK'])test(hotel+' source text deletion and compact r
  expect(targets).toHaveLength(4);
  for(const name of targets){await page.getByRole('button',{name,exact:true}).click();await page.getByRole('button',{name:'Delete text box',exact:true}).click();await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);}
  await expect(page.locator('.pdf-layer-target')).toHaveCount(0);
+ const sourceTextHeight=await page.getByRole('button',{name:'Edit original text: F002',exact:true}).evaluate(b=>{const paper=b.closest('.pdf-paper')!.getBoundingClientRect();return b.getBoundingClientRect().height/paper.width*612;});
  await page.getByRole('button',{name:'Edit original text: F002',exact:true}).click();await page.getByRole('button',{name:'Add row below',exact:true}).click();
  await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(8);
  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByText('Draft saved. Final review is still required.',{exact:true})).toBeVisible();
  const edited=controls.uploadRequests.at(-1)!.project.pages[0],edits=edited.rowEdits;
  expect(edits.filter((e:any)=>e.kind==='delete').reduce((n:number,e:any)=>n+e.height,0)).toBeCloseTo(30,1);
- expect(edits.find((e:any)=>e.kind==='insert').height).toBeCloseTo(12.747,1);
+ // The tracked insertion allocation includes text breathing room; the former
+ // glyph-box constant predates the reversible-row fix. Check the visible fit.
+ const insertion=edits.find((e:any)=>e.kind==='insert');expect(insertion.height).toBeGreaterThanOrEqual(sourceTextHeight-.1);expect(insertion.height).toBeLessThanOrEqual(sourceTextHeight*2);
+ expect(await page.locator('.pdf-layer-target.empty-cell').evaluateAll(cells=>cells.every(cell=>parseFloat(getComputedStyle(cell,'::after').lineHeight)<=cell.getBoundingClientRect().height))).toBe(true);
  await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await reviewPreviewPages(page);
  await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
  await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(1);

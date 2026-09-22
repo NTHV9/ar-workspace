@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Continuous register and broader invoice recovery (in progress)
+
+- Owner explicitly permits horizontal scrolling for Invoice Register and requests a single Excel-like sheet. Implemented all columns together, pinned identities, sticky headers, synchronized upper scroll, virtual visible rows and complete-result checksums across bounded fetches. Kept filter/search/sort, two-way editing and personal hide/restore; batched visibility retries retain receipts. The Account Detail ledger remains unchanged.
+- Reproduced the long date-span HTTP 400 and unstable package paging against the real service. Implemented bounded/adaptive date windows with complete count/identity checks. Verified direct AR adjustments through exact include-generates transaction reads; unknown/ambiguous/deferred tax evidence is still rejected. All seven recorded positive-balance failed scopes now pass the current invoice model; the eighth entry is verified cleared and remains outside current collection. No estimated tax or accounting mutation.
+- Tested: 1,394 unit tests, 85 local migrations/38 rollback fixtures, 11 sheet browser cases including 1,500 rows and 230-row visibility recovery. The combined suite initially passed 64/66; the two old PDF allocation assertions failed identically against production, then passed after replacing an obsolete glyph-height constant with visible-fit/compactness checks. New-preparation retry passed without modifying old files or sending email. Actual KAT screenshot PDFs were created ready and their totals/remaining balances visually inspected; TSAN validation and combined final deployment are in progress. [Detailed contract and evidence](INVOICE_RELIABILITY_AND_SHEET_20260923.md).
+
 ## 22 September 2026 — Linked editable Invoice Register
 
 - Inspected both supplied Excel workbooks privately and implemented the owner's chosen current-data approach. Reports adds Invoice Register while retaining External billing activity. Four column sets support direct row editing, filters/search, per-column ascending/descending sorting, bounded pagination and personal hide/restore; complete Invoice numbers remain visible.

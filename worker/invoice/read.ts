@@ -8,11 +8,13 @@ type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'fin
 const fail=():never=>{throw Error('document_source_changed');};
 const list=(value:unknown)=>{if(!Array.isArray(value))return fail();return value.map(record);};
 export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):Promise<InvoicePacket>{
- if(!manifest.reservation_id||!manifest.folio_date||!manifest.invoice_no||!manifest.folio_no)throw Error('document_invoice_selector_missing');
+ if(!manifest.invoice_no)throw Error('document_invoice_selector_missing');
  const account=record(record(await reader.account(manifest.account_id)).accountDetails);if(account.hotelId!==manifest.hotel||record(account.accountId).id!==manifest.account_id)fail();
  let selected=list(account.invoices).filter(i=>String(i.transactionNo)===manifest.id);
  if(!selected.length){const history=await readScopedInvoiceHistory(reader,manifest.hotel,manifest.account_id,[manifest.invoice_no]);selected=history.filter(i=>String(i.transactionNo)===manifest.id&&i.printed===true);}
  if(selected.length!==1)fail();const current=selected[0];
+ if(String(current.invoiceNo)!==manifest.invoice_no||amountCents(current.balance,'THB')!==Math.round(manifest.open*100))fail();
+ if(!manifest.reservation_id||!manifest.folio_date||!manifest.folio_no)throw Error('document_invoice_selector_missing');
  const valid=(i:Record<string,unknown>)=>String(i.transactionNo)===manifest.id&&String(i.invoiceNo)===manifest.invoice_no&&String(i.folioNo)===manifest.folio_no&&amountCents(i.balance,'THB')===Math.round(manifest.open*100)&&i.folioDate===manifest.folio_date&&i.parentInvoiceNo==null;
  if(!valid(current)||record(current.reservationId).id!==manifest.reservation_id)fail();
  const historical=await reader.reservationFolios(manifest.reservation_id,manifest.folio_date,true),window=nativeFolioSelector(historical,manifest),folioInfo=record(record(historical).reservationFolioInformation),reservation=folioInfo.reservationInfo;
