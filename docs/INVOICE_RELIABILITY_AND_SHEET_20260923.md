@@ -4,7 +4,7 @@ The owner asked for one Excel-like Invoice Register and an investigation beyond 
 
 ## Register
 
-All existing data/edit columns are in one sheet. Hotel, Invoice and Account stay visible on desktop; phone retains the Invoice anchor. Headers remain visible while scrolling. A synchronized upper scrollbar makes the far-right tracking/note columns reachable without first finding the bottom of the page.
+All existing data/edit columns are in one sheet. Hotel, Invoice and Account stay visible on desktop; phone retains the Invoice anchor. Headers remain visible while scrolling. A synchronized upper scrollbar makes the far-right tracking/note columns reachable without first finding the bottom of the page. Compact report controls leave invoice rows visible immediately on a 1280×720 laptop.
 
 The UI loads bounded 100-row requests into one consistent result, with no user page navigation or column-set tabs. An opaque checksum of the complete filtered result accompanies every page. Changed/duplicate/incomplete page streams are discarded and retried at most three times, never merged into a partially correct sheet. The UI mounts only the visible row window, preserving all loaded records and stable hotel/account/invoice keys. Queries above 50,000 rows require a narrower hotel/account filter.
 
@@ -26,7 +26,7 @@ Earlier failed files retain their recorded outcome and bytes. An unreviewed prep
 ## Verification scope
 
 - Red/green regressions cover date spans, unstable multi-date package pagination, direct AR evidence and stale balance precedence. Scope, amount, unsupported-tax and deferred-tax counterexamples remain rejected.
-- Every recorded positive-balance failed scope found in the audit was re-read successfully, spanning KAT, TLKL and TSAN and including the 76-line mixed-posting case. The zero-balance card entry was separately identified, not forced through invoice generation. Actual screenshot selections are being checked through normal PDF preparation and preview; private identifiers, API data and customer PDFs stay outside Git.
+- Every recorded positive-balance failed scope found in the audit was re-read successfully, spanning KAT, TLKL and TSAN and including the 76-line mixed-posting case. The zero-balance card entry was separately identified, not forced through invoice generation. Fresh normal-UI preparations produced four ready PDFs across the screenshot scopes and a related AR-adjustment case. Their previews/footers show the reconciled totals, actual non-VAT adjustments and nonzero remaining balances. Private identifiers, API data and customer PDFs stay outside Git.
 - Sheet tests cover a 1,500-row result, bounded DOM size, editing the final row without losing scroll position, pinned columns, upper/lower horizontal synchronization, filter/search/sort, and a 230-row hide/restore including an ambiguous batch retry.
 - Two old PDF application-route assertions also failed on the deployed pre-sheet UI: they expected a glyph-box height of 12.747 instead of the already-shipped tracked insertion allocation. They now check that the inserted row fits the measured source text, remains compact, fits its editable cells and produces the final preview. No PDF editing runtime or earlier visual baseline was changed to satisfy them.
 
