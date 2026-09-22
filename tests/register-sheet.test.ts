@@ -1,0 +1,11 @@
+import {expect,it,vi} from 'vitest';
+import {loadRegisterSheet,visibleSheetRange,type SheetPage} from '../src/register/sheet';
+import type {RegisterRow} from '../src/register/model';
+const snapshot='a'.repeat(32);
+const row=(id:number)=>({hotel:'KAT',account_id:'synthetic-account',id:String(id)}) as RegisterRow;
+const page=(index:number,total=245,stamp=snapshot):SheetPage=>({rows:Array.from({length:Math.max(0,Math.min(100,total-index*100))},(_,i)=>row(index*100+i)),total,snapshot:stamp,hiddenTotal:0,summary:{invoices:total,open:total,unverified:0}});
+it('loads every network page into one ordered sheet',async()=>{const read=vi.fn(async n=>page(n));const result=await loadRegisterSheet(read,new AbortController().signal);expect(result.rows).toHaveLength(245);expect(result.rows[244].id).toBe('244');expect(read.mock.calls.map(a=>a[0])).toEqual([0,1,2]);});
+it('discards a changed intermediate snapshot and starts again without mixing attempts',async()=>{let count=0;const read=vi.fn(async n=>{count++;return page(n,245,count===2?'b'.repeat(32):snapshot);});const result=await loadRegisterSheet(read,new AbortController().signal);expect(result.rows).toHaveLength(245);expect(read.mock.calls.map(a=>a[0])).toEqual([0,1,0,1,2]);});
+it('fails visibly after repeated source changes rather than publishing partial data',async()=>{await expect(loadRegisterSheet(async n=>page(n,245,n?'b'.repeat(32):snapshot),new AbortController().signal)).rejects.toThrow('register_sheet_changed');});
+it('rejects missing pages and cancels abandoned filter reads',async()=>{await expect(loadRegisterSheet(async n=>({...page(n),rows:[]}),new AbortController().signal)).rejects.toThrow('incomplete');const abort=new AbortController();abort.abort();const read=vi.fn(async n=>page(n));await expect(loadRegisterSheet(read,abort.signal)).rejects.toThrow();expect(read).not.toHaveBeenCalled();});
+it('only mounts a bounded visible window even for thousands of invoice rows',()=>{const middle=visibleSheetRange(10000,52000,520);expect(middle.start).toBe(992);expect(middle.end).toBe(1018);expect(middle.end-middle.start).toBe(26);expect(middle.top+middle.bottom+(middle.end-middle.start)*52).toBe(520000);});

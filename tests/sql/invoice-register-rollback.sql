@@ -1,6 +1,6 @@
 begin;
 do $$
-declare actor uuid;other uuid:=gen_random_uuid();scope text:='SYNTHETIC-REGISTER-'||gen_random_uuid();r jsonb;original_row jsonb;input jsonb;command uuid:=gen_random_uuid();f jsonb;note_result jsonb;today date:=(now() at time zone 'Asia/Bangkok')::date;
+declare actor uuid;other uuid:=gen_random_uuid();scope text:='SYNTHETIC-REGISTER-'||gen_random_uuid();r jsonb;original_row jsonb;input jsonb;command uuid:=gen_random_uuid();f jsonb;note_result jsonb;sheet_stamp text;today date:=(now() at time zone 'Asia/Bangkok')::date;
 begin
  select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
  insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state) values('KAT',scope,'Synthetic Register','SYNTHETIC_REGISTER',300,0,2,'verified'),('TSK',scope,'Synthetic separate hotel','SYNTHETIC_REGISTER',100,0,1,'verified');
@@ -10,9 +10,11 @@ begin
  original_row:=public.ar_invoice_register_get(actor,'KAT',scope,'A');
  f:=jsonb_build_object('hotel','KAT','account',scope,'type',null,'search','','balance','all','visibility','visible','billing','all','tracking','all','sort','invoice_no','direction','asc','offset',0,'limit',1);
  r:=public.ar_invoice_register_read(actor,f);if r?'error' or r->>'total'<>'2' or r->'rows'->0->>'invoice_no'<>'2' then raise exception 'register read/pagination failed: %',r;end if;
+ sheet_stamp:=r->>'snapshot';if sheet_stamp is null or sheet_stamp!~'^[0-9a-f]{32}$' or public.ar_invoice_register_read(actor,f||'{"offset":1}')->>'snapshot' is distinct from sheet_stamp then raise exception 'sheet signature depends on page';end if;
  r:=public.ar_invoice_register_read(actor,f||'{"direction":"desc"}');if r->'rows'->0->>'invoice_no'<>'10' then raise exception 'invoice numeric sort failed';end if;
  input:=jsonb_build_object('commandId',command,'revision',0,'workflowRevision',original_row->'workflow_revision','exceptionRevision',0,'values',ar_private.invoice_register_values(original_row)||jsonb_build_object('creditTerm',45,'firstBillingDate',today-5,'lastReminderStage','Follow 1','lastReminderDate',today-1,'promisedDate',today+5,'trackingStatus','Promised payment','ownerName','Synthetic AR staff','reportedReceived','10.00','note','Synthetic shared invoice note'));
  r:=public.ar_invoice_register_save(actor,'KAT',scope,'A',input);if r?'error' then raise exception 'register save failed: %',r;end if;
+ if public.ar_invoice_register_read(actor,f)->>'snapshot' is not distinct from sheet_stamp then raise exception 'sheet signature ignored a workflow/note edit';end if;
  if r->'row'->>'due_date'<>(today+40)::text or r->'row'->>'note'<>'Synthetic shared invoice note' or r->'row'->>'open'<>'100.00' then raise exception 'workflow/note link or OPERA isolation failed';end if;
  if (select credit_term from public.ar_account_settings where hotel='KAT' and account_id=scope)<>30 or exists(select 1 from public.ar_sent_events where account_id=scope) then raise exception 'register changed default or fabricated send';end if;
  if public.ar_invoice_register_save(actor,'KAT',scope,'A',input)->>'replayed'<>'true' then raise exception 'lost save receipt';end if;

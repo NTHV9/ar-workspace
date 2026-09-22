@@ -25,7 +25,7 @@ function precise(v:unknown):bigint{
 const abs=(n:bigint)=>n<0n?-n:n;
 const rounded=(units:bigint)=>{const n=Number((abs(units)+CENT/2n)/CENT)*(units<0n?-1:1);if(!Number.isSafeInteger(n))return fail('amount_invalid');return n;};
 
-export interface InvoicePacket {manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];payeeTaxNumber?:string;customReference?:string}
+export interface InvoicePacket {manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
 export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceModel{
  const {manifest:m}=packet,a=record(packet.account),i=record(packet.invoice),reservation=record(packet.reservation),postingData=record(packet.postings);
  if(a.hotelId!==m.hotel||text(record(a.accountId).id)!==m.account_id||i.hotelId!==m.hotel||id(i.transactionNo)!==m.id||text(i.invoiceNo)!==m.invoice_no||text(i.folioNo)!==m.folio_no||!m.reservation_id||!m.folio_no||!m.invoice_no||!['standalone','parent'].includes(m.collection_role)||m.open<=0||i.parentInvoiceNo!=null)return fail('scope_invalid');
@@ -45,9 +45,27 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  const netRows=packet.taxRows.map(record),byId=new Map<string,Row>();
  for(const entry of netRows){const p=record(entry.posting),key=id(p.transactionNo);if(byId.has(key))return fail('tax_duplicate');byId.set(key,entry);}
  const childRows=new Map<string,Row[]>();for(const e of netRows){const p=record(e.posting),parent=text(p.referencePackageTransactionNo);if(parent){const group=childRows.get(parent)??[];group.push(e);childRows.set(parent,group);}}
+ const arRows=new Map<string,{posting:Row;code:Row}>();
+ for(const page of packet.arDetails??[]){
+  const detail=record(page.response),transactions=rows(detail.transactions),definitions=rows(detail.trxCodesInfo);
+  // transactionDetails was explicitly requested with includeGenerates=true.
+  // Accept this path only when the complete response contains exactly the
+  // requested AR roots and no additional generated taxes or nested postings.
+  if(!page.ids.length||new Set(page.ids).size!==page.ids.length||transactions.length!==page.ids.length)return fail('ar_tax_unsupported');
+  for(const p of transactions){const key=id(p.transactionNo),codes=definitions.filter(c=>c.hotelId===m.hotel&&c.transactionCode===p.transactionCode);
+   if(!page.ids.includes(key)||arRows.has(key)||byId.has(key)||!lines.some(l=>l.id===key)||codes.length!==1)return fail('ar_tax_scope_invalid');
+   arRows.set(key,{posting:p,code:codes[0]});
+  }
+ }
  const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
  const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean}>();
- for(const line of lines){const root=byId.get(line.id);if(!root)return fail('tax_coverage_missing');const rootPosting=record(root.posting);
+ for(const line of lines){const root=byId.get(line.id);if(!root){
+   const ar=arRows.get(line.id);if(!ar)return fail('tax_coverage_missing');const p=ar.posting,info=record(p.aRInfo),selected=postings.find(row=>String(row.transactionNo)===line.id)!;
+   if(!text(a.accountNo)||text(info.accountNumber)!==text(a.accountNo)||text(info.invoiceNo)!==m.invoice_no||text(p.folioNo)!==m.folio_no||p.transactionCode!==selected.transactionCode||p.transactionType!=='Revenue')return fail('ar_tax_scope_invalid');
+   if(p.deferredTax!==false||p.subPostings!==undefined&&(!Array.isArray(p.subPostings)||p.subPostings.length>0)||!text(ar.code.transactionGroup)||['TAX','SVC'].includes(text(ar.code.transactionGroup)))return fail('ar_tax_unsupported');
+   if(optionalCents(p.debitAmount)!==line.debit||optionalCents(p.creditAmount)!==line.credit||Math.abs(cents(p.postedAmount))!==Math.abs(line.debit-line.credit))return fail('tax_reconciliation_failed');
+   nonTaxableUnits+=(p.debitAmount==null?0n:precise(p.debitAmount))-(p.creditAmount==null?0n:precise(p.creditAmount));continue;
+  }const rootPosting=record(root.posting);
   if(rootPosting.hotelId!==m.hotel||text(rootPosting.folioNo)!==m.folio_no||text(record(record(rootPosting.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
   // OPERA groups both the visible wrapper and its component postings under the
   // original package reference; this is distinct from the wrapper's posting ID.

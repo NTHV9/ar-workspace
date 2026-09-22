@@ -1,17 +1,30 @@
 import {it,expect,vi} from 'vitest';
 import {readInvoiceModel} from '../worker/invoice/read';
 import {auditInvoiceRead} from '../worker/invoice/read-audit';
-import {packet,money,mixedTaxPacket} from './fixtures/invoice-packet';
+import {OperaError} from '../worker/opera/client';
+import {packet,money,mixedTaxPacket,arAdjustmentPacket} from './fixtures/invoice-packet';
 function fixture(count=2,p:ReturnType<typeof packet>|ReturnType<typeof mixedTaxPacket>=packet(count)){
  const current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
  const detail={details:[{hotelId:'KAT',accountId:{id:'101'},invoices:[current]}]};
  const reader={invoiceReservation:vi.fn().mockResolvedValue({reservations:{reservation:[{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'777'}],customReference:'CUSTOM-VOUCHER'}]}}),account:vi.fn().mockResolvedValue({accountDetails:{...p.account,invoices:[current]}}),invoiceHistory:vi.fn(),reservationFolios:vi.fn().mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}]}}),financialTransactionDetail:vi.fn().mockImplementation(async()=>structuredClone(detail)),invoicePostings:vi.fn().mockResolvedValue(p.postings),invoicePostingBreakdown:vi.fn().mockImplementation(async(_r:string,_w:number,_s:string,_e:string,offset:number,limit:number)=>({financialPostings:p.taxRows.slice(offset,offset+limit),offset,limit,hasMore:offset+limit<p.taxRows.length,totalResults:p.taxRows.length})),invoiceTransactionDetails:vi.fn().mockResolvedValue({trxCodesInfo:p.taxCodes})};
  return {p,reader,detail};
 }
+it('reads invoices spanning more than 30 calendar days in complete non-overlapping tax windows',async()=>{
+ const p=packet(2);p.manifest.folio_date='2026-02-05';p.invoice.folioDate='2026-02-05';p.postings.invoicePostingsDetails[0].transactionDate='2026-01-01';p.postings.invoicePostingsDetails[1].transactionDate='2026-02-05';
+ const {reader}=fixture(2,p);reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,start,end,offset,limit)=>{if((Date.parse(end)-Date.parse(start))/86400000>=30)throw new OperaError('provider_rejected',400);const indices=start==='2026-01-01'?[0,2,3]:[1,4,5];const items=indices.map(i=>p.taxRows[i]);return {financialPostings:items,offset,limit,totalResults:items.length,hasMore:false};});
+ expect((await readInvoiceModel(reader,p.manifest)).gross).toBe(663000);expect(reader.invoicePostingBreakdown.mock.calls.map(a=>a.slice(2,4))).toEqual([['2026-01-01','2026-01-30'],['2026-01-31','2026-02-05']]);
+});
+it('splits busy date windows before unstable OPERA pagination can lose package members',async()=>{
+ const p=packet(20);p.postings.invoicePostingsDetails.forEach((r,n)=>r.transactionDate=n<10?'2026-01-02':'2026-01-10');const {reader}=fixture(20,p);
+ reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,start,end,offset,limit)=>{const items=p.taxRows.filter(r=>{const date=r.posting.referencePackageTransactionNo<=90010?'2026-01-02':'2026-01-10';return date>=start&&date<=end;});const batch=offset&&items.length>50?[items[49],...items.slice(51)]:items.slice(offset,offset+limit);return {financialPostings:batch,offset,limit,totalResults:items.length,hasMore:offset+limit<items.length};});
+ expect((await readInvoiceModel(reader,p.manifest)).gross).toBe(6630000);expect(reader.invoicePostingBreakdown.mock.calls.every(a=>a[4]===0)).toBe(true);
+});
 it('reads an omitted optional taxes list and verifies separately posted VAT end-to-end',async()=>{
  const {p,reader}=fixture(1,mixedTaxPacket()),model=await readInvoiceModel(reader,p.manifest);
  expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledOnce();
 });
+it('reads missing AR adjustments by exact transaction ID with complete generated-posting evidence',async()=>{const p=arAdjustmentPacket(),{reader}=fixture(1,p);reader.invoiceTransactionDetails.mockImplementation(async(ids:string[])=>ids.includes('60001')?p.arDetails[0].response:{trxCodesInfo:p.taxCodes});const model=await readInvoiceModel(reader,p.manifest);expect(model.gross).toBe(341500);expect(model.nonTaxable).toBe(10000);expect(reader.invoiceTransactionDetails).toHaveBeenCalledWith(['60001']);});
+it('reports a changed balance before a missing reservation selector on an old preparation',async()=>{const {p,reader,detail}=fixture(1);p.manifest.reservation_id='';reader.account.mockResolvedValue({accountDetails:{...p.account,invoices:[{...detail.details[0].invoices[0],balance:money(0)}]}});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');expect(reader.reservationFolios).not.toHaveBeenCalled();});
 it('reports the failing VAT page without returning customer rows or identities',async()=>{
  const {p,reader}=fixture(20);
  reader.invoicePostingBreakdown.mockImplementation(async(_r,_w,_s,_e,offset,limit)=>({financialPostings:offset?[p.taxRows[49],...p.taxRows.slice(51)]:p.taxRows.slice(0,50),offset,limit,hasMore:offset===0,totalResults:60}));
