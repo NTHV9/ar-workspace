@@ -25,7 +25,18 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const customReference=reservations[0].customReference;if(customReference!=null&&typeof customReference!=='string')throw Error('document_invoice_header_invalid');
  const postings=record(await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string})),postingRows=list(postings.invoicePostingsDetails);if(!postingRows.length||postingRows.length>=4000)throw Error('document_invoice_postings_incomplete');
  const dates=postingRows.map(p=>String(p.transactionDate)).sort(),endDate=dates.at(-1)!>manifest.folio_date?dates.at(-1)!:manifest.folio_date;
- const taxRows=await collectPages(async(offset,limit)=>{const raw=record(await reader.invoicePostingBreakdown(manifest.reservation_id!,window,dates[0],endDate,offset,limit));const entries=list(raw.financialPostings);if(raw.offset!==offset||raw.limit!==limit||!Number.isSafeInteger(raw.totalResults)||typeof raw.hasMore!=='boolean')throw Error('document_invoice_pagination_changed');return {rows:entries,offset,hasMore:raw.hasMore,totalResults:raw.totalResults as number,count:raw.count as number|undefined,nextOffset:offset+limit};},e=>String(record(e.posting).transactionNo),50);
+ const taxRows:Record<string,unknown>[]=[],taxIds=new Set<string>();
+ const day=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;
+ if(!day(dates[0])||!day(endDate))throw Error('document_invoice_date_invalid');
+ const addDays=(s:string,n:number)=>new Date(Date.parse(s+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
+ // OPERA limits this endpoint to 30 days. Each inclusive window is fully
+ // paginated, then identities are checked across the non-overlapping windows.
+ for(let start=dates[0];start<=endDate;){
+  const end=addDays(start,29)<endDate?addDays(start,29):endDate;
+  const batch=await collectPages(async(offset,limit)=>{const raw=record(await reader.invoicePostingBreakdown(manifest.reservation_id!,window,start,end,offset,limit));const entries=list(raw.financialPostings);if(raw.offset!==offset||raw.limit!==limit||!Number.isSafeInteger(raw.totalResults)||typeof raw.hasMore!=='boolean')throw Error('document_invoice_pagination_changed');return {rows:entries,offset,hasMore:raw.hasMore,totalResults:raw.totalResults as number,count:raw.count as number|undefined,nextOffset:offset+limit};},e=>String(record(e.posting).transactionNo),50);
+  for(const row of batch){const key=String(record(row.posting).transactionNo);if(taxIds.has(key))throw new OperaError('duplicate_member');taxIds.add(key);taxRows.push(row);}
+  if(end===endDate)break;start=addDays(end,1);
+ }
  const selectedIds=new Set(postingRows.map(p=>String(p.transactionNo))),taxByCode=new Map<string,string>();
  const packageIds=new Set(taxRows.map(e=>record(e.posting)).filter(p=>selectedIds.has(String(p.transactionNo))&&p.transactionType==='Wrapper').map(p=>String(p.referencePackageTransactionNo)));
  for(const e of taxRows){const p=record(e.posting);if(!selectedIds.has(String(p.transactionNo))&&!(p.transactionType!=='Wrapper'&&packageIds.has(String(p.referencePackageTransactionNo))))continue;if(!e.postingBreakdown)continue;for(const t of invoiceTaxEntries(record(e.postingBreakdown)))taxByCode.set(String(t.transactionCode),String(t.transactionNo));}
