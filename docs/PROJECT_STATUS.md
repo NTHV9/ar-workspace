@@ -1,3 +1,11 @@
+## 23 September 2026 — Progressive Period analysis loading
+
+- Implemented: six independent comparison groups, at most three requests in flight; each group's total and hotel rows remain in one stable database snapshot. A slow/failed payment reader no longer holds invoice, billing or closing-balance results. Exact date/region/session changes cancel obsolete work; same-scope reload failures retain the entire previous comparison group.
+- UI distinguishes loading, failed requests and incomplete source verification. No incomplete financial totals are relabelled as zero; existing source verification and payment mapping rules remain intact.
+- Tested: TypeScript/build; 1,441 unit tests; two browser regressions covering Phuket/Khao Lak with a held then failed payment request, rendered screenshots inspected. Local SQL replay passed 88 migrations / 41 rollback fixtures, including equivalence against the previous overview and service-only ACL checks (`run-88a53b3217fa4c7e97de04618da0e723`). Corrected the old regional synthetic fixture's missing `unknownSourceDates` contract field.
+- Measured before change: live Phuket consolidated database query 3,710.894 ms (EXPLAIN ANALYZE, 23 September); browser transport adds further latency. This is a sampled warm-query measurement, not a service-level guarantee.
+- Enabled: migration `20260923170000_ar_dashboard_progressive_segments` installed and verified. Frontend/Worker deployment pending verification. No OPERA refresh, ledger change, customer email or new persistent cache/storage.
+
 ## 23 September 2026 — PDFs appended to specific invoices
 
 - Implemented: PDF Workspace → Package → PDFs attached to invoices. Multi-file PDF selection, per-file Invoice/Folio destination, file ordering, removal and Undo/Redo. Each supporting PDF follows all original pages of its assigned invoice in combined, split and separate delivery layouts. Additional files never become collectible invoice rows.
