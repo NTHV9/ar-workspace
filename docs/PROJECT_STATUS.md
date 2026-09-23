@@ -1,5 +1,10 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Remove Invoice type from Aging details
+
+- Removed the Invoice type header and cells from the Aging invoice table; adjusted the account-credit footer span to match seven columns. Root/child selection and all financial logic remain unchanged.
+- Typecheck/build/assets and both desktop/mobile account-return regressions passed, including child exclusion. Synthetic captures aging-invoice-columns-1280.png/390.png preserve prior screenshots. Deployment verification follows.
+
 ## 23 September 2026 — Back buttons without table overlap
 
 - Replaced the floating account-return button with normal-flow buttons above the comparison and below the invoice table. Both use the existing row-position/page/sort/focus restoration. No fixed or sticky return overlay remains. Renamed the technical Evidence column to Invoice type and its filter caption to Show; values and selection behavior are unchanged.
