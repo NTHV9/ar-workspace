@@ -43,3 +43,5 @@
 @media(max-width:600px){.aging-sort-controls .aging-hide-zero{min-height:42px;flex:none}}
 
 .aging-ledger-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.aging-ledger-links button{display:inline-flex;align-items:center;gap:3px;border:1px solid #d7e3ee;border-radius:6px;padding:5px 7px;background:#fff;color:#254f78;font:inherit;font-size:10px}.aging-cell-components{line-height:1.6}.aging-controls>button{align-self:end;min-height:36px;border:1px solid #d7e3ee;border-radius:8px;background:#fff;color:#254f78;padding:8px 12px}
+
+.aging-hotel-link{border:0;background:transparent;font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 2px}.aging-mobile-hotel-links{display:flex;gap:16px;margin-top:8px}.aging-hotel-link:focus-visible{outline:2px solid #4169ff;outline-offset:3px}

@@ -83,7 +83,7 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
      </button>;
     })}</div>
    </div>
-   <p className="aging-v4-chart-note">{note}</p>
+   {(mode==='unavailable'||!reconciles)&&<p className="aging-v4-chart-note">{note}</p>}
   </div>
  </section>;
 }

@@ -1,0 +1,32 @@
+import {test,expect} from '@playwright/test';
+import {setupAgingStatus,statusAccounts} from './fixtures/aging-invoice-status';
+test('summary and invoice detail use one verified snapshot despite a different native Aging allocation',async({page})=>{
+ await setupAgingStatus(page);
+ await page.route('**/api/portfolio',r=>r.fulfill({json:{status:'connected',accounts:statusAccounts.map(a=>({...a,agingBuckets:a.agingBuckets!.map(b=>({...b,amount:b.sequence===2?a.open:0,debit:b.sequence===2?a.open:0,credit:0}))})),refresh:{running:false,hotels:['KAT','TSK'].map(hotel=>({hotel,status:'succeeded',last_success_at:'2026-09-12T02:59:00Z'}))}}}));
+ await page.goto('/?dashboard=1&dashboardView=aging');
+ const table=page.getByRole('table',{name:'Current source aging comparison'});
+ await expect(table.getByRole('button',{name:'Agent · KAT · 91–120',exact:true})).toContainText('3,000.00');
+ await expect(table.getByRole('button',{name:'Agent · KAT · 61–90',exact:true})).toContainText('0.00');
+ await table.getByRole('button',{name:'View invoice statuses for Agent · KAT · 91–120',exact:true}).click();
+ await expect(page.locator('.aging-breakdown-net')).toContainText('3,000.00');
+ await expect(page.locator('.aging-breakdown-caption')).toHaveCount(0);
+ await expect(page.getByText('Including credits · selected aging scope',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('How these figures work',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('navigation',{name:'Dashboard views'})).toHaveCount(0);
+});
+test('account credits contribute to the same net but are never counted as invoices',async({page})=>{
+ await setupAgingStatus(page);
+ await page.route('**/api/portfolio',r=>r.fulfill({json:{status:'connected',accounts:statusAccounts.map(a=>a.hotel==='KAT'?{...a,open:a.open-50,agingBuckets:a.agingBuckets!.map(b=>b.sequence===3?{...b,amount:b.amount-50,credit:50}:b)}:a),refresh:{running:false,hotels:['KAT','TSK'].map(hotel=>({hotel,status:'succeeded',last_success_at:'2026-09-12T02:59:00Z'}))}}}));
+ await page.goto('/?dashboard=1&dashboardView=aging');
+ const table=page.getByRole('table',{name:'Current source aging comparison'});
+ await expect(table.getByRole('button',{name:'Agent · KAT · 91–120',exact:true})).toContainText('2,950.00');
+ await table.getByRole('button',{name:'View invoice statuses for Agent · KAT · 91–120',exact:true}).click();
+ await expect(page.locator('.aging-breakdown-net')).toContainText('2,950.00');
+ await expect(page.locator('.aging-breakdown-count')).toContainText('30 open invoices');
+ await expect(page.getByRole('table',{name:'Aging invoice details'}).locator('tfoot')).toContainText('Account credit');
+ await expect(page.getByRole('table',{name:'Aging invoice details'}).locator('tfoot')).toContainText('50.00');
+ await expect(page.locator('.aging-breakdown-caption')).toHaveCount(0);
+ await page.locator('.aging-breakdown-facet').filter({has:page.getByText('Credit',{exact:true})}).click();
+ await expect(page.getByRole('table',{name:'Aging invoice details'}).locator('tbody tr')).toHaveCount(0);
+ await expect(page.getByRole('table',{name:'Aging invoice details'}).locator('tfoot tr')).toHaveCount(1);
+});

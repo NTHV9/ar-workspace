@@ -18,14 +18,16 @@ for(const width of [1280,390])test(`unified Aging retains its layout and adds po
  await page.getByText('Columns',{exact:true}).click();
  await page.getByRole('checkbox',{name:'Debit / credit',exact:true}).check();
  await page.getByText('Columns',{exact:true}).click();
- await expect(table).toContainText('Credit -20.00');
- await page.screenshot({path:`evidence/unified-aging-${width}.png`,fullPage:true});
+ await expect(table).toContainText('Credit 20.00');
+ await page.screenshot({path:`evidence/aging-clean-${width}.png`,fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await expect(table.getByRole('button',{name:'Open KAT account Azure Travel · Synthetic',exact:true})).toHaveText('KAT');
+ await expect(page.getByRole('navigation',{name:'Dashboard views'})).toHaveCount(0);
  await table.getByRole('button',{name:'Open KAT account Azure Travel · Synthetic',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Azure Travel · Synthetic',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Back to aging',exact:true}).click();
  await expect(page.getByRole('searchbox',{name:'Search current aging',exact:true})).toHaveValue('Azure');
- await expect(table).toContainText('Credit -20.00');expect(c.errors).toEqual([]);
+ await expect(table).toContainText('Credit 20.00');expect(c.errors).toEqual([]);
 });
 
 test('legacy Portfolio bookmarks use Aging with search and exposure and Dashboard stays separate',async({page})=>{
@@ -38,7 +40,7 @@ test('legacy Portfolio bookmarks use Aging with search and exposure and Dashboar
  await expect(page.getByRole('table',{name:'Current source aging comparison'}).locator('tbody[data-aging-group]')).toHaveCount(1);
  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Dashboard',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Dashboard',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Period analysis',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('navigation',{name:'Dashboard views',exact:true})).toHaveCount(0);
  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Aging',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Aging',exact:true})).toBeVisible();
 });

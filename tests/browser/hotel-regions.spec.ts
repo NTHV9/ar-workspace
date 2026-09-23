@@ -14,7 +14,7 @@ for(const width of [1440,1280,390])test('regional Aging keeps all hotel rows and
  await page.screenshot({path:'.tmp/khao-lak-ui-results/aging-'+width+'.png',fullPage:true});
  await table.getByRole('button',{name:'Open accounts in Agent',exact:true}).click();
  await expect(table.locator('tbody[data-aging-group]')).toHaveCount(1);
- await page.getByRole('button',{name:'Period analysis',exact:true}).click();await expect(page.getByLabel('From',{exact:true})).toHaveValue('2026-09-01');
+ await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Dashboard',exact:true}).click();await expect(page.getByLabel('From',{exact:true})).toHaveValue('2026-09-01');
  for(const h of ['TLKL','WAKL','TLFO','TSAN'])await expect(page.getByTestId('metric-open-'+h)).toContainText('1 invoices');
  await page.getByLabel('Region',{exact:true}).selectOption('phuket');await expect(page.getByTestId('metric-open-KAT')).toContainText('1 invoices');expect(c.errors).toEqual([]);
 });

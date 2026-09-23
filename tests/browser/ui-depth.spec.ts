@@ -9,7 +9,7 @@ for (const width of [1440, 1280]) {
     const controls = await setupDepth(page);
     const surfaces = [
       { route: '/?dashboard=1', surface: '.dashboard-period-filters', lit: '.dashboard-kpi-card.primary', capture: 'dashboard', card: true },
-      { route: '/?dashboard=1&dashboardView=aging', surface: '.aging-v4-overview', lit: '.aging-v4-balance', capture: 'aging', action: 'Current Aging · KAT / TSK' },
+      { route: '/?dashboard=1&dashboardView=aging', surface: '.aging-v4-overview', lit: '.aging-v4-balance', capture: 'aging', action: 'Aging' },
       { route: '/', surface: '.portfolio-total', lit: '.portfolio-total', capture: 'portfolio', nav: 'Portfolio' },
       { route: '/?account=kat-azure&property=KAT', surface: '.ledger-panel', lit: '.metric.blue', capture: 'account', card: true },
       { route: '/?account=kat-azure&property=KAT&accountSection=Overview', surface: '.account-config', lit: '.account-config', action: 'Overview', controls: true },

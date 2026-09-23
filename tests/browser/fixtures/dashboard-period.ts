@@ -26,7 +26,11 @@ export async function setupDashboard(page:Page,options:{overlappingSetup?:boolea
    };
    const total=await make(),kat=await make('KAT'),tsk=await make('TSK');if(options.nullTskBalance)tsk.balances=null;if(options.nullTotalBalance)total.balances=null;if(options.nullTotalActivity)total.activity=null;return route.fulfill({json:{from:q.get('from'),to:q.get('to'),total,hotels:[{hotel:'KAT',...kat},{hotel:'TSK',...tsk}]}});
   }
-  if(path==='/api/dashboard/aging-invoices')return route.fulfill({status:503,json:{error:'synthetic_counts_unavailable'}});
+  if(path==='/api/dashboard/aging-invoices'){
+   const scoped=currentAgingAccounts.filter(a=>!q.get('hotel')||a.hotel===q.get('hotel'));
+   const inventory=scoped.map(a=>{const buckets=a.agingBuckets!.map((b,i)=>{const amount=b.amount+(a.id==='kat-azure'&&i===0?catalogAdjustment:0);return {key:JSON.stringify([b.label,b.start,b.end,b.sequence]),count:amount===0?0:1,amount:amount.toFixed(2),creditAmount:Math.max(0,-amount).toFixed(2),complete:true};});return {hotel:a.hotel,accountId:a.id,accountType:a.type,syncedAt:at,complete:true,unverified:0,buckets:[...buckets,{key:null,count:buckets.reduce((n,b)=>n+b.count,0),amount:(a.open+(a.id==='kat-azure'?catalogAdjustment:0)).toFixed(2),creditAmount:buckets.reduce((n,b)=>n+Number(b.creditAmount),0).toFixed(2),complete:true}]};});
+   return route.fulfill({json:{asOfDate:dashboardToday,publications:['KAT','TSK'].map(hotel=>({hotel,sourceAt:at})),accounts:inventory,summary:{complete:true,count:inventory.reduce((n,a)=>n+a.buckets.at(-1)!.count,0),amount:inventory.reduce((n,a)=>n+Number(a.buckets.at(-1)!.amount),0).toFixed(2),creditAmount:inventory.reduce((n,a)=>n+Number(a.buckets.at(-1)!.creditAmount),0).toFixed(2),billing:[],followup:[],due:[],flags:[]},rows:[],total:0,complete:true}});
+  }
   if(path==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic-key'}});
   if(path==='/api/collection-policy')return route.fulfill({json:policyFixture});
   if(path==='/api/refresh')return route.fulfill({json:{jobs:[],running:false,hotels:['KAT','TSK'].map(h=>({hotel:h,status:'succeeded',last_success_at:at}))}});
