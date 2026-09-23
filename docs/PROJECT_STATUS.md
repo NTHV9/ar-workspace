@@ -3,7 +3,7 @@
 ## 23 September 2026 — Remove Invoice type from Aging details
 
 - Removed the Invoice type header and cells from the Aging invoice table; adjusted the account-credit footer span to match seven columns. Root/child selection and all financial logic remain unchanged.
-- Typecheck/build/assets and both desktop/mobile account-return regressions passed, including child exclusion. Synthetic captures aging-invoice-columns-1280.png/390.png preserve prior screenshots. Deployment verification follows.
+- Typecheck/build/assets and both desktop/mobile account-return regressions passed, including child exclusion. Synthetic captures aging-invoice-columns-1280.png/390.png preserve prior screenshots. Deployed/enabled source `00b0e6679387ee67a125ad8ad0e1a01515ffb744`, Worker `c0636076-cd50-46b1-80a4-230a8748b43d`. Health/database, six anonymous boundaries and both deployed browser cases passed. Source CI passed; [PR #72](https://github.com/NTHV9/ar-workspace/pull/72).
 
 ## 23 September 2026 — Back buttons without table overlap
 
