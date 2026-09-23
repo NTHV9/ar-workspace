@@ -4,7 +4,7 @@
 
 - Privately rendered the supplied exported bundle and observed the old Voucher underneath the replacement and the adjacent room value erased. Compact Invoice headers have overlapping text target boxes: matching by top edge selected the next room-number run as the Voucher font/baseline. Changed field ownership to the actual text baseline, preserving the neighboring run.
 - Reproduced with a synthetic compact-header Invoice whose original Voucher was never visited before Statement-driven export: the cleared Voucher area retained original dark pixels before the fix and zero afterward. Pixel checks also require the room value to remain, then render a numeric replacement for visual review. Direct edits, linked multi-page Undo and both Statement-row tests passed (five browser cases); final two pixel regressions passed. Five link/baseline unit tests and typecheck/build/assets/dry run passed. Synthetic voucher-overlap-fixed.png is the only new tracked image; customer PDF/renders remain private.
-- Previously downloaded flattened PDFs must be regenerated from source; this fix does not rewrite existing exported files. Deployment verification follows.
+- Previously downloaded flattened PDFs must be regenerated from source; this fix does not rewrite existing exported files. Deployed/enabled source `19f0fd77bd69c45f1bd689b310ff854f9d5d99af`, Worker `ae773b20-624e-49a9-a470-112b6f9c18b0`. Runtime/database health and six anonymous boundaries passed. Both deployed pixel regressions passed, confirming zero old Voucher ink and a preserved room value. Source CI passed. [PR #75](https://github.com/NTHV9/ar-workspace/pull/75).
 
 ## 23 September 2026 — Linked PDF vouchers and invoice header rule
 
