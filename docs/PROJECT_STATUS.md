@@ -4,7 +4,7 @@
 
 - Replaced the floating account-return button with normal-flow buttons above the comparison and below the invoice table. Both use the existing row-position/page/sort/focus restoration. No fixed or sticky return overlay remains. Renamed the technical Evidence column to Invoice type and its filter caption to Show; values and selection behavior are unchanged.
 - Tested typecheck/build/assets/dry run and both desktop/mobile browser regressions. Tests assert the lower button is in the viewport, uses static positioning, sits below the entire invoice section and returns to the original focused row within four pixels. Synthetic screenshots aging-inline-return-1280.png/390.png inspected. No data/backend changes.
-- Deployment pending verification.
+- Deployed/enabled source `d3f12d214f33988edc7501f62909690256074502`, Worker `51e12c28-a943-464e-8403-2e9bccc6d4c6`. Runtime/database health and six anonymous boundaries passed; both deployed desktop/mobile overlap/return regressions passed. Source CI passed. [PR #71](https://github.com/NTHV9/ar-workspace/pull/71).
 
 ## 23 September 2026 — Account Aging return position and all-age invoices
 
