@@ -1,9 +1,13 @@
-## 23 September 2026 — Google-only named staff access (implementation checkpoint)
+## 23 September 2026 — Google-only named staff access (live verification)
 
 - Implemented: Google-only login UI, retired password entry endpoints, named allowlist setup and preserved protected administrator; tab-specific credentials survive reload but clear on fresh navigation. Names appear in Register history, external billing and verified-send reports; staff identity survives access deletion.
 - Backend: verified-token OAuth method plus active-session validation, explicit cutover timestamp; trusted Worker actor header captured separately from business/provider owner. Password-provider disablement and OAuth External audience are operational cutover steps, not inferred from frontend code.
 - Tested: 1,424 unit tests, TypeScript/build, four browser scenarios (1440/390px, reload/new/opener tab, legacy storage), 86 migrations / 39 rollback fixtures. Synthetic screenshots are private test artifacts. No email sent or OPERA mutation.
-- Deployment/enabling: pending final live verification. Owner-requested staff identities stay out of Git. Administrator retains both regions and no display name.
+- Deployed/enabled: [PR #76](https://github.com/NTHV9/ar-workspace/pull/76) merged as `8b1e3c65df1d7cecf455d0a5cfe011519cdf0780`; production source `227e38e409182eb87dd381b8f0a0dd588459813b`, Worker version `1bcd1caa-6f71-4ee2-be73-217d21098a22`. Migration `20260923100000_ar_google_staff` applied; backend Google-session validation enabled. Health/source check and six anonymous boundaries passed.
+- Live configuration: owner confirmed OAuth External / In production and four named staff grants. Google Audience visibly shows External / In production; Supabase Email provider disabled, Google is the only enabled OAuth provider. New signup stays enabled behind the DB allowlist trigger. Homepage/privacy links point to this workspace. Existing project Gmail restricted-scope verification notice remains; login itself requests basic identity only. No provider refresh token or sending mailbox was changed.
+- Four requested staff accounts are active for Phuket only, awaiting their first Google sign-in. Personal names/emails are deliberately absent from Git. The protected administrator remains unchanged (both regions, no display name).
+- Cutover: armed private login policy timestamp, invalidating both pre-cutover app sessions regardless of remaining JWT/refresh lifetime; auth/provider records were not deleted. Verified old-session rejection, successful administrator Google sign-in after cutover, same-tab reload retaining access and a separate tab presenting Google sign-in. Real personal-user first sign-in remains for those staff to perform; no one else's credentials were requested.
+- Regression evidence: final replay `run-cda14d67de44497e8479772bb88800e0` (86 migrations, 39 rollback fixtures); new browser suite passed four cases. Existing historical password browser fixtures were not run and need migration before reuse with the new auth contract.
 
 # สถานะโครงการใหม่
 
