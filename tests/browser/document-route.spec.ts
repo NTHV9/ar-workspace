@@ -5,6 +5,40 @@ import { test, expect, type Page } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import {assertButtonVisibility} from './fixtures/button-visibility';
 
+test('clearing an existing Voucher erases every original glyph in exported PDF',async({page})=>{
+ await mockApplication(page,'combined','transient',await syntheticInvoice(3,'OLDVCH','A',true));
+ await page.goto('/?documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await page.getByRole('button',{name:'Edit original text: OLDVCH',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('');
+ await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');
+ const ink=await page.locator('.pdf-final-sheet canvas').evaluate((canvas:HTMLCanvasElement)=>{
+  const scale=canvas.width/612,ctx=canvas.getContext('2d')!,left=Math.ceil(473*scale),top=Math.ceil(130*scale),width=Math.floor(104*scale),height=Math.floor(10*scale),data=ctx.getImageData(left,top,width,height).data;let dark=0;for(let i=0;i<data.length;i+=4)if(Math.min(data[i],data[i+1],data[i+2])<180)dark++;return dark;
+ });
+ expect(ink).toBe(0);
+});
+
+test('Statement edits erase the original Voucher on an Invoice never opened in the editor',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient');
+ const statement=await syntheticStatement(),invoice=await syntheticInvoice(3,'OLDVCH','A',true);
+ const statementId='b0000000-0000-4000-8000-000000000094';
+ const job={...controls.job,content:'both',files:[{...controls.job.files[0],id:statementId,kind:'statement',invoice_id:null,ordinal:0,byte_count:statement.length},{...controls.job.files[0],ordinal:1,byte_count:invoice.length}]};
+ await page.route('**/api/documents/'+jobId,r=>r.fulfill({json:job}));
+ await page.route('**/api/documents/'+jobId+'/files/'+statementId,r=>r.fulfill({contentType:'application/pdf',body:Buffer.from(statement)}));
+ await page.route('**/api/documents/'+jobId+'/files/'+fileId,r=>r.fulfill({contentType:'application/pdf',body:Buffer.from(invoice)}));
+ await page.goto('/?documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await page.getByRole('button',{name:'Edit original text: V001',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('');
+ await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('combobox',{name:'PDF page',exact:true}).selectOption({value:'1'});
+ await expect(page.getByRole('img',{name:'Final PDF page 2',exact:true})).toBeVisible();
+ const ink=await page.locator('.pdf-final-sheet canvas').evaluate((canvas:HTMLCanvasElement)=>{
+  const scale=canvas.width/612,ctx=canvas.getContext('2d')!,data=ctx.getImageData(Math.ceil(473*scale),Math.ceil(130*scale),Math.floor(104*scale),Math.floor(10*scale)).data;let dark=0;for(let i=0;i<data.length;i+=4)if(Math.min(data[i],data[i+1],data[i+2])<180)dark++;return dark;
+ });
+ expect(ink).toBe(0);
+ const roomInk=await page.locator('.pdf-final-sheet canvas').evaluate((canvas:HTMLCanvasElement)=>{const scale=canvas.width/612,data=canvas.getContext('2d')!.getImageData(Math.ceil(473*scale),Math.ceil(141*scale),Math.floor(35*scale),Math.floor(8*scale)).data;let n=0;for(let i=0;i<data.length;i+=4)if(Math.min(data[i],data[i+1],data[i+2])<180)n++;return n;});
+ expect(roomInk).toBeGreaterThan(20);
+ await page.getByRole('button',{name:'Close final preview',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('123456');await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await page.getByRole('combobox',{name:'PDF page',exact:true}).selectOption({value:'1'});await expect(page.getByRole('img',{name:'Final PDF page 2',exact:true})).toBeVisible();await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');await page.screenshot({path:'evidence/voucher-overlap-fixed.png'});
+});
+
 test('Statement vouchers edit the matching multi-page Invoice and undo atomically',async({page})=>{
  test.setTimeout(90000);
  const controls=await mockApplication(page,'combined','transient');

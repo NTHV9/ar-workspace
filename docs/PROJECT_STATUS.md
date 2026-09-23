@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Voucher replacement overlap regression
+
+- Privately rendered the supplied exported bundle and observed the old Voucher underneath the replacement and the adjacent room value erased. Compact Invoice headers have overlapping text target boxes: matching by top edge selected the next room-number run as the Voucher font/baseline. Changed field ownership to the actual text baseline, preserving the neighboring run.
+- Reproduced with a synthetic compact-header Invoice whose original Voucher was never visited before Statement-driven export: the cleared Voucher area retained original dark pixels before the fix and zero afterward. Pixel checks also require the room value to remain, then render a numeric replacement for visual review. Direct edits, linked multi-page Undo and both Statement-row tests passed (five browser cases); final two pixel regressions passed. Five link/baseline unit tests and typecheck/build/assets/dry run passed. Synthetic voucher-overlap-fixed.png is the only new tracked image; customer PDF/renders remain private.
+- Previously downloaded flattened PDFs must be regenerated from source; this fix does not rewrite existing exported files. Deployment verification follows.
+
 ## 23 September 2026 — Linked PDF vouchers and invoice header rule
 
 - Newly generated Statements and Invoices carry bounded page-local Voucher anchors keyed by hotel/account/invoice identity. Empty Statement cells are editable; edits/clears propagate across the matching Statement row and every retained page of that Invoice within the preparation, including hidden content modes. Changes remain PDF-only and share one undo/redo transaction. Source-page identity, rather than editable project-page IDs, selects anchors. Legacy PDFs retain their original behavior; new preparations provide the linked fields.

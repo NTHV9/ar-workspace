@@ -1,12 +1,12 @@
 import {renderInvoice} from '../../../worker/invoice/render';
 import {INVOICE_TEMPLATE_VERSION} from '../../../worker/invoice/types';
 import type {InvoiceAssets,InvoiceModel,InvoicePosition} from '../../../worker/invoice/types';
-export async function syntheticInvoice(count=3,voucher='VCH-001',invoiceId='A'){
+export async function syntheticInvoice(count=3,voucher='VCH-001',invoiceId='A',compactHeader=false){
  const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',sha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',Uint8Array.from(atob(png),c=>c.charCodeAt(0))))].map(b=>b.toString(16).padStart(2,'0')).join('');
  const image=(height:number)=>({width:612,height,png,sha256}),positions:Record<string,InvoicePosition[]>={};
  const put=(key:string,x:number,top:number,right=x+20,size=8,bold=false)=>{positions[key]=[{x0:x,x1:right,top,bottom:top+size,size,fontname:bold?'Helvetica-Bold':'Helvetica'}];};
  put('ADDRESSEE_FULL_ADDRESS',34,130);put('CUSTOM_REFERENCE',475,130);
- ['ROOM_NUMBER','ARRIVAL_DATE_SHORT','DEPARTURE_DATE_SHORT','NO_OF_ADULTS','BILL_NUMBER_HEADER','CONFIRMATION_NO','CASHIER_NO'].forEach((key,i)=>put(key,475,142+i*10));put('SYSTEM_DATE',475,230);
+ ['ROOM_NUMBER','ARRIVAL_DATE_SHORT','DEPARTURE_DATE_SHORT','NO_OF_ADULTS','BILL_NUMBER_HEADER','CONFIRMATION_NO','CASHIER_NO'].forEach((key,i)=>put(key,475,(compactHeader?139.2:142)+i*(compactHeader?9.2:10)));put('SYSTEM_DATE',475,230);
  put('TAX1_NO',140,230);put('GUEST_COMPANY',140,242);put('FIRST_NAME',140,254);
  ['TRX_DATE_SHORT','DESCRIPTION','REFERENCE_DISPLAYED','DEBIT','CREDIT'].forEach((key,i)=>put(key,[38,91,275,470,555][i],285,[78,260,425,492,575][i]));
  put('TOTAL_DEBIT',470,310,492);put('TOTAL_CREDIT',555,310,575);
