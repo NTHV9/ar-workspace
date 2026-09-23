@@ -1,3 +1,10 @@
+## 24 September 2026 — Immediate recent Period previews
+
+- Implemented: a bounded tab-session preview of completed Period comparison groups (two-minute read expiry, eight scopes, maximum 500,000 serialized characters). Returning to the same dates/scope or reloading the same authenticated tab renders the recent result before network completion, then always revalidates in the background with the existing updating indicators.
+- Cache keys include the authenticated member, current backend-verified grant revision/regions, acceptance mode, random login-tab identity and exact request. Values contain validated summary responses; no provider credentials or additional auth tokens. Cross-user/date/region/changed-grant previews are rejected. Sign-out, a fresh opening/Google callback and invoice-change notifications clear previews. Existing access verification still runs before Dashboard renders.
+- Tested: 1,443 unit tests, TypeScript/build; four Period browser cases including held/failed readers, navigation/refresh restoration and sign-out clearing in both regions. Existing Google staff/session browser tests also passed. The cache reload tests use a real browser clock because Playwright's clock replaces navigation timing needed by the tab-session policy; production navigation logic was not weakened for tests.
+- Scope: recent same-tab Period navigation and reload, not an instantaneous first-ever login or a persistent cross-tab cache. No new database migration, resource, server cache, ledger write or email. Deployment verification pending.
+
 ## 23 September 2026 — Progressive Period analysis loading
 
 - Implemented: six independent comparison groups, at most three requests in flight; each group's total and hotel rows remain in one stable database snapshot. A slow/failed payment reader no longer holds invoice, billing or closing-balance results. Exact date/region/session changes cancel obsolete work; same-scope reload failures retain the entire previous comparison group.

@@ -7,8 +7,8 @@ const ranges=[[0,30],[31,60],[61,90],[91,120],[121,150],[151,null]] as const;
 export const regionalAccounts:Account[]=HOTEL_IDS.map((hotel,index)=>({hotel,id:'same-id',account_no:'SYN-SAME',name:'Regional Travel · Synthetic',type:'Agent',open:(index+1)*600,over90:(index+1)*300,items:6,synced_at:at,verification_state:'verified',agingBuckets:ranges.map(([start,end],sequence)=>({label:end===null?'151+':`${start}–${end}`,start,end,sequence,amount:(index+1)*100,debit:(index+1)*100,credit:0}))}));
 const refresh={running:false,hotels:HOTEL_IDS.map(hotel=>({hotel,status:'succeeded',last_success_at:at}))};
 const settings={revision:0,billing_required:null,credit_term:null,billing_recipients:{to:[],cc:[],bcc:[]},collection_recipients:{to:[],cc:[],bcc:[]},billing_method:null,billing_portal:null,billing_instructions:'',collection_instructions:''};
-export async function setupRegional(page:Page){
- const base=await setupDashboard(page),regionalCalls:{path:string;query:URLSearchParams;method:string}[]=[];
+export async function setupRegional(page:Page,realClock=false){
+ const base=await setupDashboard(page,{realClock}),regionalCalls:{path:string;query:URLSearchParams;method:string}[]=[];
  await page.route('**/api/**',async route=>{
   const req=route.request(),url=new URL(req.url()),q=url.searchParams,path=url.pathname,region=resolveRegion(q);
   regionalCalls.push({path,query:q,method:req.method()});

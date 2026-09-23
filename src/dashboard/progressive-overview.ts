@@ -1,3 +1,4 @@
+import {periodPreviewScope,readPeriodPreview,savePeriodPreview} from './period-preview-cache';
 import {useEffect,useState} from 'react';
 import {regionHotels,type RegionId} from '../domain/hotels';
 import type {DashboardOverviewScope} from '../../worker/dashboard/hotel-model';
@@ -32,12 +33,15 @@ export async function loadOverviewSegments(path:string,token:string,signal:Abort
  }}
  await Promise.all(Array.from({length:3},worker));
 }
-export function useProgressiveOverview(path:string|null,token:string,revision:number,from:string,to:string,region:RegionId):Source<HotelOverview>{
- const key=JSON.stringify([path,token]);
- const [stored,setStored]=useState<Source<HotelOverview>&{key:string}>({key,state:path?'loading':'idle'});
+export function useProgressiveOverview(path:string|null,token:string,revision:number,from:string,to:string,region:RegionId,grant=''):Source<HotelOverview>{
+ const cacheScope=periodPreviewScope(grant);
+ const key=JSON.stringify([path,token,cacheScope]);
+ const cached=()=>{try{return path&&cacheScope?readPeriodPreview(sessionStorage,cacheScope,path,from,to,region):undefined;}catch{return undefined;}};
+ const loading=(data:HotelOverview|undefined)=>data?{...data,segments:Object.fromEntries(overviewSegments.map(s=>[s,'loading']))}:undefined;
+ const [stored,setStored]=useState<Source<HotelOverview>&{key:string}>(()=>({key,state:path?'loading':'idle',data:loading(cached())}));
  useEffect(()=>{
   const controller=new AbortController();
-  setStored(old=>({key,state:path?'loading':'idle',data:path?{...(old.key===key&&old.data?old.data:initialOverview(from,to,region)),segments:Object.fromEntries(overviewSegments.map(s=>[s,'loading']))}:undefined}));
+  setStored(old=>({key,state:path?'loading':'idle',data:path?{...(old.key===key&&old.data?old.data:cached()??initialOverview(from,to,region)),segments:Object.fromEntries(overviewSegments.map(s=>[s,'loading']))}:undefined}));
   if(path)void loadOverviewSegments(path,token,controller.signal,(segment,value)=>{
    let checked:HotelOverview|null=null;
    try{if(value!==null)checked=hotelOverviewResult(value,from,to,region);}catch{/* A malformed group is an isolated failure. */}
@@ -49,6 +53,7 @@ export function useProgressiveOverview(path:string|null,token:string,revision:nu
    });
   });
   return()=>controller.abort();
- },[path,token,revision,key,from,to,region]);
- return stored.key===key?stored:{state:path?'loading':'idle'};
+ },[path,token,revision,key,from,to,region,cacheScope]);
+ useEffect(()=>{if(path&&cacheScope&&stored.key===key&&stored.state==='ready'&&stored.data){try{savePeriodPreview(sessionStorage,cacheScope,path,stored.data);}catch{/* Optional preview only. */}}},[stored,key,path,cacheScope]);
+ return stored.key===key?stored:{state:path?'loading':'idle',data:loading(cached())};
 }
