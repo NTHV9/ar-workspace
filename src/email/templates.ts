@@ -12,7 +12,7 @@ function checkTokens(text:string){for(const match of text.matchAll(/\{\{([^{}]*)
 export function parseTemplate(input:unknown):TemplateInput{
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('template_invalid');const v=input as Record<string,unknown>;
  if(Object.keys(v).some(k=>!keys.includes(k))||typeof v.name!=='string'||!v.name.trim()||v.name.length>80||/[\x00-\x1f]/.test(v.name)||!['billing','collection'].includes(String(v.purpose))||typeof v.subject!=='string'||v.subject.length>998||/[\x00-\x1f\x7f]/.test(v.subject)||typeof v.archived!=='boolean'||(v.purpose==='billing'?v.stage!==null:!isCollectionStageKey(v.stage)))throw Error('template_invalid');
- const richBody=parseRichMessage(v.richBody);checkTokens(v.subject);for(const b of richBody.blocks)for(const r of b.runs){checkTokens(r.text);if(r.href&&/[{}]/.test(r.href))throw Error('template_token_invalid');}
+ const richBody=parseRichMessage(v.richBody);if(richBody.signature)throw Error('template_invalid');checkTokens(v.subject);for(const b of richBody.blocks)for(const r of b.runs){checkTokens(r.text);if(r.href&&/[{}]/.test(r.href))throw Error('template_token_invalid');}
  return {name:v.name.trim(),purpose:v.purpose as TemplateInput['purpose'],stage:v.stage as TemplateStage|null,subject:v.subject,richBody,archived:v.archived};
 }
 export function applyTemplate(template:TemplateInput,context:{accountName:string;hotel:string;invoiceCount:number}){

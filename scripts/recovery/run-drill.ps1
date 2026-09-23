@@ -122,6 +122,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_google_staff'){ $googleStaffFixture=$true }
     $fixtures=@('remittance-rollback.sql','email-threads-rollback.sql','drive-archive-rollback.sql')
     if($googleStaffFixture){$fixtures+='google-staff-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_email_signatures_current_templates'){$fixtures+='email-signatures-current-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_statement_source_policy'){$fixtures+='statement-source-policy-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_account_workspace_read'){$fixtures+='account-workspace-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_invoice_exceptions'){$fixtures+='invoice-exceptions-rollback.sql'}

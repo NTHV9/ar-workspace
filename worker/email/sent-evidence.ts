@@ -3,7 +3,7 @@ import type {Recipients} from '../settings/validation';
 import {parseRichMessage,richHtml,richText,type RichMessage} from '../../src/email/rich-message';
 
 import {rfcIds,validateReplyHeaders,type ThreadProof} from './threads';
-export interface ExpectedMail {thread?:ThreadProof|null;messageId:string;gmailId?:string;recipients:Recipients;subject:string;body:string;richBody?:RichMessage|null;files:{name:string;sha256:string;byte_count:number}[]}
+export interface ExpectedMail {thread?:ThreadProof|null;messageId:string;gmailId?:string;recipients:Recipients;subject:string;body:string;richBody?:RichMessage|null;files:{name:string;sha256:string;byte_count:number;inlineId?:string}[]}
 interface Part {mimeType?:string;filename?:string;headers?:{name:string;value:string}[];parts?:Part[];body?:{data?:string;size?:number;attachmentId?:string}}
 interface Message {threadId?:string;id?:string;labelIds?:string[];internalDate?:string;payload?:Part}
 export const decodeUrl64=(s:string)=>unbase64(s.replaceAll('-','+').replaceAll('_','/'));
@@ -30,7 +30,7 @@ export async function verifySentEvidence(message:Message,expected:ExpectedMail,a
   check='message_subject';if(decodedHeader(header('Subject'))!==expected.subject)throw Error();
   check='message_parts';const leaves:Part[]=[];function visit(p:Part,depth=0){if(depth>12||leaves.length>100)throw Error();if(p.parts?.length){for(const child of p.parts)visit(child,depth+1);}else leaves.push(p);}visit(message.payload);
   const files=leaves.filter(p=>!!p.filename);if(files.length!==expected.files.length)throw Error();
-  const matched=new Set<number>();for(const file of files){const index=expected.files.findIndex((f,i)=>!matched.has(i)&&f.name===file.filename&&f.byte_count===file.body?.size);if(index<0)throw Error();check='attachment_content';const data=file.body?.data?decodeUrl64(file.body.data):file.body?.attachmentId?await attachment(file.body.attachmentId):null;if(!data||data.length!==expected.files[index].byte_count||await hash(data)!==expected.files[index].sha256)throw Error();matched.add(index);}
+  const matched=new Set<number>();for(const file of files){const ids=file.headers?.filter(h=>h.name.toLowerCase()==='content-id').map(h=>h.value.trim())??[];const index=expected.files.findIndex((f,i)=>!matched.has(i)&&f.name===file.filename&&f.byte_count===file.body?.size&&(f.inlineId?ids.length===1&&ids[0]==='<'+f.inlineId+'>':true));if(index<0)throw Error();check='attachment_content';const data=file.body?.data?decodeUrl64(file.body.data):file.body?.attachmentId?await attachment(file.body.attachmentId):null;if(!data||data.length!==expected.files[index].byte_count||await hash(data)!==expected.files[index].sha256)throw Error();matched.add(index);}
   if(leaves.some(p=>!p.filename&&p.mimeType!=='text/plain'&&!(expected.richBody&&p.mimeType==='text/html')))throw Error();
   const plain=leaves.filter(p=>!p.filename&&p.mimeType==='text/plain');if(plain.length!==1||!plain[0].body?.data)throw Error();
   check='message_body';if(normalizedPlainText(new TextDecoder().decode(decodeUrl64(plain[0].body.data)))!==normalizedPlainText(expected.body))throw Error();

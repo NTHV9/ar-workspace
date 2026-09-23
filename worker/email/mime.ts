@@ -1,3 +1,4 @@
+import {signatureLogoFile} from './signature-logo';
 import {base64} from './crypto';
 import {parseEmailDraft,type EmailInput} from './validation';
 import {richHtml} from '../../src/email/rich-message';
@@ -21,7 +22,13 @@ export function buildMime(input:EmailInput,files:MailFile[],messageId:string,thr
  const alternative='alt_'+crypto.randomUUID();
  if(v.richBody)parts.push(`Content-Type: multipart/alternative; boundary="${alternative}"`,'','--'+alternative);
  parts.push('Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',lines(base64(new TextEncoder().encode(v.body))));
- if(v.richBody)parts.push('--'+alternative,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',lines(base64(new TextEncoder().encode(richHtml(v.richBody)))),'--'+alternative+'--');
+ if(v.richBody){
+  parts.push('--'+alternative);const logo=v.richBody.signature?signatureLogoFile():null,related='related_'+crypto.randomUUID();
+  if(logo)parts.push(`Content-Type: multipart/related; boundary="${related}"`,'','--'+related);
+  parts.push('Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',lines(base64(new TextEncoder().encode(richHtml(v.richBody)))));
+  if(logo)parts.push('--'+related,'Content-Type: image/png',`Content-ID: <${logo.inlineId}>`,`Content-Disposition: inline; filename="${logo.name}"`,'Content-Transfer-Encoding: base64','',lines(base64(logo.bytes)),'--'+related+'--');
+  parts.push('--'+alternative+'--');
+ }
  for(const f of files){if(!f.name||f.name.length>200||/[\r\n\x00-\x1f/\\]/.test(f.name)||!['application/pdf','image/png','image/jpeg'].includes(f.mime))throw Error('email_attachment_invalid');
   parts.push('--'+boundary,`Content-Type: ${f.mime}`,`Content-Disposition: attachment; filename="${f.name.replace(/[^A-Za-z0-9._ -]/g,'_')}";`," filename*=UTF-8''"+encodeURIComponent(f.name).replace(/[!'()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()),'Content-Transfer-Encoding: base64','',lines(base64(f.bytes)));
  }
