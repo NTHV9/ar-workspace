@@ -8,13 +8,14 @@ const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cac
 export function parseDashboardHotelOverviewQuery(url:URL){
  if(url.pathname!=='/api/dashboard/hotel-overview')invalid();
  const q=url.searchParams;
- for(const key of q.keys())if(!['from','to','type','region'].includes(key)||q.getAll(key).length!==1)invalid();
+ for(const key of q.keys())if(!['from','to','type','region','segment'].includes(key)||q.getAll(key).length!==1)invalid();
  const field=(key:string)=>{const value=q.get(key);if(value!==null&&(!value||value!==value.trim()||value.length>200||/[\x00-\x1f\x7f]/.test(value)))invalid();return value;};
  const date=(key:string):string=>{const value=field(key);if(!value||!/^\d{4}-\d{2}-\d{2}$/.test(value)||value.startsWith('0000-')||!Number.isFinite(Date.parse(value))||new Date(value+'T00:00:00Z').toISOString().slice(0,10)!==value)return invalid();return value;};
  const from=date('from'),to=date('to');
  if(from>to||to>thaiToday()||Date.parse(to)-Date.parse(from)>3660*86400000)invalid();
  const region=field('region');if(region!==null&&!isRegionId(region))invalid();
- return {p_from:from,p_to:to,p_type:field('type'),...(region?{p_region:region}:{})};
+ const segment=field('segment');if(segment!==null&&!['balances','activity','external','entries','payments','paid'].includes(segment))invalid();
+ return {...(segment?{p_segment:segment}:{}),p_from:from,p_to:to,p_type:field('type'),...(region?{p_region:region}:{})};
 }
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
@@ -41,11 +42,12 @@ export async function dashboardHotelOverviewApi(request:Request,env:RefreshEnv,a
  try{
   const args=parseDashboardHotelOverviewQuery(new URL(request.url)),regional='p_region'in args;
   const region:RegionId=regional&&isRegionId(args.p_region)?args.p_region:'phuket';
-  const result=await backendRpc<unknown>(env,regional?'ar_dashboard_region_overview':'ar_dashboard_hotel_overview',{p_actor:actor,...args});
+  const segmented='p_segment'in args;
+  const result=await backendRpc<unknown>(env,segmented?'ar_dashboard_region_segment':regional?'ar_dashboard_region_overview':'ar_dashboard_hotel_overview',{p_actor:actor,...args,...(segmented?{p_region:region}:{})});
   if(object(result)&&result.error==='dashboard_forbidden')return json({error:'dashboard_forbidden'},403);
   if(object(result)&&result.error==='dashboard_invalid')invalid();
   const hotels=regionHotels(region);
-  if(!object(result)||'error'in result||regional&&result.region!==region||result.from!==args.p_from||result.to!==args.p_to||!validScope(result.total)||!Array.isArray(result.hotels)||result.hotels.length!==hotels.length
+  if(!object(result)||'error'in result||(regional||segmented)&&result.region!==region||result.from!==args.p_from||result.to!==args.p_to||!validScope(result.total)||!Array.isArray(result.hotels)||result.hotels.length!==hotels.length
    ||result.hotels.some((hotel,index)=>!object(hotel)||hotel.hotel!==hotels[index]||!validScope(hotel))||!resultMatchesHotelScope(result,region))throw Error('dashboard_unavailable');
   return json(result);
  }catch(error){const code=error instanceof Error&&error.message==='dashboard_invalid'?'dashboard_invalid':'dashboard_unavailable';return json({error:code},code==='dashboard_invalid'?400:503);}

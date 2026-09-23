@@ -4,7 +4,7 @@ import {activityResult,externalResult,financialResult,type Source} from './data'
 import {balancesResult,paidInvoicesResult} from './period-data';
 import {validDay} from './model';
 
-export interface HotelOverview extends DashboardHotelOverviewResponse {retained?:Array<keyof DashboardOverviewScope>}
+export interface HotelOverview extends DashboardHotelOverviewResponse {retained?:Array<keyof DashboardOverviewScope>;segments?:Partial<Record<keyof DashboardOverviewScope,Source<unknown>['state']>>}
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 function scopeResult(value:unknown):DashboardOverviewScope {
  if(!object(value))throw Error('dashboard_overview_invalid');
@@ -29,6 +29,8 @@ export function hotelOverviewResult(value:unknown,from:string,to:string,region:R
 }
 export function overviewSource<K extends keyof DashboardOverviewScope>(source:Source<HotelOverview>,key:K):Source<NonNullable<DashboardOverviewScope[K]>> {
  const data=source.data?.total[key];
+ const segmentState=source.data?.segments?.[key];
+ if(segmentState)return {state:segmentState,data:data??undefined} as Source<NonNullable<DashboardOverviewScope[K]>>;
  return {state:source.state==='ready'&&(data===null||source.data?.retained?.includes(key))?'error':source.state,data:data??undefined} as Source<NonNullable<DashboardOverviewScope[K]>>;
 }
 
