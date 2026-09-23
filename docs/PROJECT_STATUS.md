@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Aging replaces live Portfolio
+
+- Owner chose the existing Aging design as the shared surface. The live Portfolio navigation and legacy Portfolio/region bookmarks now open Aging; the synthetic legacy design review remains reference-only. Dashboard navigation opens period analysis. Account return labels and saved Aging context follow the shared surface.
+- Added an all-account view across types, exposure filter for accounts with over-90 balances, clear filters, hotel contribution/account counts, net share within filtered scope, optional source debit/credit, and direct hotel-specific Account links. Existing Aging chart/table, bucket selection, source verification, column controls, invoice counts/status drilldowns and pagination remain. Old Portfolio search/type/exposure bookmarks initialize the new controls. No cross-hotel ledger merge.
+- Tested: 1,396 unit tests passed. Typecheck/build/public assets/deployment dry run passed. Aging home/navigation and all-range scenarios passed; final ten-case browser run passed unified desktop/mobile controls, ledger return context, legacy links, source counts and status drilldowns. During development, tests caught a missing direct-ledger button and count-label regression; both were fixed and their cases passed. Synthetic desktop/mobile screenshots: unified-aging-1280.png and unified-aging-390.png. The older screenshots are preserved.
+- Deployment pending final runtime verification; no database, accounting or email changes.
+
 ## 23 September 2026 — Collections preparation and concise interface copy
 
 - Implemented: verified selectable invoices can open document preparation while billing setup is incomplete. Both regions share the same Prepare documents button above the invoice list. Existing Needs review/On hold restrictions and Khao Lak email restrictions remain. Preparation defaults to billing unless the setup explicitly marks billing as not required.
