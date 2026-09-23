@@ -1,5 +1,5 @@
 import type { SourceTextReference } from './source-text';
-export type PdfSourceDocument = { id: string; name: string; kind: 'statement' | 'invoice'; invoiceId?: string; invoiceIds?:string[]; bytes: Uint8Array };
+export type PdfSourceDocument = { id: string; name: string; kind: 'statement' | 'invoice' | 'attachment'; invoiceId?: string; invoiceLabel?:string; invoiceIds?:string[]; bytes: Uint8Array };
 export type PdfExportFile = { name: string; bytes: Uint8Array };
 export type ContentMode = 'statement' | 'invoices' | 'both';
 export type DeliveryLayout = 'combined' | 'split' | 'separate';
@@ -15,5 +15,6 @@ export type PdfLayer = {
 };
 export type PdfRowEdit = { id: string; kind: 'insert' | 'delete'; y: number; height: number; rowId?:string } | { id: string; kind: 'move'; x: number; y: number; width: number; height: number; dx: number; dy: number };
 export type PdfProjectPage = { id: string; sourceId: string; sourcePage: number | null; width: number; height: number; flowHeight?: number; layers: PdfLayer[]; rowEdits?: PdfRowEdit[] };
-export type PdfProject = { version: 1; content: ContentMode; delivery: DeliveryLayout; pages: PdfProjectPage[] };
+export type InvoicePdfAttachment = {sourceId:string;invoiceId:string};
+export type PdfProject = { version: 1; content: ContentMode; delivery: DeliveryLayout; pages: PdfProjectPage[]; invoiceAttachments?:InvoicePdfAttachment[] };
 export type DetectedText = { text: string; x: number; y: number; width: number; height: number; fontSize: number; rotated: boolean; color?: string; bold?: boolean; italic?: boolean; fontLabel?: string; maskOriginal?: boolean; field?: 'voucher-number'; sourceText?: SourceTextReference; unsupported?: boolean };

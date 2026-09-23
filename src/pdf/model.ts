@@ -1,8 +1,9 @@
+import {validateInvoiceAttachments} from './invoice-attachments';
 import { pageCanvasHeight, MAX_FLOW_HEIGHT } from './flow';
 import type { PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument } from './types';
 
 /** Reject untrusted persisted edit data before it can reach the canvas or image loader. */
-export function restoreProject(input: unknown, original: PdfProject): PdfProject {
+export function restoreProject(input: unknown, original: PdfProject, sources?:PdfSourceDocument[]): PdfProject {
   const fail = (): never => { throw new Error('Saved PDF edits are invalid or do not match these source documents. Reopen the originals without saved edits.'); };
   if (!input || typeof input !== 'object') return fail();
   const saved = input as Record<string, unknown>;
@@ -100,10 +101,13 @@ export function restoreProject(input: unknown, original: PdfProject): PdfProject
     const page={ id, sourceId, sourcePage, width, height, layers, ...(rowEdits ? { rowEdits } : {}),...(flowHeight===undefined?{}:{flowHeight}) };
     const canvasHeight=pageCanvasHeight(page);if(layers.some(l=>l.textFlow&&l.textFlow.at+l.textFlow.height>canvasHeight+.01))return fail();return page;
   });
-  return { version: 1, content: saved.content as PdfProject['content'], delivery: saved.delivery as PdfProject['delivery'], pages };
+  const result:PdfProject={ version: 1, content: saved.content as PdfProject['content'], delivery: saved.delivery as PdfProject['delivery'], pages };
+  if(saved.invoiceAttachments!==undefined){if(!Array.isArray(saved.invoiceAttachments)||!sources)return fail();result.invoiceAttachments=saved.invoiceAttachments as PdfProject['invoiceAttachments'];try{validateInvoiceAttachments(result,sources);result.invoiceAttachments=result.invoiceAttachments!.map(a=>({sourceId:a.sourceId,invoiceId:a.invoiceId}));}catch{return fail();}}
+  return result;
 }
 
 export function deliveryGroups(project: PdfProject, sources: PdfSourceDocument[]): { name: string; pages: PdfProjectPage[] }[] {
+  validateInvoiceAttachments(project,sources);
   const statements = sources.filter(s => s.kind === 'statement');
   const invoices = sources.filter(s => s.kind === 'invoice');
   const groups = (documents: PdfSourceDocument[]) => documents.map(source => ({ name: source.name.replace(/\.pdf$/i, ''), pages: project.pages.filter(p => p.sourceId === source.id) })).filter(g => g.pages.length);
@@ -115,7 +119,7 @@ export function deliveryGroups(project: PdfProject, sources: PdfSourceDocument[]
     const index = invoices.findIndex(s => (s.invoiceId || s.id) === key);
     if (invoices[index].id !== source.id) continue;
     const ids = new Set(invoices.filter(s => (s.invoiceId || s.id) === key).map(s => s.id));
-    const pages = project.pages.filter(p => ids.has(p.sourceId));
+    const pages = [...project.pages.filter(p => ids.has(p.sourceId)),...(project.invoiceAttachments??[]).filter(a=>a.invoiceId===key).flatMap(a=>project.pages.filter(p=>p.sourceId===a.sourceId))];
     if (pages.length) invoiceGroups.push({ name: source.name.replace(/\.pdf$/i, ''), pages });
   }
   const statement = project.content === 'invoices' ? [] : statementPages;

@@ -1,3 +1,9 @@
+## ยืนยันล่าสุด — PDF ต่อท้าย Invoice รายใบ — 23 กันยายน 2026
+
+- เพิ่มไฟล์ PDF ได้หลายไฟล์ใน PDF Workspace และเลือก Invoice ปลายทางของแต่ละไฟล์. รวมหน้าต่อท้าย Invoice นั้นในไฟล์ PDF เดียวกัน; จัดลำดับไฟล์ได้. ผู้ใช้ยืนยันรับเฉพาะ PDF ไม่รวม JPG/PNG สำหรับฟังก์ชันนี้.
+- รูปแบบ One combined PDF / Statement + invoice bundle / Statement + each invoice ยังคงเดิม; หน้าที่เพิ่มต้องอยู่กับ Invoice ที่เลือกในทุกแบบ. Preview/Download/Email ใช้ไฟล์รวมชุดเดียวกัน.
+- คง transient preparation และการตรวจ reviewed bytes เดิม: ไฟล์ต้นฉบับที่เลือกอยู่ในแท็บจนสร้างไฟล์รวมที่ตรวจแล้ว ไม่สร้าง saved editor project หรือเปลี่ยนบัญชี OPERA. Draft/uncertain ยังคงคุ้มครองไฟล์ที่ตรวจไว้.
+
 ## ยืนยันล่าสุด — Email Template ปัจจุบันและลายเซ็นรายบุคคล — 23 กันยายน 2026
 
 - Email Templates ใช้ฉบับปัจจุบันเท่านั้น ไม่มี UI เลือก Version และไม่สะสมสำเนาประวัติ Template. คงเลข revision ภายในเพื่อกันบันทึกทับกัน; ไม่เขียนทับเนื้อหา Draft/Sent ที่เตรียมไว้แล้ว.

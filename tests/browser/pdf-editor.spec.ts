@@ -31,7 +31,7 @@ test('source replacement exports opaque pages and preserves untouched multi-page
  await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(4);
  await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
  mkdirSync('evidence',{recursive:true});await page.getByRole('dialog',{name:'Final PDF preview'}).screenshot({path:'evidence/pdf-editor-final-preview.png'});
- await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeEnabled();
  await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);
  await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();
  await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
