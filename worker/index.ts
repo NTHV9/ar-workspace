@@ -1,7 +1,7 @@
 import {invoiceRegisterApi} from './register/api';
 import {dashboardHotelOverviewApi} from './dashboard/hotel-api';
 import {administratorEmail} from '../src/access/model';
-import {usernameLogin} from './access/login';
+import {googleSession} from './access/session';
 import {accessApi,accessError,authorizeRegionalRequest,containRegionalResponse,scopedRows,type AccessGrant} from './access/api';
 import {dashboardInvoiceEntriesApi} from './dashboard/invoice-entries-api';
 import {dashboardBalancesApi,dashboardPaymentInvoicesApi} from './dashboard/api';
@@ -51,7 +51,7 @@ async function upstream(url: string, options: RequestInit) {
 }
 export async function handleApi(request: Request, env: Env): Promise<Response> {
   const requestUrl=new URL(request.url),path=requestUrl.pathname;
-  if(path==='/api/access/login')return usernameLogin(request,env);
+  if(path==='/api/access/login')return json({error:'google_sign_in_required'},410);
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
   const acceptanceRequest=path.startsWith('/api/acceptance/');
   const accessRequest=path.startsWith('/api/access/');
@@ -108,6 +108,8 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     if (!auth.ok) return json({ error: auth.status >= 500 ? 'auth_unavailable' : 'unauthorized' }, auth.status >= 500 ? 503 : 401);
     let user = await auth.json() as { id?:string;email?: string; email_confirmed_at?: string; is_anonymous?: boolean };
     if (!user.id||!user.email||!user.email_confirmed_at||user.is_anonymous) return json({error:'forbidden'},403);
+    if(env.GOOGLE_ONLY_AUTH==='true'&&!await googleSession(env,authorization,user.id))return json({error:'sign_in_again'},401);
+    env={...env,REQUEST_ACTOR:user.id};
     if(accessRequest)return accessApi(request,env,user.id,user.email);
     let grant:AccessGrant|undefined;
     if(user.email.toLowerCase()!==administratorEmail){

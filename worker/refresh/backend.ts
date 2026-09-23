@@ -7,6 +7,8 @@ import type { OperaEnv } from '../opera/probe';
 import {isHotelId} from '../../src/domain/hotels';
 export interface RefreshParams { invoiceAuditId?:string; invoiceReadAudit?:boolean; invoiceModelProbe?:boolean; invoiceContractJob?:string; folioTypeProbe?:boolean; acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
+  GOOGLE_ONLY_AUTH?:string;
+  REQUEST_ACTOR?:string;
   REQUEST_ACCESS?:import('../access/api').AccessGrant;
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};
@@ -22,7 +24,7 @@ export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<strin
   const url=new URL(env.SUPABASE_URL);
   if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw new OperaError('invalid_configuration');
   const routed=acceptanceRpc(env,name,body);
-  const response=await fetch(`${url.origin}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
+  const response=await fetch(`${url.origin}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json',...(env.REQUEST_ACTOR?{'X-Ar-Actor':env.REQUEST_ACTOR}:{})},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
   if(!response.ok){
     let message:unknown;try{message=(JSON.parse(new TextDecoder().decode(await boundedBody(response,8192))) as {message?:unknown}).message;}catch{await response.body?.cancel().catch(()=>{});}
     if(message==='budget_database_exceeded'||message==='retention_busy')throw Error(message);

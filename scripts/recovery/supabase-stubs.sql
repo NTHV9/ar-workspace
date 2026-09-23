@@ -6,6 +6,7 @@ create schema auth;
 create schema storage;
 create schema supabase_migrations;
 create table auth.users(id uuid primary key,email text not null,email_confirmed_at timestamptz,is_anonymous boolean not null default false);
+create table auth.sessions(id uuid primary key,user_id uuid not null,created_at timestamptz not null default now(),not_after timestamptz);
 create function auth.uid() returns uuid language sql stable as $$
  select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid;
 $$;
