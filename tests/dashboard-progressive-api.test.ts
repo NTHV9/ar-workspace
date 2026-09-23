@@ -7,6 +7,6 @@ it('loads just the selected comparison group without waiting for unrelated reade
  try{
  const response=await dashboardHotelOverviewApi(new Request('https://app.test/api/dashboard/hotel-overview?from=2026-09-01&to=2026-09-11&segment=activity'),{SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic'},'00000000-0000-4000-8000-000000000001');
  expect(response.status).toBe(200);
- expect(fetcher.mock.calls[0]?.[0]).toContain('ar_dashboard_region_segment');
+ expect(fetcher.mock.calls[0]?.[0]).toContain('ar_dashboard_region_cached_segment');
  }finally{vi.unstubAllGlobals();}
 });

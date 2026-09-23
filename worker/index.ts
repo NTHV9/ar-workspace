@@ -1,3 +1,4 @@
+import {warmPeriodSummaries} from './dashboard/precompute';
 import {invoiceRegisterApi} from './register/api';
 import {dashboardHotelOverviewApi} from './dashboard/hotel-api';
 import {administratorEmail} from '../src/access/model';
@@ -49,7 +50,7 @@ async function upstream(url: string, options: RequestInit) {
   }
   finally { clearTimeout(timer); }
 }
-export async function handleApi(request: Request, env: Env): Promise<Response> {
+export async function handleApi(request: Request, env: Env,background?:{waitUntil(task:Promise<unknown>):void}): Promise<Response> {
   const requestUrl=new URL(request.url),path=requestUrl.pathname;
   if(path==='/api/access/login')return json({error:'google_sign_in_required'},410);
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
@@ -234,12 +235,14 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     const byId=new Map(workflows.map(w=>{const row=w as {invoice_id:string};return [row.invoice_id,row];}));
     return json({invoices:await attachExceptions(invoices.map(v=>{const row=v as {id:string};return {...row,workflow:byId.get(row.id)??null};}),'&'+query),source:'opera',workflow_source:'ar_workspace',workflow_status:workflowStatus,status:'connected'});
     };
-    const result=await dispatch();return grant?await containRegionalResponse(result,grant):result;
+    const result=await dispatch();
+    if(background&&result.ok&&request.method!=='GET'&&(settingsRequest||emailRequest||billingRequest||policyRequest||registerRequest||accountWorkspaceRequest||exceptionRequest)){try{background.waitUntil(warmPeriodSummaries(env));}catch{/* A cache scheduling failure must not turn a committed write into an error. */}}
+    return grant?await containRegionalResponse(result,grant):result;
   } catch(e) { if(e instanceof Error&&/^acceptance_[a-z_]+$/.test(e.message))return json({error:e.message},409);return json({ error: 'supabase_unavailable' }, 503); }
 }
 export default {
-  async fetch(request: Request, env: Env) {
-    if (new URL(request.url).pathname.startsWith('/api/')) return handleApi(request, env);
+  async fetch(request: Request, env: Env,background?:{waitUntil(task:Promise<unknown>):void}) {
+    if (new URL(request.url).pathname.startsWith('/api/')) return handleApi(request, env,background);
     return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Application assets unavailable', { status: 503 });
   },
   async scheduled(event:{cron?:string},env:Env) {
@@ -251,6 +254,7 @@ export default {
         ...(env.GMAIL_RECONCILE_ENABLED==='true'?[requestMailReconcile(env,'scheduled')]:[]),
         sweepTransientDocuments(env),
         sweepFinancialLogs(env),
+        warmPeriodSummaries(env),
       ]);
       return;
     }
