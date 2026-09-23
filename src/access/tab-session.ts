@@ -1,3 +1,4 @@
+import {clearPeriodPreview} from '../dashboard/period-preview-cache';
 const prefix='ar-google-tab-v1';
 let options:ReturnType<typeof initialize>|undefined;
 
@@ -6,6 +7,7 @@ export function initialize(storage:Storage,legacy:Storage,project:string,navigat
  const pending=Number(storage.getItem(prefix+'-oauth'));
  const returning=callback&&pending>now-600000&&pending<=now;
  const previous=storage.getItem(prefix);
+ if(navigation!=='reload')clearPeriodPreview(storage);
  if(previous&&navigation!=='reload'&&!returning){
   storage.removeItem(previous);storage.removeItem(previous+'-code-verifier');storage.removeItem(prefix);
  }

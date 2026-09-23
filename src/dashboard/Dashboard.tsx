@@ -17,14 +17,14 @@ import './modern-dashboard.css';
 import './comparison-dashboard.css';
 import './period-layout.css';
 import './period-roomier.css';
-export default function Dashboard({token,hotel,accounts,params,update,refresh,onOpenInvoice,onReloadCatalog,initialAgingContext,onAgingContextChange}:{token:string;hotel:string;accounts:Account[];params:URLSearchParams;update:(fields:Record<string,string>)=>void;refresh:RefreshState|null|undefined;onOpenInvoice:(hotel:string,accountId:string,invoiceId?:string)=>void;onReloadCatalog?:()=>void;initialAgingContext?:AgingContext;onAgingContextChange?:(context:AgingContext)=>void}){
+export default function Dashboard({token,cacheGrant,hotel,accounts,params,update,refresh,onOpenInvoice,onReloadCatalog,initialAgingContext,onAgingContextChange}: {token:string;cacheGrant:string;hotel:string;accounts:Account[];params:URLSearchParams;update:(fields:Record<string,string>)=>void;refresh:RefreshState|null|undefined;onOpenInvoice:(hotel:string,accountId:string,invoiceId?:string)=>void;onReloadCatalog?:()=>void;initialAgingContext?:AgingContext;onAgingContextChange?:(context:AgingContext)=>void}){
  const {error:rulesError,refresh:refreshRules}=useCollectionPolicy();
  const [today,setToday]=useState(thaiToday),[revision,setRevision]=useState(0),[options,setOptions]=useState<AccountOption[]>([]),[optionsError,setOptionsError]=useState(false);
  const scope=dashboardScope(params,hotel,today),view=params.get('dashboardView')==='aging'?'aging':'period',dateMode=params.get('dashboardDateMode')??(scope.from===scope.to?'day':'range');
  const region=resolveRegion(params),hotels=regionHotels(region);
  const overviewQuery=new URLSearchParams({...region==='khao-lak'?{region}:{},from:scope.from,to:scope.to});if(scope.type)overviewQuery.set('type',scope.type);
  const comparing=hotel==='All'&&!accountIdentity(scope.account);
- const overview=useProgressiveOverview(comparing&&view==='period'&&validPeriod(scope,today)?'/api/dashboard/hotel-overview?'+overviewQuery:null,token,revision,scope.from,scope.to,region);
+ const overview=useProgressiveOverview(comparing&&view==='period'&&validPeriod(scope,today)?'/api/dashboard/hotel-overview?'+overviewQuery:null,token,revision,scope.from,scope.to,region,cacheGrant);
  const detailHotel=hotel==='All'&&!scope.account&&hotelInRegion(params.get('dashboardDetailHotel'),region)?params.get('dashboardDetailHotel'):null;
  const detailScope=detailHotel?{...scope,hotel:detailHotel,account:''}:scope;
  const detailKind=params.get('dashboardDetail')??'',detail:PeriodDetail|null=['balance','sent','invoice_entries','payments','payment_invoices'].includes(detailKind)?{kind:detailKind as PeriodDetail['kind'],metric:params.get('dashboardMetric')??undefined,stage:params.get('dashboardStage')??undefined}:null;

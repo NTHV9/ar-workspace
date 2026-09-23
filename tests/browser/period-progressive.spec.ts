@@ -30,3 +30,21 @@ for(const region of ['phuket','khao-lak'])test(`${region}: slow or failed paymen
   await page.screenshot({path:`evidence/period-progressive-${region}.png`,fullPage:true});
  }finally{release();}
 });
+for(const region of ['phuket','khao-lak'])test(`${region}: cached month appears on return and reload before any slow response, then clears at sign-out`,async({page})=>{
+ await setupRegional(page,true);await login(page);
+ if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption('khao-lak');
+ await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();
+ await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
+ await expect.poll(()=>page.evaluate(()=>({tab:!!sessionStorage.getItem('ar-google-tab-v1'),paths:JSON.parse(sessionStorage.getItem('ar-period-preview-v1')??'[]').map((e:{path:string})=>e.path)}))).toMatchObject({tab:true,paths:expect.arrayContaining([expect.stringMatching(/from=\d{4}-\d{2}-01/)])});
+ let release=()=>{};const gate=new Promise<void>(r=>release=r);
+ await page.route('**/api/dashboard/hotel-overview?*',async route=>{await gate;await route.fallback();});
+ try{
+  await page.getByRole('button',{name:'Aging',exact:true}).click();await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();
+  await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
+  await expect(page.getByText('Loading activity… Available results are shown as they arrive.',{exact:true})).toBeVisible();
+  await page.reload();await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>sessionStorage.getItem('ar-period-preview-v1'))).toBeNull();
+ }finally{release();}
+});
