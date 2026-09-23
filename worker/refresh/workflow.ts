@@ -17,7 +17,7 @@ import { auditHistory, auditHistoryWindow } from '../opera/history-audit';
 import { backendRpc, type RefreshEnv, type RefreshParams } from './backend';
 import { discoverAccountIds, readBusinessDate } from './read-snapshot';
 import {stageRefreshAccounts} from './accounts';
-import {isHotelId,hotelRegion} from '../../src/domain/hotels';
+import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
 import {readInvoicePacket} from '../invoice/read';
@@ -47,7 +47,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         return JSON.stringify(await readInvoiceFolioContract(makeReader(runtime,hotel),invoice));
       });
     }
-    if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');const result=await runFinancialHistory(runtime,{actor:payload.actorId,runId},step);if(result.status==='succeeded'){try{await step.do('period-summary-precompute',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},()=>warmPeriodSummaries(runtime,hotelRegion(hotel)));}catch{/* Published source data remains successful; maintenance retries this optional cache. */}}return result;}
+    if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');const result=await runFinancialHistory(runtime,{actor:payload.actorId,runId},step);if(result.status==='succeeded'){try{await step.do('period-summary-precompute',{retries:{limit:0,delay:'5 seconds'},timeout:'10 minutes'},()=>warmPeriodSummaries(runtime));}catch{/* Published source data remains successful; maintenance retries this optional cache. */}}return result;}
     if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(runtime,hotel));
     if(payload.documentJob)return runDocumentJob(runtime,runId,step);
     if(payload.pdfProbe)return step.do('pdf-probe',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},async()=>JSON.stringify(await probeOpera(runtime,hotel,accountId,async(bytes,expected)=>{
@@ -97,7 +97,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(!accountId){const after=await discoverAccountIds(reader,hotel);const expected=new Set(ids);if(after.length!==ids.length||after.some(id=>!expected.has(id)))throw new OperaError('pagination_changed');}
         await backendRpc(runtime,'ar_publish_refresh',{p_run_id:runId,p_expected_accounts:ids.length});return {accounts:ids.length};
       });
-      {try{await step.do('period-summary-precompute',{retries:{limit:0,delay:'5 seconds'},timeout:'5 minutes'},()=>warmPeriodSummaries(runtime,hotelRegion(hotel)));}catch{/* Published source data remains successful; maintenance retries this optional cache. */}}
+      {try{await step.do('period-summary-precompute',{retries:{limit:0,delay:'5 seconds'},timeout:'10 minutes'},()=>warmPeriodSummaries(runtime));}catch{/* Published source data remains successful; maintenance retries this optional cache. */}}
       if(payload.refreshReason==='scheduled'&&!accountId&&runtime.FINANCIAL_HISTORY_ENABLED==='true')await step.do('enqueue-financial-history',{retries:{limit:1,delay:'5 seconds'},timeout:'2 minutes'},async()=>{
         try{const actor=await backendRpc<string|null>(runtime,'ar_financial_service_actor',{});if(!actor)return {status:'actor_unavailable'};
           const next=await requestFinancialHistory(runtime,actor,{commandId:runId,hotel,reason:'scheduled'});
