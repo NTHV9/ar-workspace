@@ -4,7 +4,7 @@
 - Tab-local sources join the existing reviewed-export path. Preview, download and email handoff receive the same merged PDF bytes; no new server file store, saved project or retention policy. The feature is available in current transient preparations; legacy saved-editor projects remain unchanged.
 - Validation: reuse static PDF inspection; atomic multi-file import; reject wrong targets, duplicate assignments and orphaned support-only export. Keep the configured editor byte budget (including retained Undo sources), at most 50 imported PDFs and 500 imported pages. Imported voucher metadata cannot participate in Statement/Invoice voucher synchronization.
 - Tested: 1,437 unit tests; seven native PDF browser scenarios covering every delivery layout, multi-page support files, dimensions/text preservation, reassignment, ordering, removal/Undo, existing edits, rejected batch and transient email/download handoff. Two existing source-replacement/whiteout export regressions pass. Updated the obsolete browser assertion that required viewing all preview pages to match the owner’s existing optional-page-review decision. Visual captures inspected; no customer files or emails used.
-- Production deployment verification follows below.
+- Deployed/enabled: PR #80 runtime source `9956180eff90f01d13ddad7cafd5c3fad81f842a`, Worker `fabcf455-fc57-4ee9-8ea2-9e1baccff86d`. Health/source check and six anonymous boundaries passed. The published attachment-feature JavaScript is byte-for-byte identical to the tested production build. No schema/provider/retention changes, real-document upload or email send were needed.
 
 ## 23 September 2026 — Current email templates and personal signatures
 
