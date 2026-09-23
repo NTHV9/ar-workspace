@@ -1,6 +1,6 @@
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {boundedBody} from '../email/shared';
-import {normalizeLogin,validInitialPassword} from '../../src/access/identity';
+import {validInitialPassword} from '../../src/access/identity';
 import {isRegionId} from '../../src/domain/hotels';
 import {authProvider,providerUser} from './auth-provider';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -40,18 +40,13 @@ async function finishDeletion(env:RefreshEnv,actor:string,c:Command){
 export async function lifecycleApi(request:Request,env:RefreshEnv,actor:string):Promise<Response|null>{
  const u=new URL(request.url),path=u.pathname;if(u.searchParams.size&&path.startsWith('/api/access/users/'))throw Error('access_invalid');
  let result:unknown;
- if(path==='/api/access/users/create'&&request.method==='POST'){
-  const v=await readInput(request);keys(v,['commandId','login','password','regions','revision']);if(typeof v.commandId!=='string'||!uuid.test(v.commandId)||!Number.isSafeInteger(v.revision)||Number(v.revision)<0)throw Error('access_invalid');if(!validInitialPassword(v.password))throw Error('access_password_invalid');
-  const identity=normalizeLogin(v.login),scope=regions(v.regions);
-  const c=command(await backendRpc(env,'ar_access_create_begin',{p_actor:actor,p_command:v.commandId,p_login:identity.login,p_regions:scope,p_revision:v.revision}));
-  result=await finishCreation(env,actor,c,v.password);
- }else{
+ if(path==='/api/access/users/create'&&request.method==='POST'){return response({error:'google_sign_in_required'},410); }else{
   const action=/^\/api\/access\/users\/([0-9a-f-]{36})\/(edit|delete)$/.exec(path),check=/^\/api\/access\/users\/commands\/([0-9a-f-]{36})\/check$/.exec(path);
   if(check&&request.method==='POST'){
    const c=command(await backendRpc(env,'ar_access_command_get',{p_actor:actor,p_command:check[1]}));result=c.kind==='create'?await finishCreation(env,actor,c):await finishDeletion(env,actor,c);
   }else if(action&&request.method==='POST'){
-   if(!uuid.test(action[1]))throw Error('access_invalid');const v=await readInput(request);keys(v,action[2]==='delete'?['commandId','revision','confirmed']:['commandId','revision','regions','active']);if(typeof v.commandId!=='string'||!uuid.test(v.commandId)||!Number.isSafeInteger(v.revision)||Number(v.revision)<1)throw Error('access_invalid');
-   if(action[2]==='edit'){if(typeof v.active!=='boolean')throw Error('access_invalid');result=await backendRpc(env,'ar_access_edit',{p_actor:actor,p_command:v.commandId,p_member:action[1],p_regions:regions(v.regions),p_active:v.active,p_revision:v.revision});}
+   if(!uuid.test(action[1]))throw Error('access_invalid');const v=await readInput(request);keys(v,action[2]==='delete'?['commandId','revision','confirmed']:['commandId','revision','displayName','regions','active']);if(typeof v.commandId!=='string'||!uuid.test(v.commandId)||!Number.isSafeInteger(v.revision)||Number(v.revision)<1)throw Error('access_invalid');
+   if(action[2]==='edit'){if(typeof v.displayName!=='string'||!v.displayName.trim()||v.displayName.length>100||/[\u0000-\u001f]/.test(v.displayName)||typeof v.active!=='boolean')throw Error('access_invalid');result=await backendRpc(env,'ar_access_staff_save',{p_actor:actor,p_command:v.commandId,p_member:action[1],p_email:null,p_display_name:v.displayName,p_regions:regions(v.regions),p_active:v.active,p_revision:v.revision});}
    else{if(v.confirmed!==true)throw Error('access_delete_confirmation');const c=command(await backendRpc(env,'ar_access_delete_begin',{p_actor:actor,p_command:v.commandId,p_member:action[1],p_revision:v.revision}));result=await finishDeletion(env,actor,c);}
   }else return null;
  }

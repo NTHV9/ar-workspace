@@ -32,16 +32,9 @@ it('normalizes usernames and emails while rejecting routing-address impersonatio
  for(const value of ['ab','x/y','x y','fake@users.ar-workspace.invalid'])expect(()=>normalizeLogin(value)).toThrow();
  expect(validInitialPassword(secret)).toBe(true);expect(validInitialPassword('short')).toBe(false);expect(validInitialPassword('ก'.repeat(25))).toBe(false);
 });
-it('creates only the reserved Auth ID and keeps password out of SQL and response',async()=>{
+it('retires password creation without contacting Auth or the database',async()=>{
  const c=setup('create');const r=await accessApi(req('/api/access/users/create',{commandId:cmd,login:'synthetic.user',password:secret,regions:['phuket'],revision:0}),env,actor,'ar@katathani.com');
- expect(r.status).toBe(200);expect(await r.text()).not.toContain(secret);expect(c.calls.filter(c=>c.url.endsWith('/admin/users')&&c.method==='POST')).toHaveLength(1);expect(c.present()).toBe(true);
-});
-it('checks a lost creation result without another POST or password reset',async()=>{
- const c=setup('create',{lostCreate:true});const r=await accessApi(req('/api/access/users/create',{commandId:cmd,login:'synthetic.user',password:secret,regions:['phuket'],revision:0}),env,actor,'ar@katathani.com');expect(r.status).toBe(202);
- const checked=await accessApi(req('/api/access/users/commands/'+cmd+'/check'),env,actor,'ar@katathani.com');expect(checked.status).toBe(200);expect(c.calls.filter(c=>c.url.endsWith('/admin/users')&&c.method==='POST')).toHaveLength(1);expect(c.calls.some(c=>c.method==='PUT')).toBe(false);
-});
-it('does not resend a dispatched creation when no provider account was found',async()=>{
- const c=setup('create',{dispatched:true});const r=await accessApi(req('/api/access/users/create',{commandId:cmd,login:'synthetic.user',password:secret,regions:['phuket'],revision:0}),env,actor,'ar@katathani.com');expect(r.status).toBe(202);expect(await r.json()).toMatchObject({needsCleanup:true});expect(c.calls.some(c=>c.url.endsWith('/admin/users')&&c.method==='POST')).toBe(false);
+ expect(r.status).toBe(410);expect(c.calls).toHaveLength(0);
 });
 it('deletes only the bound provider ID after access revocation and verifies absence',async()=>{
  const c=setup('delete');const r=await accessApi(req(`/api/access/users/${memberId}/delete`,{commandId:cmd,revision:1,confirmed:true}),env,actor,'ar@katathani.com');expect(r.status).toBe(200);expect(c.calls[0].url.endsWith('/ar_access_delete_begin')).toBe(true);expect(c.calls.filter(c=>c.method==='DELETE')).toHaveLength(1);expect(c.present()).toBe(false);
@@ -53,17 +46,13 @@ it('does not delete if the identity lookup itself is unavailable',async()=>{
  const c=setup('delete',{getUnavailable:true});const r=await accessApi(req(`/api/access/users/${memberId}/delete`,{commandId:cmd,revision:1,confirmed:true}),env,actor,'ar@katathani.com');expect(r.status).toBe(503);expect(c.calls.some(c=>c.method==='DELETE')).toBe(false);
 });
 it('rejects privilege fields, unconfirmed deletion and ordinary actors before provider writes',async()=>{
- const c=setup('create');for(const body of [{commandId:cmd,login:'synthetic.user',password:secret,regions:['phuket'],revision:0,role:'service_role'},{commandId:cmd,login:'synthetic.user',password:secret,regions:['phuket'],revision:0,id:authId}])expect((await accessApi(req('/api/access/users/create',body),env,actor,'ar@katathani.com')).status).toBe(400);
+ const c=setup('create');for(const body of [{commandId:cmd,login:'synthetic.user',password:secret,regions:['phuket'],revision:0,role:'service_role'},{commandId:cmd,login:'synthetic.user',password:secret,regions:['phuket'],revision:0,id:authId}])expect((await accessApi(req('/api/access/users/create',body),env,actor,'ar@katathani.com')).status).toBe(410);
  expect((await accessApi(req(`/api/access/users/${memberId}/delete`,{commandId:cmd,revision:1,confirmed:false}),env,actor,'ar@katathani.com')).status).toBe(400);
  expect((await accessApi(req('/api/access/users/create'),env,authId,'staff@example.invalid')).status).toBe(403);expect(c.calls).toHaveLength(0);
 });
 it('does not execute lifecycle mutations through GET',async()=>{const c=setup('delete');expect((await accessApi(req('/api/access/users/commands/'+cmd+'/check',{},'GET'),env,actor,'ar@katathani.com')).status).toBe(404);expect(c.calls).toHaveLength(0);});
-it('username login validates provider identity and active grant before returning a session',async()=>{
- const calls:{url:string;body:unknown}[]=[];vi.stubGlobal('fetch',async(input:RequestInfo|URL,init:RequestInit={})=>{const url=String(input),body=JSON.parse(String(init.body));calls.push({url,body});if(url.endsWith('/ar_access_login_limit'))return Response.json(0);if(url.endsWith('/ar_access_password_target'))return Response.json({authUserId:authId,authEmail});if(url.endsWith('/ar_access_self'))return Response.json({active:true});if(url.includes('/token?grant_type=password'))return Response.json({access_token:'synthetic-session',refresh_token:'synthetic-refresh',user:{id:authId,email:authEmail}});throw Error('Unexpected');});
- const r=await handleApi(req('/api/access/login',{username:'Synthetic.User',password:secret}),env);expect(r.status).toBe(200);expect(await r.json()).toMatchObject({access_token:'synthetic-session'});expect(calls.filter(c=>c.url.includes('/rest/')).some(c=>JSON.stringify(c.body).includes(secret))).toBe(false);expect(calls.at(-1)?.url.endsWith('/ar_access_self')).toBe(true);
-});
-it('enforces the username-login attempt limit before any password request',async()=>{const f=vi.fn(async()=>Response.json(45));vi.stubGlobal('fetch',f);const r=await handleApi(req('/api/access/login',{username:'synthetic.user',password:secret}),env);expect(r.status).toBe(429);expect(r.headers.get('Retry-After')).toBe('45');expect(f).toHaveBeenCalledTimes(1);});
-it.each(['missing','wrong-id','wrong-email','revoked'])('does not return login tokens when the target is %s',async scenario=>{
- vi.stubGlobal('fetch',async(input:RequestInfo|URL)=>{const url=String(input);if(url.endsWith('/ar_access_login_limit'))return Response.json(0);if(url.endsWith('/ar_access_password_target'))return Response.json(scenario==='missing'?null:{authUserId:authId,authEmail});if(url.endsWith('/ar_access_self'))return Response.json(null);return Response.json({access_token:'must-not-be-returned',refresh_token:'must-not-be-returned',user:{id:scenario==='wrong-id'?actor:authId,email:scenario==='wrong-email'?'different@example.invalid':authEmail}});});
- const r=await handleApi(req('/api/access/login',{username:'synthetic.user',password:secret}),env);expect(r.status).toBe(401);expect(await r.json()).toEqual({error:'invalid_credentials'});
+it('retires username login before any credential exchange',async()=>{
+ const f=vi.fn();vi.stubGlobal('fetch',f);
+ const r=await handleApi(req('/api/access/login',{username:'synthetic.user',password:secret}),env);
+ expect(r.status).toBe(410);expect(await r.json()).toEqual({error:'google_sign_in_required'});expect(f).not.toHaveBeenCalled();
 });

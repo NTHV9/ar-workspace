@@ -1,3 +1,10 @@
+## 23 September 2026 — Google-only named staff access (implementation checkpoint)
+
+- Implemented: Google-only login UI, retired password entry endpoints, named allowlist setup and preserved protected administrator; tab-specific credentials survive reload but clear on fresh navigation. Names appear in Register history, external billing and verified-send reports; staff identity survives access deletion.
+- Backend: verified-token OAuth method plus active-session validation, explicit cutover timestamp; trusted Worker actor header captured separately from business/provider owner. Password-provider disablement and OAuth External audience are operational cutover steps, not inferred from frontend code.
+- Tested: 1,424 unit tests, TypeScript/build, four browser scenarios (1440/390px, reload/new/opener tab, legacy storage), 86 migrations / 39 rollback fixtures. Synthetic screenshots are private test artifacts. No email sent or OPERA mutation.
+- Deployment/enabling: pending final live verification. Owner-requested staff identities stay out of Git. Administrator retains both regions and no display name.
+
 # สถานะโครงการใหม่
 
 ## 23 September 2026 — Voucher replacement overlap regression
