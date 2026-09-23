@@ -9,7 +9,8 @@ const run=(f:VoucherField):DetectedText=>({...f,rotated:false,color:'#000000',fi
 export function voucherRuns(runs:DetectedText[],fields:VoucherField[]):DetectedText[]{
  if(!fields.length)return runs;
  let index=Math.max(-1,...runs.map(r=>r.sourceText?.runIndex??-1))+1;
- const inside=(r:DetectedText,f:VoucherField)=>r.x>=f.x-.5&&r.x+r.width<=f.x+f.width+1&&r.y>=f.y-1&&r.y<f.y+f.height;
+ // Text boxes can overlap the next compact header line; glyph baselines own rows.
+ const inside=(r:DetectedText,f:VoucherField)=>{const baseline=r.y+(sourceStyle(createReplacementLayer(r,'voucher-row'))?.baseline??r.fontSize*.85);return r.x>=f.x-.5&&r.x+r.width<=f.x+f.width+1&&baseline>=f.y&&baseline<f.y+f.height;};
  const result=runs.filter(r=>!fields.some(f=>inside(r,f)));
  for(const f of fields){
   const r=run(f),base=runs.find(r=>inside(r,f)&&r.sourceText)??runs.filter(r=>!r.rotated&&r.sourceText&&Math.abs(r.fontSize-f.fontSize)<.1&&!!r.bold===f.bold).sort((a,b)=>Math.abs(a.y-f.y)-Math.abs(b.y-f.y))[0];
