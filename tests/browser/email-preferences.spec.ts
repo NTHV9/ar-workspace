@@ -92,8 +92,8 @@ test('six signature previews require confirmation and retain the same batch with
  await context.route('**/api/email/test-send',route=>{sent.push(route.request().postDataJSON());return route.fulfill({json:{state:'sent',recorded:false}});});
  await googleReturn(page);await page.getByRole('button',{name:'My email signature',exact:true}).click();
  await page.getByRole('textbox',{name:'Test recipient',exact:true}).fill('synthetic-preview@example.invalid');
- page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Send 6 preview emails',exact:true}).click();expect(sent).toHaveLength(0);
- page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Send 6 preview emails',exact:true}).click();
+ await page.getByRole('button',{name:'Send 6 preview emails',exact:true}).click();await page.getByRole('button',{name:'Cancel test emails',exact:true}).click();expect(sent).toHaveLength(0);
+ await page.getByRole('button',{name:'Send 6 preview emails',exact:true}).click();await page.getByRole('button',{name:'Confirm send 6 preview emails',exact:true}).click();
  await expect(page.getByText('Sent and verified',{exact:true})).toHaveCount(6);expect(sent.map(s=>s.signatureHotel)).toEqual([...HOTEL_IDS]);expect(new Set(sent.map(s=>s.commandId)).size).toBe(6);
  await expect(page.getByRole('button',{name:'Send 6 preview emails',exact:true})).toBeDisabled();
  await page.reload();await page.getByRole('button',{name:'My email signature',exact:true}).click();await expect(page.getByText('Sent and verified',{exact:true})).toHaveCount(6);expect(sent).toHaveLength(6);

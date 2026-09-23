@@ -64,3 +64,9 @@ it('signature diagnostics replay an existing delivery and reject changing its re
  await expect(sendSignatureDiagnostic(env,actor,other,recipient,'Unknown')).rejects.toThrow('email_invalid');
  expect(f).toHaveBeenCalledTimes(3);
 });
+
+it('rejects signature preview commands from a stale confirmation flow before provider access',async()=>{
+ const f=vi.fn();vi.stubGlobal('fetch',f);
+ const r=await emailApi(new Request('https://app.test/api/email/test-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commandId:other,recipient:'synthetic@example.invalid',confirmed:true,signatureHotel:'KAT'})}),env,actor);
+ expect(r.status).toBe(400);expect(f).not.toHaveBeenCalled();
+});
