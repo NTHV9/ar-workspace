@@ -1,3 +1,4 @@
+import {signatureRequest} from './signature';
 import {administratorEmail,parseAccess,type UserAccess} from '../../src/access/model';
 import {isHotelId,isRegionId,regionHotels,type HotelId} from '../../src/domain/hotels';
 import {acceptanceCookie} from '../acceptance/routing';
@@ -16,6 +17,7 @@ export function accessError(error:unknown):Response {
 function sameOrigin(request:Request){if(request.method!=='GET'&&(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin||request.headers.get('Sec-Fetch-Site')==='cross-site'))throw Error('access_forbidden');}
 export async function accessApi(request:Request,env:RefreshEnv,actor:string,email:string):Promise<Response>{try{
  sameOrigin(request);const url=new URL(request.url);
+ if(url.pathname==='/api/access/signature')return signatureRequest(request,env,actor);
  if(url.pathname==='/api/access/me'&&request.method==='GET'){
   if(email.toLowerCase()===administratorEmail)return json({email:administratorEmail,administrator:true,regions:['phuket','khao-lak'],revision:1});
   if(acceptanceCookie(request))throw Error('access_forbidden');
@@ -32,8 +34,8 @@ export async function accessApi(request:Request,env:RefreshEnv,actor:string,emai
  if(request.method!=='POST'||url.searchParams.size||request.headers.get('Content-Type')?.split(';')[0]!=='application/json')throw Error('access_invalid');
  const v:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await boundedBody(request,8192)));
  if(!v||typeof v!=='object'||Array.isArray(v))throw Error('access_invalid');const input=v as Record<string,unknown>;
- if(Object.keys(input).some(k=>!['commandId','email','displayName','regions','active','revision'].includes(k))||typeof input.commandId!=='string'||!uuid.test(input.commandId)||typeof input.displayName!=='string'||!input.displayName.trim()||input.displayName.length>100||/[\u0000-\u001f]/.test(input.displayName)||typeof input.email!=='string'||input.email.length>254||!Array.isArray(input.regions)||input.regions.length<1||input.regions.length>2||input.regions.some(r=>!isRegionId(r))||new Set(input.regions).size!==input.regions.length||typeof input.active!=='boolean'||!Number.isSafeInteger(input.revision)||Number(input.revision)<0)throw Error('access_invalid');
- return json(await backendRpc(env,'ar_access_staff_save',{p_actor:actor,p_command:input.commandId,p_member:null,p_display_name:input.displayName,p_email:input.email,p_regions:input.regions,p_active:input.active,p_revision:input.revision}));
+ if(Object.keys(input).some(k=>!['commandId','email','displayName','position','regions','active','revision'].includes(k))||typeof input.commandId!=='string'||!uuid.test(input.commandId)||typeof input.position!=='string'||input.position.length>100||/[\u0000-\u001f]/.test(input.position)||typeof input.displayName!=='string'||!input.displayName.trim()||input.displayName.length>100||/[\u0000-\u001f]/.test(input.displayName)||typeof input.email!=='string'||input.email.length>254||!Array.isArray(input.regions)||input.regions.length<1||input.regions.length>2||input.regions.some(r=>!isRegionId(r))||new Set(input.regions).size!==input.regions.length||typeof input.active!=='boolean'||!Number.isSafeInteger(input.revision)||Number(input.revision)<0)throw Error('access_invalid');
+ return json(await backendRpc(env,'ar_access_staff_save',{p_actor:actor,p_command:input.commandId,p_member:null,p_display_name:input.displayName,p_position:input.position,p_email:input.email,p_regions:input.regions,p_active:input.active,p_revision:input.revision}));
  }catch(error){return accessError(error);}
 }
 export async function authorizeRegionalRequest(request:Request,env:RefreshEnv,actor:string):Promise<AccessGrant>{

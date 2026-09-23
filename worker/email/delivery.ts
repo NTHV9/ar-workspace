@@ -1,3 +1,5 @@
+import {signatureWorkplace} from '../../src/email/signature';
+import {isHotelId} from '../../src/domain/hotels';
 import {assertAcceptanceRecipient} from '../acceptance/recipient';
 import {requireRegionalDelivery} from './regional-delivery';
 import {assertWritesEnabled} from '../operations/write-hold';
@@ -41,6 +43,7 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return deliveryView(existing);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  await requireRegionalDelivery(env,draft);
+ if(draft.rich_body?.signature&&(draft.rich_body.signature.staffId!==(env.REQUEST_ACTOR??actor)||draft.rich_body.signature.workplace!==(isHotelId(draft.hotel)?signatureWorkplace(draft.hotel):'')))throw Error('email_signature_changed');
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  parseRecipients(draft.recipients);if(mode==='send'&&(!draft.recipients.to.length||!draft.subject.trim()||!draft.body.trim()))throw Error('email_incomplete');
  if(draft.purpose==='collection'&&!isCollectionStageKey(stage))throw Error('email_stage_required');

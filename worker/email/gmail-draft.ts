@@ -1,3 +1,4 @@
+import {signatureLogoFile} from './signature-logo';
 import {assertAcceptanceRecipient} from '../acceptance/recipient';
 import {requireRegionalDelivery} from './regional-delivery';
 import {assertWritesEnabled} from '../operations/write-hold';
@@ -50,7 +51,8 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
  await requireRegionalDelivery(env,draft);
  await assertAcceptanceRecipient(env,draft.recipients);
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
- const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');
+ const logo=draft.rich_body?.signature?signatureLogoFile():null;
+ const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,logo?.bytes.length??0)>draftBudget(env))throw Error('email_too_large');
  const job=await documentJob(env,draft.document_job_id);if(job?.closed_at)throw Error('document_closed');if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
  const reader=makeReader(env,job.hotel),businessDate=await readBusinessDate(reader,job.hotel);
  const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
@@ -58,5 +60,5 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
  const loaded:MailFile[]=[];for(const file of files)loaded.push(await readMailFile(env,draft,file));
  const thread=await revalidateThread(env,owner,draft);
  const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null},loaded,messageId,thread));
- return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,...(thread?{thread}:{}),files:files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256}))}};
+ return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,...(thread?{thread}:{}),files:[...files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256})),...(logo?[{name:logo.name,byte_count:logo.bytes.length,sha256:await hash(logo.bytes),inlineId:logo.inlineId}]:[])]}};
 }

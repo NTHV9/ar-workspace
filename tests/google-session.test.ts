@@ -34,7 +34,7 @@ it('preserves the tab PKCE verifier only on a recent explicit Google return',()=
 });
 it('creates approved staff with name and region without ever provisioning passwords',async()=>{
  const fetch=vi.fn(async(_url:RequestInfo|URL,_init?:RequestInit)=>Response.json({email:'synthetic@gmail.com'}));vi.stubGlobal('fetch',fetch);
- const body={commandId:session,email:'synthetic@gmail.com',displayName:'Synthetic Staff',regions:['phuket'],active:true,revision:0};
+ const body={commandId:session,email:'synthetic@gmail.com',displayName:'Synthetic Staff',position:'AR Officer',regions:['phuket'],active:true,revision:0};
  const request=(input:unknown)=>new Request('https://app.test/api/access/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
  expect((await accessApi(request(body),env,actor,'ar@katathani.com')).status).toBe(200);
  expect(String(fetch.mock.calls[0]?.[0])).toContain('/ar_access_staff_save');

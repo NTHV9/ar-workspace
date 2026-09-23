@@ -1,7 +1,8 @@
+import {parseSignature,signatureText,signatureHtml,type EmailSignature} from './signature';
 /** Shared browser/Worker boundary. No HTML, DOM or provider input is trusted. */
 export type RichRun = {text: string; bold?: boolean; italic?: boolean; underline?: boolean; href?: string};
 export type RichBlock = {type: 'paragraph' | 'bullet' | 'quote'; runs: RichRun[]};
-export type RichMessage = {version: 1; blocks: RichBlock[]};
+export type RichMessage = {version: 1; blocks: RichBlock[];signature?:EmailSignature};
 
 export const RICH_MESSAGE_LIMITS = Object.freeze({text: 100_000, blocks: 1_000, runs: 4_000, href: 2_048, totalHref: 16_384});
 const invalid = (): never => {throw new Error('rich_message_invalid');};
@@ -62,7 +63,7 @@ export function safeMessageHref(value: unknown): string {
 }
 
 export function parseRichMessage(input: unknown): RichMessage {
-  const root = record(input, ['version', 'blocks']);
+  const root = record(input, ['version', 'blocks', 'signature']);
   if (root.version !== 1) return invalid();
   let textSize = 0, runCount = 0, hrefSize = 0;
   const blocks: RichBlock[] = array(root.blocks, RICH_MESSAGE_LIMITS.blocks).map(value => {
@@ -98,6 +99,7 @@ export function parseRichMessage(input: unknown): RichMessage {
   const result:RichMessage={version: 1, blocks: blocks.length ? blocks : [{type: 'paragraph', runs: [{text: ''}]}]};
   // PostgreSQL jsonb text adds separator spaces. Reserve space for those and the template envelope.
   if(new TextEncoder().encode(JSON.stringify(result)).length>450000)return tooLarge();
+  if(root.signature!==undefined){try{result.signature=parseSignature(root.signature);}catch{return invalid();}if(plainSize+2+signatureText(result.signature).length>RICH_MESSAGE_LIMITS.text)return tooLarge();}
   return result;
 }
 
@@ -107,14 +109,14 @@ export function plainMessage(text: string): RichMessage {
 }
 
 export function richText(input: RichMessage): string {
-  return parseRichMessage(input).blocks.map(block => `${block.type === 'bullet' ? '• ' : block.type === 'quote' ? '> ' : ''}${block.runs.map(run => run.text).join('')}`).join('\n');
+  const parsed=parseRichMessage(input);return parsed.blocks.map(block => `${block.type === 'bullet' ? '• ' : block.type === 'quote' ? '> ' : ''}${block.runs.map(run => run.text).join('')}`).join('\n')+(parsed.signature?'\n\n'+signatureText(parsed.signature):'');
 }
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-export function richHtml(input: RichMessage): string {
+export function richHtml(input: RichMessage,signaturePreview=false): string {
   let html = '', list = false;
   for (const block of parseRichMessage(input).blocks) {
     if (block.type === 'bullet' && !list) {html += '<ul>'; list = true;}
@@ -130,5 +132,5 @@ export function richHtml(input: RichMessage): string {
     const tag = block.type === 'bullet' ? 'li' : block.type === 'quote' ? 'blockquote' : 'p';
     html += `<${tag}>${content}</${tag}>`;
   }
-  return html + (list ? '</ul>' : '');
+  const signature=parseRichMessage(input).signature;return html + (list ? '</ul>' : '')+(signature?signatureHtml(signature,signaturePreview):'');
 }

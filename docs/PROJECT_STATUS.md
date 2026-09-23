@@ -1,3 +1,11 @@
+## 23 September 2026 — Current email templates and personal signatures
+
+- Implemented: template library presents only current content; applying a saved template refetches its latest head. New edits stop accumulating template-history rows; concurrency counters remain internal. Prepared/sent messages retain their own body snapshots. Existing history purge is a separately confirmed operation.
+- Personal email signature: Settings → My email signature, with self-only backend access. Position is linked to the administrator user form. The signature uses the exact document hotel name from the central hotel registry (six existing property names checked against owner-provided RTF references); saved/sent snapshots are not rewritten. Khao Lak sending remains disabled.
+- Logo: the same public vector used on Login, rendered unchanged as PNG for mail-client compatibility and placed before signature text. Outgoing MIME embeds the PNG with a fixed Content-ID; verification checks both logo hash and Content-ID. No external image fetch or recipient tracking. The blurred reference banner is not used.
+- Tested: 1,430 unit tests, TypeScript/build; 12 combined browser cases, including staff-only Settings, all hotel previews, mobile/desktop, no duplicate signature on reopening, latest-template application and existing login/user flows. Final targeted five-case browser rerun passed after layout/selection fixes. SQL replay: 87 migrations / 40 rollback fixtures (`run-3d4a25c722b4498891b407977d1d948e`). No real email sent.
+- Read-only Gmail review and owner images establish requested staff positions. Personal staff data remains outside Git. Production rollout and existing-history removal pending.
+
 ## 23 September 2026 — Dedicated sign-in surface
 
 - Implemented: separate branded login screen with no workspace header/navigation, region/hotel controls or synthetic-review link. Loading and access failures remain on the same isolated surface. Successful Google callbacks open Aging and normalize the URL; refreshing an authenticated working page retains that page.

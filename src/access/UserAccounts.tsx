@@ -27,7 +27,7 @@ async function api<T>(token:string,url:string,init:RequestInit={}):Promise<T>{
 const post=<T,>(token:string,path:string,body:unknown)=>api<T>(token,path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 type Result={state?:'pending'|'complete';kind?:'create'|'delete';commandId?:string;needsCleanup?:boolean};
 type FormMode='create'|'edit';
-const blank=()=>({login:'',displayName:'',regions:['phuket'] as RegionId[],active:true,revision:0});
+const blank=()=>({login:'',displayName:'',position:'',regions:['phuket'] as RegionId[],active:true,revision:0});
 
 function DeleteDialog({user,busy,error,onCancel,onConfirm}:{user:AccessMember;busy:boolean;error:string;onCancel:()=>void;onConfirm:()=>void}){
  const ref=useRef<HTMLDialogElement>(null);useEffect(()=>{ref.current?.showModal();},[]);
@@ -60,7 +60,7 @@ export default function UserAccounts({token,onDirtyChange}:{token:string;onDirty
  const reset=(next:FormMode='create')=>{setMode(next);setDraft(blank());setSelected(null);setDirty(false);setPendingCreate(null);pending.current=null;setError('');loginField.current?.focus();};
  const edit=(row:AccessMember)=>{
   if(busy||dirty&&!window.confirm('Discard unsaved user changes?'))return;
-  reset('edit');setSelected(row);setDraft({login:memberLogin(row),displayName:row.displayName??'',regions:[...row.regions],active:row.active,revision:row.revision});setStatus('');
+  reset('edit');setSelected(row);setDraft({login:memberLogin(row),displayName:row.displayName??'',position:row.position??'',regions:[...row.regions],active:row.active,revision:row.revision});setStatus('');
  };
  const refresh=()=>setReload(n=>n+1);
  const settled=(result:Result,commandId:string)=>{
@@ -77,8 +77,8 @@ export default function UserAccounts({token,onDirtyChange}:{token:string;onDirty
   if(pending.current?.key!==key)pending.current={key,id:crypto.randomUUID()};const cmd=pending.current;const version=lifetime.current;setBusy(true);
   try{
    let result:Result;
-   if(mode==='edit'&&selected?.memberId)result=await post(token,`/api/access/users/${selected.memberId}/edit`,{commandId:cmd.id,displayName:draft.displayName.trim(),regions:draft.regions,active:draft.active,revision:draft.revision});
-   else result=await post(token,'/api/access/users',{commandId:cmd.id,email:draft.login.trim().toLowerCase(),displayName:draft.displayName.trim(),regions:draft.regions,active:draft.active,revision:draft.revision});
+   if(mode==='edit'&&selected?.memberId)result=await post(token,`/api/access/users/${selected.memberId}/edit`,{commandId:cmd.id,displayName:draft.displayName.trim(),position:draft.position.trim(),regions:draft.regions,active:draft.active,revision:draft.revision});
+   else result=await post(token,'/api/access/users',{commandId:cmd.id,email:draft.login.trim().toLowerCase(),displayName:draft.displayName.trim(),position:draft.position.trim(),regions:draft.regions,active:draft.active,revision:draft.revision});
    if(lifetime.current===version){settled(result,cmd.id);if(mode!=='create'&&!draft.active)setStatus('Access suspended. Future requests from this user will be denied.');}
   }catch(e){if(lifetime.current===version){setError(e instanceof Error?e.message:'User request failed.');if(e instanceof AccessError&&['access_revision_conflict','access_command_conflict','access_invalid'].includes(e.code))pending.current=null;}}
   finally{if(lifetime.current===version)setBusy(false);}
@@ -104,6 +104,7 @@ export default function UserAccounts({token,onDirtyChange}:{token:string;onDirty
    <form onSubmit={e=>{e.preventDefault();void save();}}>
     <label className="access-email">Google email<input ref={loginField} type="email" autoComplete="off" maxLength={254} required readOnly={mode==='edit'} disabled={busy} value={draft.login} onChange={e=>{setDraft({...draft,login:e.target.value});setDirty(true);}} placeholder="name@gmail.com"/></label>
     <label className="access-email">Name<input type="text" autoComplete="off" maxLength={100} required disabled={busy} value={draft.displayName} onChange={e=>{setDraft({...draft,displayName:e.target.value});setDirty(true);}}/></label>
+    <label className="access-email">Position<input type="text" autoComplete="off" maxLength={100} disabled={busy} value={draft.position} onChange={e=>{setDraft({...draft,position:e.target.value});setDirty(true);}} placeholder="Job title"/></label>
     <fieldset disabled={busy||!!pendingCreate}><legend>Allowed regions</legend>{REGION_IDS.map(r=><label key={r}><input type="checkbox" checked={draft.regions.includes(r)} onChange={e=>{setDraft({...draft,regions:e.target.checked?REGION_IDS.filter(x=>x===r||draft.regions.includes(x)):draft.regions.filter(x=>x!==r)});setDirty(true);}}/>{regionLabel(r)}</label>)}</fieldset>
     {mode!=='create'&&<label className="access-state">Status<select aria-label="Status" disabled={busy} value={draft.active?'active':'suspended'} onChange={e=>{setDraft({...draft,active:e.target.value==='active'});setDirty(true);}}><option value="active">Active</option><option value="suspended">Suspended</option></select></label>}
     <div className="access-form-actions">{pendingCreate?<button type="button" className="primary-button" disabled={busy} onClick={()=>void check(pendingCreate)}>Check creation</button>:<button className="primary-button" disabled={busy||!draft.login.trim()||!draft.regions.length}><UserPlus size={15}/>{busy?'Saving…':mode==='edit'?'Save user':'Create user'}</button>}{(mode==='edit'||dirty||pendingCreate||selected)&&<button type="button" disabled={busy} onClick={()=>reset()}>Cancel</button>}</div>
@@ -112,8 +113,8 @@ export default function UserAccounts({token,onDirtyChange}:{token:string;onDirty
   </section>
   {error&&<p role="alert" className="error-message">{error} <button disabled={busy} onClick={refresh}>Reload list</button></p>}{status&&<p role="status" className="access-notice">{status}</p>}
   <section className="panel access-list"><header><h2>Users{data&&<small>{data.total}</small>}</h2><label className="access-search"><Search size={15}/><input type="search" aria-label="Search users" disabled={busy} placeholder="Search name or email" value={search} onChange={e=>{setSearch(e.target.value);setPage(0);}}/></label></header>
-   {loading?<p role="status" className="access-empty">Loading users…</p>:data&&<><div className="access-table-scroll"><table><thead><tr><th>Name / Google email</th><th>Regions</th><th>Status</th><th>Sign-in</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{data.rows.map(row=><tr key={row.memberId??memberLogin(row)}>
-    <td><strong>{row.displayName||memberLogin(row)}</strong>{row.displayName&&<small>{memberLogin(row)}</small>}{row.administrator&&<small>Administrator · protected</small>}</td><td>{row.regions.map(regionLabel).join(' · ')}</td>
+   {loading?<p role="status" className="access-empty">Loading users…</p>:data&&<><div className="access-table-scroll"><table><thead><tr><th>Name / Google email</th><th>Position</th><th>Regions</th><th>Status</th><th>Sign-in</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{data.rows.map(row=><tr key={row.memberId??memberLogin(row)}>
+    <td><strong>{row.displayName||memberLogin(row)}</strong>{row.displayName&&<small>{memberLogin(row)}</small>}{row.administrator&&<small>Administrator · protected</small>}</td><td>{row.position||'—'}</td><td>{row.regions.map(regionLabel).join(' · ')}</td>
     <td><span className={row.active?'access-active':'access-suspended'}>{row.setupState==='creating'?'Setup pending':row.setupState==='deleting'?'Deleting · access revoked':row.active?'Active':'Suspended'}</span></td>
     <td>{row.username?'Google email needed':row.registered?'Google':row.hasLoginAccount?'Email confirmation pending':'Awaiting first sign-in'}</td>
     <td>{row.administrator?<span className="access-locked"><ShieldCheck size={16}/> Both regions</span>:<div className="access-row-actions">{row.pendingCommand?<button disabled={busy} onClick={()=>void check(row.pendingCommand!)}>{row.setupState==='deleting'?'Check deletion':'Check setup'}</button>:<><button aria-label={'Edit access for '+memberLogin(row)} disabled={busy||!!row.username} onClick={()=>edit(row)}><Pencil size={14}/> Edit</button></>}{row.memberId&&row.setupState!=='deleting'&&<button className="access-delete-button" aria-label={'Delete '+memberLogin(row)} disabled={busy} onClick={()=>{setDeleteTarget(row);setDeleteError('');}}><Trash2 size={14}/> Delete</button>}</div>}</td>
