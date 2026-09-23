@@ -1,5 +1,11 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Back buttons without table overlap
+
+- Replaced the floating account-return button with normal-flow buttons above the comparison and below the invoice table. Both use the existing row-position/page/sort/focus restoration. No fixed or sticky return overlay remains. Renamed the technical Evidence column to Invoice type and its filter caption to Show; values and selection behavior are unchanged.
+- Tested typecheck/build/assets/dry run and both desktop/mobile browser regressions. Tests assert the lower button is in the viewport, uses static positioning, sits below the entire invoice section and returns to the original focused row within four pixels. Synthetic screenshots aging-inline-return-1280.png/390.png inspected. No data/backend changes.
+- Deployment pending verification.
+
 ## 23 September 2026 — Account Aging return position and all-age invoices
 
 - Clicking a matched account name now opens All ages; explicit bucket amount clicks retain their bucket/hotel scope. All-age lists include verified nonzero roots across all ranges, preserve signed balances, exclude compressed children and retain separately sourced account credit rows. Hotel changes preserve the all-age selection.
