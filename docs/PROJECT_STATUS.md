@@ -2,9 +2,10 @@
 
 ## 23 September 2026 — Searchable continuous account invoice list
 
-- Account Aging invoice tables now search guest/invoice/folio/hotel and sort all seven columns in both directions. Identifier sorts are numeric-aware; absent values stay last with deterministic identity ties. Search and sort survive opening an Invoice and returning. New account selection clears the prior invoice query.
+- Account Aging invoice tables now search guest/invoice/folio/hotel and sort all eight columns, including Status in both directions. Identifier sorts are numeric-aware; absent values stay last with deterministic identity ties. Search and sort survive opening an Invoice and returning. New account selection clears the prior invoice query.
 - Removed invoice-list pagination; all matching rows render in the existing vertical table scroll area. Outer matched-account pagination is unchanged. Filters and sorting apply before display to the entire loaded account inventory. Source reads, child exclusion, account credits and monetary values are unchanged.
-- Eight sorting/search unit cases and four desktop/mobile browser cases passed. Browser fixtures exercise 65 rows, every sort header, a final-row search, return context, no Next control and original account-list return behavior. Typecheck/build/assets/dry run passed. Synthetic screenshots aging-invoice-search-1280.png/390.png inspected; old evidence preserved. Deployment verification follows.
+- Status uses recorded billing/reminder dates and captured/current policy labels, with Past due/Due today, holds, review, credits and unavailable reads represented distinctly. Planned rounds or drafts do not advance it. Status is searchable and sortable; workflow/exception data is read from the existing account endpoint.
+- 1,421 unit cases and four desktop/mobile browser cases passed. Browser fixtures exercise 65 rows, every sort header, a final-row search, return context, no Next control and original account-list return behavior. Typecheck/build/assets/dry run passed. Synthetic screenshots aging-invoice-search-1280.png/390.png inspected; old evidence preserved. Deployment verification follows.
 
 ## 23 September 2026 — Remove Invoice type from Aging details
 

@@ -1,5 +1,5 @@
 import {HOTEL_IDS,hotelRegion,isHotelId,regionHotels,type HotelId,type RegionId} from '../domain/hotels';
-import {aggregateAccounts,sourceAging,validSourceBucket,type Account,type AgingBucket} from '../domain/portfolio';
+import {aggregateAccounts,sourceAging,validSourceBucket,type Account,type InvoiceWorkflow,type AgingBucket} from '../domain/portfolio';
 
 export type AgingHotel=HotelId|'Total';
 export const agingRegion=(members:Account[]):RegionId=>{const h=members.find(a=>isHotelId(a.hotel));return h&&isHotelId(h.hotel)?hotelRegion(h.hotel):'phuket';};
@@ -7,7 +7,7 @@ export const comparisonHotels=(members:Account[],region:RegionId=agingRegion(mem
 export const agingHotels:AgingHotel[]=['KAT','TSK','Total'];
 export interface AgingCell {state:'verified'|'absent'|'outside'|'unavailable';amount:number|null;debit:number|null;credit:number|null}
 export interface AgingComparisonRow {key:string;name:string;members:Account[];cells:Record<AgingHotel,AgingCell>[];net:Record<AgingHotel,AgingCell>}
-export interface AgingInvoice {id:string;hotel:string;accountId:string;invoiceNo:string;folioNo:string;guest:string;date:string;open:number|null;age:number|null;role:string;verified:boolean;parentId:string|null}
+export interface AgingInvoice {workflow?:InvoiceWorkflow|null;statusAvailable?:boolean;exceptionsAvailable?:boolean;held?:boolean;needsReview?:boolean;status?:string;id:string;hotel:string;accountId:string;invoiceNo:string;folioNo:string;guest:string;date:string;open:number|null;age:number|null;role:string;verified:boolean;parentId:string|null}
 const unavailable=(state:AgingCell['state']='unavailable'):AgingCell=>({state,amount:null,debit:null,credit:null});
 const cents=(n:number)=>Math.round(n*100);
 const sum=(values:number[])=>{const total=values.reduce((s,n)=>s+cents(n),0);return Number.isSafeInteger(total)?total/100:null;};
@@ -71,6 +71,7 @@ const decimal=(value:unknown):number|null=>{
 /** The protected account endpoint returns every nonzero row. Reject malformed/foreign/duplicate identities as a whole. */
 export function parseAgingInvoices(value:unknown,account:Account):AgingInvoice[]{
  if(!value||typeof value!=='object'||!Array.isArray((value as {invoices?:unknown}).invoices))throw Error('Invoice response is unavailable');
+ const workflowAvailable=(value as {workflow_status?:unknown}).workflow_status!=='unavailable';
  const seen=new Set<string>();
  return (value as {invoices:unknown[]}).invoices.map(value=>{
   if(!value||typeof value!=='object')throw Error('Invoice response is unavailable');
@@ -78,7 +79,9 @@ export function parseAgingInvoices(value:unknown,account:Account):AgingInvoice[]
   if(typeof row.id!=='string'||!row.id||row.hotel!==account.hotel||row.account_id!==account.id||seen.has(row.id))throw Error('Invoice membership could not be verified');
   seen.add(row.id);
   const text=(key:string)=>typeof row[key]==='string'?row[key] as string:'';
-  return {id:row.id,hotel:account.hotel,accountId:account.id,invoiceNo:text('invoice_no'),folioNo:text('folio_no'),guest:text('guest'),date:text('transaction_date'),open:decimal(row.open),age:typeof row.age==='number'&&Number.isSafeInteger(row.age)&&row.age>=0?row.age:null,role:text('collection_role'),verified:row.verification_state==='verified'||row.verification_state==='cleared'&&decimal(row.open)===0,parentId:typeof row.parent_invoice_id==='string'?row.parent_invoice_id:null};
+  const w=row.workflow&&typeof row.workflow==='object'&&!Array.isArray(row.workflow)?row.workflow as InvoiceWorkflow:null;
+  const exceptions=row.exceptions&&typeof row.exceptions==='object'?row.exceptions as {held?:boolean;needsReview?:boolean}:undefined;
+  return {workflow:w,statusAvailable:workflowAvailable&&Object.hasOwn(row,'workflow'),exceptionsAvailable:row.exception_status!=='unavailable',held:exceptions?.held===true,needsReview:exceptions?.needsReview===true,id:row.id,hotel:account.hotel,accountId:account.id,invoiceNo:text('invoice_no'),folioNo:text('folio_no'),guest:text('guest'),date:text('transaction_date'),open:decimal(row.open),age:typeof row.age==='number'&&Number.isSafeInteger(row.age)&&row.age>=0?row.age:null,role:text('collection_role'),verified:row.verification_state==='verified'||row.verification_state==='cleared'&&decimal(row.open)===0,parentId:typeof row.parent_invoice_id==='string'?row.parent_invoice_id:null};
  });
 }
 export function agingInvoiceEvidence(invoices:AgingInvoice[],bucket:AgingBucket,sourceBuckets?:AgingBucket[],accountCredit=0){

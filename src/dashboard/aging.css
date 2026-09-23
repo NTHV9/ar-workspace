@@ -18,3 +18,7 @@
 .aging-inline-back{position:static;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid #c9d7e8;border-radius:10px;background:#fff;color:#17365a}.aging-return-footer{display:flex;margin-top:20px;padding-bottom:8px}
 
 .aging-invoice-count{padding:14px 0;color:var(--aging-muted);font-size:12px}.aging-invoice-drill .aging-invoices th button{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+
+.aging-invoice-status{min-width:145px;max-width:220px;line-height:1.55;color:#38506f}
+
+.aging-invoice-status[data-attention=true]{color:#b42e4f;font-weight:600}
