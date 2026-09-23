@@ -1,5 +1,12 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Collections preparation and concise interface copy
+
+- Implemented: verified selectable invoices can open document preparation while billing setup is incomplete. Both regions share the same Prepare documents button above the invoice list. Existing Needs review/On hold restrictions and Khao Lak email restrictions remain. Preparation defaults to billing unless the setup explicitly marks billing as not required.
+- Reproduced the missing action with a synthetic TLKL account lacking workflow setup. Browser coverage checks selection, dialog and purpose without sending mail. Renamed document-content choices to Invoices in the dialog and PDF workspace; removed the requested Aging definitions, Collections accounting footer, purpose explanation, scroll hint and repeated document/accounting disclaimers. Operational errors remain.
+- Tested: typecheck/build/public asset validation and deployment dry run passed. Main local browser run passed 45/47; two dynamic page loads failed, then both passed with six related scenarios in a serial run (8/8), including desktop/mobile button placement and document choices. New synthetic screenshots use collections-clean-copy filenames; previous visual evidence is preserved. No database or provider changes.
+- Deployed/enabled source `e3bfb0eccf4f6f46c3705f3f2050beb0d6ab3b16`, Worker `617e7e14-6aa8-462f-868d-dc7d7a800aff`. After propagation, health confirms the source and database; six anonymous boundaries reject access. Two deployed synthetic cases passed. Signed-in live Collections checks opened the renamed preparation dialog from both a Khao Lak Setup needed account and a Phuket Billing account, using the same button above the invoice list; canceled both without creating jobs or email. Source CI passed. [PR #67](https://github.com/NTHV9/ar-workspace/pull/67).
+
 ## 23 September 2026 — Continuous register and broader invoice recovery
 
 - Owner explicitly permits horizontal scrolling for Invoice Register and requests a single Excel-like sheet. Implemented all columns together, pinned identities, sticky headers, synchronized upper scroll, virtual visible rows and complete-result checksums across bounded fetches. Kept filter/search/sort, two-way editing and personal hide/restore; batched visibility retries retain receipts. The Account Detail ledger remains unchanged.
