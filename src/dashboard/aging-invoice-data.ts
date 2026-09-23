@@ -4,7 +4,7 @@ import {agingBucketKey,agingRegion,type AgingComparisonRow,type AgingHotel} from
 import type {AgingInvoicesResponse} from '../../worker/dashboard/aging-model';
 import type {Source} from './data';
 
-export interface AgingStatusTarget {key:string;title:string;hotel:AgingHotel;hotels:HotelId[];bucketLabel:string;query:string;sourceAmount:number|null;accountPublications:{hotel:string;accountId:string;accountType:string;sourceAt:string|null}[]}
+export interface AgingStatusTarget {accountCredits?:{hotel:string;accountId:string;accountName:string;amount:number}[];key:string;title:string;hotel:AgingHotel;hotels:HotelId[];bucketLabel:string;query:string;sourceAmount:number|null;accountPublications:{hotel:string;accountId:string;accountType:string;sourceAt:string|null}[]}
 export interface AgingCount {count:number|null;state:'ready'|'loading'|'unavailable'|'absent';reason?:string}
 export type AgingStatusDimension='billing'|'followup'|'due';
 export interface AgingStatusFilters {dimension:AgingStatusDimension;status:string;flag:string;page:number}
@@ -82,7 +82,8 @@ export function agingStatusTarget(row:AgingComparisonRow,hotel:AgingHotel,bucket
  const cell=bucket?row.cells[columns.findIndex(b=>agingBucketKey(b)===agingBucketKey(bucket))]?.[hotel]:row.net[hotel];
  const hotels:HotelId[]=hotel!=='Total'?[hotel]:byType?[...regionHotels(region)]:regionHotels(region).filter(h=>row.members.some(a=>a.hotel===h)) as HotelId[];
  const accountPublications=row.members.filter(a=>hotel==='Total'||a.hotel===hotel).map(a=>({hotel:a.hotel,accountId:a.id,accountType:a.type,sourceAt:a.synced_at??null}));
- return {key:query.toString(),title:row.name,hotel,hotels,bucketLabel:bucket?.label??'All ages',query:query.toString(),sourceAmount:cell?.amount??null,accountPublications};
+ const accountCredits=row.members.filter(a=>hotel==='Total'||a.hotel===hotel).flatMap(a=>(a.agingAccountCredits??[]).filter(c=>!bucket||c.bucketKey===agingBucketKey(bucket)).map(c=>({hotel:a.hotel,accountId:a.id,accountName:a.name,amount:c.amount})));
+ return {accountCredits,key:query.toString(),title:row.name,hotel,hotels,bucketLabel:bucket?.label??'All ages',query:query.toString(),sourceAmount:cell?.amount??null,accountPublications};
 }
 export function agingTargetPublicationMatches(data:AgingInvoicesResponse,target:AgingStatusTarget,refresh?:RefreshState){
  if(!agingPublicationMatches(data,refresh,target.hotels)||data.accounts.length!==target.accountPublications.length)return false;

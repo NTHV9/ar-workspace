@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Shared Aging amounts and cleaner navigation
+
+- Removed the redundant period/Aging switch from both pages, explanatory footnotes, the figure-definition disclosure, selected-scope copy and scrolling hints. Hotel names now open their own ledger; mobile groups expose the same short hotel links, without separate Account buttons.
+- Owner approved using one verified inventory for Aging totals and invoice details. Added a display-only projection from the existing scoped invoice API, validating publication/date, account identity/type, complete range membership, root counts, net amounts and credit components in cents. Native stored OPERA values are unchanged. Incomplete ranges remain unavailable; independently verified account net is retained.
+- Read-only live diagnosis found a native Aging/range-age boundary difference, while the account total reconciled. A separate account contained an explicit native account credit absent from the invoice inventory. The projection includes such credits only when invoice credits are zero, native debit equals the full invoice inventory and explicit native debit/credit/net components reconcile. Account credits have separate detail rows and a Credit facet, without fabricated invoice identities/counts. Unsupported overlap or unexplained differences remain unverified. Oracle documents account credits separately from invoices: https://docs.oracle.com/en/industries/hospitality/opera-cloud/21.4/ocsuh/c_accounts_receivable_accounts_receivable_aging.htm .
+- Tested: 1,410 unit cases passed; typecheck/build/public assets/deployment dry run passed. Final 16 browser cases passed, covering changed native allocation, explicit account credit, signed/zero balances, invoice-status filters, desktop/mobile hotel links and retained return context. Earlier navigation/period checks also passed after updating the retired subtab selectors. New synthetic screenshots aging-clean-1280.png/390.png preserve previous evidence. No database, OPERA accounting, email or paid-service changes.
+- Deployment pending runtime verification.
+
 ## 23 September 2026 — Aging replaces live Portfolio
 
 - Owner chose the existing Aging design as the shared surface. The live Portfolio navigation and legacy Portfolio/region bookmarks now open Aging; the synthetic legacy design review remains reference-only. Dashboard navigation opens period analysis. Account return labels and saved Aging context follow the shared surface.

@@ -26,6 +26,7 @@ function hotelCell(members:Account[],hotel:string,scope:string,bucket?:AgingBuck
  if(!rows.length)return unavailable('absent');
  if(rows.some(a=>!verifiedAccount(a)))return unavailable();
  if(!bucket){const amount=sum(rows.map(a=>a.open));return amount===null?unavailable():{state:'verified',amount,debit:null,credit:null};}
+ if(rows.some(a=>a.agingBasis==='unavailable'))return unavailable();
  const source=sourceAging(rows,hotel).find(b=>agingBucketKey(b)===agingBucketKey(bucket));
  if(!source)return unavailable();
  // sourceAging is the shared source-schema authority; sum original cents to avoid floating point drift.
@@ -80,7 +81,7 @@ export function parseAgingInvoices(value:unknown,account:Account):AgingInvoice[]
   return {id:row.id,hotel:account.hotel,accountId:account.id,invoiceNo:text('invoice_no'),folioNo:text('folio_no'),guest:text('guest'),date:text('transaction_date'),open:decimal(row.open),age:typeof row.age==='number'&&Number.isSafeInteger(row.age)&&row.age>=0?row.age:null,role:text('collection_role'),verified:row.verification_state==='verified'||row.verification_state==='cleared'&&decimal(row.open)===0,parentId:typeof row.parent_invoice_id==='string'?row.parent_invoice_id:null};
  });
 }
-export function agingInvoiceEvidence(invoices:AgingInvoice[],bucket:AgingBucket,sourceBuckets?:AgingBucket[]){
+export function agingInvoiceEvidence(invoices:AgingInvoice[],bucket:AgingBucket,sourceBuckets?:AgingBucket[],accountCredit=0){
  const roots=invoices.filter(i=>i.verified&&i.open!==null&&['parent','standalone'].includes(i.role)&&!i.parentId);
  const rootIds=new Set(roots.filter(i=>i.role==='parent').map(i=>i.id));
  const children=invoices.filter(i=>i.verified&&i.open!==null&&i.role==='child'&&i.parentId&&rootIds.has(i.parentId));
@@ -91,5 +92,5 @@ export function agingInvoiceEvidence(invoices:AgingInvoice[],bucket:AgingBucket,
  const unassigned=invoices.filter(i=>!excluded.has(i)&&(!roots.includes(i)||unknownAge(i)));
  const rows=roots.filter(i=>!unknownAge(i)&&contains(bucket,i));
  const amount=bucketKnown?sum(rows.map(i=>i.open!)):null;
- return {rows,amount,unassigned,excludedChildren:children.length,complete:bucketKnown&&unassigned.length===0,difference:amount===null?null:sum([bucket.amount,-amount])};
+ return {rows,amount,accountCredit,unassigned,excludedChildren:children.length,complete:bucketKnown&&unassigned.length===0,difference:amount===null?null:sum([bucket.amount,-amount,accountCredit])};
 }
