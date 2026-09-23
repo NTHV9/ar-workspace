@@ -1,0 +1,20 @@
+.sign-in-screen{min-height:calc(100svh - 36px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:40px 24px;background:radial-gradient(ellipse at 20% 10%,#fff5df 0,transparent 55%),linear-gradient(140deg,#f8fbfd,#e3edf6);border-radius:24px;color:#182d48}
+.sign-in-card{width:min(100%,460px);padding:46px 40px 36px;background:linear-gradient(155deg,#fff,#f9fbfe);border-radius:16px;box-shadow:0 18px 50px #24476520;text-align:center}
+.sign-in-logo{display:block;margin:0 auto 26px;object-fit:contain}
+.sign-in-card h1{margin:0;font-size:30px;font-weight:700;line-height:1.25;letter-spacing:-.025em;color:#182d48}
+.sign-in-intro{margin:12px 0 32px;font-size:15px;line-height:1.65;color:#516780}
+.sign-in-card .sign-in-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:54px;padding:14px 18px;border:1px solid #becdde;border-radius:10px;background:#fff;color:#213954;font-size:15px;font-weight:600;box-shadow:0 3px 8px #2447650d;transition:background .15s,border-color .15s}
+.sign-in-card .sign-in-google:hover:not(:disabled){background:#f1f5fb;border-color:#6685ab}
+.sign-in-card button:disabled{opacity:.65;cursor:wait}
+.sign-in-card button:focus-visible{outline:3px solid #5267dc;outline-offset:4px}
+.sign-in-help{font-size:12px;line-height:1.6;color:#586d82;margin:22px 0 0}
+.sign-in-screen footer{font-size:12px;color:#586d82}
+.sign-in-error{margin:0 0 20px;padding:14px;background:#fff0f2;border-radius:8px;color:#992941;font-size:14px;line-height:1.6;text-align:left}
+.sign-in-progress{min-height:54px;margin:0;display:flex;align-items:center;justify-content:center;gap:10px;font-size:14px;color:#516780}
+.sign-in-progress svg,.sign-in-spinner{animation:sign-in-spin 1s linear infinite}
+.sign-in-actions{display:flex;justify-content:center;gap:12px}.sign-in-actions button{min-height:48px;padding:12px 20px;font-size:14px}
+.sign-in-retry{margin-top:16px;font-size:14px}
+.sign-in-screen ::selection{background:#dce5fc;color:#182d48}
+@keyframes sign-in-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.sign-in-progress svg,.sign-in-spinner{animation:none}.sign-in-card .sign-in-google{transition:none}}
+@media(max-width:600px){.sign-in-screen{min-height:calc(100svh - 16px);padding:24px 16px;border-radius:16px;gap:24px}.sign-in-card{padding:36px 24px 30px}.sign-in-card h1{font-size:27px}.sign-in-intro{font-size:14px}.sign-in-logo{width:76px;height:76px}}

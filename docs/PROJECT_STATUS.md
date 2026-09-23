@@ -1,3 +1,9 @@
+## 23 September 2026 — Dedicated sign-in surface
+
+- Implemented: separate branded login screen with no workspace header/navigation, region/hotel controls or synthetic-review link. Loading and access failures remain on the same isolated surface. Successful Google callbacks open Aging and normalize the URL; refreshing an authenticated working page retains that page.
+- Tested: TypeScript/build, 17 focused navigation/session tests and seven browser scenarios (desktop/mobile layout, callback destination, reload/new/opener tab, error state, named staff regression). Desktop and mobile renders inspected; layout detector clear.
+- Deployment/live verification recorded after publication below.
+
 ## 23 September 2026 — Google-only named staff access (live verification)
 
 - Implemented: Google-only login UI, retired password entry endpoints, named allowlist setup and preserved protected administrator; tab-specific credentials survive reload but clear on fresh navigation. Names appear in Register history, external billing and verified-send reports; staff identity survives access deletion.
