@@ -44,10 +44,10 @@ function cells(members:Account[],scope:string,bucket?:AgingBucket):Record<AgingH
  return {...result,Total};
 }
 /** An omitted type lists types. A selected type lists matched accounts, checked against the complete catalog. */
-export function agingComparison(catalog:Account[],hotel:string,type?:string):AgingComparisonRow[]{
+export function agingComparison(catalog:Account[],hotel:string,type?:string,allAccounts=false):AgingComparisonRow[]{
  const scoped=catalog.filter(a=>(hotel==='All'||a.hotel===hotel)&&(type===undefined||a.type===type));
  const columns=agingColumns(catalog);
- return aggregateAccounts(scoped,type===undefined,catalog).map(row=>({key:row.key,name:row.name,members:row.members,net:cells(row.members,hotel),cells:columns.map(bucket=>cells(row.members,hotel,bucket))}));
+ return aggregateAccounts(scoped,type===undefined&&!allAccounts,catalog).map(row=>({key:row.key,name:row.name,members:row.members,net:cells(row.members,hotel),cells:columns.map(bucket=>cells(row.members,hotel,bucket))}));
 }
 /** Overview uses every filtered ledger, independent of table pagination and column visibility. */
 export function agingOverview(catalog:Account[],hotel:string,members:Account[]){

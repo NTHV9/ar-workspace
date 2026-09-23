@@ -41,3 +41,5 @@
 
 .aging-sort-controls .aging-hide-zero{justify-content:flex-start;gap:8px;min-height:38px;padding:7px 10px;border:1px solid #cbdbea;border-radius:8px;background:#fff;white-space:nowrap;cursor:pointer}.aging-hide-zero input{width:16px;height:16px;margin:0;accent-color:#4563dd}
 @media(max-width:600px){.aging-sort-controls .aging-hide-zero{min-height:42px;flex:none}}
+
+.aging-ledger-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.aging-ledger-links button{display:inline-flex;align-items:center;gap:3px;border:1px solid #d7e3ee;border-radius:6px;padding:5px 7px;background:#fff;color:#254f78;font:inherit;font-size:10px}.aging-cell-components{line-height:1.6}.aging-controls>button{align-self:end;min-height:36px;border:1px solid #d7e3ee;border-radius:8px;background:#fff;color:#254f78;padding:8px 12px}

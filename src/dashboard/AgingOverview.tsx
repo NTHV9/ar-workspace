@@ -48,7 +48,7 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
     return <div className="aging-v4-hotel" key={hotel}>
      <span className={'aging-v4-property aging-v4-property-'+hotel.toLowerCase()}><i aria-hidden="true"/>{hotel}</span>
      <strong>{amount(known(cell)?cell.amount:null)}</strong>
-     <small className="aging-v4-invoice-count" aria-label={`${hotel} open invoice count`}>{countText(hotel)} invoices</small>
+     <small className="aging-v4-invoice-count"><span aria-label={`${hotel} open invoice count`}>{countText(hotel)} invoices</span> · {data.members.filter(a=>a.hotel===hotel).length} accounts{known(cell)&&known(total)&&agingPercentage(cell.amount,total.amount)!==null?` · ${agingPercentage(cell.amount,total.amount)!.toFixed(1)}%`:''}</small>
      {!known(cell)&&<small>{stateLabel[cell.state]||'Source unverified'}</small>}
     </div>;
    })}</div>

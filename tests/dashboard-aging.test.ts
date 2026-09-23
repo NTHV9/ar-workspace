@@ -7,6 +7,15 @@ const account=(hotel:string,id:string,amount:number,extra:Partial<Account>={}):A
 const raw=(id:string,extra:Record<string,unknown>={})=>({id,hotel:'KAT',account_id:'a',invoice_no:id,folio_no:'folio',guest:'Synthetic guest',transaction_date:'2026-09-01',open:100,original:100,age:10,collection_role:'standalone',verification_state:'verified',...extra});
 
 describe('current aging comparison',()=>{
+ it('can list accounts across all types while retaining each hotel ledger',()=>{
+  const catalog=[account('KAT','kat',100),account('TSK','tsk',50),account('KAT','corporate',200,{account_no:'OTHER',type:'Corporate'})];
+  const rows=agingComparison(catalog,'All',undefined,true);
+  expect(rows).toHaveLength(2);
+  const paired=rows.find(row=>row.members.length===2)!;
+  expect(paired.net.KAT.amount).toBe(100);expect(paired.net.TSK.amount).toBe(50);expect(paired.net.Total.amount).toBe(150);
+  expect(agingComparison(catalog,'KAT',undefined,true).flatMap(row=>row.members).every(a=>a.hotel==='KAT')).toBe(true);
+  expect(agingComparison(catalog,'All','Corporate',true)).toHaveLength(1);
+ });
  it('places credit bars below a common zero and keeps proportional positive amounts above it',()=>{
   const scale=agingAmountScale([300,-100,150,0,null]);
   expect(scale.zero).toBe(25);
