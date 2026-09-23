@@ -9,6 +9,8 @@ async function setup(context:BrowserContext){
  await context.route('**/api/**',route=>{
   const path=new URL(route.request().url()).pathname;
   if(path==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic-key',googleEnabled:true}});
+  if(path==='/api/portfolio')return route.fulfill({json:{accounts:[],status:'connected',refresh:{running:false,hotels:[]}}});
+  if(path==='/api/refresh')return route.fulfill({json:{running:false,hotels:[]}});
   if(path==='/api/access/me')return route.fulfill({json:rows[0]});
   if(path==='/api/access/users'){
    if(route.request().method()==='POST'){const value=route.request().postDataJSON();writes.push(value);rows.push({...value,memberId:'00000000-0000-4000-8000-000000000003',administrator:false,registered:false,revision:1});return route.fulfill({json:rows.at(-1)});}
@@ -21,6 +23,10 @@ async function googleReturn(page:Page){
  await page.goto('/?usersAccess=1');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
  await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const key=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(key+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
  await page.goto('/?usersAccess=1&code=synthetic-code');
+ await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
+ await expect(page).toHaveURL(/dashboard=1&dashboardView=aging$/);
+ await expect(page.getByRole('button',{name:'Aging',exact:true})).toHaveClass('active');
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Users & Access'})).toBeVisible();
 }
 for(const width of [1440,390])test(`Google-only named staff form at ${width}px`,async({context,page})=>{
@@ -45,4 +51,22 @@ test('legacy persistent password login is discarded and no password controls are
  await setup(context);await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'old',refresh_token:'old',expires_at:9999999999,user:u})),user);
  await page.goto('/?usersAccess=1');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeVisible();
  await expect(page.getByLabel('Password',{exact:true})).toHaveCount(0);expect(await page.evaluate(()=>localStorage.getItem('sb-example-auth-token'))).toBeNull();
+});
+
+for(const width of [1440,390])test(`standalone login at ${width}px hides workspace controls and review link`,async({context,page})=>{
+ await setup(context);await page.setViewportSize({width,height:900});await page.goto('/?usersAccess=1');
+ await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
+ await expect(page.getByRole('navigation',{name:'Main navigation'})).toHaveCount(0);
+ await expect(page.getByRole('combobox',{name:'Region'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'All Hotels',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('link',{name:'View the synthetic design review'})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Katathani AR',exact:true})).toBeVisible();
+ await page.screenshot({path:`.tmp/dedicated-login-${width}.png`,fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+});
+test('auth loading and failure remain on the dedicated login surface',async({context,page})=>{
+ await setup(context);await page.route('**/api/config',route=>route.fulfill({status:503,json:{error:'unavailable'}}));
+ await page.goto('/');await expect(page.getByRole('alert')).toContainText('Google sign-in is temporarily unavailable');
+ await expect(page.getByRole('button',{name:'Retry connection'})).toBeVisible();
+ await expect(page.getByRole('navigation',{name:'Main navigation'})).toHaveCount(0);
 });
