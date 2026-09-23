@@ -1,3 +1,11 @@
+## 24 September 2026 — Database-backed Period summaries
+
+- Implemented: private, service-only summary cache preserving the exact existing per-region comparison response. Source-table statement triggers invalidate committed generations; cold concurrent requests coalesce by exact key. Unverified financial coverage remains unverified. Derived-cache persistence errors fall back to the computed response.
+- Proactive preparation: Today, This month and Last month for both regions, after OPERA/financial publication, after successful workflow/settings/email/billing writes via background execution, and on the existing 15-minute maintenance cron. Two precompute readers at most; acceptance and write-hold skip it. Optional precompute failures never change an already-committed business success into a failure.
+- Storage bounds: 192 comparison groups, maximum 128 KiB serialized per group, preset expiry one day and custom-scope expiry 30 minutes; source changes invalidate sooner. Eviction touches only recomputable cache rows. Existing database safety budget is checked before storing; no new paid service or duplicate PDF/Invoice detail archive.
+- Tested: 1,445 unit tests; TypeScript/build; four Period browser scenarios. Local PostgreSQL replay passed 89 migrations / 42 rollback fixtures, including cold/warm equality, generation invalidation/rollback, region/actor checks, budget fallback and bounded eviction (`run-eaa92b8cf0e1427c960ebed6cceb2a9a`). Focused 15-test rerun passed after isolating optional background failures.
+- Read-only live capacity check: 141,462,675 database bytes versus existing configured safe cap 858,993,459 bytes; budget active and unblocked. Migration, prefill and live footprint/performance measurements pending.
+
 ## 24 September 2026 — Immediate recent Period previews
 
 - Implemented: a bounded tab-session preview of completed Period comparison groups (two-minute read expiry, eight scopes, maximum 500,000 serialized characters). Returning to the same dates/scope or reloading the same authenticated tab renders the recent result before network completion, then always revalidates in the background with the existing updating indicators.

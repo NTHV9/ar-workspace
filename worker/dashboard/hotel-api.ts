@@ -43,7 +43,7 @@ export async function dashboardHotelOverviewApi(request:Request,env:RefreshEnv,a
   const args=parseDashboardHotelOverviewQuery(new URL(request.url)),regional='p_region'in args;
   const region:RegionId=regional&&isRegionId(args.p_region)?args.p_region:'phuket';
   const segmented='p_segment'in args;
-  const result=await backendRpc<unknown>(env,segmented?'ar_dashboard_region_segment':regional?'ar_dashboard_region_overview':'ar_dashboard_hotel_overview',{p_actor:actor,...args,...(segmented?{p_region:region}:{})});
+  const result=await backendRpc<unknown>(env,segmented?(env.ACCEPTANCE?'ar_dashboard_region_segment':'ar_dashboard_region_cached_segment'):regional?'ar_dashboard_region_overview':'ar_dashboard_hotel_overview',{p_actor:actor,...args,...(segmented?{p_region:region}:{})});
   if(object(result)&&result.error==='dashboard_forbidden')return json({error:'dashboard_forbidden'},403);
   if(object(result)&&result.error==='dashboard_invalid')invalid();
   const hotels=regionHotels(region);

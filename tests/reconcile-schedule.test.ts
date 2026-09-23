@@ -6,7 +6,7 @@ vi.mock('../worker/email/delivery',()=>({checkDelivery:mocked.check,deliverMessa
 afterEach(()=>{vi.unstubAllGlobals();vi.clearAllMocks();});
 const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic',GMAIL_RECONCILE_ENABLED:'true'};
 it('cron and manual request share an existing run and never create a second workflow',async()=>{const create=vi.fn();vi.stubGlobal('fetch',async()=>Response.json({id:'run',created:false,state:'running'}));expect(await requestMailReconcile({...env,AR_REFRESH:{create,get:vi.fn()}},'manual')).toMatchObject({created:false});expect(create).not.toHaveBeenCalled();});
-it('a Gmail cron never starts an OPERA refresh or sends email',async()=>{const calls:string[]=[];vi.stubGlobal('fetch',async(url:string)=>{calls.push(url);return Response.json({id:'run',created:true,state:'complete'});});await worker.scheduled({cron:'*/15 * * * *'},{...env,OPERA_REFRESH_ENABLED:'true'});expect(calls).toHaveLength(1);expect(calls[0]).toContain('ar_mail_reconcile_request');expect(mocked.send).not.toHaveBeenCalled();expect(mocked.draft).not.toHaveBeenCalled();});
+it('a Gmail cron never starts an OPERA refresh or sends email',async()=>{const calls:string[]=[];vi.stubGlobal('fetch',async(url:string)=>{calls.push(url);return Response.json({id:'run',created:true,state:'complete'});});await worker.scheduled({cron:'*/15 * * * *'},{...env,OPERA_REFRESH_ENABLED:'true'});expect(calls.map(c=>c.split('/').at(-1))).toEqual(['ar_mail_reconcile_request','ar_period_summary_plan']);expect(mocked.send).not.toHaveBeenCalled();expect(mocked.draft).not.toHaveBeenCalled();});
 it('the read-only workflow checks exact claimed IDs and records outcomes',async()=>{const finish:any[]=[];vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{if(url.endsWith('/ar_mail_reconcile_guard'))return Response.json(true);if(url.endsWith('/ar_mail_reconcile_get'))return Response.json({state:'running',lease_until:new Date(Date.now()+600000).toISOString(),deliveries:[{id:'one',owner:'allowed'},{id:'two',owner:'allowed'}]});finish.push(JSON.parse(String(init.body)));return Response.json(true);});mocked.check.mockResolvedValueOnce({state:'sent'}).mockRejectedValueOnce(Error('provider unavailable'));const step={do:async(_name:string,...args:any[])=>args.at(-1)()};expect(await runMailReconcile(env,'run',step as never)).toMatchObject({checked:2,verified:1,unavailable:1});expect(mocked.check.mock.calls.map(c=>c.slice(1))).toEqual([['allowed','one'],['allowed','two']]);expect(finish[0]).toMatchObject({p_checked:2,p_verified:1,p_unavailable:1});expect(mocked.send).not.toHaveBeenCalled();});
 it('anonymous queue and reconciliation access is denied',async()=>{for(const path of ['/api/collection-queue','/api/mail-reconciliation'])expect((await handleApi(new Request('https://app.test'+path),{})).status).toBe(401);});
 
@@ -19,6 +19,7 @@ function maintenanceHarness(failing: string[]=[]){
   const request=input instanceof Request?input:new Request(input,init),name=new URL(request.url).pathname.split('/').at(-1)!;
   calls.push({name,args:JSON.parse(await request.text())});
   if(failing.includes(name))throw Error('synthetic private upstream failure');
+  if(name==='ar_period_summary_plan')return Response.json({actor:serviceActor,tasks:[]});
   if(name==='ar_mail_reconcile_request')return Response.json({id:'run',created:false,state:'complete'});
   if(name==='ar_financial_service_actor')return Response.json(serviceActor);
   if(name==='ar_document_pending_uploads'||name==='ar_document_cleanup_candidates')return Response.json([]);
@@ -55,7 +56,7 @@ it('keeps Gmail and document maintenance running when financial pruning fails',a
 it('financial log maintenance runs independently when Gmail and file cleanup are disabled',async()=>{
  const calls=maintenanceHarness();
  await worker.scheduled({cron:'*/15 * * * *'},{...maintenanceEnv,GMAIL_RECONCILE_ENABLED:'false',RETENTION_ENABLED:'false'});
- expect(calls.map(c=>c.name)).toEqual(['ar_financial_service_actor','ar_financial_log_prune']);
+ expect(calls.map(c=>c.name)).toEqual(['ar_financial_service_actor','ar_period_summary_plan','ar_financial_log_prune']);
 });
 
 it('write hold prevents every scheduled maintenance request',async()=>{
