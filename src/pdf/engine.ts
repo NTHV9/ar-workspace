@@ -1,3 +1,4 @@
+import {validateInvoiceAttachments} from './invoice-attachments';
 import {readVoucherFields} from './voucher-metadata';
 import {voucherRuns,type VoucherBindings} from './linked-vouchers';
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist';
@@ -26,7 +27,7 @@ export async function loadSources(sources: PdfSourceDocument[]): Promise<{ docum
       const task = getDocument({ data: source.bytes.slice(), fontExtraProperties: true }); tasks.push(task); const doc = await task.promise;
       documents.set(source.id, doc);const metadata=await PDFDocument.load(source.bytes).catch(()=>null);
       for (let n = 1; n <= doc.numPages; n++) {
-        const fields=(metadata?readVoucherFields(metadata.getPage(n-1)):[]).filter(f=>(!source.invoiceId||f.invoiceId===source.invoiceId)&&(!source.invoiceIds||source.invoiceIds.includes(f.invoiceId)));vouchers.set(`${source.id}:${n}`,fields);
+        const fields=(metadata&&source.kind!=='attachment'?readVoucherFields(metadata.getPage(n-1)):[]).filter(f=>(!source.invoiceId||f.invoiceId===source.invoiceId)&&(!source.invoiceIds||source.invoiceIds.includes(f.invoiceId)));vouchers.set(`${source.id}:${n}`,fields);
         const viewport = (await doc.getPage(n)).getViewport({ scale: 1 });
         pages.push({ id: `${source.id}:${n}`, sourceId: source.id, sourcePage: n, width: viewport.width, height: viewport.height, layers: [] });
       }
@@ -182,6 +183,7 @@ export async function renderPage(page: PdfProjectPage, documents: Map<string, PD
 }
 
 export async function exportProject(project: PdfProject, sources: PdfSourceDocument[], documents: Map<string, PDFDocumentProxy>): Promise<PdfExportFile[]> {
+  validateInvoiceAttachments(project,sources,true);
   const groups = deliveryGroups(project, sources);
   if (!groups.length) throw new Error('No pages selected for export.');
   const native = new Map<string, PDFDocument>();

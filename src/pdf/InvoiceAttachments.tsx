@@ -1,0 +1,12 @@
+import {useEffect,useState} from 'react';
+import {ArrowDown,ArrowUp,Trash2} from 'lucide-react';
+import {invoiceTargets} from './invoice-attachments';
+import type {PdfProject,PdfSourceDocument} from './types';
+export function InvoiceAttachments({project,sources,activeInvoice,onAdd,onAssign,onMove,onRemove}:{project:PdfProject;sources:PdfSourceDocument[];activeInvoice?:string;onAdd:(files:File[],invoiceId:string)=>void;onAssign:(sourceId:string,invoiceId:string)=>void;onMove:(sourceId:string,direction:-1|1)=>void;onRemove:(sourceId:string)=>void}){
+ const targets=invoiceTargets(sources),[target,setTarget]=useState(activeInvoice??targets[0]?.id??'');
+ useEffect(()=>{setTarget(activeInvoice??targets[0]?.id??'');},[activeInvoice,targets.map(t=>t.id).join('|')]);
+ if(!targets.length)return null;
+ return <section className="pdf-invoice-attachments" aria-label="PDFs attached to invoices"><h3>PDFs attached to invoices</h3><label>Add after<select aria-label="Invoice for new PDFs" value={target} onChange={e=>setTarget(e.target.value)}>{targets.map(t=><option value={t.id} key={t.id}>{t.name}</option>)}</select></label><label className="pdf-attach-upload">Add PDFs<input type="file" accept=".pdf,application/pdf" multiple aria-label="Add PDFs to invoice" onChange={e=>{const files=Array.from(e.target.files??[]);e.target.value='';if(files.length)onAdd(files,target);}}/></label>
+  {(project.invoiceAttachments??[]).map(a=>{const source=sources.find(s=>s.id===a.sourceId)!,count=project.pages.filter(p=>p.sourceId===a.sourceId).length;const peers=(project.invoiceAttachments??[]).filter(p=>p.invoiceId===a.invoiceId),index=peers.indexOf(a);return <div className="pdf-attached-file" key={a.sourceId}><strong>{source.name}</strong><small>{count} {count===1?'page':'pages'}</small><label>Invoice<select aria-label={`Invoice for ${source.name}`} value={a.invoiceId} onChange={e=>onAssign(a.sourceId,e.target.value)}>{targets.map(t=><option value={t.id} key={t.id}>{t.name}</option>)}</select></label><div><button aria-label={`Move ${source.name} earlier`} disabled={index===0} onClick={()=>onMove(a.sourceId,-1)}><ArrowUp size={14}/></button><button aria-label={`Move ${source.name} later`} disabled={index===peers.length-1} onClick={()=>onMove(a.sourceId,1)}><ArrowDown size={14}/></button><button aria-label={`Remove ${source.name}`} onClick={()=>onRemove(a.sourceId)}><Trash2 size={14}/></button></div></div>;})}
+ </section>;
+}

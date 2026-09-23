@@ -1,3 +1,11 @@
+## 23 September 2026 — PDFs appended to specific invoices
+
+- Implemented: PDF Workspace → Package → PDFs attached to invoices. Multi-file PDF selection, per-file Invoice/Folio destination, file ordering, removal and Undo/Redo. Each supporting PDF follows all original pages of its assigned invoice in combined, split and separate delivery layouts. Additional files never become collectible invoice rows.
+- Tab-local sources join the existing reviewed-export path. Preview, download and email handoff receive the same merged PDF bytes; no new server file store, saved project or retention policy. The feature is available in current transient preparations; legacy saved-editor projects remain unchanged.
+- Validation: reuse static PDF inspection; atomic multi-file import; reject wrong targets, duplicate assignments and orphaned support-only export. Keep the configured editor byte budget (including retained Undo sources), at most 50 imported PDFs and 500 imported pages. Imported voucher metadata cannot participate in Statement/Invoice voucher synchronization.
+- Tested: 1,437 unit tests; seven native PDF browser scenarios covering every delivery layout, multi-page support files, dimensions/text preservation, reassignment, ordering, removal/Undo, existing edits, rejected batch and transient email/download handoff. Two existing source-replacement/whiteout export regressions pass. Updated the obsolete browser assertion that required viewing all preview pages to match the owner’s existing optional-page-review decision. Visual captures inspected; no customer files or emails used.
+- Production deployment verification follows below.
+
 ## 23 September 2026 — Current email templates and personal signatures
 
 - Implemented: template library presents only current content; applying a saved template refetches its latest head. New edits stop accumulating template-history rows; concurrency counters remain internal. Prepared/sent messages retain their own body snapshots. Existing history purge is a separately confirmed operation.
