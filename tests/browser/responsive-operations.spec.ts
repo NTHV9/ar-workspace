@@ -153,7 +153,7 @@ test('mobile queue drawer returns focus and keeps account scope through a nested
   await expect(page.getByRole('button',{name:'Close queue details',exact:true})).toBeFocused();
   await page.getByLabel('Queue select INV-1',{exact:true}).check();
   await screenshot(page,'queue-drawer',390);
-  await page.getByRole('button',{name:'Prepare collection documents',exact:true}).click();
+  await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
   const preparation=page.locator('.document-dialog');
   await expect(preparation).toBeVisible();
   await preparation.getByRole('button',{name:'Cancel',exact:true}).click();
