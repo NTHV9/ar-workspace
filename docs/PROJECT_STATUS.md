@@ -2,7 +2,7 @@
 
 - Implemented: separate branded login screen with no workspace header/navigation, region/hotel controls or synthetic-review link. Loading and access failures remain on the same isolated surface. Successful Google callbacks open Aging and normalize the URL; refreshing an authenticated working page retains that page.
 - Tested: TypeScript/build, 17 focused navigation/session tests and seven browser scenarios (desktop/mobile layout, callback destination, reload/new/opener tab, error state, named staff regression). Desktop and mobile renders inspected; layout detector clear.
-- Deployment/live verification recorded after publication below.
+- Deployed: PR #78 runtime source `e3f4a28f74df017d6057f686174f709d15655640`, Worker version `f3ee5d01-aab4-4ea9-b0b0-120591f3a8f9`. Live health/source and six anonymous boundaries passed; retained Google-only backend binding verified. Real Google administrator login landed at `?dashboard=1&dashboardView=aging`, with the Aging heading and active navigation confirmed. Signed out after testing.
 
 ## 23 September 2026 — Google-only named staff access (live verification)
 
