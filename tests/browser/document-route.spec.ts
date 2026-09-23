@@ -5,6 +5,37 @@ import { test, expect, type Page } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import {assertButtonVisibility} from './fixtures/button-visibility';
 
+test('Statement vouchers edit the matching multi-page Invoice and undo atomically',async({page})=>{
+ test.setTimeout(90000);
+ const controls=await mockApplication(page,'combined','transient');
+ const bytes=[await syntheticStatement('KAT','Synthetic Guest',''),await syntheticInvoice(3,'V001','A'),await syntheticInvoice(40,'','B')];
+ const ids=['b0000000-0000-4000-8000-000000000091','b0000000-0000-4000-8000-000000000092','b0000000-0000-4000-8000-000000000093'];
+ const combined={...controls.job,content:'both',invoice_ids:['A','B'],manifest:[{id:'A',invoice_no:'A'},{id:'B',invoice_no:'B'}],files:ids.map((id,i)=>({...controls.job.files[0],id,kind:i?'invoice':'statement',invoice_id:i?i===1?'A':'B':null,ordinal:i,byte_count:bytes[i].length}))};
+ await page.route('**/api/documents/'+jobId,r=>r.fulfill({json:combined}));
+ for(const [i,id]of ids.entries())await page.route('**/api/documents/'+jobId+'/files/'+id,r=>r.fulfill({contentType:'application/pdf',body:Buffer.from(bytes[i])}));
+ await page.goto('/?documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Enter Voucher No.',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('NEW-B123');
+ await page.getByRole('button',{name:'Select page 3',exact:true}).click();await page.getByRole('button',{name:'Edit Voucher No.',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('NEW-B123');
+ await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('B-CHANGED');await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('NEW-B123');
+ await page.getByRole('button',{name:'Select page 4',exact:true}).click();await page.getByRole('button',{name:'Edit Voucher No.',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('NEW-B123');
+ await page.getByRole('button',{name:'Select page 2',exact:true}).click();await page.getByRole('button',{name:'Edit original text: V001',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('V001');
+ await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('A-UPDATE');
+ await page.getByRole('button',{name:'Select page 1',exact:true}).click();await page.getByRole('button',{name:'Edit Voucher No.',exact:true}).first().click();
+ await expect(page.locator('.pdf-differences').getByText('A-UPDATE',{exact:true})).toHaveCount(2);
+ await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('NEW-B123');
+ await page.screenshot({path:'evidence/pdf-linked-statement-voucher.png'});
+ await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();await expect(page.getByRole('alert')).toHaveCount(0);
+ await page.getByRole('combobox',{name:'PDF page',exact:true}).selectOption({value:'2'});
+ await expect(page.getByRole('img',{name:'Final PDF page 3',exact:true})).toBeVisible();await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');await page.screenshot({path:'evidence/pdf-linked-invoice-voucher-preview.png'});
+ expect(controls.outboundRequests).toEqual([]);
+});
+
 for(const width of [1440,1280])test(`workspace-generated Invoice keeps five editable columns and safe add/delete ${width}`,async({page})=>{
  test.setTimeout(60000);await page.setViewportSize({width,height:width===1440?900:800});const controls=await mockApplication(page,'combined','transient',await syntheticInvoice());
  await page.goto('/?documentJob='+jobId,{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
@@ -179,7 +210,7 @@ test('Statement preparation has one approved system source and preserves Invoice
  await page.goto('/?account=synthetic-account&property=KAT');
  await page.getByLabel('Select INVOICE-A',{exact:true}).check();
  await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
- await page.getByRole('combobox',{name:'Document content',exact:true}).selectOption('both');
+ await expect(page.getByRole('combobox',{name:'Document content',exact:true})).toHaveValue('both');
  await expect(page.getByText('Statement: Generate in AR Workspace.',{exact:false})).toHaveCount(0);
  await expect(page.getByRole('option',{name:'Original from OPERA',exact:true})).toHaveCount(0);
  await page.getByRole('combobox',{name:'Delivery layout',exact:true}).selectOption('statement_bundle');
