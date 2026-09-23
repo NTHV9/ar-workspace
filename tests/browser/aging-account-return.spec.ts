@@ -11,9 +11,9 @@ for(const width of [1280,390])test(`account name opens all ages and returns to t
  await expect(invoices).not.toContainText('INV-kat-child');
  await expect(page.locator('.aging-reconciliation')).toHaveCount(0);
  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
- const back=page.getByRole('button',{name:'Back to all accounts',exact:true});await expect(back).toBeInViewport();
+ const back=page.getByRole('button',{name:'Back to all accounts',exact:true}).last();await expect(back).toBeInViewport();expect(await back.evaluate(e=>getComputedStyle(e).position)).toBe('static');expect((await back.boundingBox())!.y).toBeGreaterThan((await page.locator('.aging-invoice-drill').boundingBox())!.y+(await page.locator('.aging-invoice-drill').boundingBox())!.height);
  expect(await invoices.locator('tbody td').first().evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft))).toBeGreaterThanOrEqual(20);
- await page.screenshot({path:`evidence/aging-account-return-${width}.png`,fullPage:false});
+ await page.screenshot({path:`evidence/aging-inline-return-${width}.png`,fullPage:false});
  await back.click();await expect(page.getByRole('combobox',{name:'Aging view',exact:true})).toHaveValue('accounts');
  await expect(name).toBeFocused();expect(Math.abs((await name.boundingBox())!.y-before!.y)).toBeLessThan(4);
  // Clicking a specific amount still deliberately opens that age range.
