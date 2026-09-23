@@ -1,11 +1,12 @@
-import {signatureWorkplace} from '../../src/email/signature';
+import {signatureLogoFile} from './signature-logo';
+import {signatureWorkplace,parseSignatureProfile} from '../../src/email/signature';
 import {isHotelId} from '../../src/domain/hotels';
 import {assertAcceptanceRecipient} from '../acceptance/recipient';
 import {requireRegionalDelivery} from './regional-delivery';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {readPolicyForHandoff} from '../collection/policy-api';
 import {isCollectionStageKey,parseStageSnapshot,policyStageLabel} from '../../src/domain/collection-policy';
-import {plainMessage} from '../../src/email/rich-message';
+import {plainMessage,richText} from '../../src/email/rich-message';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
 import {emailRpc,googleJson,GoogleResponseError,boundedBody,type EmailEnv,type EmailDraft} from './shared';
 import {gmailToken,gmailCanRead} from './oauth';
@@ -16,7 +17,7 @@ import type {MailFile} from './mime';
 import {verifySentEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
 import {syntheticConversation,type ThreadProof} from './threads';
-export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string}};claimed?:boolean;error?:string}
+export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string;signatureHotel?:string}};claimed?:boolean;error?:string}
 export const deliveryView=(d:Delivery)=>{
  const stage=isCollectionStageKey(d.stage)?d.stage:null;let stageLabel=stage?policyStageLabel(stage):null;
  if(stage&&d.stage_snapshot)try{const snapshot=parseStageSnapshot(d.stage_snapshot);if(snapshot.key===stage)stageLabel=snapshot.label;}catch{/* Keep the recorded stage key when its historical label cannot be verified. */}
@@ -74,6 +75,25 @@ export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipie
  const files:MailFile[]=[{name:'AR-Workspace-Test.pdf',mime:'application/pdf',bytes},...extraFiles];if(files.length>50||files.reduce((n,f)=>n+f.bytes.length,0)>draftBudget(env))throw Error('email_too_large');
  const expected={messageId,subject,body,...(thread?{thread,replyToDeliveryId}:{}),...(richBody?{richBody}:{}),files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
  const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},files,messageId,reply)),token=await gmailToken(env,actor);
+ const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:null,p_revision:null,p_mode:'test',p_stage:null,p_message_id:messageId,p_expected:expected});
+ return submit(env,actor,claim,raw,token);
+}
+/** Synthetic signature previews only: no document/Invoice scope or billing events. */
+export async function sendSignatureDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,hotel:string){
+ if(!isHotelId(hotel)||env.REQUEST_ACCESS)throw Error('email_invalid');
+ assertWritesEnabled(env);const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});await assertAcceptanceRecipient(env,recipients);
+ const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));
+ const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});
+ if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||existing.snapshot.expected.signatureHotel!==hotel)throw Error('email_test_command_conflict');return deliveryView(existing);}
+ if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
+ const profile=parseSignatureProfile(await emailRpc(env,'ar_access_signature_get',{p_actor:env.REQUEST_ACTOR??actor}));
+ const sample=!profile.signature.name||!profile.signature.title;
+ const signature={...profile.signature,name:profile.signature.name||'Sample staff name',title:profile.signature.title||'Sample position',workplace:signatureWorkplace(hotel)};
+ const subject=`Email signature preview — ${hotel} — ${signatureWorkplace(hotel)}`;
+ const richBody={...plainMessage(`This is a test preview of the email signature for ${signatureWorkplace(hotel)}.${sample?' Sample staff details are used for this preview.':''} No customer documents are included.`),signature};
+ const body=richText(richBody),logo=signatureLogoFile(),messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`;
+ const expected={messageId,subject,body,richBody,signatureHotel:hotel,recipientHash,files:[{name:logo.name,byte_count:logo.bytes.length,sha256:await hash(logo.bytes),inlineId:logo.inlineId}]};
+ const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},[],messageId)),token=await gmailToken(env,actor);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:null,p_revision:null,p_mode:'test',p_stage:null,p_message_id:messageId,p_expected:expected});
  return submit(env,actor,claim,raw,token);
 }

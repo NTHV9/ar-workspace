@@ -7,7 +7,7 @@ import {uuidPattern} from '../documents/jobs';
 import {draftBudget,readMailFile} from './gmail-draft';
 import {supplementalRequest} from './supplemental';
 import {templateRequest} from './templates';
-import {deliverMessage,sendDiagnostic,checkDelivery,deliveryView,type Delivery} from './delivery';
+import {deliverMessage,sendDiagnostic,sendSignatureDiagnostic,checkDelivery,deliveryView,type Delivery} from './delivery';
 import {listThreads,previewThread,selectThread,previewSyntheticConversation,providerId} from './threads';
 
 export async function emailApi(request:Request,env:EmailEnv,actor:string):Promise<Response>{
@@ -31,6 +31,7 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
   if(path==='/api/gmail/status'&&request.method==='GET')return emailJson({...await gmailStatus(env,actor),maxAttachmentBytes:draftBudget(env)});
   if(path==='/api/email/test-send'&&request.method==='POST'){
    const v=await jsonBody(request);if(v.confirmed!==true||typeof v.commandId!=='string'||!uuidPattern.test(v.commandId)||typeof v.recipient!=='string')return emailJson({error:'email_invalid'},400);
+   if(v.signatureHotel!==undefined){if(typeof v.signatureHotel!=='string'||v.supplemental!==undefined||v.replyToDeliveryId!==undefined)throw Error('email_invalid');return emailJson(await sendSignatureDiagnostic(env,actor,v.commandId,v.recipient,v.signatureHotel));}
    let supplemental;if(v.supplemental!==undefined){const x=v.supplemental as Record<string,unknown>;if(!x||typeof x!=='object'||typeof x.draftId!=='string'||!uuidPattern.test(x.draftId)||!Number.isSafeInteger(x.revision)||Number(x.revision)<0||!Array.isArray(x.ids)||!x.ids.length||x.ids.length>49||x.ids.some(i=>typeof i!=='string'||!uuidPattern.test(i))||new Set(x.ids).size!==x.ids.length)return emailJson({error:'email_invalid'},400);supplemental={draftId:x.draftId,revision:Number(x.revision),ids:x.ids as string[]};}
    if(v.rich!==undefined&&typeof v.rich!=='boolean')return emailJson({error:'email_invalid'},400);
    if(v.replyToDeliveryId!==undefined&&(typeof v.replyToDeliveryId!=='string'||!uuidPattern.test(v.replyToDeliveryId)||supplemental))return emailJson({error:'email_invalid'},400);

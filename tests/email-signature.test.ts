@@ -1,3 +1,4 @@
+import {sendSignatureDiagnostic} from '../worker/email/delivery';
 import {afterEach,expect,it,vi} from 'vitest';
 import {parseSignature,signatureHtml,signatureText} from '../src/email/signature';
 import {plainMessage,parseRichMessage,richHtml,richText} from '../src/email/rich-message';
@@ -52,4 +53,14 @@ it('resolves the signature workplace from each hotel, never the region or a staf
  for(const hotel of HOTEL_IDS)expect(signatureWorkplace(hotel)).toBe(hotelName(hotel));
  expect(signatureWorkplace('KAT')).not.toBe(signatureWorkplace('TSK'));
  expect(()=>signatureWorkplace('Unknown')).toThrow('signature_hotel_unavailable');
+});
+
+it('signature diagnostics replay an existing delivery and reject changing its recipient or hotel',async()=>{
+ const recipient='synthetic-preview@example.invalid',recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:[recipient],cc:[],bcc:[]})));
+ const f=vi.fn(async()=>Response.json({id:other,mode:'test',state:'sent',stage:null,snapshot:{expected:{recipientHash,signatureHotel:'KAT'}}}));vi.stubGlobal('fetch',f);
+ expect(await sendSignatureDiagnostic(env,actor,other,recipient,'KAT')).toMatchObject({state:'sent',recorded:false});expect(f).toHaveBeenCalledTimes(1);
+ await expect(sendSignatureDiagnostic(env,actor,other,recipient,'TSK')).rejects.toThrow('email_test_command_conflict');
+ await expect(sendSignatureDiagnostic(env,actor,other,'different@example.invalid','KAT')).rejects.toThrow('email_test_command_conflict');
+ await expect(sendSignatureDiagnostic(env,actor,other,recipient,'Unknown')).rejects.toThrow('email_invalid');
+ expect(f).toHaveBeenCalledTimes(3);
 });

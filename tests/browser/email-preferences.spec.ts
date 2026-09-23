@@ -55,7 +55,7 @@ for(const width of [1440,390])test(`signature settings and hotel names at ${widt
  await page.getByRole('button',{name:'My email signature',exact:true}).click();await expect(page.getByRole('heading',{name:'My email signature',exact:true})).toBeVisible();
  await page.getByLabel('Name',{exact:true}).fill('Synthetic Example');await page.getByLabel('Position',{exact:true}).fill('Supervisor');
  await page.getByRole('button',{name:'Save signature',exact:true}).click();await expect(page.getByRole('status')).toContainText('Email signature saved.');
- const preview=page.getByRole('region',{name:'Signature preview'});
+ const preview=page.getByRole('region',{name:'Signature preview',exact:true});
  for(const hotel of HOTEL_IDS){await page.getByRole('combobox',{name:'Signature preview hotel'}).selectOption(hotel);await expect(preview).toContainText(signatureWorkplace(hotel));}
  await expect(preview.getByRole('img',{name:'Katathani Collection',exact:true})).toBeVisible();
  await page.screenshot({path:`.tmp/email-signature-${width}.png`,fullPage:true});
@@ -85,4 +85,17 @@ test('composer previews and saves one signature for the document hotel, and relo
  await page.screenshot({path:'.tmp/email-signature-composer.png',fullPage:true});
  await page.getByRole('button',{name:'Choose template',exact:true}).click();await page.locator('.template-choice').filter({hasText:'Billing'}).click();await page.getByRole('button',{name:'Apply to message',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Email subject',exact:true})).toHaveValue('Newest template subject');await expect(page.getByLabel('Email signature')).toHaveCount(1);
+});
+
+test('six signature previews require confirmation and retain the same batch without auto-resending',async({context,page})=>{
+ await preferences(context);const sent:Record<string,unknown>[]=[];
+ await context.route('**/api/email/test-send',route=>{sent.push(route.request().postDataJSON());return route.fulfill({json:{state:'sent',recorded:false}});});
+ await googleReturn(page);await page.getByRole('button',{name:'My email signature',exact:true}).click();
+ await page.getByRole('textbox',{name:'Test recipient',exact:true}).fill('synthetic-preview@example.invalid');
+ page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Send 6 preview emails',exact:true}).click();expect(sent).toHaveLength(0);
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Send 6 preview emails',exact:true}).click();
+ await expect(page.getByText('Sent and verified',{exact:true})).toHaveCount(6);expect(sent.map(s=>s.signatureHotel)).toEqual([...HOTEL_IDS]);expect(new Set(sent.map(s=>s.commandId)).size).toBe(6);
+ await expect(page.getByRole('button',{name:'Send 6 preview emails',exact:true})).toBeDisabled();
+ await page.reload();await page.getByRole('button',{name:'My email signature',exact:true}).click();await expect(page.getByText('Sent and verified',{exact:true})).toHaveCount(6);expect(sent).toHaveLength(6);
+ await expect(page.getByRole('textbox',{name:'Test recipient',exact:true})).toHaveValue('');
 });
