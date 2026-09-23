@@ -1,5 +1,13 @@
 # สถานะโครงการใหม่
 
+## 23 September 2026 — Linked PDF vouchers and invoice header rule
+
+- Newly generated Statements and Invoices carry bounded page-local Voucher anchors keyed by hotel/account/invoice identity. Empty Statement cells are editable; edits/clears propagate across the matching Statement row and every retained page of that Invoice within the preparation, including hidden content modes. Changes remain PDF-only and share one undo/redo transaction. Source-page identity, rather than editable project-page IDs, selects anchors. Legacy PDFs retain their original behavior; new preparations provide the linked fields.
+- Field fitting stays inside its original bounds, preserving centered Statement values and left-aligned Invoice header values. Native baselines remain aligned for existing row insertion. Optional metadata parsing does not block otherwise supported legacy PDFs. No invoice matching by guest name, Folio text or page order.
+- New document dialogs default to Statement and Invoices, while explicit retry content remains unchanged. Generated Invoice pages now draw a rule under DATE/DESCRIPTION/REFERENCE/amount headings. Geometry checked against all six existing hotel template layouts.
+- Tested: 1,425 unit cases passed; renderer/link unit checks passed after final adjustments. The 32-case document browser suite initially passed 29; the linked Preview selector and two Statement-row regressions were resolved and targeted cases passed. Final linked-field test covers blank/existing values, both edit directions, unrelated invoices, multi-page propagation, Undo and rendered export Preview. Default both-content assertion and empty Invoice voucher/row-insertion checks passed. Typecheck/build/assets/dry run passed. New synthetic screenshots pdf-linked-statement-voucher.png and pdf-linked-invoice-voucher-preview.png inspected; old screenshots preserved.
+- Deployment pending verification. No accounting, email, database-schema or existing-file mutation.
+
 ## 23 September 2026 — Searchable continuous account invoice list
 
 - Account Aging invoice tables now search guest/invoice/folio/hotel and sort all eight columns, including Status in both directions. Identifier sorts are numeric-aware; absent values stay last with deterministic identity ties. Search and sort survive opening an Invoice and returning. New account selection clears the prior invoice query.

@@ -1,3 +1,5 @@
+import {readVoucherFields} from './voucher-metadata';
+import {voucherRuns,type VoucherBindings} from './linked-vouchers';
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { PDFDocument } from 'pdf-lib';
@@ -9,10 +11,12 @@ import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSo
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
 GlobalWorkerOptions.workerSrc = workerUrl;
+const voucherScopes=new WeakMap<Map<string,PDFDocumentProxy>,VoucherBindings>();
+export const voucherBindings=(documents:Map<string,PDFDocumentProxy>)=>voucherScopes.get(documents)??new Map();
 const documentScopes = new WeakMap<Map<string, PDFDocumentProxy>, string>();
 
 export async function loadSources(sources: PdfSourceDocument[]): Promise<{ documents: Map<string, PDFDocumentProxy>; project: PdfProject; dispose: () => void }> {
-  const documents = new Map<string, PDFDocumentProxy>();
+  const documents = new Map<string, PDFDocumentProxy>();const vouchers:VoucherBindings=new Map();voucherScopes.set(documents,vouchers);
   const scope = crypto.randomUUID(); documentScopes.set(documents, scope);
   const tasks: { destroy: () => Promise<void> }[] = [];
   const pages: PdfProjectPage[] = [];
@@ -20,8 +24,9 @@ export async function loadSources(sources: PdfSourceDocument[]): Promise<{ docum
     for (const source of sources) {
       if (documents.has(source.id)) throw new Error('Duplicate document identity. Reopen this job.');
       const task = getDocument({ data: source.bytes.slice(), fontExtraProperties: true }); tasks.push(task); const doc = await task.promise;
-      documents.set(source.id, doc);
+      documents.set(source.id, doc);const metadata=await PDFDocument.load(source.bytes).catch(()=>null);
       for (let n = 1; n <= doc.numPages; n++) {
+        const fields=(metadata?readVoucherFields(metadata.getPage(n-1)):[]).filter(f=>(!source.invoiceId||f.invoiceId===source.invoiceId)&&(!source.invoiceIds||source.invoiceIds.includes(f.invoiceId)));vouchers.set(`${source.id}:${n}`,fields);
         const viewport = (await doc.getPage(n)).getViewport({ scale: 1 });
         pages.push({ id: `${source.id}:${n}`, sourceId: source.id, sourcePage: n, width: viewport.width, height: viewport.height, layers: [] });
       }
@@ -33,7 +38,7 @@ export async function loadSources(sources: PdfSourceDocument[]): Promise<{ docum
 export async function detectText(page: PdfProjectPage, documents: Map<string, PDFDocumentProxy>): Promise<DetectedText[]> {
   if (!page.sourcePage) return [];
   const pdfPage = await documents.get(page.sourceId)!.getPage(page.sourcePage);
-  return extractSourceText(page, pdfPage, documentScopes.get(documents) ?? 'unregistered');
+  return voucherRuns(await extractSourceText(page, pdfPage, documentScopes.get(documents) ?? 'unregistered'),voucherBindings(documents).get(`${page.sourceId}:${page.sourcePage}`)??[]);
 }
 
 type TextMask={x:number;y:number;width:number;height:number};

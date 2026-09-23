@@ -1,4 +1,5 @@
-import {PDFDocument,StandardFonts,type PDFFont,type PDFPage} from 'pdf-lib';
+import {addVoucherField} from '../../src/pdf/voucher-metadata';
+import {PDFDocument,StandardFonts,rgb,type PDFFont,type PDFPage} from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import noto from '../statement/fonts/noto-thai';
 import {supportedInvoiceTemplate,type InvoiceAssets,type InvoiceModel} from './types';
@@ -35,11 +36,12 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
   for(const label of assets.headerText??[]){if(label.text.length>80)fail();write(label.text,label.x,label.top,label.size,label.bold);}
   const a=pos('ADDRESSEE_FULL_ADDRESS'),address=model.address.flatMap(s=>wrap(s,290,8));if(address.length>11)fail();address.forEach((s,i)=>write(s,a.x0,a.top+i*9.2));
   for(const [name,value]of [['BILL_NUMBER_HEADER',model.folio],['ROOM_NUMBER',model.room],['ARRIVAL_DATE_SHORT',model.arrival],['DEPARTURE_DATE_SHORT',model.departure],['CONFIRMATION_NO',model.confirmation],['CASHIER_NO',model.cashierNo]] as const)field(name,value);
-  const voucherKey=p.EXTERNAL_REFERENCE?'EXTERNAL_REFERENCE':'CUSTOM_REFERENCE';const v=pos(voucherKey);if(width(model.voucher,8,true)>106)fail();write(model.voucher,v.x0,v.top,8,true);
+  const voucherKey=p.EXTERNAL_REFERENCE?'EXTERNAL_REFERENCE':'CUSTOM_REFERENCE';const v=pos(voucherKey);if(width(model.voucher,8,true)>106)fail();write(model.voucher,v.x0,v.top,8,true);addVoucherField(page,{hotel:model.hotel,accountId:model.accountId,invoiceId:model.invoiceId,align:'left',text:model.voucher,x:v.x0-3,y:v.top-.5,width:Math.min(112,602-v.x0),height:12,fontSize:8,bold:true});
   const guests=pos('NO_OF_ADULTS');write([model.adults,model.children].join(' / '),guests.x0,guests.top);
   const dt=pos('SYSTEM_DATE');write(model.printDate+' : '+model.printTime,dt.x0,dt.top);
   const guest=pos('FIRST_NAME'),company=pos('GUEST_COMPANY'),tax=pos('TAX1_NO');
   for(const [q,s] of [[guest,model.guest],[company,model.company],[tax,model.taxId]] as const){if(width(s,8)>430)fail();write(s,q.x0,q.top);}
+  const headings=assets.fixedText.filter(f=>f.text!=='INVOICE'),bottom=Math.max(...headings.map(f=>f.top+f.size));const rule=Math.min(assets.layout.rowTop-2,bottom+3);if(rule<=bottom)fail();page.drawLine({start:{x:Math.min(...headings.map(f=>f.x))-5,y:792-rule},end:{x:pos('CREDIT').x1+4,y:792-rule},thickness:.5,color:rgb(0,0,0)});
   y=assets.layout.rowTop;
  };
  add();
