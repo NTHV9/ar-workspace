@@ -1,3 +1,9 @@
+## 25 September 2026 — Compact OPERA status menu
+
+- Replaced the always-visible yellow OPERA strip with a compact header button beside the account/session controls. Connection details, Refresh OPERA, administrator-only connection check and Reload saved data remain available in an on-demand native popover. Existing disabled states and request handlers are unchanged.
+- The popover supports Escape, outside-click dismissal, keyboard opening, explicit close/focus return and viewport-bounded placement; resizing closes it. Both regions use the same component. Login and synthetic review do not expose the live controls.
+- Tested: TypeScript/build and four browser scenarios across Phuket/Khao Lak at 1440 and 390 px. Verified hidden-by-default controls, live status text, action availability, a real mocked reload request, keyboard behavior and viewport bounds. Desktop/mobile rendered evidence inspected. No backend, source data, permission or billing changes. Deployment pending.
+
 ## 24 September 2026 — Database-backed Period summaries
 
 - Implemented: private, service-only summary cache preserving the exact existing per-region comparison response. Source-table statement triggers invalidate committed generations; cold concurrent requests coalesce by exact key. Unverified financial coverage remains unverified. Derived-cache persistence errors fall back to the computed response.

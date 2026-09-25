@@ -1,0 +1,11 @@
+.opera-status-trigger{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;flex-shrink:0;white-space:nowrap;color:#36516b}
+.opera-status-trigger i{width:7px;height:7px;border-radius:50%;background:#95650b}
+.opera-status-trigger i[data-state=connected]{background:#16796b}
+.opera-status-menu{position:fixed;inset:auto;top:var(--opera-menu-top,80px);right:var(--opera-menu-right,24px);margin:0;width:360px;max-width:calc(100vw - 32px);max-height:calc(100dvh - var(--opera-menu-top,80px) - 16px);overflow:auto;padding:18px;background:#fff;color:#10253f;border:1px solid #dce5ef;border-radius:14px;box-shadow:0 12px 36px #10253f24}
+.opera-status-menu header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.opera-status-menu header strong{font-size:15px}
+.opera-status-menu .opera-status-copy{font-size:12px;line-height:1.7;color:#51677e;margin:12px 0 16px;overflow-wrap:anywhere}
+.opera-status-actions{display:grid;gap:8px}
+.opera-status-actions>button{display:flex;align-items:center;gap:9px;justify-content:flex-start;min-height:42px;font-size:12px;width:100%}
+.opera-status-trigger[aria-expanded=true]{background:#edf3ff;border-color:#9bafe3}
+@media(max-width:600px){.opera-status-trigger{min-height:44px}.opera-status-menu{right:16px!important}}
