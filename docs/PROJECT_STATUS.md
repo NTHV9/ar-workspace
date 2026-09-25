@@ -1,3 +1,8 @@
+## 25 September 2026 — Skip Friendly for short credit terms
+
+- Implemented the owner-confirmed Credit Term < 7 condition in the shared collection next-action calculation. Both queue grouping and dashboard action summaries use the same rule. The stable Friendly key is excluded only for known nonnegative short terms; active policy dates, exactly-seven-day behavior, billing prerequisites and actual-sent history are preserved. Invoices not yet due for Follow-up 1 remain Upcoming rather than becoming collection-due early.
+- Tested: a failing regression before the change, then 32 focused queue/policy tests including 0/1/3/6-day terms, the 7-day boundary, missing terms and previously sent Friendly. TypeScript/build and two browser scenarios passed for Phuket/Khao Lak, checking Ready/Upcoming membership and unchanged No reminders sent evidence. No database or policy-setting mutation and no email sent. Deployment pending.
+
 ## 25 September 2026 — Compact OPERA status menu
 
 - Replaced the always-visible yellow OPERA strip with a compact header button beside the account/session controls. Connection details, Refresh OPERA, administrator-only connection check and Reload saved data remain available in an on-demand native popover. Existing disabled states and request handlers are unchanged.

@@ -29,14 +29,17 @@ export function nextCollectionAction(invoice:QueueInvoice,today:string,policy:Co
  if(urgent)return result('Urgent',w.last_reminder_date!);
  if(!w.last_reminder_stage&&w.billing_required&&!w.first_billing_date)return result('Billing',validDate(invoice.transaction_date)?invoice.transaction_date:today,w.credit_term===null?'Credit term is required before sending':undefined);
  if(!policy)return result('Needs review',null,'Collection policy unavailable');
- let next=w.last_reminder_stage?policy.rounds.slice(policy.rounds.findIndex(r=>r.key===w.last_reminder_stage)+1).find(r=>r.active&&!captured?.earlierKeys.includes(r.key)):undefined;
+ // Short credit terms have no pre-due Friendly step; sent history remains authoritative.
+ const skipFriendly=w.credit_term!==null&&Number.isFinite(w.credit_term)&&w.credit_term>=0&&w.credit_term<7;
+ const eligible=(r:CollectionPolicy['rounds'][number])=>r.active&&!(skipFriendly&&r.key==='Friendly');
+ let next=w.last_reminder_stage?policy.rounds.slice(policy.rounds.findIndex(r=>r.key===w.last_reminder_stage)+1).find(r=>eligible(r)&&!captured?.earlierKeys.includes(r.key)):undefined;
  if(w.last_reminder_stage&&(!policy.rounds.some(r=>r.key===w.last_reminder_stage)||!next))return result('Needs review',null,'No active next round after the latest sent stage');
  if(next?.anchor==='previous_sent')return result(next.key,calendarAdd(w.last_reminder_date!,next.offsetDays));
  if(w.billing_required===null)return result('Setup needed',null,'Set Billing Required / Not Required');
  if(w.billing_required&&!w.first_billing_date)return result('Billing',validDate(invoice.transaction_date)?invoice.transaction_date:today,w.credit_term===null?'Credit term is required before sending':undefined);
  if(w.credit_term===null)return result('Setup needed',null,'Set the credit term to determine the due date');
  if(!validDate(w.due_date))return result('Needs review',null,'Due date unavailable');
- if(!next){const dueRounds=policy.rounds.filter(r=>r.active&&r.anchor==='due');next=dueRounds.filter(r=>calendarAdd(w.due_date!,r.offsetDays)<=today).at(-1)??dueRounds[0];}
+ if(!next){const dueRounds=policy.rounds.filter(r=>eligible(r)&&r.anchor==='due');next=dueRounds.filter(r=>calendarAdd(w.due_date!,r.offsetDays)<=today).at(-1)??dueRounds[0];}
  if(!next)return result('Needs review',null,'Collection policy has no initial due round');
  return result(next.key,calendarAdd(w.due_date,next.offsetDays));
 }

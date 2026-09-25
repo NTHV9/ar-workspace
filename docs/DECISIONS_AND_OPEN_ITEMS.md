@@ -1,3 +1,7 @@
+## Owner confirmation — 25 September 2026: short credit terms
+
+Invoices whose effective Credit Term is known and less than 7 days skip the Friendly step in the collection work queue. The first applicable due-date round remains scheduled by the active policy (currently Follow-up 1 at Due + 1 day); it is Upcoming until that date. Terms of exactly 7 days or more retain Friendly. Missing terms retain setup/review handling. Preserve all actual-sent history, holds, verification and billing prerequisites; do not send or rewrite workflow evidence automatically.
+
 ## ยืนยันล่าสุด — PDF ต่อท้าย Invoice รายใบ — 23 กันยายน 2026
 
 - เพิ่มไฟล์ PDF ได้หลายไฟล์ใน PDF Workspace และเลือก Invoice ปลายทางของแต่ละไฟล์. รวมหน้าต่อท้าย Invoice นั้นในไฟล์ PDF เดียวกัน; จัดลำดับไฟล์ได้. ผู้ใช้ยืนยันรับเฉพาะ PDF ไม่รวม JPG/PNG สำหรับฟังก์ชันนี้.
