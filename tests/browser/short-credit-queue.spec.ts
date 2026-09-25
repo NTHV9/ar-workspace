@@ -1,0 +1,25 @@
+import {test,expect} from '@playwright/test';
+import {setupRegional} from './fixtures/hotel-regions';
+import {calendarAdd,thaiToday} from '../../src/domain/collection';
+const user={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{providers:['google']},user_metadata:{},created_at:'2026-09-23T00:00:00Z'};
+for(const region of ['phuket','khao-lak'])test(`${region}: short terms skip Friendly but keep their readiness dates`,async({page})=>{
+ await setupRegional(page,true);const today=thaiToday(),hotel=region==='phuket'?'KAT':'TLKL';
+ const rows=[0,3,7].map(term=>({hotel,account_id:term===7?'seven':'short',account_name:term===7?'Seven-day account':'Short-term account',account_type:'CCR',id:'invoice-'+term,invoice_no:'SYN-'+term,folio_no:null,guest:'Synthetic',open:100,transaction_date:today,collection_role:'standalone',collection_selectable:true,verification_state:'verified',workflow:{revision:1,billing_required:false,credit_term:term,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:calendarAdd(today,term===0?-2:2)}}));
+ await page.route('**/api/collection-queue?*',r=>r.fulfill({json:{rows}}));await page.route('**/api/collection-queue',r=>r.fulfill({json:{rows}}));
+ await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user}}));
+ await page.route('**/api/config',r=>r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}}));
+ await page.route('**/api/access/me',r=>r.fulfill({json:{memberId:user.id,email:user.email,active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}}));
+ await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
+ await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const k=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(k+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
+ await page.goto('/?code=synthetic-code');await expect(page.getByRole('button',{name:'Collections',exact:true})).toBeVisible();
+ if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption(region);
+ await page.getByRole('button',{name:'Collections',exact:true}).click();
+ await page.getByLabel('Queue stage',{exact:true}).selectOption('All');await page.getByLabel('Queue timing',{exact:true}).selectOption('All');
+ const table=page.getByRole('region',{name:'Prioritized collection work',exact:true});
+ const short=table.getByRole('row').filter({hasText:'Short-term account'}),seven=table.getByRole('row').filter({hasText:'Seven-day account'});
+ await expect(short).toContainText('Follow-up 1');await expect(short).not.toContainText('Friendly');await expect(seven).toContainText('Friendly');
+ await short.click();await expect(page.getByRole('complementary',{name:'Collection work details'})).toContainText('1 / 1');
+ await page.getByLabel('Queue timing',{exact:true}).selectOption('Ready');await short.click();await expect(page.getByLabel('Queue select SYN-0',{exact:true})).toBeVisible();await expect(page.getByLabel('Queue select SYN-3',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Queue timing',{exact:true}).selectOption('Upcoming');await short.click();await expect(page.getByLabel('Queue select SYN-3',{exact:true})).toBeVisible();await expect(page.getByLabel('Queue select SYN-0',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('complementary',{name:'Collection work details'})).toContainText('No reminders sent');
+});

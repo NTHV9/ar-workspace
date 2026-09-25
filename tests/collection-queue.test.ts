@@ -7,3 +7,17 @@ it('shows Urgent immediately after Final even when rules are incomplete',()=>{ex
 it('does not fabricate zero term or due date and keeps unverified balances visible',()=>{expect(nextCollectionAction({...invoice,workflow:null},'2026-09-10')).toMatchObject({stage:'Setup needed'});expect(nextCollectionAction({...invoice,verification_state:'unverified'},'2026-09-10')).toMatchObject({stage:'Needs review'});expect(nextCollectionAction({...invoice,open:0},'2026-09-10')).toBeNull();expect(nextCollectionAction({...invoice,collection_role:'child'},'2026-09-10')).toBeNull();});
 it('billing-required invoices remain in Billing until actual first billing',()=>{expect(nextCollectionAction({...invoice,workflow:{...invoice.workflow!,billing_required:true,due_date:null}},'2026-09-10')).toMatchObject({stage:'Billing',ready:true});});
 it('uses full Follow-up labels without rewriting stored stage keys',()=>{expect(stageLabel('Follow 1')).toBe('Follow-up 1');expect(stageLabel('Follow 3')).toBe('Follow-up 3');expect(stageLabel('Friendly')).toBe('Friendly');});
+it.each([0,1,3,6])('skips Friendly for credit term %i without making follow-up ready before its due-date offset',credit_term=>{
+ const row={...invoice,workflow:{...invoice.workflow!,credit_term}};
+ expect(nextCollectionAction(row,'2026-09-03')).toMatchObject({stage:'Follow 1',date:'2026-09-11',ready:false,latest:'No reminders sent'});
+ expect(nextCollectionAction(row,'2026-09-11')).toMatchObject({stage:'Follow 1',date:'2026-09-11',ready:true});
+});
+it.each([7,8,30])('retains Friendly at and above the seven-day boundary (%i)',credit_term=>{
+ expect(nextCollectionAction({...invoice,workflow:{...invoice.workflow!,credit_term}},'2026-09-03')).toMatchObject({stage:'Friendly',ready:true});
+});
+it('does not infer a short term when missing, or rewrite previously sent Friendly history',()=>{
+ expect(nextCollectionAction({...invoice,workflow:{...invoice.workflow!,credit_term:null}},'2026-09-03')).toMatchObject({stage:'Setup needed'});
+ const row={...invoice,workflow:{...invoice.workflow!,credit_term:3,last_reminder_stage:'Friendly',last_reminder_date:'2026-09-03'}};
+ expect(nextCollectionAction(row,'2026-09-04')).toMatchObject({stage:'Follow 1',date:'2026-09-11',ready:false,latest:'Friendly'});
+ expect(row.workflow.last_reminder_stage).toBe('Friendly');
+});
