@@ -1,0 +1,27 @@
+import {test,expect} from '@playwright/test';
+import {setupRegional} from './fixtures/hotel-regions';
+const user={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{providers:['google']},user_metadata:{},created_at:'2026-09-23T00:00:00Z'};
+for(const region of ['phuket','khao-lak'])for(const width of [1440,390])test(`${region} ${width}: OPERA controls stay out of the page until opened`,async({page})=>{
+ await page.setViewportSize({width,height:900});const c=await setupRegional(page,true);
+ await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user}}));
+ await page.route('**/api/config',r=>r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}}));
+ await page.route('**/api/access/me',r=>r.fulfill({json:{memberId:user.id,email:user.email,active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}}));
+ await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
+ await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const k=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(k+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
+ await page.goto('/?code=synthetic-code');await expect(page.getByRole('button',{name:'Dashboard',exact:true})).toBeVisible();
+ if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption(region);
+ const trigger=page.getByRole('button',{name:'OPERA data status',exact:true});
+ await expect(trigger).toHaveAttribute('aria-expanded','false');await expect(page.locator('.live-status')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Reload saved data',exact:true})).toHaveCount(0);
+ await page.screenshot({path:`evidence/opera-menu-${region}-${width}-closed.png`,fullPage:false});
+ await trigger.click();const panel=page.getByRole('region',{name:'OPERA connection and data',exact:true});await expect(panel).toBeVisible();
+ await expect(panel.getByText('OPERA connected',{exact:false})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Refresh OPERA',exact:true})).toBeEnabled();await expect(panel.getByRole('button',{name:'Check OPERA connection',exact:true})).toBeEnabled();
+ const box=await panel.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width);
+ await page.screenshot({path:`evidence/opera-menu-${region}-${width}-open.png`,fullPage:false});
+ const before=c.regionalCalls.filter(r=>r.path==='/api/portfolio').length;
+ await panel.getByRole('button',{name:'Reload saved data',exact:true}).click();await expect.poll(()=>c.regionalCalls.filter(r=>r.path==='/api/portfolio').length).toBeGreaterThan(before);
+ await page.keyboard.press('Escape');await expect(trigger).toHaveAttribute('aria-expanded','false');await expect(panel).not.toBeVisible();
+ await trigger.focus();await page.keyboard.press('Enter');await expect(panel).toBeVisible();await panel.getByRole('button',{name:'Close OPERA data status',exact:true}).click();await expect(trigger).toBeFocused();
+ expect(c.errors).toEqual([]);
+});
