@@ -78,14 +78,16 @@ for(const [width,height] of [[1440,600],[1280,720],[900,720]] as const)test(`${w
 });
 
 for(const region of ['phuket','khao-lak'])test(`${region}: workflow changes refresh open work without a manual reload`,async({page})=>{
- const {rows}=await setup(page,region);
- await page.getByRole('searchbox',{name:'Search collection queue',exact:true}).fill('Harbor');
+ const {rows}=await setup(page,region);const search=region==='phuket'?'':'Harbor';
+ await page.getByRole('searchbox',{name:'Search collection queue',exact:true}).fill(search);
  await page.getByRole('button',{name:'Harbor Travel',exact:true}).click();
  const queue=page.getByRole('region',{name:'Prioritized collection work'});
  await expect(queue).toContainText('Billing');
+ const panel=page.getByRole('complementary',{name:'Collection work details'});await panel.getByLabel('Queue select HARBOR-101',{exact:true}).check();
  rows.filter(r=>r.account_id==='harbor').forEach(r=>{Object.assign(r.workflow!,{first_billing_date:'2026-09-25',due_date:'2026-10-25'});});
  await page.evaluate(()=>{const channel=new BroadcastChannel('ar-invoice-changes');channel.postMessage('changed');channel.close();});
  await expect(queue).not.toContainText('Billing');
  await expect(queue).toContainText('Upcoming');
- await expect(page.getByRole('searchbox',{name:'Search collection queue',exact:true})).toHaveValue('Harbor');
+ await expect(page.getByRole('searchbox',{name:'Search collection queue',exact:true})).toHaveValue(search);
+ await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('.queue-selection-footer')).toContainText('0 selected');
 });
