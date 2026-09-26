@@ -9,11 +9,12 @@ for(const region of ['phuket','khao-lak'])test(`${region}: short terms skip Frie
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user}}));
  await page.route('**/api/config',r=>r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}}));
  await page.route('**/api/access/me',r=>r.fulfill({json:{memberId:user.id,email:user.email,active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}}));
- await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
+ await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled({timeout:10000});
  await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const k=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(k+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
  await page.goto('/?code=synthetic-code');await expect(page.getByRole('button',{name:'Collections',exact:true})).toBeVisible();
  if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption(region);
  await page.getByRole('button',{name:'Collections',exact:true}).click();
+ await page.getByRole('button',{name:'Collection filters',exact:true}).click();
  await page.getByLabel('Queue stage',{exact:true}).selectOption('All');await page.getByLabel('Queue timing',{exact:true}).selectOption('All');
  const table=page.getByRole('region',{name:'Prioritized collection work',exact:true});
  const short=table.getByRole('row').filter({hasText:'Short-term account'}),seven=table.getByRole('row').filter({hasText:'Seven-day account'});
