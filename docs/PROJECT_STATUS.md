@@ -1,7 +1,7 @@
 ## 26 September 2026 — Guest beside Account in Invoice Register
 
 - Moved Guest immediately after Account. Existing pinned identifiers remain unchanged; the Invoice details jump now targets Folio, where the remaining source metadata begins.
-- TypeScript/build and five existing browser cases passed (1440/1280/390 layout/sort/hide, 1,500-row scrolling and read-only paste boundaries). Desktop render inspected. No data, edit or API changes. Deployment verification pending.
+- TypeScript/build and five existing browser cases passed (1440/1280/390 layout/sort/hide, 1,500-row scrolling and read-only paste boundaries). Desktop render inspected. No data, edit or API changes. Deployed runtime `dce898298e86ff0e556688ab581e5c7a22a96ea6`, Worker `1edad8d1-434d-48a3-a983-4dd2bda31a02`. Health/source and six anonymous boundaries passed; three deployed table scenarios passed with synthetic APIs.
 
 ## 26 September 2026 — Invoice Register as a staff entry sheet
 
