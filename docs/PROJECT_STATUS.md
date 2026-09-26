@@ -1,3 +1,11 @@
+## 26 September 2026 — Workbook-style Invoice Register
+
+- Read Phuket.xlsx and Khaolak.xlsx as layout references only. Both use one long table, navy invoice/source headers, gold billing/follow-up headers, filters and frozen references. No original workbook edits or historic data imports.
+- Applied the workbook structure to the existing live register: compact 32px rows, lettered columns, two header groups, a selected-cell address/full-value bar and desktop frozen Hotel/Invoice/Account/Guest. Guest remains directly beside Account. Source metadata precedes work fields; jump controls navigate within the same continuous sheet.
+- Normal clicks edit one manual cell at a time while retaining the other unsaved values in its row. The optional Edit-row action remains. Read-only cells support arrow navigation and full-value copy. Column separators support pointer/keyboard resize and double-click reset. Native full screen preserves pending edits on restoration; no page/context remount.
+- Existing row autosave, revision/idempotency guards, filtering, hiding, history and linked updates are preserved. Single received-amount entry and TSV paste share strict comma/decimal normalization; no OPERA amounts become writable. The value bar displays/copies cell contents, not an Excel formula evaluator.
+- Tested: TypeScript, 1,467 unit tests and all 85 browser smoke cases passed. Includes pointer/key resizing, cell navigation/copy, one-cell editing, pending-value preservation, full-screen restoration and formatted amount entry. Desktop/mobile/full-screen renders inspected; original screenshot baselines retained. Deployment verification pending.
+
 ## 26 September 2026 — Guest beside Account in Invoice Register
 
 - Moved Guest immediately after Account. Existing pinned identifiers remain unchanged; the Invoice details jump now targets Folio, where the remaining source metadata begins.
