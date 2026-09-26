@@ -5,7 +5,7 @@ import type {BudgetEnvironment} from '../operations/budget';
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
 import {isHotelId} from '../../src/domain/hotels';
-export interface RefreshParams { invoiceAuditId?:string; invoiceReadAudit?:boolean; invoiceModelProbe?:boolean; invoiceContractJob?:string; folioTypeProbe?:boolean; acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
+export interface RefreshParams { invoiceAuditId?:string; invoiceReadAudit?:boolean; invoiceModelProbe?:boolean; invoiceRenderProbe?:boolean; invoiceContractJob?:string; folioTypeProbe?:boolean; acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   GOOGLE_ONLY_AUTH?:string;
   REQUEST_ACTOR?:string;

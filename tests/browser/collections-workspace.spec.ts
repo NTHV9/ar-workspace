@@ -23,7 +23,7 @@ async function setup(page:Page,region:string){
  await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
  await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const key=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(key+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
  await page.goto('/?code=synthetic-code');await page.getByRole('button',{name:'Collections',exact:true}).click();await expect(page.getByRole('button',{name:'Harbor Travel',exact:true})).toBeVisible();
- return {writes,hotel};
+ return {writes,hotel,rows};
 }
 for(const [region,width] of [['phuket',1440],['khao-lak',1280],['phuket',390]] as const)test(`${region} ${width}: account-first work, bulk selection and exact document scope`,async({page})=>{
  await page.setViewportSize({width,height:900});const {writes,hotel}=await setup(page,region);
@@ -75,4 +75,19 @@ for(const [width,height] of [[1440,600],[1280,720],[900,720]] as const)test(`${w
  if(width>1100)await expect(page.getByRole('complementary',{name:'Collection work details'}).locator('.queue-selection-footer')).toBeInViewport({ratio:1});
  else await expect(page.getByRole('dialog',{name:'Collection work details'})).toBeVisible();
  await page.screenshot({path:`evidence/queue-table-room-${width}-${height}.png`,fullPage:false});
+});
+
+for(const region of ['phuket','khao-lak'])test(`${region}: workflow changes refresh open work without a manual reload`,async({page})=>{
+ const {rows}=await setup(page,region);const search=region==='phuket'?'':'Harbor';
+ await page.getByRole('searchbox',{name:'Search collection queue',exact:true}).fill(search);
+ await page.getByRole('button',{name:'Harbor Travel',exact:true}).click();
+ const queue=page.getByRole('region',{name:'Prioritized collection work'});
+ await expect(queue).toContainText('Billing');
+ const panel=page.getByRole('complementary',{name:'Collection work details'});await panel.getByLabel('Queue select HARBOR-101',{exact:true}).check();
+ rows.filter(r=>r.account_id==='harbor').forEach(r=>{Object.assign(r.workflow!,{first_billing_date:'2026-09-25',due_date:'2026-10-25'});});
+ await page.evaluate(()=>{const channel=new BroadcastChannel('ar-invoice-changes');channel.postMessage('changed');channel.close();});
+ await expect(queue).not.toContainText('Billing');
+ await expect(queue).toContainText('Upcoming');
+ await expect(page.getByRole('searchbox',{name:'Search collection queue',exact:true})).toHaveValue(search);
+ await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('.queue-selection-footer')).toContainText('0 selected');
 });

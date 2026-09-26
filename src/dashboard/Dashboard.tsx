@@ -17,9 +17,10 @@ import './modern-dashboard.css';
 import './comparison-dashboard.css';
 import './period-layout.css';
 import './period-roomier.css';
-export default function Dashboard({token,cacheGrant,hotel,accounts,params,update,refresh,onOpenInvoice,onReloadCatalog,initialAgingContext,onAgingContextChange}: {token:string;cacheGrant:string;hotel:string;accounts:Account[];params:URLSearchParams;update:(fields:Record<string,string>)=>void;refresh:RefreshState|null|undefined;onOpenInvoice:(hotel:string,accountId:string,invoiceId?:string)=>void;onReloadCatalog?:()=>void;initialAgingContext?:AgingContext;onAgingContextChange?:(context:AgingContext)=>void}){
+export default function Dashboard({dataVersion=0,token,cacheGrant,hotel,accounts,params,update,refresh,onOpenInvoice,onReloadCatalog,initialAgingContext,onAgingContextChange}: {dataVersion?:number;token:string;cacheGrant:string;hotel:string;accounts:Account[];params:URLSearchParams;update:(fields:Record<string,string>)=>void;refresh:RefreshState|null|undefined;onOpenInvoice:(hotel:string,accountId:string,invoiceId?:string)=>void;onReloadCatalog?:()=>void;initialAgingContext?:AgingContext;onAgingContextChange?:(context:AgingContext)=>void}){
  const {error:rulesError,refresh:refreshRules}=useCollectionPolicy();
- const [today,setToday]=useState(thaiToday),[revision,setRevision]=useState(0),[options,setOptions]=useState<AccountOption[]>([]),[optionsError,setOptionsError]=useState(false);
+ const [today,setToday]=useState(thaiToday),[localRevision,setRevision]=useState(0),[options,setOptions]=useState<AccountOption[]>([]),[optionsError,setOptionsError]=useState(false);
+ const revision=localRevision+dataVersion;
  const scope=dashboardScope(params,hotel,today),view=params.get('dashboardView')==='aging'?'aging':'period',dateMode=params.get('dashboardDateMode')??(scope.from===scope.to?'day':'range');
  const region=resolveRegion(params),hotels=regionHotels(region);
  const overviewQuery=new URLSearchParams({...region==='khao-lak'?{region}:{},from:scope.from,to:scope.to});if(scope.type)overviewQuery.set('type',scope.type);

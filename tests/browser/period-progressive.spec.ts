@@ -48,3 +48,20 @@ for(const region of ['phuket','khao-lak'])test(`${region}: cached month appears 
   expect(await page.evaluate(()=>sessionStorage.getItem('ar-period-preview-v1'))).toBeNull();
  }finally{release();}
 });
+
+for(const region of ['phuket','khao-lak'])test(`${region}: a linked invoice edit refreshes the open period and Aging readers`,async({page})=>{
+ await setupRegional(page,true);await login(page);
+ if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption('khao-lak');
+ const requests:string[]=[];page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/dashboard/'))requests.push(u.pathname+u.search);});
+ await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();
+ await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
+ await expect.poll(()=>requests.filter(p=>p.includes('segment=paid')).length).toBeGreaterThan(0);
+ const before=requests.length;
+ await page.evaluate(()=>window.dispatchEvent(new Event('ar-invoice-changed')));
+ await expect.poll(()=>new Set(requests.slice(before).filter(p=>p.includes('hotel-overview')).map(p=>new URL(p,"http://localhost").searchParams.get('segment'))).size).toBe(6);
+ await page.getByRole('button',{name:'Aging',exact:true}).click();
+ await expect.poll(()=>requests.filter(p=>p.includes('aging-invoices')).length).toBeGreaterThan(0);
+ const aging=requests.filter(p=>p.includes('aging-invoices')).length;
+ await page.evaluate(()=>window.dispatchEvent(new Event('ar-invoice-changed')));
+ await expect.poll(()=>requests.filter(p=>p.includes('aging-invoices')).length).toBeGreaterThan(aging);
+});
