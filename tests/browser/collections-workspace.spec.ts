@@ -66,3 +66,13 @@ for(const [width,height] of [[1440,600],[1280,720]] as const)test(`${width}x${he
  await panel.getByRole('button',{name:'Prepare documents',exact:true}).scrollIntoViewIfNeeded();await expect(panel.getByRole('button',{name:'Prepare documents',exact:true})).toBeInViewport();
  await page.screenshot({path:`evidence/queue-invoice-room-${width}-${height}.png`,fullPage:false});
 });
+for(const [width,height] of [[1440,600],[1280,720],[900,720]] as const)test(`${width}x${height}: work queue expands instead of clipping account rows`,async({page})=>{
+ await page.setViewportSize({width,height});await setup(page,'phuket');
+ const queue=page.getByRole('region',{name:'Prioritized collection work'});
+ const geometry=await queue.evaluate(e=>({visible:e.clientHeight,content:e.scrollHeight}));
+ expect(geometry.content).toBeLessThanOrEqual(geometry.visible+1);
+ await page.getByRole('button',{name:'Orchid Agency',exact:true}).scrollIntoViewIfNeeded();await page.getByRole('button',{name:'Orchid Agency',exact:true}).click();
+ if(width>1100)await expect(page.getByRole('complementary',{name:'Collection work details'}).locator('.queue-selection-footer')).toBeInViewport({ratio:1});
+ else await expect(page.getByRole('dialog',{name:'Collection work details'})).toBeVisible();
+ await page.screenshot({path:`evidence/queue-table-room-${width}-${height}.png`,fullPage:false});
+});

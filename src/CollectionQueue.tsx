@@ -20,6 +20,7 @@ export default function CollectionQueue({token,hotel,accounts,params,update,onOp
  const syncMarker=useRef('');
  const [filtersOpen,setFiltersOpen]=useState(false);
  const detailDialog=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{const panel=detailDialog.current;if(!panel)return;const observer=new ResizeObserver(()=>{const height=panel.getBoundingClientRect().height;if(height>0)panel.style.setProperty('--queue-detail-height',height+'px');});observer.observe(panel);return()=>observer.disconnect();},[]);
  const [compact,setCompact]=useState(()=>typeof matchMedia!=='undefined'&&matchMedia('(max-width:1100px)').matches);
  useEffect(()=>{const media=matchMedia('(max-width:1100px)');const changed=()=>setCompact(media.matches);media.addEventListener('change',changed);return()=>media.removeEventListener('change',changed);},[]);
  useEffect(()=>{
