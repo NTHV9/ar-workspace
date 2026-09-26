@@ -1,3 +1,9 @@
+## 26 September 2026 — Unclipped Work queue
+
+- Removed desktop/tablet viewport caps from the account work table. Rows now expand naturally and use page scrolling instead of a short nested scroll box. Route-scoped overflow clipping preserves the rounded shell without trapping sticky positioning; the invoice panel follows page scrolling with a measured offset that keeps its actions reachable on short screens.
+- Reproduced clipping before the fix (573 px of rows in a 300 px viewport). TypeScript/build and all eight Collections browser cases pass, including new 1440×600, 1280×720 and 900×720 table-expansion/last-account checks plus the prior selection and invoice-room regressions. Short-screen renders inspected. No business-rule, source-data or permission changes.
+- Deployed runtime `1ceb9f0bef4423ec03fe2b7e10f6ec043149f8e7`, Worker `d9100478-357e-4eae-82cb-6510811b0f63`, PR #88. Health/source and six anonymous boundaries passed; the three table-expansion/selection cases also passed against deployed assets with synthetic APIs.
+
 ## 26 September 2026 — Keep collection invoices readable on short screens
 
 - Reproduced the reported squeeze: the previous fixed-height sidebar left only 27.8125 px for invoice rows on a short desktop viewport. Replaced the fixed height with content-driven sizing and a responsive minimum; the desktop invoice list reserves at least 260 px. Header/footer no longer consume its flex space. Compact dialogs allow outer scrolling when their content exceeds the viewport, while retaining at least 220 px for invoices.
