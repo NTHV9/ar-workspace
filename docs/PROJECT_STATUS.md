@@ -1,3 +1,8 @@
+## 26 September 2026 — Guest beside Account in Invoice Register
+
+- Moved Guest immediately after Account. Existing pinned identifiers remain unchanged; the Invoice details jump now targets Folio, where the remaining source metadata begins.
+- TypeScript/build and five existing browser cases passed (1440/1280/390 layout/sort/hide, 1,500-row scrolling and read-only paste boundaries). Desktop render inspected. No data, edit or API changes. Deployment verification pending.
+
 ## 26 September 2026 — Invoice Register as a staff entry sheet
 
 - Owner chose automatic row saving. Enter/Shift+Enter save and move vertically in the same field; Tab/Shift+Tab navigate editable fields and save at row boundaries; clicking another invoice saves the current row first. Escape cancels the unfinished row, Ctrl/Cmd+S explicitly saves, and Save row remains optional. Unchanged rows do not create writes. Unconfirmed saves retain their exact command and values; failures never advance to another invoice.
