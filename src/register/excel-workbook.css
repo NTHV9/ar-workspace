@@ -1,0 +1,47 @@
+/* Workbook cues follow the provided navy source / gold work headers. */
+.excel-workbook{--sheet-green:#217346;--sheet-source:#1f3b57;--sheet-work:#806018}
+.excel-workbook .register-summary{background:#f3f5f7;border-radius:0;border-color:#d0d6dc;margin-bottom:0!important;padding:7px 10px!important;gap:14px!important}
+.excel-workbook .register-summary h2{order:0;font-size:14px}.excel-workbook .register-summary>span{order:1;font-size:11px}.excel-workbook .register-summary>button{order:2}.excel-workbook .register-summary>label{order:3}.excel-workbook .register-summary>.excel-expand{order:4;margin-left:0}
+.excel-workbook .register-tools{background:#f7f8fa;border:1px solid #d0d6dc;border-top:0;padding:3px 7px;min-height:31px!important;margin:0!important}
+.excel-workbook .entry-jumps button{padding:5px 8px;font-size:11px}
+.excel-value-bar{display:flex;align-items:center;gap:8px;border:1px solid #c7ced6;padding:4px 6px;background:#fff;min-height:34px;margin:5px 0}
+.excel-value-bar input.excel-address{flex:0 0 62px!important;width:62px!important;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;border-right:1px solid #c7ced6}
+.excel-value-bar>span{font-size:11px;color:#40546c;min-width:90px}
+.excel-value-bar input,.excel-value-bar textarea{flex:1;min-width:0!important;border:0!important;padding:4px!important;height:26px;font-size:12px!important;border-radius:0!important;background:#fff!important;color:#152e43!important}
+.excel-value-bar small{white-space:nowrap;font-size:10px;color:#53667b}
+.excel-value-bar button{flex:0 0 auto;font-size:11px;padding:4px 8px;box-shadow:none;white-space:nowrap}
+.excel-workbook .register-sheet{height:calc(100dvh - 350px);min-height:330px;border-radius:0;border-color:#bcc7d2}
+.excel-workbook .register-table{font-family:Arial,sans-serif;font-size:12px}
+.excel-workbook .register-table tbody tr,.excel-workbook .register-table td{height:32px}
+.excel-workbook .register-table td{padding:2px 6px!important;border-color:#dce1e6;line-height:1.35}
+.excel-workbook .register-table .register-cell{height:27px;padding:3px;line-height:1.3}
+.excel-workbook .register-table input:not([type=checkbox]),.excel-workbook .register-table select,.excel-workbook .register-table textarea{height:27px;min-height:27px;line-height:19px;padding:2px 3px}
+.excel-workbook .register-table tbody td[data-editable=true]{background:#fffdf6}
+.excel-workbook .register-table tbody tr:nth-child(even) td:not([data-editable=true]){background:#f0f4f8}
+.excel-workbook .register-table tbody tr.is-editing td{background:#f5f9fc}
+.excel-workbook .register-table td[data-selected=true],.excel-workbook .register-table td[data-active=true]{outline:2px solid var(--sheet-green);outline-offset:-2px;background:#f5fff8!important}
+.excel-workbook .register-table td:focus{outline:2px solid var(--sheet-green);outline-offset:-2px}
+.excel-workbook .register-table .excel-column-groups{height:26px}
+.excel-workbook .register-table .excel-column-groups th{height:26px;top:0;z-index:8;background:var(--sheet-source);color:white;padding:4px 9px;font-weight:600;font-size:11px;border:1px solid #ffffff30;text-align:left}
+.excel-workbook .register-table .excel-column-groups th:nth-child(3){background:var(--sheet-work)}
+.excel-workbook .register-table .excel-column-groups th:first-child,.excel-workbook .register-table .excel-column-groups th:last-child{background:#e5e9ed}
+.excel-workbook .register-table .excel-column-labels{height:50px}
+.excel-workbook .register-table .excel-column-labels th{top:26px;height:50px;background:var(--sheet-source);color:white;border:1px solid #ffffff30;padding:18px 8px 5px;font-weight:500}
+.excel-workbook .register-table .excel-column-labels th[data-group=work]{background:var(--sheet-work)}
+.excel-workbook .register-table .excel-column-labels th:first-child,.excel-workbook .register-table .excel-column-labels th:last-child{background:#e5e9ed;color:#31465c}
+.excel-workbook .register-table .excel-column-labels th button{font-family:Arial,sans-serif;font-size:11px;color:inherit;white-space:nowrap}
+.excel-column-letter{position:absolute;top:3px;left:0;right:0;text-align:center;font-size:10px;line-height:12px;color:#fff;font-weight:400}
+.excel-resize-handle{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize;touch-action:none;z-index:10}
+.excel-resize-handle:hover,.excel-resize-handle:focus-visible{background:#8ed6b9;outline:1px solid var(--sheet-green)}
+.excel-workbook .register-status{border-radius:0;padding:4px 8px;font-size:11px;margin:0}
+.excel-workbook .register-pagination{padding:6px 8px;border:1px solid #c7ced6;border-top:0;background:#f3f5f7;margin:0;font-size:11px}
+.excel-workbook:fullscreen{padding:14px;background:#f7fafc;display:flex;flex-direction:column;overflow:auto;box-sizing:border-box}
+.excel-workbook:fullscreen .register-sheet{height:auto;flex:1;min-height:200px}
+.excel-workbook:fullscreen .register-filters{flex:0 0 auto}
+@media(max-width:800px){.excel-value-bar{gap:4px}.excel-value-bar>span{min-width:0;max-width:60px;font-size:10px}.excel-value-bar input.excel-address{flex-basis:35px}.excel-value-bar small{display:none}.excel-value-bar button{padding:4px;font-size:10px}.excel-workbook .register-sheet{min-height:340px;height:62dvh}.excel-workbook:fullscreen{padding:6px}}
+
+.excel-workbook .register-table [data-pinned=account_name]{box-shadow:none;border-right-color:#dce1e6!important}
+.excel-workbook .register-table [data-pinned=guest]{border-right:1px solid #91a2b3!important;box-shadow:3px 0 7px #243d5b0d}
+@media(max-width:800px){.excel-workbook .register-table td[data-pinned=guest]{position:static!important;left:auto!important;box-shadow:none}.excel-workbook .register-table th[data-pinned=guest]{left:auto!important;z-index:3;box-shadow:none}}
+
+.excel-value-bar textarea{min-height:26px;max-height:100px;resize:vertical;line-height:18px;overflow:auto}
