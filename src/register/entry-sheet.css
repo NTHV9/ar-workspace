@@ -1,0 +1,48 @@
+/* Register is an entry sheet: compact controls, stable row geometry, visible editing state. */
+.invoice-register .entry-filters{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.entry-filters .register-search{width:min(360px,100%)}
+.entry-filters>label:not(.register-search){flex:1 1 145px}
+.entry-filters:not(.is-expanded)>label:not(.register-search){display:none}
+.entry-filter-toggle{height:38px;box-shadow:none!important}
+.invoice-register .register-summary{background:#f0f5fa;border:1px solid var(--reg-line);border-radius:6px}
+.invoice-register .register-tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-height:38px!important}
+.entry-jumps{display:flex;align-items:center;gap:2px}
+.entry-jumps button{padding:7px 10px;border:0;border-radius:4px;background:transparent;box-shadow:none;color:#294966;font-size:12px}
+.entry-jumps button:hover,.entry-jumps button:focus-visible{background:#e5edf8;color:#234daf}
+.register-sheet-caption{margin-left:auto;font-size:11px;color:#506780}
+.invoice-register .register-sheet{height:calc(100dvh - 330px);min-height:340px;border-radius:4px}
+.register-sheet .register-table tr,.register-sheet .register-table td{height:44px}
+.register-sheet .register-table td{padding:4px 7px!important}
+.register-sheet .register-table th{font-size:11px;background:#edf2f7}
+.register-sheet .register-table th[data-editable=true]{background:#e7f1f3;border-bottom-color:#abc7ce}
+.register-sheet .register-table td:not([data-editable=true]){background:#f8fafc}
+.register-sheet .register-table td[data-editable=true]{background:#fff}
+.register-sheet .register-table .register-cell{display:block;width:100%;height:34px;border:0;border-radius:0;padding:4px;background:transparent;box-shadow:none;text-align:left;font-weight:400;color:var(--reg-ink);cursor:text}
+.register-sheet .register-table .register-cell:hover{background:#edf4ff}
+.register-sheet .register-table td[data-active=true]{outline:2px solid #3565d8;outline-offset:-2px;background:#fff!important}
+.register-sheet .register-table tr.is-editing td[data-editable=true]{background:#f2f7ff}
+.register-sheet .register-table input:not([type=checkbox]),.register-sheet .register-table select,.register-sheet .register-table textarea{height:32px;min-height:32px;padding:4px;border:1px solid transparent;border-radius:0;background:transparent;font-size:12px;box-shadow:none}
+.register-sheet .register-table input:focus,.register-sheet .register-table select:focus,.register-sheet .register-table textarea:focus{outline:0;background:#fff}
+.register-sheet .register-table textarea{line-height:22px;resize:none}
+.entry-row-number{display:inline-block!important;font-size:10px;color:#536b86;min-width:17px;text-align:right;margin-right:3px}
+.register-sheet .register-table td:first-child input{width:14px;height:14px;vertical-align:middle;margin:0}
+.invoice-register .register-editbar{position:static;padding:7px 10px;margin:0;border:1px solid #bacce8;border-bottom:0;border-radius:4px 4px 0 0;background:#f4f8ff;box-shadow:none;font-size:12px}
+.register-editbar>span{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.register-editbar small{margin-left:10px!important;font-size:11px;color:#526780}
+.entry-coordinate{font-weight:600;color:#244d91}
+.register-editbar button{padding:6px 10px;font-size:11px;min-height:30px;box-shadow:none}
+.register-status{padding:5px 0;margin:0;font-size:12px;color:#245f55}
+.register-error{margin:6px 0;padding:10px;border:1px solid #dfbbc1;background:#fff5f6;border-radius:4px}
+.register-horizontal-scroll{margin:0 0 3px}
+.register-sheet .register-cell:focus-visible{outline:2px solid #3565d8;outline-offset:-2px}
+@media(max-width:800px){.register-sheet .register-table [data-pinned=invoice_no]{left:56px!important}.register-sheet-caption{margin-left:0}.entry-jumps{flex-wrap:wrap}.register-editbar small{display:none!important}.invoice-register .register-sheet{min-height:360px;height:60dvh}.entry-filters .register-search{flex:1;min-width:180px}.entry-row-number{font-size:9px}}
+
+.register-paste-dialog{width:min(880px,calc(100vw - 32px));max-height:85dvh;padding:20px;border:1px solid #bfd0e3;border-radius:12px;color:var(--reg-ink);background:#fff;box-shadow:0 16px 48px #10253f30}
+.register-paste-dialog::backdrop{background:#10253f66}.register-paste-dialog header,.register-paste-dialog footer{display:flex;align-items:center;gap:12px;justify-content:space-between}.register-paste-dialog h2{margin:0;font-size:20px}.register-paste-dialog p{font-size:13px}.register-paste-preview{max-height:52dvh;overflow:auto;margin:16px 0;border:1px solid #dce5ef}.register-paste-preview table{border-collapse:collapse;width:100%;font-size:12px}.register-paste-preview th,.register-paste-preview td{padding:9px;border:1px solid #dce5ef;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;min-width:100px}.register-paste-preview thead th{position:sticky;top:0;background:#eef4fa}.register-paste-dialog footer{flex-wrap:wrap}.register-paste-dialog footer .primary-button{width:auto}.register-paste-dialog [role=alert]{color:#932638;background:#fff4f5;padding:10px}.register-paste-dialog footer [role=status]{margin-right:auto;font-size:12px}
+
+.invoice-register .entry-jumps{padding:0;background:none;border:0;box-shadow:none;border-radius:0;min-width:0}
+.invoice-register .entry-jumps button{background:transparent;border:0;box-shadow:none;padding:7px 10px;border-radius:4px;font-weight:500}
+.invoice-register .entry-jumps button:hover,.invoice-register .entry-jumps button:focus-visible{background:#e5edf8}
+.invoice-register .register-editbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px}
+.invoice-register .register-editbar .primary-button{width:auto;min-width:85px}
+@media(max-width:800px){.invoice-register .entry-jumps{display:flex;gap:0;flex-wrap:wrap}.invoice-register .entry-jumps button{flex:0 0 auto;font-size:11px}.register-editbar>span{font-size:11px}.invoice-register .register-editbar{gap:5px}}
