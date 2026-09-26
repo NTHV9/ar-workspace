@@ -14,11 +14,11 @@ export function RegisterPaste({text,rows,start,columns,values,token,onClose}:{te
    if(alive.current)onClose(saved.current,commands.current.length>0);
   }catch(e){if(alive.current)setError(registerError(e instanceof Error?e.message:''));}finally{lock.current=false;if(alive.current)setBusy(false);}
  }
- const count=plan.entries[0]?.cells.length??0;
+ const count=plan.entries[0]?.cells.length??0,attempted=commands.current.length>0;
  return <dialog ref={dialog} className="register-paste-dialog" aria-labelledby="paste-title" onCancel={e=>{e.preventDefault();if(!lock.current)onClose(saved.current,commands.current.length>0);}}>
-  <header><div><h2 id="paste-title">Review pasted cells</h2><p>{plan.entries.length} invoice rows · {count} columns</p></div><button disabled={busy} onClick={()=>onClose(saved.current,commands.current.length>0)}>Close</button></header>
+  <header><div><h2 id="paste-title">Review pasted cells</h2><p>{plan.entries.length} invoice rows · {count} columns</p></div><button disabled={busy} onClick={()=>onClose(saved.current,commands.current.length>0)}>{attempted?'Close & reload':'Close'}</button></header>
   {plan.error?<p role="alert">{plan.error}</p>:<div className="register-paste-preview"><table><thead><tr><th>Invoice</th>{columns.slice(0,count).map(c=><th key={c.field}>{c.label}</th>)}</tr></thead><tbody>{plan.entries.map((e,i)=><tr key={i}><th>{e.row.hotel} · {e.row.invoice_no??e.row.id}{i<done?' ✓':''}</th>{e.cells.map((c,j)=><td key={j}>{c||'—'}</td>)}</tr>)}</tbody></table></div>}
   {error&&<p role="alert">{error}</p>}
-  <footer><span role="status">{done?`${done} of ${plan.entries.length} rows saved`:busy?'Saving...':'No changes saved yet'}</span><button disabled={busy} onClick={()=>onClose(saved.current,commands.current.length>0)}>{done?'Close — keep saved rows':'Cancel'}</button><button className="primary-button" disabled={busy||!!plan.error} onClick={()=>void apply()}>{busy?'Saving...':error?'Retry remaining rows':`Save ${plan.entries.length} rows`}</button></footer>
+  <footer><span role="status">{done?`${done} of ${plan.entries.length} rows saved`:busy?'Saving...':attempted?'Stopped — check the saved rows':'No changes saved yet'}</span><button disabled={busy} onClick={()=>onClose(saved.current,commands.current.length>0)}>{attempted?'Reload saved rows':'Cancel'}</button><button className="primary-button" disabled={busy||!!plan.error} onClick={()=>void apply()}>{busy?'Saving...':error?'Retry remaining rows':`Save ${plan.entries.length} rows`}</button></footer>
  </dialog>;
 }

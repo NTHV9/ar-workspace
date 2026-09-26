@@ -98,7 +98,7 @@ test('pasted cells show exact invoice destinations before saving and link every 
 });
 test('pasted batch stops on uncertainty and reuses the failed command before continuing',async({page})=>{
  const {writes}=await setup(page,{ambiguous:true});await page.getByRole('button',{name:'Reports',exact:true}).click();await page.getByRole('button',{name:'Owner · KAT 1234567890123',exact:true}).click();await pasteCells(page,'Alice\nBob');const dialog=page.getByRole('dialog',{name:'Review pasted cells'});
- await dialog.getByRole('button',{name:'Save 2 rows',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('could not be confirmed');expect(writes).toHaveLength(1);
+ await dialog.getByRole('button',{name:'Save 2 rows',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('could not be confirmed');expect(writes).toHaveLength(1);await expect(dialog).not.toContainText('No changes saved yet');await expect(dialog.getByRole('button',{name:'Reload saved rows',exact:true})).toBeVisible();
  await dialog.getByRole('button',{name:'Retry remaining rows',exact:true}).click();await expect(dialog).toHaveCount(0);expect(writes).toHaveLength(3);expect(writes[0].commandId).toBe(writes[1].commandId);expect(writes[2].commandId).not.toBe(writes[0].commandId);
 });
 test('paste cannot write OPERA columns or extend beyond existing invoices',async({page})=>{
