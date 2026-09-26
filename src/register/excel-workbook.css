@@ -7,7 +7,7 @@
 .excel-value-bar{display:flex;align-items:center;gap:8px;border:1px solid #c7ced6;padding:4px 6px;background:#fff;min-height:34px;margin:5px 0}
 .excel-value-bar input.excel-address{flex:0 0 62px!important;width:62px!important;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;border-right:1px solid #c7ced6}
 .excel-value-bar>span{font-size:11px;color:#40546c;min-width:90px}
-.excel-value-bar input{flex:1;min-width:0!important;border:0!important;padding:4px!important;height:26px;font-size:12px!important;border-radius:0!important;background:#fff!important;color:#152e43!important}
+.excel-value-bar input,.excel-value-bar textarea{flex:1;min-width:0!important;border:0!important;padding:4px!important;height:26px;font-size:12px!important;border-radius:0!important;background:#fff!important;color:#152e43!important}
 .excel-value-bar small{white-space:nowrap;font-size:10px;color:#53667b}
 .excel-value-bar button{flex:0 0 auto;font-size:11px;padding:4px 8px;box-shadow:none;white-space:nowrap}
 .excel-workbook .register-sheet{height:calc(100dvh - 350px);min-height:330px;border-radius:0;border-color:#bcc7d2}
@@ -43,3 +43,5 @@
 .excel-workbook .register-table [data-pinned=account_name]{box-shadow:none;border-right-color:#dce1e6!important}
 .excel-workbook .register-table [data-pinned=guest]{border-right:1px solid #91a2b3!important;box-shadow:3px 0 7px #243d5b0d}
 @media(max-width:800px){.excel-workbook .register-table td[data-pinned=guest]{position:static!important;left:auto!important;box-shadow:none}.excel-workbook .register-table th[data-pinned=guest]{left:auto!important;z-index:3;box-shadow:none}}
+
+.excel-value-bar textarea{min-height:26px;max-height:100px;resize:vertical;line-height:18px;overflow:auto}
