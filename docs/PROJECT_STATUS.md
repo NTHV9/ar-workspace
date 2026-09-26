@@ -6,6 +6,8 @@
 - Existing row autosave, revision/idempotency guards, filtering, hiding, history and linked updates are preserved. Single received-amount entry and TSV paste share strict comma/decimal normalization; no OPERA amounts become writable. The value bar displays/copies cell contents, not an Excel formula evaluator.
 - Tested: TypeScript, 1,467 unit tests and all 85 browser smoke cases passed. Includes pointer/key resizing, cell navigation/copy, one-cell editing, pending-value preservation, full-screen restoration and formatted amount entry. Desktop/mobile/full-screen renders inspected; original screenshot baselines retained. Deployed runtime `3a0afc6558cf58db5c73178adad6652e42719982`, Worker `7287c76d-afd0-454f-aaad-85605468059a`. Health/source and six anonymous boundaries passed. Nine deployed browser scenarios passed on the initial workbook build; three focused cases passed again after preserving multiline values in the expandable value bar, including full-screen pending edits and formatted amounts. No live customer writes.
 
+- Preserved native Enter activation on invoice links while retaining cell-navigation keys. Two focused cases passed locally and on final runtime `139ee0c453f60b170f0c3a40aca933d758891f64`, Worker `0ccd56d1-efbe-4b58-a6b6-d0d2ff1f3bc3` (PR #92). Health/source and six anonymous boundaries passed; the complete 85-case CI browser suite also passed on the preceding workbook build.
+
 ## 26 September 2026 — Guest beside Account in Invoice Register
 
 - Moved Guest immediately after Account. Existing pinned identifiers remain unchanged; the Invoice details jump now targets Folio, where the remaining source metadata begins.
