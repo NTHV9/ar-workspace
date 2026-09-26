@@ -119,6 +119,7 @@ export function InvoiceRegister({token,region,hotel,accounts,params,update,onDir
  }
  const cellKey=(event:KeyboardEvent<HTMLTableCellElement>,row:RegisterRow,column:Column)=>{
   if((event.target as HTMLElement).matches('input,select,textarea'))return;
+  if(event.key==='Enter'&&!column.field&&(event.target as HTMLElement).closest('button'))return;
   if(event.key==='Enter'||event.key==='F2'){event.preventDefault();if(column.field)void beginEdit(row,column.field);return;}
   const steps:Record<string,[number,number]>={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]};const step=steps[event.key];if(!step||!data)return;
   event.preventDefault();const i=data.rows.findIndex(r=>rowKey(r)===rowKey(row)),j=sheetColumns.findIndex(c=>c.key===column.key),next=data.rows[Math.max(0,Math.min(data.rows.length-1,i+step[0]))],nextColumn=sheetColumns[Math.max(0,Math.min(sheetColumns.length-1,j+step[1]))];void selectCell(next,nextColumn.key);
