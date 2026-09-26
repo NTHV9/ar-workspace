@@ -36,7 +36,11 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
   for(const label of assets.headerText??[]){if(label.text.length>80)fail();write(label.text,label.x,label.top,label.size,label.bold);}
   const a=pos('ADDRESSEE_FULL_ADDRESS'),address=model.address.flatMap(s=>wrap(s,290,8));if(address.length>11)fail();address.forEach((s,i)=>write(s,a.x0,a.top+i*9.2));
   for(const [name,value]of [['BILL_NUMBER_HEADER',model.folio],['ROOM_NUMBER',model.room],['ARRIVAL_DATE_SHORT',model.arrival],['DEPARTURE_DATE_SHORT',model.departure],['CONFIRMATION_NO',model.confirmation],['CASHIER_NO',model.cashierNo]] as const)field(name,value);
-  const voucherKey=p.EXTERNAL_REFERENCE?'EXTERNAL_REFERENCE':'CUSTOM_REFERENCE';const v=pos(voucherKey);if(width(model.voucher,8,true)>106)fail();write(model.voucher,v.x0,v.top,8,true);addVoucherField(page,{hotel:model.hotel,accountId:model.accountId,invoiceId:model.invoiceId,align:'left',text:model.voucher,x:v.x0-3,y:v.top-.5,width:Math.min(112,602-v.x0),height:12,fontSize:8,bold:true});
+  const voucherKey=p.EXTERNAL_REFERENCE?'EXTERNAL_REFERENCE':'CUSTOM_REFERENCE',v=pos(voucherKey),voucherBox=Math.min(132,605-v.x0);
+  // Keep the compact hotel header on one line. Never clip or truncate a reference.
+  let voucherSize=8;while(voucherSize>6&&width(model.voucher,voucherSize,true)>voucherBox-6)voucherSize-=.25;
+  if(width(model.voucher,voucherSize,true)>voucherBox-6)throw Error('document_invoice_voucher_too_long');
+  write(model.voucher,v.x0,v.top,voucherSize,true);addVoucherField(page,{hotel:model.hotel,accountId:model.accountId,invoiceId:model.invoiceId,align:'left',text:model.voucher,x:v.x0-3,y:v.top-.5,width:voucherBox,height:12,fontSize:voucherSize,bold:true});
   const guests=pos('NO_OF_ADULTS');write([model.adults,model.children].join(' / '),guests.x0,guests.top);
   const dt=pos('SYSTEM_DATE');write(model.printDate+' : '+model.printTime,dt.x0,dt.top);
   const guest=pos('FIRST_NAME'),company=pos('GUEST_COMPANY'),tax=pos('TAX1_NO');

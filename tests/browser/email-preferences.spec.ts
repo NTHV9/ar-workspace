@@ -84,7 +84,7 @@ test('composer previews and saves one signature for the document hotel, and relo
  const signatureBox=await page.getByLabel('Email signature').boundingBox(),footerBox=await page.locator('.email-message>footer').boundingBox();expect(signatureBox!.y+signatureBox!.height).toBeLessThanOrEqual(footerBox!.y+1);
  await page.screenshot({path:'.tmp/email-signature-composer.png',fullPage:true});
  await page.getByRole('button',{name:'Choose template',exact:true}).click();await page.locator('.template-choice').filter({hasText:'Billing'}).click();await page.getByRole('button',{name:'Apply to message',exact:true}).click();
- await expect(page.getByRole('textbox',{name:'Email subject',exact:true})).toHaveValue('Newest template subject');await expect(page.getByLabel('Email signature')).toHaveCount(1);
+ await expect(page.getByRole('textbox',{name:'Email subject',exact:true})).toHaveValue('Newest template subject');await expect(page.getByLabel('Email signature')).toHaveCount(1);await expect(dialog).not.toContainText(/version \d+/);
 });
 
 test('six signature previews require confirmation and retain the same batch without auto-resending',async({context,page})=>{

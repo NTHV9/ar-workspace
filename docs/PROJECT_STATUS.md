@@ -1,3 +1,13 @@
+## 26 September 2026 — System audit follow-up fixes
+
+- Linked changes: App passes the shared invoice revision to Collections and both Dashboard/Aging entry points. Already-open views reload after same-tab or BroadcastChannel notifications without resetting filters or remounting the page. Behavioral browser regressions cover Phuket/Khao Lak Queue state and Period/Aging readers.
+- Invoice diagnosis: six unmatched historical errors represent two distinct source items, not six invoices. Five attempts share one item with a 28-character Voucher; the other is an OPERA Credit transaction without reservation/folio. Exact-job read-only provider diagnostics used; no ledger or document-job state changed.
+- Renderer: fit Voucher text within available right-header space down to 6 pt, retaining every character and one row. Ordinary values remain 8 pt. Oversized values return a specific error rather than truncating. Credit transactions lacking a folio have an actionable explanation; no fabricated reservation invoice. Added exact-job in-memory render diagnostics with counts/error-only output and no PDF persistence.
+- UI: removed template revision suffix in Email Composer; saved template/delivery references unchanged.
+- Verification: Google-only fixture/navigation for Invoice Register; exact completion waits for batch hide/restore; native imported-PDF deletion fixture excludes linked Voucher metadata, with separate linked-field coverage retained. Aging layout/sort supplies verified invoice counts at a fixed date. Added isolated built-asset browser smoke tests to CI; harnesses never enter production dist. Original image baselines preserved.
+- Tested: TypeScript, production build/bundle and 1,456 unit cases passed. Initial 69 browser cases passed; focused 15-case browser rerun passed after Voucher/font and Aging-fixture refinements. Long-reference rendering produced valid one/two-page synthetic PDFs across six existing template asset sets; KAT render inspected. Final combined browser run passed all 73 cases. Deployment/live render verification pending.
+- No customer email, schema, permissions or financial-source changes. Friendly remains automatically skipped for terms under seven days; manual stage selection is unchanged.
+
 ## 26 September 2026 — Unclipped Work queue
 
 - Removed desktop/tablet viewport caps from the account work table. Rows now expand naturally and use page scrolling instead of a short nested scroll box. Route-scoped overflow clipping preserves the rounded shell without trapping sticky positioning; the invoice panel follows page scrolling with a measured offset that keeps its actions reachable on short screens.

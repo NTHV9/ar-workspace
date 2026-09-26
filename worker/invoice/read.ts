@@ -14,7 +14,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  if(!selected.length){const history=await readScopedInvoiceHistory(reader,manifest.hotel,manifest.account_id,[manifest.invoice_no]);selected=history.filter(i=>String(i.transactionNo)===manifest.id&&i.printed===true);}
  if(selected.length!==1)fail();const current=selected[0];
  if(String(current.invoiceNo)!==manifest.invoice_no||amountCents(current.balance,'THB')!==Math.round(manifest.open*100))fail();
- if(!manifest.reservation_id||!manifest.folio_date||!manifest.folio_no)throw Error('document_invoice_selector_missing');
+ if(!manifest.reservation_id||!manifest.folio_date||!manifest.folio_no)throw Error(current.invoiceType==='Credit'&&!current.folioNo&&!record(current.reservationId??{}).id?'document_credit_without_folio':'document_invoice_selector_missing');
  const valid=(i:Record<string,unknown>)=>String(i.transactionNo)===manifest.id&&String(i.invoiceNo)===manifest.invoice_no&&String(i.folioNo)===manifest.folio_no&&amountCents(i.balance,'THB')===Math.round(manifest.open*100)&&i.folioDate===manifest.folio_date&&i.parentInvoiceNo==null;
  if(!valid(current)||record(current.reservationId).id!==manifest.reservation_id)fail();
  const historical=await reader.reservationFolios(manifest.reservation_id,manifest.folio_date,true),window=nativeFolioSelector(historical,manifest),folioInfo=record(record(historical).reservationFolioInformation),reservation=folioInfo.reservationInfo;

@@ -20,6 +20,8 @@ import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
+import {renderInvoice} from '../invoice/render';
+import type {InvoiceAssets} from '../invoice/types';
 import {readInvoicePacket} from '../invoice/read';
 import {auditInvoiceRead} from '../invoice/read-audit';
 import {invoiceModel,record as invoiceRecord} from '../invoice/model';
@@ -42,6 +44,13 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         const selectedId=payload.invoiceAuditId??job.invoice_ids[0];if(!/^[1-9][0-9]{0,15}$/.test(selectedId)||!job.invoice_ids.includes(selectedId))throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===selectedId);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        // Exact selected-job diagnostic: renders in memory, never saves a PDF or changes the job.
+        if(payload.invoiceRenderProbe){
+          try{const packet=await readInvoicePacket(makeReader(runtime,hotel),invoice),model=invoiceModel(packet);
+            const assets=await backendRpc<InvoiceAssets>(runtime,'ar_invoice_template',{p_hotel:hotel,p_version:job.invoice_template_version});
+            const bytes=await renderInvoice(model,assets);return JSON.stringify({ok:true,hotel,byteCount:bytes.length,voucherLength:model.voucher.length,lineCount:model.lines.length});
+          }catch(error){return JSON.stringify({ok:false,hotel,error:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'});}
+        }
         if(payload.invoiceReadAudit)return JSON.stringify(await auditInvoiceRead(makeReader(runtime,hotel),invoice));
         if(payload.invoiceModelProbe){const packet=await readInvoicePacket(makeReader(runtime,hotel),invoice);try{const model=invoiceModel(packet);return JSON.stringify({hotel:model.hotel,voucherLength:model.voucher.length,voucherHash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(model.voucher.replace(/\s+/g,''))))].map(n=>n.toString(16).padStart(2,'0')).join(''),headerIds:await Promise.all((invoiceRecord(packet.reservation).reservationIdList as unknown[]).map(invoiceRecord).map(async r=>({type:r.type,length:String(r.id??'').length,hash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(r.id??'').replace(/\s+/g,''))))].map(n=>n.toString(16).padStart(2,'0')).join('')}))),lines:model.lines.length,debit:model.debit,credit:model.credit,gross:model.gross,vat:model.vat,taxableNet:model.taxableNet,nonTaxable:model.nonTaxable,outstanding:model.outstanding,referenceHash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(model.lines.map(l=>l.reference).sort().join('|'))))].map(n=>n.toString(16).padStart(2,'0')).join('')});}catch(error){const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord),net=packet.taxRows.map(invoiceRecord).map(r=>invoiceRecord(r.posting)),ids=new Set(rows.map(r=>String(r.transactionNo))),checks=new Set(rows.map(r=>String(r.checkNo)));return JSON.stringify({hotel,error:error instanceof Error?error.message:'invalid',rows:rows.length,rootsFound:net.filter(r=>ids.has(String(r.transactionNo))).length,childrenById:net.filter(r=>ids.has(String(r.referencePackageTransactionNo))).length,childrenByCheck:net.filter(r=>checks.has(String(r.referencePackageTransactionNo))).length,sampleRoots:net.filter(r=>ids.has(String(r.transactionNo))).slice(0,2).map(r=>({id:r.transactionNo,reference:r.reference,check:r.checkNo,package:r.referencePackageTransactionNo})),sampleChildren:net.filter(r=>r.referencePackageTransactionNo).slice(0,2).map(r=>({id:r.transactionNo,package:r.referencePackageTransactionNo}))});}}
         return JSON.stringify(await readInvoiceFolioContract(makeReader(runtime,hotel),invoice));

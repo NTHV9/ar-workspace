@@ -87,3 +87,10 @@ it.each([true,false])('uses payee tax identity only when the selected window and
  reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:agrees?'123':'999'},payeeTaxNumber:'SYNTHETIC-TAX'}}]}});
  expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe(agrees?'SYNTHETIC-TAX':'');
 });
+
+it('identifies an AR credit without a reservation folio without fabricating an invoice',async()=>{
+ const {p,reader}=fixture();const manifest={...p.manifest,reservation_id:null,folio_no:null};
+ reader.account.mockResolvedValue({accountDetails:{...p.account,invoices:[{...p.invoice,reservationId:undefined,folioNo:undefined,invoiceType:'Credit'}]}});
+ await expect(readInvoiceModel(reader,manifest)).rejects.toThrow('document_credit_without_folio');
+ expect(reader.reservationFolios).not.toHaveBeenCalled();expect(reader.invoicePostings).not.toHaveBeenCalled();
+});
