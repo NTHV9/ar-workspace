@@ -39,6 +39,7 @@ for(const [region,width] of [['phuket',1440],['khao-lak',1280],['phuket',390]] a
  await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('First pair');await panel.getByRole('button',{name:'Select all shown',exact:true}).click();await expect(panel.locator('.queue-selection-footer')).toContainText('THB 300.50');
  await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('');
  if(width<=1100){const amount=await panel.locator('.queue-detail-context strong').boundingBox();const close=await panel.getByRole('button',{name:'Close queue details'}).boundingBox();expect(amount!.x+amount!.width).toBeLessThanOrEqual(close!.x);}
+ await panel.locator('.queue-selection-footer').scrollIntoViewIfNeeded();
  await page.screenshot({path:`evidence/collections-workspace-${region}-${width}.png`,fullPage:false});
  const footer=await panel.locator('.queue-selection-footer').boundingBox();const bounds=await panel.boundingBox();expect(footer!.y+footer!.height).toBeLessThanOrEqual(bounds!.y+bounds!.height+1);expect(footer!.y+footer!.height).toBeLessThanOrEqual(900);
  if(width<=1100)await panel.getByRole('button',{name:'Close queue details'}).click();
@@ -52,4 +53,16 @@ for(const [region,width] of [['phuket',1440],['khao-lak',1280],['phuket',390]] a
  await page.getByRole('button',{name:'Collection filters',exact:true}).click();await page.getByLabel('Queue timing',{exact:true}).selectOption('Upcoming');await expect(views.getByRole('button',{name:/Upcoming/})).toHaveAttribute('aria-pressed','true');await expect(page.getByRole('button',{name:'Orchid Agency',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Harbor Travel',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Clear filters',exact:true}).click();await page.getByRole('searchbox',{name:'Search collection queue',exact:true}).fill('does-not-exist');await expect(page.getByText('No work matches these filters',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+});
+for(const [width,height] of [[1440,600],[1280,720]] as const)test(`${width}x${height}: invoice list keeps usable space on short desktop viewports`,async({page})=>{
+ await page.setViewportSize({width,height});await setup(page,'phuket');await page.getByRole('button',{name:'Harbor Travel',exact:true}).click();
+ const panel=page.getByRole('complementary',{name:'Collection work details',exact:true});
+ const list=panel.getByRole('group',{name:'Invoices in selected work'});
+ const box=await list.boundingBox();expect(box!.height).toBeGreaterThanOrEqual(240);
+ await panel.getByLabel('Queue select HARBOR-101',{exact:true}).check();
+ await panel.getByLabel('Queue select HARBOR-102',{exact:true}).check();
+ await expect(panel.locator('.queue-selection-footer')).toContainText('THB 300.50');
+ const currentList=await list.boundingBox();const footer=await panel.locator('.queue-selection-footer').boundingBox();expect(currentList!.y+currentList!.height).toBeLessThanOrEqual(footer!.y+1);
+ await panel.getByRole('button',{name:'Prepare documents',exact:true}).scrollIntoViewIfNeeded();await expect(panel.getByRole('button',{name:'Prepare documents',exact:true})).toBeInViewport();
+ await page.screenshot({path:`evidence/queue-invoice-room-${width}-${height}.png`,fullPage:false});
 });

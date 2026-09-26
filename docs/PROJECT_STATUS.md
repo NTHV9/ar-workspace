@@ -1,3 +1,9 @@
+## 26 September 2026 — Keep collection invoices readable on short screens
+
+- Reproduced the reported squeeze: the previous fixed-height sidebar left only 27.8125 px for invoice rows on a short desktop viewport. Replaced the fixed height with content-driven sizing and a responsive minimum; the desktop invoice list reserves at least 260 px. Header/footer no longer consume its flex space. Compact dialogs allow outer scrolling when their content exceeds the viewport, while retaining at least 220 px for invoices.
+- Tested: failing-before/passing-after browser regressions at 1440×600 and 1280×720; five total Collections browser cases pass, including existing desktop/mobile selection and document-scope checks. TypeScript/build pass and short-viewport renders inspected. Tests now scroll the whole footer into view rather than requiring a squeezed panel to fit above the fold. No business rules or selections changed.
+- Deployed runtime `3c5e930521055567f96b72b032994142c131334a`, Worker `74710596-25fa-4309-9fa0-331a939ea6be`, PR #87. Health/source and six anonymous boundaries passed. Both short-desktop regressions also passed on deployed assets with synthetic data.
+
 ## 26 September 2026 — Collections staff workspace
 
 - Owner chose account-first work with invoices in the side panel. Preserved Hotel + Account + action grouping and existing billing/collection eligibility. Replaced seven large KPI cards with compact work views whose selected state matches the actual filters; kept all filter/sort choices behind a concise search toolbar and expandable filters with removable active chips.
