@@ -1,0 +1,114 @@
+/* Open sheet composition. Row geometry matches InvoiceRegister virtualization. */
+#root .reports-only:has(.excel-workbook){padding:16px 14px 12px;column-gap:20px}
+#root .reports-only:has(.excel-workbook)>.dashboard-title{margin-bottom:12px}
+#root .reports-only:has(.excel-workbook)>.dashboard-title h1{font-size:24px}
+#root .reports-only:has(.excel-workbook)>.reports-hub-tabs{margin-bottom:12px;gap:18px;align-self:stretch;align-items:center}
+#root .reports-only:has(.excel-workbook)>.reports-hub-tabs button{padding:10px 0;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;box-shadow:none;font-size:12px;color:#536982}
+#root .reports-only:has(.excel-workbook)>.reports-hub-tabs button[aria-pressed=true]{border-bottom-color:#315bd6;color:#214ba8}
+.register-heading{display:flex;align-items:center;gap:28px;padding:4px 0 16px}
+.register-identity h1{margin:0 0 4px;font-size:24px;line-height:1.3;letter-spacing:-.025em;color:#17314f}
+.register-identity>span{font-size:12px;color:#536982}.register-identity em{font-style:normal;color:#8b5823}
+.register-open-total{display:flex;flex-direction:column;gap:3px;border-left:1px solid #cfdae7;padding-left:24px}
+.register-open-total>span{font-size:11px;color:#536982}.register-open-total strong{font-size:20px;line-height:1.4;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.register-heading-actions{margin-left:auto;display:flex;gap:8px}
+.register-heading-actions button{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:8px 11px;font-size:12px;white-space:nowrap}
+.register-workspace{min-width:0;background:transparent;border:0;border-radius:0;padding:0;box-shadow:none}
+.register-commandbar{display:flex;align-items:center;gap:8px;padding:0 0 10px}
+.register-commandbar .register-search{flex:1;min-width:120px;max-width:620px}
+.register-commandbar .register-search>span{display:none}
+.register-commandbar .register-search input{width:100%;border:1px solid #c5d4e6;border-radius:7px;background:#fff;font:inherit;font-size:13px;height:38px}
+.register-commandbar .register-search input::placeholder{color:#5b7189;opacity:1}
+.register-commandbar .entry-filter-toggle{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;font-size:12px;border-radius:7px;white-space:nowrap}
+.entry-filter-toggle b{color:#315bd6}.register-visibility{display:flex;align-items:center;gap:7px;color:#536982}
+.register-visibility select{height:38px;max-width:190px;padding:6px 10px;border:1px solid #c5d4e6;border-radius:7px;background:#fff;color:#17314f;font:inherit;font-size:12px}
+.register-autosave{display:flex;align-items:center;gap:5px;margin-left:auto;font-size:11px;color:#226a57;white-space:nowrap}
+.excel-workbook .register-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:12px 0;margin:0!important;border-top:1px solid #dce5ef}
+.excel-workbook .register-filters[hidden]{display:none}
+.excel-workbook .register-filters>label{font-size:11px;gap:5px}.excel-workbook .register-filters select{min-height:36px;font-size:12px;padding:7px 9px}
+#root .excel-workbook .register-tools{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px;background:#edf2f8;border:0;border-top:1px solid #d1deec;border-bottom:1px solid #d1deec;min-height:40px!important;margin:0!important;padding:0 10px}
+#root .excel-workbook .entry-jumps{display:flex;gap:16px;width:auto;padding:0;flex-wrap:wrap}
+#root .excel-workbook .entry-jumps button{position:relative;padding:12px 0;min-height:40px;border:0;border-radius:0;background:none;box-shadow:none;font-size:12px;color:#506781;white-space:nowrap}
+#root .excel-workbook .entry-jumps button[aria-pressed=true]{color:#214ba8;font-weight:700}
+#root .excel-workbook .entry-jumps button[aria-pressed=true]::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:#315bd6}
+#root .excel-workbook .entry-jumps button:hover{color:#214ba8}
+.register-tools>div:empty{display:none}.register-shortcuts{margin-left:auto;position:relative;color:#536982}
+.register-shortcuts summary{display:flex;gap:7px;align-items:center;font-size:11px;cursor:pointer;list-style:none;padding:8px 0}.register-shortcuts summary::-webkit-details-marker{display:none}
+.register-shortcuts>div{position:absolute;right:0;top:100%;z-index:20;background:#fff;border:1px solid #c7d5e5;border-radius:8px;padding:12px 16px;min-width:280px;box-shadow:0 8px 24px #17314f24}
+.register-shortcuts p{display:flex;gap:10px;align-items:center;font-size:12px;margin:8px 0}.register-shortcuts kbd{font:inherit;font-size:11px;min-width:65px;color:#17314f;font-weight:600}
+#root .excel-workbook .register-tools>div>button{display:inline-flex;align-items:center;gap:5px;box-shadow:none;font-size:11px;padding:5px 7px}
+.excel-workbook .excel-value-bar{gap:10px;border:0;border-bottom:1px solid #cddbe9;padding:6px 8px;min-height:38px;margin:0}
+.excel-workbook .excel-value-bar input.excel-address{flex-basis:56px!important;width:56px!important;font-weight:600;border-right:1px solid #d6e1ed!important;background:#edf3fa!important;color:#31557e!important}
+.excel-workbook .excel-value-bar>span{font-size:12px;min-width:90px}
+.excel-workbook .excel-value-bar input,.excel-workbook .excel-value-bar textarea{font-family:inherit;font-size:13px!important;border-radius:3px!important;color:#17314f!important}
+.excel-workbook .excel-value-bar small{display:flex;align-items:center;gap:4px;font-size:11px}.excel-value-bar .register-editable-hint{color:#226a57}
+.excel-workbook .excel-value-bar button{font-size:12px;padding:5px 10px}.excel-workbook .excel-value-bar button:last-child{background:#e8f2ff;border-color:#b5ccee;color:#204daf}
+.excel-workbook .register-horizontal-scroll{margin:0;height:12px}
+.excel-workbook .register-sheet{height:var(--register-sheet-height,calc(100dvh - 380px));min-height:300px;border-radius:0;border:0;background:#fff}
+#root .excel-workbook .register-table{font-family:inherit;font-size:13px;color:#17314f}
+.excel-workbook .register-table tbody tr:not(.register-spacer),.excel-workbook .register-table tr:not(.register-spacer) td{height:36px}
+.excel-workbook .register-table td{padding:3px 7px!important;border-color:#e0e7ee;line-height:1.35}
+.excel-workbook .register-table td>span{color:#17314f}
+#root .excel-workbook .register-table .register-cell{height:29px;padding:3px;line-height:1.35;font-family:inherit;font-size:13px;color:#17314f;box-shadow:none}
+#root .excel-workbook .register-invoice-link{font-family:inherit;font-size:13px;font-weight:600;color:#2555bd;padding:0;box-shadow:none;font-variant-numeric:tabular-nums}
+.excel-workbook .register-table input:not([type=checkbox]),.excel-workbook .register-table select,.excel-workbook .register-table textarea{height:29px;min-height:29px;line-height:20px;padding:3px 4px;font-family:inherit;font-size:13px}
+.excel-workbook .register-table tbody td[data-editable=true]{background:#fffdf7}
+.excel-workbook .register-table tbody tr:nth-child(even) td:not([data-editable=true]){background:#f3f6fa}
+.excel-workbook .register-table tbody tr.is-editing td{background:#edf5fd}
+.excel-workbook .register-table td[data-selected=true],.excel-workbook .register-table td[data-active=true]{background:#f0faf3!important}
+.excel-workbook .register-table .excel-column-labels th{background:#e4edf7;color:#264566;border-color:#cddbe9;font-weight:600}
+.excel-workbook .register-table .excel-column-labels th[data-group=work]{background:#f5ead0;color:#674d15;border-color:#dfd0aa}
+#root .excel-workbook .register-table .excel-column-labels th button{font-family:inherit;font-size:12px;color:inherit;white-space:nowrap;box-shadow:none}
+.excel-workbook .excel-column-letter{color:#526982;font-weight:500}.excel-column-labels th[data-group=work] .excel-column-letter{color:#765f28}
+.excel-workbook .register-table [data-pinned=guest]{border-right:1px solid #a6b9cf!important;box-shadow:4px 0 7px #243d5b10}
+.excel-workbook .entry-row-number{font-size:10px!important;color:#526982!important}
+.excel-workbook .register-status{padding:6px 8px;font-size:12px}
+.excel-workbook .register-pagination{padding:8px 4px;border:0;border-top:1px solid #ccd9e7;background:transparent;margin:0;font-size:11px}
+.excel-workbook:fullscreen{padding:12px}
+.excel-workbook:fullscreen .register-workspace{display:flex;flex-direction:column;flex:1;min-height:0}
+.excel-workbook:fullscreen .register-sheet{height:auto;flex:1;min-height:200px}
+@media(max-width:1050px){
+ .register-autosave{display:none}.register-heading{gap:16px}.register-open-total{padding-left:16px}.register-heading-actions button{font-size:11px}
+ .excel-workbook .register-filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:800px){
+ #root .reports-only:has(.excel-workbook){padding:12px 8px}
+ .register-heading{flex-wrap:wrap;gap:12px;padding-bottom:12px}.register-identity h1{font-size:22px}.register-open-total{margin-left:auto;border:0;padding:0;text-align:right}.register-open-total strong{font-size:16px}
+ .register-heading-actions{margin:0;width:100%;justify-content:flex-end}.register-heading-actions button{min-height:34px}
+ .register-commandbar{flex-wrap:wrap}.register-commandbar .register-search{flex:1 0 100%;max-width:none}.register-visibility{margin-left:auto}.register-visibility select{max-width:180px}
+ .excel-workbook .register-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #root .excel-workbook .register-tools{padding:0 6px;gap:5px}
+ #root .excel-workbook .entry-jumps{gap:12px}
+ #root .excel-workbook .entry-jumps button{font-size:11px;min-height:36px;padding:10px 0}
+ .register-shortcuts{margin-left:0}.register-shortcuts>div{left:0;right:auto;min-width:260px}
+ .excel-workbook .excel-value-bar{gap:5px;padding:5px 2px}.excel-workbook .excel-value-bar>span{min-width:0;max-width:65px;font-size:10px}.excel-workbook .excel-value-bar input.excel-address{flex-basis:36px!important}.excel-workbook .excel-value-bar small{display:none}.excel-workbook .excel-value-bar button{padding:4px;font-size:11px}
+ .excel-workbook .register-sheet{height:58dvh;min-height:340px}
+ .excel-workbook .register-mobile-sort{margin:0 0 8px}
+ .excel-workbook:fullscreen{padding:6px}
+}
+/* The register is a full-width work surface, not a card within the application frame. */
+body:has(.excel-workbook){padding:0;background:#fff;background-image:none}
+#root .app-shell:has(.excel-workbook){max-width:none;margin:0;border-radius:0;box-shadow:none;min-height:100dvh;background:#fff;overflow:visible}
+#root .app-shell:has(.excel-workbook) .app-header{background:#fff;background-image:none;box-shadow:none;padding-left:20px;padding-right:20px}
+#root .app-shell:has(.excel-workbook) .main-nav{background:none;border-radius:0;padding:0;box-shadow:none}
+#root .app-shell:has(.excel-workbook) .main-nav button{border-radius:0;box-shadow:none;background:none;border-bottom:2px solid transparent}
+#root .app-shell:has(.excel-workbook) .main-nav button.active{background:none;background-image:none;box-shadow:none;border-bottom-color:#315bd6;color:#214ba8}
+#root .reports-only:has(.excel-workbook){display:block;padding:0}
+#root .reports-only:has(.excel-workbook)>.reports-hub-tabs{margin:0;padding:0 20px;min-height:36px;border-bottom:1px solid #e0e7ef;gap:22px}
+#root .reports-only:has(.excel-workbook)>.reports-hub-tabs button{padding:10px 0}
+#root .reports-only:has(.excel-workbook)>.dashboard-title{padding:8px 20px;margin:0}
+.excel-workbook .register-heading{padding:12px 20px}
+.excel-workbook .register-commandbar{padding:0 20px 10px}
+.excel-workbook .register-filters{padding:12px 20px}
+#root .excel-workbook .register-tools{padding-left:20px;padding-right:20px;background:#f5f7fa}
+.excel-workbook .register-pagination{padding-left:20px;padding-right:20px}
+.excel-workbook .register-history{margin:20px}
+.excel-workbook:fullscreen .register-heading{padding:0 0 12px}
+.excel-workbook:fullscreen .register-commandbar{padding-left:0;padding-right:0}
+@media(max-width:800px){
+ #root .app-shell:has(.excel-workbook) .app-header{padding-left:12px;padding-right:12px}
+ #root .reports-only:has(.excel-workbook)>.reports-hub-tabs{padding:0 12px}
+ .excel-workbook .register-heading{padding:12px}.excel-workbook .register-commandbar{padding:0 12px 10px}
+ .excel-workbook .register-filters{padding:12px}
+ #root .excel-workbook .register-tools{padding-left:12px;padding-right:12px}
+ .excel-workbook .register-mobile-sort{padding:0 12px}
+}

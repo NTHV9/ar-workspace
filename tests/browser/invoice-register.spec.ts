@@ -75,7 +75,7 @@ for(const width of [1440,1280,390])test(`sheet entry ${width}: Enter saves and m
  expect(writes[0].values).toMatchObject({ownerName:'First owner',reportedReceived:'1500.50'});
  await page.getByLabel('Reported received',{exact:true}).fill('250');await page.getByLabel('Reported received',{exact:true}).press('Enter');await expect.poll(()=>writes.length).toBe(2);
  await page.getByRole('button',{name:'Owner · KAT 3',exact:true}).click();await page.getByLabel('Owner',{exact:true}).fill('Unsaved');await page.getByLabel('Owner',{exact:true}).press('Escape');await expect(page.getByLabel('Owner',{exact:true})).toHaveCount(0);expect(writes).toHaveLength(2);
- await page.getByRole('button',{name:'Notes & receipts',exact:true}).click();await page.screenshot({path:`.tmp/register-sheet/entry-${width}.png`,fullPage:false});
+ await page.getByRole('button',{name:'Notes & receipts',exact:true}).click();await expect(page.getByRole('button',{name:'Notes & receipts',exact:true})).toHaveAttribute('aria-pressed','true');await page.screenshot({path:`.tmp/register-sheet/entry-${width}.png`,fullPage:false});
 });
 test('moving to another invoice cell saves once and focuses that exact destination',async({page})=>{
  const {writes}=await setup(page);await page.getByRole('button',{name:'Reports',exact:true}).click();await page.getByRole('button',{name:'Owner · KAT 1234567890123',exact:true}).click();await page.getByLabel('Owner',{exact:true}).fill('Saved on move');
@@ -128,4 +128,18 @@ test('full-screen sheet preserves the pending cell when restored',async({page})=
 
 test('a single amount copied from Excel accepts thousands separators without changing OPERA open',async({page})=>{
  const {writes}=await setup(page);await page.getByRole('button',{name:'Reports',exact:true}).click();await page.getByRole('button',{name:'Reported received · KAT 1234567890123',exact:true}).click();await page.getByLabel('Reported received',{exact:true}).fill('1,250.50');await page.getByLabel('Reported received',{exact:true}).press('Enter');await expect.poll(()=>writes.length).toBe(1);expect(writes[0].values.reportedReceived).toBe('1250.50');expect(writes[0].values).not.toHaveProperty('open');
+});
+
+for(const [width,height] of [[1440,900],[1280,720],[1920,1080]])test(`open register workspace ${width}: full-width sheet and column navigation`,async({page})=>{
+ const {writes}=await setup(page);await page.setViewportSize({width,height});await page.getByRole('button',{name:'Reports',exact:true}).click();await expect(page.getByText('All matching rows loaded',{exact:true})).toBeVisible();
+ const sheet=page.getByRole('region',{name:'Invoice register sheet',exact:true});const box=await sheet.boundingBox();expect(box!.x).toBe(0);expect(box!.width).toBe(width);expect(box!.y+76+5*36).toBeLessThanOrEqual(height);
+ const jumps=page.getByRole('navigation',{name:'Jump to sheet columns'});
+ await expect(jumps.getByRole('button',{name:'Invoice details',exact:true})).toHaveAttribute('aria-pressed','true');
+ await jumps.getByRole('button',{name:'Billing',exact:true}).click();await expect(jumps.getByRole('button',{name:'Billing',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('columnheader').getByRole('button',{name:'First billing',exact:true})).toBeInViewport();
+ await page.getByRole('button',{name:'Filters',exact:true}).click();await expect(page.getByLabel('Register billing filter',{exact:true})).toBeVisible();await page.getByLabel('Register billing filter',{exact:true}).selectOption('unbilled');await expect(page.getByRole('button',{name:'Filters',exact:true})).toContainText('1');await page.getByRole('button',{name:'Filters',exact:true}).click();
+ await jumps.getByRole('button',{name:'Invoice details',exact:true}).click();await expect(jumps.getByRole('button',{name:'Invoice details',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.locator('.register-shortcuts summary').click();await expect(page.getByText('Reported received records your team’s information. OPERA confirms the remaining balance.',{exact:true})).toHaveCount(0);await page.locator('.register-shortcuts summary').click();
+ expect(writes).toHaveLength(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:`.tmp/register-workspace/sheet-${width}.png`,fullPage:false});
 });
