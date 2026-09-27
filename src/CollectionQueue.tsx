@@ -63,6 +63,7 @@ export default function CollectionQueue({dataVersion=0,token,hotel,accounts,para
   const panel=detailDialog.current;if(!panel)return;
   const measure=()=>{const box=panel.getBoundingClientRect();if(!box.height)return;panel.style.setProperty('--queue-detail-height',box.height+'px');
    const list=panel.querySelector<HTMLElement>('.queue-invoice-list'),layout=workspaceLayout.current;
+   if(!compact&&layout){const top=layout.getBoundingClientRect().top+window.scrollY,value=Math.floor(Math.min(box.height,Math.max(240,window.innerHeight-top-16)))+'px';if(layout.style.getPropertyValue('--queue-accounts-height')!==value)layout.style.setProperty('--queue-accounts-height',value);}
    if(!compact&&list&&layout){const other=box.height-list.getBoundingClientRect().height,top=layout.getBoundingClientRect().top+window.scrollY,room=Math.floor(Math.max(260,Math.min(520,window.innerHeight-top-other-16))),value=room+'px';if(panel.style.getPropertyValue('--queue-list-room')!==value)panel.style.setProperty('--queue-list-room',value);}
   };
   const observer=new ResizeObserver(measure);observer.observe(panel);if(pageRoot.current)observer.observe(pageRoot.current);for(const e of panel.querySelectorAll('.queue-detail-heading,.queue-invoice-tools,.queue-selection-footer'))observer.observe(e);

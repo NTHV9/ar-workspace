@@ -26,3 +26,8 @@
 @media(max-width:650px){.queue-invoices tbody tr{height:auto;min-height:0}.queue-invoices td{height:auto;min-height:0}.queue-invoice-number small{line-height:14px}.queue-invoices td.queue-invoice-latest{line-height:16px}.queue-invoices td.queue-invoice-guest{line-height:18px}}
 
 .queue-detail-title .queue-action-badge{flex:0 0 auto}.collection-page .queue-work-stages{margin-top:9px}
+@media(min-width:1101px){
+ .collection-page .queue-work{display:flex;flex-direction:column;height:var(--queue-accounts-height,520px);min-height:0}
+ .queue-work>header{flex-shrink:0}
+ .queue-table-scroll{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-color:#9bb0c9 #edf2f8;scrollbar-width:thin;scrollbar-gutter:stable}
+}
