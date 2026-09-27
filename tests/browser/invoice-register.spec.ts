@@ -139,7 +139,7 @@ for(const [width,height] of [[1440,900],[1280,720],[1920,1080]])test(`open regis
  await expect(page.getByRole('columnheader').getByRole('button',{name:'First billing',exact:true})).toBeInViewport();
  await page.getByRole('button',{name:'Filters',exact:true}).click();await expect(page.getByLabel('Register billing filter',{exact:true})).toBeVisible();await page.getByLabel('Register billing filter',{exact:true}).selectOption('unbilled');await expect(page.getByRole('button',{name:'Filters',exact:true})).toContainText('1');await page.getByRole('button',{name:'Filters',exact:true}).click();
  await jumps.getByRole('button',{name:'Invoice details',exact:true}).click();await expect(jumps.getByRole('button',{name:'Invoice details',exact:true})).toHaveAttribute('aria-pressed','true');
- await page.locator('.register-shortcuts summary').click();await expect(page.getByText('Reported received records your team’s information. OPERA confirms the remaining balance.',{exact:true})).toHaveCount(0);await page.locator('.register-shortcuts summary').click();
+ await expect(page.getByText('Reported received records your team’s information. OPERA confirms the remaining balance.',{exact:true})).toHaveCount(0);
  expect(writes).toHaveLength(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:`.tmp/register-workspace/sheet-${width}.png`,fullPage:false});
 });
