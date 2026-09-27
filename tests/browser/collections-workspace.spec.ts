@@ -69,26 +69,50 @@ for(const [width,height] of [[1440,600],[1280,720]] as const)test(`${width}x${he
 for(const [region,width,height] of [['phuket',1440,1000],['khao-lak',1280,900],['phuket',1440,600]] as const)test(`${region} ${width}x${height}: Accounts scroll independently without moving invoices`,async({page})=>{
  await page.setViewportSize({width,height});await setup(page,region);
  const queue=page.getByRole('region',{name:'Prioritized collection work'}),panel=page.getByRole('complementary',{name:'Collection work details'}),header=page.locator('.queue-work>header');
- await page.evaluate(()=>window.scrollTo(0,0));
+ await page.locator('.queue-work').scrollIntoViewIfNeeded();
+ const initialPageY=await page.evaluate(()=>scrollY);
  await expect.poll(()=>queue.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(100);
  const initialPanel=await panel.boundingBox(),initialHeader=await header.boundingBox();
  const bounds=await queue.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(height);
  await page.mouse.move(bounds!.x+bounds!.width/2,bounds!.y+30);await page.mouse.wheel(0,250);
  await expect.poll(()=>queue.evaluate(e=>e.scrollTop)).toBeGreaterThan(0);
- expect(await page.evaluate(()=>scrollY)).toBe(0);expect((await panel.boundingBox())!.y).toBe(initialPanel!.y);expect((await header.boundingBox())!.y).toBe(initialHeader!.y);
+ expect(await page.evaluate(()=>scrollY)).toBe(initialPageY);expect((await panel.boundingBox())!.y).toBe(initialPanel!.y);expect((await header.boundingBox())!.y).toBe(initialHeader!.y);
  await page.mouse.wheel(0,10000);await expect.poll(()=>queue.evaluate(e=>Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop))).toBeLessThanOrEqual(1);
  // A further wheel at the boundary must not chain to the document.
- await page.mouse.wheel(0,500);await page.waitForTimeout(200);expect(await page.evaluate(()=>scrollY)).toBe(0);
+ await page.mouse.wheel(0,500);await page.waitForTimeout(200);expect(await page.evaluate(()=>scrollY)).toBe(initialPageY);
  const last=queue.getByRole('button',{name:/account Orchid Agency$/});await expect(last).toBeInViewport({ratio:1});await last.click();
  await expect(panel.getByRole('heading',{name:'Orchid Agency',exact:true})).toBeVisible();await expect(panel.getByRole('group',{name:'Invoices in selected work'})).toContainText('ORCHID-101');
  await page.screenshot({path:`.tmp/accounts-panel-scroll/accounts-${region}-${width}-${height}.png`,fullPage:false});
  await queue.focus();await page.keyboard.press('Home');await expect.poll(()=>queue.evaluate(e=>e.scrollTop)).toBe(0);
- await page.mouse.move(bounds!.x+bounds!.width/2,bounds!.y+30);await page.mouse.wheel(0,-500);await page.waitForTimeout(200);expect(await page.evaluate(()=>scrollY)).toBe(0);
+ await page.mouse.move(bounds!.x+bounds!.width/2,bounds!.y+30);await page.mouse.wheel(0,-500);await page.waitForTimeout(200);expect(await page.evaluate(()=>scrollY)).toBe(initialPageY);
 });
 test('compact Accounts retain page scrolling and open the invoice dialog',async({page})=>{
  await page.setViewportSize({width:900,height:720});await setup(page,'phuket');
  const queue=page.getByRole('region',{name:'Prioritized collection work'});expect(await queue.evaluate(e=>e.scrollHeight<=e.clientHeight+1)).toBe(true);
  await page.getByRole('button',{name:/account Orchid Agency$/}).click();await expect(page.getByRole('dialog',{name:'Collection work details'})).toBeVisible();
+});
+
+for(const [region,width] of [['phuket',1440],['khao-lak',1280]] as const)test(`${region}: Accounts retain full workbench height with Billing filters`,async({page})=>{
+ await page.setViewportSize({width,height:900});const {rows}=await setup(page,region);
+ rows.push(...Array.from({length:30},(_,i)=>({...rows[0],account_id:'agency-'+i,account_name:`Travel Company ${i+1}`,id:'agency-invoice-'+i,invoice_no:'AG-'+(i+100)})));
+ await page.getByRole('button',{name:'Reload queue',exact:true}).click();
+ await page.getByRole('navigation',{name:'Collection work views'}).getByRole('button',{name:/Billing due/}).click();
+ await page.getByRole('button',{name:/account Harbor Travel$/}).click();
+ const accounts=page.locator('.queue-work'),invoices=page.getByRole('complementary',{name:'Collection work details'}),list=page.getByRole('region',{name:'Prioritized collection work'});
+ await expect(accounts.getByRole('searchbox',{name:'Search collection queue'})).toBeVisible();
+ await expect.poll(async()=>Math.abs((await accounts.boundingBox())!.height-(await invoices.boundingBox())!.height)).toBeLessThanOrEqual(1);
+ const listBox=await list.boundingBox();expect(listBox!.height).toBeGreaterThan(300);
+ expect((await accounts.boundingBox())!.width).toBeGreaterThan(380);
+ await page.getByRole('button',{name:'Collection filters',exact:true}).click();await expect(page.getByLabel('Queue timing',{exact:true})).toBeVisible();
+ expect((await list.boundingBox())!.height).toBe(listBox!.height);
+ await page.getByLabel('Queue timing',{exact:true}).press('Escape');await expect(page.getByLabel('Queue timing',{exact:true})).toBeHidden();await expect(page.getByRole('button',{name:'Collection filters',exact:true})).toBeFocused();
+ await invoices.getByLabel('Queue select HARBOR-101',{exact:true}).check();
+ await page.screenshot({path:`.tmp/collections-visual-polish/billing-${region}-${width}.png`,fullPage:true});
+ await accounts.getByRole('searchbox',{name:'Search collection queue'}).fill('no matching account');
+ await expect(invoices.getByRole('heading',{name:'Select an account',exact:true})).toBeVisible();
+ await expect(accounts.getByRole('button',{name:'Reset view',exact:true})).toBeVisible();
+ await expect.poll(async()=>(await list.boundingBox())!.height).toBeGreaterThan(200);
+ await accounts.getByRole('button',{name:'Reset view',exact:true}).click();await expect(accounts.getByRole('button',{name:/account Harbor Travel$/})).toBeVisible();
 });
 
 for(const region of ['phuket','khao-lak'])test(`${region}: workflow changes refresh open work without a manual reload`,async({page})=>{

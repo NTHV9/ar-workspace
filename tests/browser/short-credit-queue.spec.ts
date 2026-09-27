@@ -16,11 +16,12 @@ for(const region of ['phuket','khao-lak'])test(`${region}: short terms skip Frie
  await page.getByRole('button',{name:'Collections',exact:true}).click();
  await page.getByRole('button',{name:'Collection filters',exact:true}).click();
  await page.getByLabel('Queue stage',{exact:true}).selectOption('All');await page.getByLabel('Queue timing',{exact:true}).selectOption('All');
+ await page.getByRole('button',{name:'Close collection filters',exact:true}).click();
  const table=page.getByRole('region',{name:'Prioritized collection work',exact:true});
  const short=table.getByRole('button',{name:/account Short-term account$/}),seven=table.getByRole('button',{name:/account Seven-day account$/});
  await expect(short).toContainText('Follow-up 1');await expect(short).not.toContainText('Friendly');await expect(seven).toContainText('Friendly');
  await short.click();await expect(page.getByRole('complementary',{name:'Collection work details'})).toContainText('1 ready / 1 upcoming');
- await page.getByLabel('Queue timing',{exact:true}).selectOption('Ready');await short.click();await expect(page.getByLabel('Queue select SYN-0',{exact:true})).toBeVisible();await expect(page.getByLabel('Queue select SYN-3',{exact:true})).toHaveCount(0);
- await page.getByLabel('Queue timing',{exact:true}).selectOption('Upcoming');await short.click();await expect(page.getByLabel('Queue select SYN-3',{exact:true})).toBeVisible();await expect(page.getByLabel('Queue select SYN-0',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Collection filters',exact:true}).click();await page.getByLabel('Queue timing',{exact:true}).selectOption('Ready');await page.getByRole('button',{name:'Close collection filters',exact:true}).click();await short.click();await expect(page.getByLabel('Queue select SYN-0',{exact:true})).toBeVisible();await expect(page.getByLabel('Queue select SYN-3',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Collection filters',exact:true}).click();await page.getByLabel('Queue timing',{exact:true}).selectOption('Upcoming');await page.getByRole('button',{name:'Close collection filters',exact:true}).click();await short.click();await expect(page.getByLabel('Queue select SYN-3',{exact:true})).toBeVisible();await expect(page.getByLabel('Queue select SYN-0',{exact:true})).toHaveCount(0);
  await expect(page.getByRole('complementary',{name:'Collection work details'})).toContainText('No reminders sent');
 });
