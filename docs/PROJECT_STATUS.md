@@ -1,6 +1,6 @@
 ## 28 September 2026 — Remove Keyboard help
 
-- Removed the Invoice Register Keyboard help disclosure, unused icon and styles at the owner's request. Keyboard entry and row autosave remain unchanged. Updated the existing browser scenario and surface documentation. TypeScript/build and six existing browser entry/workspace scenarios passed. Deployment pending verification.
+- Removed the Invoice Register Keyboard help disclosure, unused icon and styles at the owner's request. Keyboard entry and row autosave remain unchanged. Updated the existing browser scenario and surface documentation. TypeScript/build and six existing browser entry/workspace scenarios passed. Deployed runtime `868e5045041a9532226f8c4f3500c1e204c69698`, Worker `1b20ee54-ccd1-4d03-b201-83ce5bd58438`; health/source, anonymous boundaries and the deployed workspace scenario passed with synthetic APIs.
 
 ## 28 September 2026 — Invoice Register as an open sheet
 
