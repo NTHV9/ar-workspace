@@ -108,6 +108,11 @@ for(const [region,width] of [['phuket',1440],['khao-lak',1280]] as const)test(`$
  await page.getByLabel('Queue timing',{exact:true}).press('Escape');await expect(page.getByLabel('Queue timing',{exact:true})).toBeHidden();await expect(page.getByRole('button',{name:'Collection filters',exact:true})).toBeFocused();
  await invoices.getByLabel('Queue select HARBOR-101',{exact:true}).check();
  await page.screenshot({path:`.tmp/collections-visual-polish/billing-${region}-${width}.png`,fullPage:true});
+ await accounts.getByRole('searchbox',{name:'Search collection queue'}).fill('no matching account');
+ await expect(invoices.getByRole('heading',{name:'Select an account',exact:true})).toBeVisible();
+ await expect(accounts.getByRole('button',{name:'Reset view',exact:true})).toBeVisible();
+ await expect.poll(async()=>(await list.boundingBox())!.height).toBeGreaterThan(200);
+ await accounts.getByRole('button',{name:'Reset view',exact:true}).click();await expect(accounts.getByRole('button',{name:/account Harbor Travel$/})).toBeVisible();
 });
 
 for(const region of ['phuket','khao-lak'])test(`${region}: workflow changes refresh open work without a manual reload`,async({page})=>{

@@ -27,6 +27,7 @@
 
 .queue-detail-title .queue-action-badge{flex:0 0 auto}.collection-page .queue-work-stages{margin-top:9px}
 @media(min-width:1101px){
+ .queue-detail-empty{min-height:520px}
  .collection-page .queue-work{display:flex;flex-direction:column;height:var(--queue-accounts-height,560px);min-height:0;position:sticky;top:min(18px,calc(100dvh - var(--queue-accounts-height,560px) - 16px))}
  .queue-work>header{flex-shrink:0}
  .queue-table-scroll{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-color:#9bb0c9 #edf2f8;scrollbar-width:thin;scrollbar-gutter:stable}
