@@ -62,3 +62,5 @@ The one mechanical detector report contains only design-system advisories: 35 co
 ## Deployment verification
 
 Deployed on 27 September 2026 as runtime `0c58f4845075625ceeeb55c4c1f2628c8fda3070`, Worker `8a8fcd7a-eb2b-4f4c-b93a-a36874e053bb`. Health/source and anonymous access boundaries passed. Twelve focused scenarios passed on deployed assets using synthetic APIs, including both regions, exact selections, stage isolation, selected-only review, initial action reachability and short-credit rules. No live customer data or email was changed.
+
+Independent Accounts scrolling deployed later the same day as runtime `df00e173321d02975f50762044c4051e4bc21039`, Worker `7be070a0-931c-45db-874f-e5e4407e02c8`. Health/source and six anonymous boundaries passed; the three independent-scroll cases and compact-dialog case passed against deployed assets with synthetic APIs.

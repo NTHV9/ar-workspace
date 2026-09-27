@@ -2,7 +2,7 @@
 
 - Owner requested independent scrolling for the left Accounts navigator. Desktop Accounts now use the available viewport height, capped at the invoice workbench height, with the Accounts heading outside the scroll region. Wheel scrolling is contained at either boundary; the right invoice panel stays in place. Narrow screens retain their page list and native invoice dialog.
 - Tested locally: TypeScript/build and all 18 focused Collections/short-credit browser cases passed. New actual-wheel and keyboard cases cover Phuket 1440x1000, Khao Lak 1280x900 and short desktop 1440x600: no page movement, stable right panel/header, reachable last Account, correct invoice details and both scroll boundaries. Compact dialog behavior, invoice space and existing exact-selection safeguards pass. Desktop/short-screen renders inspected; layout detector has no findings. Original screenshot baselines retained. No customer writes or changes to business rules, permissions or data sources.
-- Deployment pending verification.
+- Deployed runtime `df00e173321d02975f50762044c4051e4bc21039`, Worker `7be070a0-931c-45db-874f-e5e4407e02c8`. Health/source and six anonymous boundaries passed. All four new scrolling/compact-dialog cases passed on deployed assets using synthetic APIs.
 
 ## 27 September 2026 — Collections account navigator and invoice workbench
 
