@@ -1,3 +1,9 @@
+27 September 2026 — Independent Accounts scrolling
+
+- Owner requested independent scrolling for the left Accounts navigator. Desktop Accounts now use the available viewport height, capped at the invoice workbench height, with the Accounts heading outside the scroll region. Wheel scrolling is contained at either boundary; the right invoice panel stays in place. Narrow screens retain their page list and native invoice dialog.
+- Tested locally: TypeScript/build and all 18 focused Collections/short-credit browser cases passed. New actual-wheel and keyboard cases cover Phuket 1440x1000, Khao Lak 1280x900 and short desktop 1440x600: no page movement, stable right panel/header, reachable last Account, correct invoice details and both scroll boundaries. Compact dialog behavior, invoice space and existing exact-selection safeguards pass. Desktop/short-screen renders inspected; layout detector has no findings. Original screenshot baselines retained. No customer writes or changes to business rules, permissions or data sources.
+- Deployment pending verification.
+
 ## 27 September 2026 — Collections account navigator and invoice workbench
 
 - Owner requested a modern, easier Collections redesign and confirmed equal priority for Account discovery/prioritization and Invoice/document work. Preserved the established AR identity and account-first side-panel workflow.
@@ -1463,3 +1469,4 @@
 - ไม่มี database migration, OPERA ledger write, email send, file cleanup หรือการเปลี่ยนบริการภายนอกอื่น. Deployed source `9f73266dbe296b72f4ac2a73e46b42bc59acd436`, Worker `8951aa1f-99cd-4d3d-a6c8-84260f0eb58f` ที่ https://ar-workspace.ar-c82.workers.dev ด้วย --keep-vars. Health ยืนยัน SHA ตรงและ database_verified
 - Cloudflare browser **30 cases ผ่าน** รวม Statement row insertion/กรอบสีต่อเนื่อง/เครื่องหมาย + อยู่ในcell, Fit width1440×900และ1280×800, exact reviewed-byte email preparation, auth และ Account/Portfolio regression. ใช้ synthetic API/PDF fixtures; ภาพหลักฐานใหม่จากdeployed assetsตรงกับlocal ไม่ส่งอีเมลจริง
 - [PR #13](https://github.com/NTHV9/ar-workspace/pull/13) Merge แล้ว `064311358b55314140a570d1faf3a1f104457781` หลัง [CI ผ่าน](https://github.com/NTHV9/ar-workspace/actions/runs/34620937628); merge treeตรงกับsourceที่deploy/test
+##
