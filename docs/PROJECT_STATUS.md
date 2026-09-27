@@ -1,3 +1,7 @@
+## 28 September 2026 — Remove Keyboard help
+
+- Removed the Invoice Register Keyboard help disclosure, unused icon and styles at the owner's request. Keyboard entry and row autosave remain unchanged. Updated the existing browser scenario and surface documentation. TypeScript/build and six existing browser entry/workspace scenarios passed. Deployment pending verification.
+
 ## 28 September 2026 — Invoice Register as an open sheet
 
 - Owner requested a redesigned Invoice Register, then explicitly removed the received-amount explanation and rejected the surrounding boxes. The register now occupies the full browser width: route-local flat application shell/navigation, one report title, compact heading/total/actions and an open search/filter strip. No rounded card or outer table frame encloses the data. Other routes retain their shell.
