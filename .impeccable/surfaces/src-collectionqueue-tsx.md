@@ -2,14 +2,32 @@
 version: 1
 slug: "src-collectionqueue-tsx"
 primary_target: "src/CollectionQueue.tsx"
-related_targets: ["src/collection/QueueWorkPanel.tsx","src/collection/account-work.ts","src/collection-queue.css"]
+related_targets: ["src/collection/QueueWorkPanel.tsx","src/collection/account-work.ts","src/collection-queue.css","src/collection/viewport.css"]
 ---
 
 # Collections workbench
 
 Owner requested a modern, easier redesign on 27 September 2026 and confirmed equal priority for finding/prioritizing Accounts and selecting Invoices/preparing documents. The prior account-first side-panel workflow remains the operating constraint. This is authorized implementation within the existing AR brand; no new business policy or data-writing route.
 
-## Direction contract
+## Current viewport refinement — 28 September 2026
+
+The owner's latest correction makes the normal desktop viewport the available work area. This section supersedes the earlier measured-height, sticky-panel and typography descriptions below. It retains the contiguous work surface and Accounts width of up to 34% / 440px; the existing navy, cool-white, blue and teal identity, Plus Jakarta Sans, original references and assets remain authoritative.
+
+At widths above 1100px and heights above 620px, the Collections route alone fills the application frame using flex layout. The shell is the viewport height minus its 36px outer allowance. Header, page title, work views, panel tools and the selection footer reserve their own space; Accounts and invoice rows independently scroll through the remaining equal-height work area. The invoice headings remain sticky inside their list, and wheel scrolling stays contained. The previous ResizeObserver height feedback and its inline list/panel measurements are removed. Empty and error states use the same layout; long error notices scroll within their bounded notice area. Sent status details open over the work area instead of reducing its height.
+
+Desktop title, account heading, row padding and chrome are more compact: the local page/account heading roles are 28px/22px, account names are 15px, and ordinary invoice cells have a 44px height with 5px vertical padding. Wrapped content may make a row taller. Invoice data keeps its existing 13–14px hierarchy, with folio/supporting text at 11px in the desktop ledger; the selected total remains 20px. Exact two-decimal invoice amounts and selected totals remain visible. Complete long invoice identifiers wrap inside their own column rather than overlap Guest. These are observed Collections choices, not new global type or density tokens.
+
+All, Ready and Upcoming are directly visible timing buttons beside the work views. They update the existing global `qwhen` filter, so account membership, visible invoice counts, amounts and document-selection scope keep the existing filtering semantics. Changing timing clears invoice selection even when the focused Hotel + Account + stage remains the same. Search, optional filters, More work, stage choices and Selected-only review remain available; no business readiness or due-date rule changes.
+
+At desktop heights of 620px or less, the shell explicitly returns to page scrolling with a 520px work surface, keeping tools and document preparation reachable in short windows or at high zoom. At 1100px and below, Accounts retain page scrolling and invoice work retains the native dialog and existing compact row layout. The desktop fit promise does not apply to those fallback layouts.
+
+**Implemented:** route-scoped viewport CSS, compact desktop composition, direct timing controls and selection reset are present in the related source files. **Tested locally:** the implementation run reports all 20 existing focused browser cases, four new viewport/timing cases and one long-name/error case passing, plus TypeScript, production build and connector packaging. The documenter inspected source diffs, test definitions and the six supplied synthetic captures; it did not rerun the suites. **Deployed:** this viewport refinement is not deployed at this documentation checkpoint. **Enabled:** no new business automation, provider operation or cloud configuration.
+
+The 1590×835 Phuket capture shows eight complete invoice rows with the selected total and Prepare documents footer visible; the implementation comparison reported four to five rows before this refinement. The 1280×720 Khao Lak and 1440×900 Phuket captures also keep the footer in view. Long Account/Guest/Invoice text and a retained-data error were inspected together at 1280×720. Mobile captures show the native dialog with an exact selected total and the page-scrolling Account navigator. Current synthetic artifacts are `.tmp/collections-viewport/phuket-1590-835.png`, `khao-lak-1280-720.png`, `phuket-1440-900.png`, `long-names-and-error.png`, plus `.tmp/collections-redesign/collections-phuket-390.png` and `accounts-mobile.png`. Separate retained evidence is under `evidence/collections-viewport-` with the suffixes `phuket-1590.png`, `khao-lak-1280.png`, `phuket-1440.png`, `long-name-error.png` and `mobile.png`; older captures and original references are preserved.
+
+The final detector pass reports 96 advisories (14 type, 18 radius, 64 color) and no warnings. These do not establish new global tokens or certify every inherited label. Inherited tiny-label/radius differences and pre-existing sidecar drift are not canonized or repaired by this local composition pass. The independent finish review returned `ship` with no material fixes within its bounded render/source scope; earlier review/deployment verdicts below cover their dated builds only. `PRODUCT.md`, `DESIGN.md` and `.impeccable/design.json` are unchanged.
+
+## Original direction contract — 27 September 2026
 THESIS: A compact account navigator gives most workspace width to the invoices staff act on. One account entry contains its distinct work stages rather than repeating the account in the left list.
 OWN-WORLD: Existing navy ink, cool white surfaces, restrained blue actions and teal readiness, Plus Jakarta Sans, thin boundaries and soft downward shadows. No decorative imagery or metrics cards.
 STORY: Choose a work view or search; choose an Account; choose its stage; select exact invoice rows; review the selected total; prepare documents.
@@ -17,7 +35,9 @@ FIRST VIEWPORT: A compact title/work-view/search band, a roughly 29% account nav
 FORM: Code-led account search navigator and invoice ledger, structural candidate 4 under surface seed c58238ec, honoring the already-selected Account/side-panel workflow. Responsive narrow screens open a native invoice dialog. No image comp is used as layout authority.
 FINISH: Inspect complete desktop/mobile captures, run the mechanical detector once, receive an independent finish review, then document the verified result. Preserve rules, Hotel/Account/stage boundaries, original reference assets and safeguards.
 
-## Current refinement — 28 September 2026
+## Earlier contiguous-surface refinement — 28 September 2026
+
+Historical implementation evidence; viewport sizing and local type values are superseded by the current viewport refinement above.
 
 The owner's latest correction requires structural design improvement as well as styling. The work surface is now contiguous: tabs span the top; a wider Accounts navigator owns its search, sorting, filter popup and active filters; the invoice workbench shares the same frame. This supersedes the earlier separated 29% navigator / 18px gutter composition below. Desktop columns use up to 34% / 440px for Accounts. Accounts match the full invoice-panel height, replacing the smaller viewport-minus-document-offset cap that produced a short list after scrolling. Independent scrolling and hotel/account/stage selection boundaries remain.
 
@@ -27,7 +47,9 @@ Collections-only typography uses 32px page, 24px selected account, 18px panel, 1
 
 Twenty focused browser cases passed, including equal-height Billing-filter states in both regions, independent scrolling, exact selection, stage changes, short-credit readiness, compact dialogs and workflow refresh. Desktop/short-screen/mobile renders were inspected in bounded passes. Layout scan has no findings; 19 type advisories are retained as intentional local sizes and inherited declarations, without changing global design tokens. New synthetic captures: `evidence/collections-desk-1440.png`, `evidence/collections-desk-1280.png`, `evidence/collections-desk-mobile.png`. Original references remain. No fresh independent-agent review was performed for this follow-up; the earlier reviewer verdict below applies only to its original workbench scope.
 
-## Implemented surface — 27 September 2026
+## Earlier implemented surface — 27 September 2026
+
+Historical implementation evidence; the measured sizing and separate-panel composition below are not the current viewport behavior.
 
 The desktop workspace uses a 29% Account navigator (minimum 285px), an 18px gap and the remaining width for invoice work. Each navigator entry represents one Hotel + Account and gathers that account's visible work stages, invoice count, readiness, earliest action date and open amount. The highest-priority work leads by default; search, work views, sorting and optional filters remain available above both columns. All work, Billing due, Collection due and Urgent are direct choices; More work contains Upcoming, Setup needed, On hold and Needs review.
 
@@ -45,13 +67,13 @@ Selection belongs to the focused Hotel + Account + work stage. Changing that sco
 
 This is a Collections composition within the existing Luminous AR world. `PRODUCT.md`, `DESIGN.md` and `.impeccable/design.json` retain their authority. Navy reading text, white/cool surfaces, restrained interaction blue, teal readiness, fine separators, rounded containers and soft downward elevation match the incumbent system. The shared `src/ui-typography.css` and `src/ui-depth.css` continue to govern their mapped elements; route-local declarations alone are not the computed design system.
 
-The inherited Plus Jakarta Sans hierarchy resolves to a 30px page title (26px at 600px and below), 18px workbench Account heading, 14px navigator heading, 12px primary table/control text, and 10–11px supporting labels. The selected total is a local 20px emphasis (18px at 650px and below). Containers use local 12px corners, while finer local control/chip corners support density. These are descriptions of this surface, not new global tokens or permissions to replace existing components elsewhere.
+At the 27 September checkpoint, the inherited Plus Jakarta Sans hierarchy resolved to a 30px page title (26px at 600px and below), 18px workbench Account heading, 14px navigator heading, 12px primary table/control text, and 10–11px supporting labels. The selected total used a local 20px emphasis (18px at 650px and below). Containers used local 12px corners, with finer local control/chip corners. This dated observation is superseded by later local typography above; it is not a global token set or an endorsement of inherited small labels.
 
 The Hotel Identity Rule, Aligned Amount Rule and Evidence Boundary Rule still apply. The account navigator and invoice workbench express equal task priority through fast account scanning and more working room for invoice review. They do not replace Portfolio, Account Detail or other page compositions. Original logo/reference assets remain unchanged. This was a code-first semantic implementation: no image comp, comp approval or new visual world was used. The captures below are verification artifacts, not shipped raster assets or replacement references.
 
 No changes were made to global `DESIGN.md` or `.impeccable/design.json` in this documentation pass. A local composition does not authorize a global identity/token refresh. The existing sidecar retains older Dashboard narrative, a 1200px Account drawer entry and shadow descriptions predating later prose updates; that pre-existing drift is outside this surface's scope and has not been repaired or made normative for Collections.
 
-## Verification and review disposition
+## Earlier verification and review disposition — 27 September 2026
 
 **Implemented:** the account navigator, wider invoice workbench, responsive dialog/rows and measured footer sizing are present in the related source files above. **Tested locally:** the implementation run reported 1,469 passing unit tests and 90 passing browser smoke cases before the footer sizing refinement; all 17 focused Collections/short-credit browser cases passed after that refinement. The documenter inspected source, test definitions and the five final captures, but did not rerun those suites. **Deployed:** production deployment of this redesign was pending at this documentation checkpoint. **Enabled:** no new business automation, sending route or cloud configuration was enabled by this surface work.
 
@@ -69,7 +91,7 @@ The independent finish review initially found one material first-viewport action
 
 The one mechanical detector report contains only design-system advisories: 35 color, 15 font-size and 8 radius findings. Some literal route sizes are superseded by the incumbent shared typography selectors. The findings are retained as scoped differences, not cleared by widening global tokens. No new decorative image, kicker, glyph icon or brand device has been canonized; pre-existing global drift and these local detector advisories remain outside any claim of a global design-system refresh.
 
-## Deployment verification
+## Earlier deployment verification — 27–28 September 2026
 
 Deployed on 27 September 2026 as runtime `0c58f4845075625ceeeb55c4c1f2628c8fda3070`, Worker `8a8fcd7a-eb2b-4f4c-b93a-a36874e053bb`. Health/source and anonymous access boundaries passed. Twelve focused scenarios passed on deployed assets using synthetic APIs, including both regions, exact selections, stage isolation, selected-only review, initial action reachability and short-credit rules. No live customer data or email was changed.
 
