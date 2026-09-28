@@ -98,7 +98,7 @@ for (const width of [1440, 1280]) {
     expect(clippedTools, 'wrapped PDF tools remain inside the toolbar').toEqual([]);
     await expectNoOverflow(page);
     await captureDepth(page, `pdf-workspace-${width}`);
-    await page.getByRole('button', { name: 'Open mandatory Preview', exact: true }).click();
+    await page.getByRole('button', { name: 'Preview PDFs', exact: true }).click();
     await expect(page.getByRole('img', { name: 'Final PDF page 1', exact: true })).toBeVisible();
     await expectElevation(page.locator('.pdf-preview-dialog'));
     await expectFlatContent(page, '.pdf-preview-dialog canvas');

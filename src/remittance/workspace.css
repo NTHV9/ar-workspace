@@ -1,0 +1,10 @@
+#root .remittance-page .remittance-summary{gap:0;margin:12px 0 4px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#f3f7fb}
+#root .remittance-page .remittance-summary>div{border:0;border-right:1px solid var(--line);border-radius:0;padding:12px 16px;min-height:0;background:none;background-image:none;box-shadow:none;color:#17314f;gap:6px}
+#root .remittance-page .remittance-summary>div:last-child{border-right:0}
+#root .remittance-page .remittance-summary strong{font-size:22px;line-height:1.3;letter-spacing:-.02em}
+#root .remittance-page .remittance-summary span{font-size:11px;color:#526982}
+#root .remittance-page .remittance-summary small{font-size:11px;color:#8b5226}
+.remittance-summary-help{margin:8px 0 14px;color:#526982;font-size:11px}
+.remittance-summary-help summary{cursor:pointer;width:fit-content;padding:4px 0}
+.remittance-summary-help .remittance-note{margin:5px 0;max-width:90ch}
+@media(max-width:600px){#root .remittance-page .remittance-summary>div{padding:10px}#root .remittance-page .remittance-summary strong{font-size:19px}}

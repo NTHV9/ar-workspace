@@ -1,0 +1,6 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic email layout</title></head><body><div id="root"></div><script type="module">
+import React from 'react';import{createRoot}from'react-dom/client';import EmailComposer from '../../../src/EmailComposer';import{CollectionPolicyProvider}from '../../../src/collection/PolicyContext';
+import '@fontsource/plus-jakarta-sans/latin-400.css';import '@fontsource/plus-jakarta-sans/latin-500.css';import '@fontsource/plus-jakarta-sans/latin-600.css';import '@fontsource/plus-jakarta-sans/latin-700.css';import '../../../src/styles.css';import '../../../src/ui-depth.css';import '../../../src/ui-typography.css';
+const job={id:'job-audit',hotel:'KAT',account_id:'A',account_name:'Synthetic Travel',invoice_ids:['I1'],manifest:[{id:'I1',invoice_no:'SYN-10085'}],state:'ready',revision:1,exports:[],files:[],acknowledged:true};
+createRoot(document.getElementById('root')).render(React.createElement(CollectionPolicyProvider,{token:'synthetic'},React.createElement(EmailComposer,{job,token:'synthetic',onClose:()=>{}})));
+</script></body></html>

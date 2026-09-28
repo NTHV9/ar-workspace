@@ -77,9 +77,9 @@ test('template library only offers the current template, with no version control
 test('composer previews and saves one signature for the document hotel, and reload does not duplicate it',async({context,page})=>{
  const c=await preferences(context);await googleReturn(page);await page.evaluate(id=>history.replaceState(null,'',`/?documentJob=${id}&compose=1`),jobId);await page.reload();
  const dialog=page.getByRole('dialog',{name:'Email workspace'});await expect(dialog.getByLabel('Email signature')).toContainText('The Shore at Katathani');await expect(dialog.getByLabel('Email signature')).toContainText('Synthetic Staff');
- await dialog.getByRole('button',{name:'Save workspace draft',exact:true}).click();await expect(dialog.getByRole('status')).toContainText('Workspace draft saved');
+ await dialog.getByRole('button',{name:'Save message',exact:true}).click();await expect(dialog.getByRole('status')).toContainText('Workspace draft saved');
  expect(c.savedMessages).toHaveLength(1);expect(c.savedMessages[0].body).toBe(richText(c.savedMessages[0].richBody));expect(c.savedMessages[0].body.split('Synthetic Staff')).toHaveLength(2);
- await page.reload();await expect(page.getByLabel('Email signature')).toHaveCount(1);await expect(page.getByRole('button',{name:'Save workspace draft',exact:true})).toBeDisabled();
+ await page.reload();await expect(page.getByLabel('Email signature')).toHaveCount(1);await expect(page.getByRole('button',{name:'Save message',exact:true})).toBeDisabled();
  await page.getByLabel('Email signature').scrollIntoViewIfNeeded();
  const signatureBox=await page.getByLabel('Email signature').boundingBox(),footerBox=await page.locator('.email-message>footer').boundingBox();expect(signatureBox!.y+signatureBox!.height).toBeLessThanOrEqual(footerBox!.y+1);
  await page.screenshot({path:'.tmp/email-signature-composer.png',fullPage:true});

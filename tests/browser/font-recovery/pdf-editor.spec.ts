@@ -8,7 +8,7 @@ for(const width of [1440,1280])test(`subset-font Preview error reopens the affec
  await page.getByRole('button',{name:'Edit original text: D12345 - 1',exact:true}).click();
  await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('abcdefgh');
  await page.getByRole('button',{name:'Select page 1',exact:true}).click();
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'Page 1: choose a replacement font'})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('abcdefgh',{timeout:1500});
  await expect(page.getByRole('combobox',{name:'Text font',exact:true})).toBeVisible();
@@ -22,7 +22,7 @@ test('explicit replacement font can render the same new characters',async({page}
  await page.getByRole('button',{name:'Edit original text: D12345 - 1',exact:true}).click();
  await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('abcdefgh');
  await page.getByRole('combobox',{name:'Text font',exact:true}).selectOption('Arial');
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
  await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');
 });
@@ -33,12 +33,12 @@ test('recovery locates another page, is undoable, and preserves reviewed export 
  await page.evaluate(()=>(window as any).pdfTest.makeSubset(2));await page.getByRole('button',{name:'Select page 2',exact:true}).click();
  const before=await page.evaluate(async()=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',(window as any).pdfTest.subsetSources[0].bytes))));
  await page.getByRole('button',{name:'Edit original text: D12345 - 1',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('abcdefgh');
- await page.getByRole('button',{name:'Select page 1',exact:true}).click();await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Select page 1',exact:true}).click();await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'Page 2: choose a replacement font'})).toBeVisible();await expect(page.locator('.pdf-page-controls')).toContainText('Source page 2 of 2');
  await page.getByRole('button',{name:'Use Arial for this text',exact:true}).click();await expect(page.getByRole('combobox',{name:'Text font',exact:true})).toHaveValue('Arial');await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('abcdefgh');
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('combobox',{name:'Text font',exact:true})).toHaveValue('__source__');await expect(page.getByRole('button',{name:'Use Arial for this text',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(page.getByRole('combobox',{name:'Text font',exact:true})).toHaveValue('Arial');
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await expect(page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true})).toBeDisabled();
  await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const {rendered,...result}=await page.evaluate(async()=>{
   const f=(window as any).pdfTest,l=f.saved.project.pages[1].layers[0],task=f.getDocument({data:f.saved.files[0].bytes.slice()}),pdf=await task.promise,text=[];
@@ -53,5 +53,5 @@ test('recovery locates another page, is undoable, and preserves reviewed export 
 test('characters already available in the subset retain the original font',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html?subset=1');await page.getByRole('button',{name:'Edit original text: D12345 - 1',exact:true}).click();await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('D54321 - 1');
  await expect(page.getByRole('combobox',{name:'Text font',exact:true})).toHaveValue('__source__');await expect(page.getByRole('button',{name:'Use Arial for this text',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');
 });

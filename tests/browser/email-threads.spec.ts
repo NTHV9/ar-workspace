@@ -64,7 +64,7 @@ test('thread search and conversation paginate with authenticated explicit scope 
 
 test('dirty edits block selection; cancellation preserves draft and late preview cannot reopen it',async({page})=>{
  const {calls,unexpected,releasePreview}=await setup(page,{delayPreview:true});await openComposer(page);await page.getByLabel('Email message',{exact:true}).fill('Retain my unsaved draft');await expect(page.getByRole('button',{name:'Continue existing thread',exact:true})).toBeDisabled();
- await page.getByRole('button',{name:'Save workspace draft',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();await page.getByRole('button',{name:'Continue existing thread',exact:true}).click();await page.getByRole('button',{name:`Preview ${first.subject}`,exact:true}).click();
+ await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();await page.getByRole('button',{name:'Continue existing thread',exact:true}).click();await page.getByRole('button',{name:`Preview ${first.subject}`,exact:true}).click();
  await page.getByRole('button',{name:'Close conversation review',exact:true}).click();releasePreview();await expect(page.getByRole('dialog',{name:'Conversation review',exact:true})).toHaveCount(0);await expect(page.getByLabel('Email message',{exact:true})).toHaveValue('Retain my unsaved draft');expect(calls.some(c=>c.path.endsWith('/thread'))).toBe(false);expect(unexpected).toEqual([]);
 });
 
@@ -73,7 +73,7 @@ for(const failure of ['email_revision_conflict','email_thread_unrelated','email_
 });
 
 test('selected subject survives template application and explicit clearing keeps current text',async({page})=>{
- const {calls,unexpected}=await setup(page,{selected:true});await openComposer(page);await page.getByRole('button',{name:'Choose template',exact:true}).click();await page.getByRole('button',{name:'Apply to message',exact:true}).click();await expect(page.getByLabel('Email subject',{exact:true})).toHaveValue(first.subject);await page.getByRole('button',{name:'Save workspace draft',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();const body=await page.getByRole('textbox',{name:'Email message',exact:true}).textContent();
+ const {calls,unexpected}=await setup(page,{selected:true});await openComposer(page);await page.getByRole('button',{name:'Choose template',exact:true}).click();await page.getByRole('button',{name:'Apply to message',exact:true}).click();await expect(page.getByLabel('Email subject',{exact:true})).toHaveValue(first.subject);await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();const body=await page.getByRole('textbox',{name:'Email message',exact:true}).textContent();
  await page.getByRole('button',{name:'Start a new email',exact:true}).click();await page.getByRole('button',{name:'Confirm new email',exact:true}).click();await expect(page.getByLabel('Email subject',{exact:true})).not.toHaveAttribute('readonly','');await expect(page.getByLabel('Email subject',{exact:true})).toHaveValue(first.subject);expect(await page.getByRole('textbox',{name:'Email message',exact:true}).textContent()).toBe(body);expect(calls.at(-1)?.body).toEqual({revision:3,threadId:null,confirmed:true});expect(unexpected).toEqual([]);
 });
 
