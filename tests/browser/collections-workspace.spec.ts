@@ -201,3 +201,14 @@ test('long account names, complete invoice identifiers and queue errors keep act
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await list.evaluate(e=>e.clientHeight)).toBeGreaterThan(100);
  await page.screenshot({path:'.tmp/collections-viewport/long-names-and-error.png',fullPage:false});
 });
+
+test('timing keeps the default focused account when filtered totals change the sort order',async({page})=>{
+ const {rows}=await setup(page,'phuket');const remaining=rows.filter(r=>['harbor','coral'].includes(r.account_id));rows.splice(0,rows.length,...remaining);
+ rows.forEach(r=>{const index=rows.filter(x=>x.account_id==='harbor').indexOf(r);Object.assign(r.workflow!,{billing_required:false,last_reminder_stage:'Friendly',last_reminder_date:calendarAdd(today,-10),due_date:calendarAdd(today,r.account_id==='coral'||index<2?-2:20)});if(r.account_id==='coral')r.open=1000;});
+ await page.getByRole('button',{name:'Reload queue',exact:true}).click();const panel=page.getByRole('complementary',{name:'Collection work details'}),timing=page.getByRole('group',{name:'Work timing'});
+ await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();expect(new URL(page.url()).searchParams.has('qfocus')).toBe(false);
+ await timing.getByRole('button',{name:'Ready',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(2);
+ await expect(page.getByRole('region',{name:'Prioritized collection work'}).getByRole('button').first()).toHaveAccessibleName('Open KAT account Coral Holidays');
+ await timing.getByRole('button',{name:'Upcoming',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(22);
+ await timing.getByRole('button',{name:'All',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(24);
+});
