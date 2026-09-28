@@ -1,3 +1,4 @@
+import {choosePdfTool} from './fixtures/pdf-tools';
 import {reviewPreviewPages} from './fixtures/pdf-preview';
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
@@ -9,7 +10,7 @@ test('editor and final preview render at device resolution when zoomed',async({b
   await page.getByLabel('Zoom',{exact:true}).selectOption('150');
   const sharp=async(selector:string)=>page.locator(selector).evaluate((c:HTMLCanvasElement)=>c.width>=c.getBoundingClientRect().width*devicePixelRatio-2);
   await expect.poll(()=>sharp('.pdf-paper canvas'),{timeout:2000}).toBe(true);
-  await page.getByRole('button',{name:'Open mandatory Preview'}).click();await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(4);
+  await page.getByRole('button',{name:'Preview PDFs'}).click();await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(4);
   await expect.poll(()=>sharp('.pdf-final-sheet canvas:first-child'),{timeout:2000}).toBe(true);
   await page.getByLabel('Preview zoom').selectOption('200');await expect.poll(()=>sharp('.pdf-final-sheet canvas:first-child')).toBe(true);
   await page.locator('.pdf-final-sheet canvas').last().scrollIntoViewIfNeeded();await expect.poll(()=>sharp('.pdf-final-sheet canvas:last-child')).toBe(true);
@@ -17,7 +18,7 @@ test('editor and final preview render at device resolution when zoomed',async({b
 });
 test('oversized geometry cannot create an unreopenable saved draft',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByText('Position & size',{exact:true}).click();const before=await page.getByRole('spinbutton',{name:'Layer x',exact:true}).inputValue();
+ await choosePdfTool(page,'Note');await page.getByText('Position & size',{exact:true}).click();const before=await page.getByRole('spinbutton',{name:'Layer x',exact:true}).inputValue();
  await page.getByRole('spinbutton',{name:'Layer x',exact:true}).fill('999999');await expect(page.getByRole('alert')).toContainText('was not applied');await expect(page.getByRole('spinbutton',{name:'Layer x',exact:true})).toHaveValue(before);
  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');expect(await page.evaluate(()=>(window as any).pdfTest.draft.pages[0].layers[0].x)).toBe(Number(before));
 });
@@ -27,7 +28,7 @@ test('source replacement exports opaque pages and preserves untouched multi-page
  await page.getByRole('button',{name:'Edit source text',exact:true}).click();
  await page.getByRole('button',{name:'Edit original text: CONFIDENTIAL ORIGINAL WORDING',exact:true}).click();
  await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('REPLACED FOR OUTBOUND COPY');
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(4);
  await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
  mkdirSync('evidence',{recursive:true});await page.getByRole('dialog',{name:'Final PDF preview'}).screenshot({path:'evidence/pdf-editor-final-preview.png'});
@@ -58,7 +59,7 @@ test('page operations undo and separate delivery require review of each file',as
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Add blank page'}).click();await expect(page.getByRole('button',{name:'Select page 5',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Select page 5',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await page.getByRole('button',{name:'Open mandatory Preview'}).click();await expect(page.locator('.pdf-preview-actions .pdf-primary')).toBeDisabled();
+ await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await page.getByRole('button',{name:'Preview PDFs'}).click();await expect(page.locator('.pdf-preview-actions .pdf-primary')).toBeDisabled();
  await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeDisabled();await expect(page.getByRole('button',{name:'01-Statement.pdf'})).toHaveAttribute('data-reviewed','true');await page.getByRole('button',{name:'02-Invoice-A.pdf'}).click();await expect(page.getByRole('button',{name:'02-Invoice-A.pdf'})).toHaveAttribute('data-reviewed','false');await page.getByRole('button',{name:'03-Invoice-B.pdf'}).click();await expect(page.getByRole('button',{name:'03-Invoice-B.pdf'})).toHaveAttribute('data-reviewed','true');await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeEnabled();
 });
 test('workspace matches approved three-column layout at desktop and laptop',async({page})=>{
@@ -67,7 +68,7 @@ test('workspace matches approved three-column layout at desktop and laptop',asyn
 test('export in flight locks edits until its exact preview is ready',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await page.evaluate(()=>{const api=(window as any).pdfTest;const create=api.PDFDocument.create;api.PDFDocument.create=()=>new Promise(resolve=>{api.releaseExport=()=>{api.PDFDocument.create=create;resolve(create.call(api.PDFDocument));};});});
- await page.getByRole('button',{name:'Open mandatory Preview'}).click();await page.waitForFunction(()=>(window as any).pdfTest.releaseExport);
+ await page.getByRole('button',{name:'Preview PDFs'}).click();await page.waitForFunction(()=>(window as any).pdfTest.releaseExport);
  await expect(page.locator('.pdf-layout')).toHaveAttribute('inert','');await page.evaluate(()=>(window as any).pdfTest.releaseExport());
  await expect(page.getByRole('dialog',{name:'Final PDF preview'})).toBeVisible();await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeDisabled();
 });
@@ -75,40 +76,40 @@ test('late image upload cannot restore a stale project',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await page.evaluate(()=>{const Native=window.FileReader;window.FileReader=class extends Native {readAsDataURL(file:Blob){(window as any).pdfTest.releaseImage=()=>super.readAsDataURL(file);}};});
  await page.getByLabel('Add image',{exact:true}).setInputFiles({name:'synthetic.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aMZkAAAAASUVORK5CYII=','base64')});
- await page.getByRole('button',{name:'Note',exact:true}).click();await page.evaluate(()=>(window as any).pdfTest.releaseImage());
+ await choosePdfTool(page,'Note');await page.evaluate(()=>(window as any).pdfTest.releaseImage());
  await expect(page.getByRole('alert')).toContainText('Image selection interrupted');await expect(page.getByRole('button',{name:'Move note layer'})).toHaveCount(1);await expect(page.getByRole('button',{name:'Move image layer'})).toHaveCount(0);
 });
 test('saved edit project reopens with matching source bytes',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Text box',exact:true}).click();await page.getByRole('textbox',{name:'Layer text'}).fill('RECOVERED NOTE');await page.getByRole('button',{name:'Open mandatory Preview'}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
+ await choosePdfTool(page,'Text box');await page.getByRole('textbox',{name:'Layer text'}).fill('RECOVERED NOTE');await page.getByRole('button',{name:'Preview PDFs'}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  await page.evaluate(()=>{const api=(window as any).pdfTest;api.mount(JSON.parse(JSON.stringify(api.saved.project)));});await expect(page.getByRole('button',{name:'Move text layer'})).toBeVisible();await page.getByRole('button',{name:'Move text layer'}).click();await expect(page.getByRole('textbox',{name:'Layer text'})).toHaveValue('RECOVERED NOTE');
 });
 test('late source export and save completion do not mark newer work reviewed or saved',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await page.evaluate(()=>{const api=(window as any).pdfTest;const create=api.PDFDocument.create;api.PDFDocument.create=()=>new Promise(resolve=>{api.releaseExport=()=>{api.PDFDocument.create=create;resolve(create.call(api.PDFDocument));};});});
- await page.getByRole('button',{name:'Open mandatory Preview'}).click();await page.waitForFunction(()=>(window as any).pdfTest.releaseExport);await page.evaluate(()=>{const api=(window as any).pdfTest;api.mount(undefined,[...api.sources]);});await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await page.evaluate(()=>(window as any).pdfTest.releaseExport());await expect(page.getByRole('button',{name:'Open mandatory Preview'})).toBeEnabled();await expect(page.getByRole('dialog',{name:'Final PDF preview'})).toHaveCount(0);
- await page.evaluate(()=>{const api=(window as any).pdfTest;api.saveWait=new Promise(resolve=>api.releaseSave=resolve);});await page.getByRole('button',{name:'Open mandatory Preview'}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();await expect(page.getByRole('button',{name:'Close final preview'})).toBeDisabled();await expect(page.locator('.pdf-layout')).toHaveAttribute('inert','');await page.evaluate(()=>(window as any).pdfTest.releaseSave());await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close final preview'}).click();await expect(page.getByRole('button',{name:'Move note layer'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Preview PDFs'}).click();await page.waitForFunction(()=>(window as any).pdfTest.releaseExport);await page.evaluate(()=>{const api=(window as any).pdfTest;api.mount(undefined,[...api.sources]);});await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await page.evaluate(()=>(window as any).pdfTest.releaseExport());await expect(page.getByRole('button',{name:'Preview PDFs'})).toBeEnabled();await expect(page.getByRole('dialog',{name:'Final PDF preview'})).toHaveCount(0);
+ await page.evaluate(()=>{const api=(window as any).pdfTest;api.saveWait=new Promise(resolve=>api.releaseSave=resolve);});await page.getByRole('button',{name:'Preview PDFs'}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately'}).click();await expect(page.getByRole('button',{name:'Close final preview'})).toBeDisabled();await expect(page.locator('.pdf-layout')).toHaveAttribute('inert','');await page.evaluate(()=>(window as any).pdfTest.releaseSave());await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close final preview'}).click();await expect(page.getByRole('button',{name:'Move note layer'})).toHaveCount(0);
 });
 test('failed final exported PDF rendering cannot be acknowledged or saved',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await page.evaluate(async()=>{const api=(window as any).pdfTest;const result=await api.loadSources(api.sources);const prototype=Object.getPrototypeOf(result.documents.get('Statement'));result.dispose();prototype.getPage=()=>Promise.reject(new Error('Synthetic render failure'));});
- await page.getByRole('button',{name:'Open mandatory Preview'}).click();await expect(page.getByRole('alert')).toContainText('This PDF could not be opened');await expect(page.locator('.pdf-preview-actions .pdf-primary')).toBeDisabled();await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeDisabled();await expect(page.locator('.pdf-final-sheet canvas')).toHaveCount(0);
+ await page.getByRole('button',{name:'Preview PDFs'}).click();await expect(page.getByRole('alert')).toContainText('This PDF could not be opened');await expect(page.locator('.pdf-preview-actions .pdf-primary')).toBeDisabled();await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeDisabled();await expect(page.locator('.pdf-final-sheet canvas')).toHaveCount(0);
 });
 test('draft save needs no final preview and dirty close offers explicit choices',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByRole('textbox',{name:'Layer text'}).fill('DRAFT ONLY');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
+ await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text'}).fill('DRAFT ONLY');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
  await expect(page.getByRole('alertdialog',{name:'Unsaved PDF changes'})).toBeVisible();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBeUndefined();await page.getByRole('button',{name:'Keep editing',exact:true}).click();
  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved. Final review is still required.');await expect(page.getByRole('dialog',{name:'Final PDF preview'})).toHaveCount(0);
  expect(await page.evaluate(()=>({text:(window as any).pdfTest.draft.pages[0].layers[0].text,final:(window as any).pdfTest.saved}))).toEqual({text:'DRAFT ONLY',final:null});await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBe(true);
 });
 test('a pending draft preserves the current edit and keeps the workspace open',async({page})=>{
- await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await page.getByRole('button',{name:'Note',exact:true}).click();
+ await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await choosePdfTool(page,'Note');
  await page.evaluate(()=>{const api=(window as any).pdfTest;api.draftWait=new Promise(resolve=>api.releaseDraft=resolve);});await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.locator('.pdf-layout')).toHaveAttribute('inert','');await page.evaluate(()=>(window as any).pdfTest.releaseDraft());
  await expect(page.getByRole('status')).toContainText('Draft saved');await expect(page.getByRole('textbox',{name:'Layer text'})).toHaveValue('Note');expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBeUndefined();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBe(true);
 });
 test('save draft and close waits for confirmed persistence',async({page})=>{
- await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await page.getByRole('button',{name:'Note',exact:true}).click();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
+ await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await choosePdfTool(page,'Note');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
  await page.evaluate(()=>{const api=(window as any).pdfTest;api.draftWait=new Promise(resolve=>api.releaseDraft=resolve);});await page.getByRole('button',{name:'Save draft and close'}).click();await expect(page.getByRole('heading',{name:'Save in progress'})).toBeVisible();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBeUndefined();await page.evaluate(()=>(window as any).pdfTest.releaseDraft());await expect(page.getByRole('alertdialog')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBe(true);
 });
 
@@ -138,10 +139,10 @@ test('table row insertion creates editable cells, deletion reflows, and Undo res
 
 test('native line and a selected table area can be dragged with exact page edits',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Move lines',exact:true}).click();const line=page.locator('.pdf-native-line').first();await expect(line).toBeVisible();let box=(await line.boundingBox())!;
+ await choosePdfTool(page,'Move lines');const line=page.locator('.pdf-native-line').first();await expect(line).toBeVisible();let box=(await line.boundingBox())!;
  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+20,box.y+box.height/2+15,{steps:5});await page.mouse.up();
  await expect(page.locator('.pdf-differences')).toContainText('Moved line / area');await page.getByRole('button',{name:'Save draft',exact:true}).click();let snapshot=await page.evaluate(()=>(window as any).pdfTest.draft.pages[0]);expect(snapshot.rowEdits).toHaveLength(1);expect(snapshot.rowEdits[0].kind).toBe('move');expect(snapshot.rowEdits[0].dx).toBeGreaterThan(10);
- await page.getByRole('button',{name:'Move table / area',exact:true}).click();box=(await page.locator('.pdf-paper').boundingBox())!;const x=(n:number)=>box.x+n/595*box.width,y=(n:number)=>box.y+n/842*box.height;
+ await choosePdfTool(page,'Move table / area');box=(await page.locator('.pdf-paper').boundingBox())!;const x=(n:number)=>box.x+n/595*box.width,y=(n:number)=>box.y+n/842*box.height;
  await page.mouse.move(x(38),y(280));await page.mouse.down();await page.mouse.move(x(553),y(370),{steps:8});await page.mouse.up();const selection=page.getByRole('button',{name:'Move selected table or area',exact:true});await expect(selection).toBeVisible();
  const selected=(await selection.boundingBox())!;await page.mouse.move(selected.x+selected.width/2,selected.y+selected.height/2);await page.mouse.down();await page.mouse.move(selected.x+selected.width/2,selected.y+selected.height/2+20,{steps:5});await page.mouse.up();
  await page.getByRole('button',{name:'Save draft',exact:true}).click();snapshot=await page.evaluate(()=>(window as any).pdfTest.draft.pages[0]);expect(snapshot.rowEdits).toHaveLength(2);expect(snapshot.rowEdits[1].width).toBeGreaterThan(500);expect(snapshot.rowEdits[1].dy).toBeGreaterThan(10);await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Move selected table or area',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(page.getByRole('button',{name:'Move selected table or area',exact:true})).toHaveCount(0);
@@ -170,7 +171,7 @@ test('a page with only a native move exports its moved pixels without hidden sou
 });
 
 test('Preview defaults to width and allows saving without visiting every output sheet',async({page})=>{
- await page.setViewportSize({width:1280,height:800});await page.goto('/tests/browser/pdf-editor-harness.html');await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.setViewportSize({width:1280,height:800});await page.goto('/tests/browser/pdf-editor-harness.html');await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  const preview=page.getByRole('dialog',{name:'Final PDF preview',exact:true});await expect(preview.getByLabel('Preview zoom')).toHaveValue('fit-width');await expect(preview.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');await expect(preview.locator('.pdf-preview-actions .pdf-primary')).toBeEnabled();await expect(preview.getByRole('checkbox')).toHaveCount(0);await expect(preview.locator('.pdf-final-viewer')).toHaveAttribute('data-viewed','1');
  const full=await preview.locator('.pdf-final-sheet canvas').evaluate(canvas=>{const page=canvas.getBoundingClientRect(),view=canvas.closest('.pdf-final-viewport')!.getBoundingClientRect();return page.left>=view.left-.5&&page.right<=view.right+.5&&page.width>view.width-40;});expect(full).toBe(true);await expect(preview.getByLabel('Preview zoom').locator('option[value="fit-page"]')).toHaveCount(0);
  await expect(preview.locator('.pdf-preview-files button')).toHaveCount(3);await expect(preview.locator('.pdf-preview-files button').nth(1)).toHaveAttribute('data-reviewed','false');
@@ -190,7 +191,7 @@ test('dense invoice rows push lower content and footer onto a complete continuat
  test.setTimeout(60000);await page.goto('/tests/browser/pdf-editor-harness.html');await page.waitForFunction(()=>(window as any).pdfTest.makeDense);await page.evaluate(()=>(window as any).pdfTest.makeDense());
  await page.getByRole('button',{name:'Edit original text: DENSE ROW 0',exact:true}).click();const next=page.getByRole('button',{name:'Edit original text: DENSE ROW 1',exact:true});const y=(await next.boundingBox())!.y;
  await page.getByRole('button',{name:'Add row below',exact:true}).click();await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(3);expect((await next.boundingBox())!.y).toBeGreaterThan(y);await expect(page.getByRole('alert')).toHaveCount(0);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();const preview=page.getByRole('dialog',{name:'Final PDF preview'});await expect(preview.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(2);await reviewPreviewPages(page);await expect(preview.getByRole('checkbox')).toHaveCount(0);await preview.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();const preview=page.getByRole('dialog',{name:'Final PDF preview'});await expect(preview.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(2);await reviewPreviewPages(page);await expect(preview.getByRole('checkbox')).toHaveCount(0);await preview.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();
  const result=await page.evaluate(async()=>{const api=(window as any).pdfTest,task=api.getDocument({data:api.saved.files[0].bytes.slice()}),pdf=await task.promise,p=await pdf.getPage(2),c=document.createElement('canvas'),v=p.getViewport({scale:1});c.width=v.width;c.height=v.height;await p.render({canvas:c,viewport:v}).promise;const pixels=c.getContext('2d')!.getImageData(0,0,c.width,60).data;let ink=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]<220)ink++;await task.destroy();return {count:pdf.numPages,ink};});expect(result.count).toBe(2);expect(result.ink).toBeGreaterThan(50);
 });
 

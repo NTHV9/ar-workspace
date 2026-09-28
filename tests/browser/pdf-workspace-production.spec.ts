@@ -98,7 +98,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     expect(await page.locator('.pdf-workspace').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     mkdirSync('evidence', { recursive: true });
     await page.screenshot({ path: `evidence/pdf-workspace-cloudflare-${viewport.width}x${viewport.height}.png`, animations: 'disabled' });
-    await page.getByRole('button', { name: 'Open mandatory Preview', exact: true }).click();
+    await page.getByRole('button', { name: 'Preview PDFs', exact: true }).click();
     await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(4);
     await expect(page.getByRole('img', { name: 'Final PDF page 1', exact: true })).toBeVisible();
     await expect(page.locator('.pdf-preview-files button').first()).toHaveAttribute('data-reviewed','false');

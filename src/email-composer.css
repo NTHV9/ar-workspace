@@ -15,3 +15,7 @@
 .supplemental-file>svg{color:#128d7e}
 
 .email-test-files{display:block!important;padding:10px 0;line-height:1.6}.email-test-files input{width:auto!important;margin-right:6px}.email-test-files ul{padding-left:18px;margin-bottom:0;overflow-wrap:anywhere}
+.email-context-help{font-size:11px;color:#526982;margin:6px 0 12px}.email-context-help summary{cursor:pointer;padding:6px 0}
+.email-handoff-reason:not(:empty){padding:10px;border:1px solid #d4e0ef;background:#f0f5fc;border-radius:6px;color:#31516f;font-size:12px;line-height:1.6}
+.email-workspace .email-muted,.email-workspace .email-context p:not(.email-muted),.email-workspace .email-address>span,.email-workspace .email-body-label>span,.email-workspace .email-file small,.email-workspace .email-message footer,.email-workspace .email-steps small{color:var(--ar-text-muted,#526982)}
+.email-workspace .email-steps li:not(.complete):not(.current){color:var(--ar-text-muted,#526982)}

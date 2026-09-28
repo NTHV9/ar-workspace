@@ -8,7 +8,9 @@ colors:
   surface: "#f7fafc"
   white: "#ffffff"
   ink: "#10253f"
-  muted: "#657b96"
+  muted: "#526982"
+  text-danger: "#9b2c43"
+  text-action: "#2455ba"
   dashboard-muted: "#51677e"
   line: "#dce5ef"
   dashboard-link: "#2852c8"
@@ -19,9 +21,25 @@ colors:
 typography:
   headline:
     fontFamily: "Plus Jakarta Sans, sans-serif"
-    fontSize: "26px"
+    fontSize: "30px"
     fontWeight: 700
-    lineHeight: 1.3
+    lineHeight: 1.25
+    letterSpacing: "-0.03em"
+  dialog:
+    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontSize: "18px"
+  section:
+    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontSize: "16px"
+  panel:
+    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontSize: "14px"
+  caption:
+    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontSize: "11px"
+  compact:
+    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontSize: "10px"
   dashboard-title:
     fontFamily: "Plus Jakarta Sans, sans-serif"
     fontSize: "16px"
@@ -92,7 +110,7 @@ The summary from Total open AR through the hotel contribution cards must have vi
 
 Visual authority remains `references/design/luminous-v4.png` and `account-detail-v2.png`; supporting reference pages remain unchanged. Mode: Operate. Preserve the light blue-gray canvas, white surfaces, navy text, blue and teal property indicators, fine borders, restrained shadows and rounded application frame.
 
-Tables are the main workspace. Dashboard extends this existing world with a legible distinction between dated activity and current work; it does not replace the Portfolio comparison matrix. This document records implemented source patterns from `src/styles.css`, `src/dashboard/dashboard.css` and `src/dashboard/Dashboard.tsx`. It is not evidence of deployment or live-source validation.
+Tables are the main workspace. Dashboard extends this existing world with a legible distinction between dated activity and current work; it does not replace the Portfolio comparison matrix. This document records implemented source patterns from the shared styles, typography and depth layers, with route-specific composition in `.impeccable/surfaces/`. The 28 September audit remediation is implemented and locally reviewed; this record is not deployment or live-source validation evidence.
 
 **Key Characteristics:**
 
@@ -107,21 +125,23 @@ The palette uses blue for interaction, blue and teal for hotel comparison, and r
 
 ### Primary
 
-- **Interaction blue:** the shared primary action and link family; Dashboard uses its darker link token for source links.
+- **Interaction blue:** the shared filled primary action family. Functional action text uses the separate text-action role; Dashboard retains its darker link role for source links.
 
 ### Secondary
 
 - **KAT blue / TSK teal:** hotel dots and proportional tracks in Dashboard. Portfolio retains its incumbent property fills and indicator shades; the Dashboard variants do not recolor it.
-- **Urgent rose:** overdue emphasis and urgent counts; **review amber:** review and setup counts. Labels always carry the meaning alongside color.
+- **Urgent rose:** overdue emphasis and urgent counts; **review amber:** review and setup counts. Functional error text uses text-danger. Labels always carry the meaning alongside color.
 
 ### Neutral
 
 - **Cool canvas / pale surface / white:** outside canvas, application interior and content surfaces.
 - **Navy ink:** headings, amounts and primary reading text.
-- **Muted slate:** shared secondary text; Dashboard's darker muted variant carries explanatory copy and source notes.
+- **Muted slate:** shared functional secondary text and inactive application navigation. `--muted` resolves to `--ar-text-muted`; `src/ui-typography.css` owns that role together with `--ar-text-danger` and `--ar-text-action`. Dashboard's local muted variant remains scoped to its explanatory copy and source notes. These roles describe application chrome, not authored email or PDF content.
 - **Fine blue-gray line:** surface boundaries, control strokes and divided measurement cells.
 
 **The Hotel Identity Rule.** Preserve distinct hotel labels and blue/teal indicators. A shared Account ID does not erase its Hotel context.
+
+**The Functional Text Rule.** Use the shared muted, danger and action text roles for their named jobs; retain separate filled-button and hotel colors, and verify text against its actual surface and state.
 
 ## Typography
 
@@ -131,17 +151,20 @@ The hierarchy is compact and numerical. Shared page titles lead with a bold head
 
 ### Hierarchy
 
-- **Headline:** page identity, using the frontmatter headline role. Dashboard tightens its tracking to (-0.03em).
+- **Headline:** page identity, using the frontmatter headline role; mapped narrow layouts use (26px). Local Register and Collections title sizes are recorded in their surface briefs.
+- **Dialog / section / panel:** shared chrome hierarchy at the recorded (18px), (16px) and (14px) roles; these do not resize PDF text or authored email content.
 - **Dashboard title:** section headings that separate daily activity from current balances and actions.
 - **Body:** shared application text; Dashboard explanatory rows generally use the label role with generous line-height (1.6–1.7).
 - **Measurement:** large daily counts. Monetary measures use a smaller size to accommodate long THB values; on the smallest layout the count role reduces to (29px).
-- **Source note:** Dashboard uses compact supporting text (10px), kept subordinate to the metric and its meaning. This density is descriptive of the current surface, not a universal minimum for new interfaces.
+- **Caption / compact:** supporting chrome uses the recorded (11px) and dense (10px) roles. Smaller inherited source labels are not a new universal minimum or a reusable display treatment.
 
 **The Aligned Amount Rule.** Right-align financial columns and use tabular numerals; keep descriptive row labels left-aligned.
 
 ## Layout
 
-The application has a centered frame with maximum width (1800px), a top navigation shell and a desktop page gutter (24px). Larger screens expand the gutter; small screens reduce it. Preserve the incumbent Portfolio composition at 1440×900: three overview panels and two full-width comparative tables. Account retains five summary panels, an aging band, tabs, a wide ledger and a narrower right detail panel. Account Detail keeps the ledger and right panel side by side above 1000 CSS pixels, including 1024/1100/1200 laptop widths. At 1000px and below, use the right modal drawer. Keep horizontal table scrolling and preserve selection when changing between these layouts.
+The application has a centered frame with maximum width (1800px), a top navigation shell and a desktop page gutter (24px). Larger screens expand the gutter; small screens reduce it. Preserve the incumbent Portfolio comparison composition. Account keeps Hotel/Account identity and the exact open total visible, with summary metrics and Aging inside one initially collapsed native disclosure. Account sections, the sticky selection actions, a wide ledger and a narrower detail panel follow. Above (1000px), the ledger and details stay side by side with single-line financial rows, complete Invoice identifiers and no horizontal ledger scrolling. At (1000px) and below, details use a native modal dialog; controlled ledger scrolling remains available on narrow screens. Preserve selection between layouts. See the Account surface brief for exact-amount access.
+
+Invoice Register is an owner-approved route exception: a full-width, frameless continuous sheet with its own flat navigation, Guest immediately beside Account, retained row autosave and horizontal scrolling at every width. Do not restore its removed Keyboard help or received-amount explanation. Collections has its own contiguous account navigator/invoice workbench composition. Their local briefs own geometry; neither changes the shared brand.
 
 Dashboard places a compact date/account filter row above a four-measure divided white strip. A wider current-AR comparison sits beside a narrower current-action list, followed by evidence sections. This arrangement is a Dashboard pattern, not a requirement to turn every page into summary tiles.
 
@@ -151,7 +174,7 @@ At widths up to (800px), the daily strip becomes a two-by-two grid and compariso
 
 ## Elevation & Depth
 
-Depth is restrained: the outer frame has an ambient shadow, shared panels have a barely visible lift, and the selected navigation item gains a shallow shadow. Dashboard surfaces use fine borders and white fills without new shadows. The existing Portfolio decorative orb remains local to that surface; it is not a required Dashboard motif. Exact shadow and motion values are recorded in the sidecar.
+Depth follows `src/ui-depth.css`: soft light from the upper left, shallow raised controls, one soft downward shadow per content surface, stronger summary-card elevation and the deepest cast for floating dialogs. Inner divisions use inset light; financial rows and data marks remain flat. Account's summary disclosure and the compact Remittance strip do not become another layer of cards. The frameless Register is the explicit route exception. The existing Portfolio decorative orb remains local to that surface. Exact shared shadow and motion values are recorded in the sidecar.
 
 Page arrival uses a short opacity transition only when reduced motion is not requested. Focus is a visible blue outline, not a shadow substitute.
 
@@ -173,9 +196,13 @@ Dashboard source links are descriptive text with a small inline arrow icon. Link
 
 Dashboard fields are white, finely stroked and consistently rounded, with visible labels. The mobile disclosure exposes its current active-filter count even while closed, supports native keyboard activation and a visible focus ring, and reveals full-width controls when expanded. Account-option failures retain saved selections and show an inline status message.
 
+Account settings, history corrections and collection-rule forms place recovery text beside invalid fields, associate it with the control and mark `aria-invalid`. Validation retains entered values, opens the relevant subsection and focuses the first invalid field. An error summary supports these local messages rather than replacing them.
+
 ### Navigation and status chips
 
 Navigation uses a pale inset track and a white selected item. Narrow viewports allow navigation scrolling rather than truncating destinations. Hotel selection stays separate from page navigation. Existing freshness and count chips remain compact supporting indicators, not headings.
+
+Application destinations expose `aria-current`; mutually exclusive Hotel, Account, Template and PDF choices expose `aria-pressed` where used. Native disclosures keep native semantics. Same-tab internal navigation retains scope and dirty-work checks; new-tab sign-in behavior stays separate. Do not add a tab role without its corresponding keyboard and panel behavior.
 
 ### Divided daily measurement strip
 
@@ -197,6 +224,16 @@ TSK, KAT and Total columns remain distinct. Default Total Open descending; every
 
 The selected-invoice count, amount and actions sit above the Account Detail ledger. Keep this single action bar sticky while the page scrolls, with responsive wrapping on small screens. Preparing documents and recording external billing must remain reachable with a long invoice list.
 
+Selected open balance, the visible Account summary total, and invoice-detail Open/Original amounts use exact THB values with two decimals. Compact Original/Open ledger values are buttons: accessible labels contain the exact value plus Invoice number, titles expose the exact value, and keyboard/tap activation opens the same invoice detail as the Guest action. This preserves the desktop ledger fit without relying on hover alone. The settings destination is named Account settings; summary source verification is labelled Source status.
+
+### Document, message and evidence workspaces
+
+PDF tools keep source-text editing, added text and selection directly available; Add objects and Move tools use contextual disclosures. The selected move tool stays named. Native text lines support keyboard selection, arrow/Shift-arrow movement, Escape with restored focus, Undo, and an explicit numeric area-bounds route. Preview PDFs is available without mandatory page-by-page acknowledgment. Source paper, editable content and reviewed output bytes remain outside shared chrome typography/depth rules.
+
+Email groups purpose/recipient context, the message editor, attachments and Gmail handoff. Address rows, body and signature remain in one scroll flow without shrinking through one another; the Save message footer remains reachable. A specific current blocker appears next to Gmail handoff controls. Template heading and footer derive their Saved/Unsaved changes/Saving state from the same edit state. These labels do not imply that saving a message sends it.
+
+Remittances uses one compact divided summary strip with distinct reported notice and OPERA open amounts; longer amount/evidence explanations are available in native disclosures. Storage names temporary packages separately from retained evidence, older files and Drive archives, and collapses healthy connection setup. These are presentation rules, not changes to settlement, sending or retention policy. Surface briefs record the contextual details.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -207,6 +244,8 @@ The selected-invoice count, amount and actions sit above the Account Detail ledg
 - **Do** keep amounts aligned, hotels identifiable and source links matched to their evidence.
 - **Do** preserve unavailable states per source and keyboard-visible focus.
 - **Do** use compact mobile disclosure for optional Account filters while keeping the activity date visible.
+- **Do** retain exact selected/detail financial values and keyboard/tap access to exact compact ledger amounts.
+- **Do** keep field recovery text, current selection and unsaved status programmatically tied to the state they describe.
 
 ### Don't:
 
@@ -215,6 +254,8 @@ The selected-invoice count, amount and actions sit above the Account Detail ledg
 - **Don't** merge Hotel + Account identity through filters, selections or source links.
 - **Don't** hide financial columns automatically to fit a narrow viewport. Aging may use explicit user-selected visibility; keep All aging and controlled scrolling available.
 - **Don't** treat synthetic review captures as live-service validation.
+- **Don't** add automatic sending or mandatory Preview acknowledgment gates when simplifying document and email controls.
+- **Don't** expand the Account summary by default or reframe the intentionally full-width Register as nested cards.
 
 Not canonized: the test-only synthetic-capture badge is evidence scaffolding, not production interface design. Incumbent uppercase metric kickers and the miniature text brand mark are carried by the build but are not reusable typography or identity rules for new surfaces.
 

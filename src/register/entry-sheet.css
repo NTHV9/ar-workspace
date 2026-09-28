@@ -9,7 +9,7 @@
 .entry-jumps{display:flex;align-items:center;gap:2px}
 .entry-jumps button{padding:7px 10px;border:0;border-radius:4px;background:transparent;box-shadow:none;color:#294966;font-size:12px}
 .entry-jumps button:hover,.entry-jumps button:focus-visible{background:#e5edf8;color:#234daf}
-.register-sheet-caption{margin-left:auto;font-size:11px;color:#506780}
+
 .invoice-register .register-sheet{height:calc(100dvh - 330px);min-height:340px;border-radius:4px}
 .register-sheet .register-table tr,.register-sheet .register-table td{height:44px}
 .register-sheet .register-table td{padding:4px 7px!important}
@@ -35,7 +35,7 @@
 .register-error{margin:6px 0;padding:10px;border:1px solid #dfbbc1;background:#fff5f6;border-radius:4px}
 .register-horizontal-scroll{margin:0 0 3px}
 .register-sheet .register-cell:focus-visible{outline:2px solid #3565d8;outline-offset:-2px}
-@media(max-width:800px){.register-sheet .register-table [data-pinned=invoice_no]{left:56px!important}.register-sheet-caption{margin-left:0}.entry-jumps{flex-wrap:wrap}.register-editbar small{display:none!important}.invoice-register .register-sheet{min-height:360px;height:60dvh}.entry-filters .register-search{flex:1;min-width:180px}.entry-row-number{font-size:9px}}
+@media(max-width:800px){.register-sheet .register-table [data-pinned=invoice_no]{left:56px!important}.entry-jumps{flex-wrap:wrap}.register-editbar small{display:none!important}.invoice-register .register-sheet{min-height:360px;height:60dvh}.entry-filters .register-search{flex:1;min-width:180px}.entry-row-number{font-size:9px}}
 
 .register-paste-dialog{width:min(880px,calc(100vw - 32px));max-height:85dvh;padding:20px;border:1px solid #bfd0e3;border-radius:12px;color:var(--reg-ink);background:#fff;box-shadow:0 16px 48px #10253f30}
 .register-paste-dialog::backdrop{background:#10253f66}.register-paste-dialog header,.register-paste-dialog footer{display:flex;align-items:center;gap:12px;justify-content:space-between}.register-paste-dialog h2{margin:0;font-size:20px}.register-paste-dialog p{font-size:13px}.register-paste-preview{max-height:52dvh;overflow:auto;margin:16px 0;border:1px solid #dce5ef}.register-paste-preview table{border-collapse:collapse;width:100%;font-size:12px}.register-paste-preview th,.register-paste-preview td{padding:9px;border:1px solid #dce5ef;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;min-width:100px}.register-paste-preview thead th{position:sticky;top:0;background:#eef4fa}.register-paste-dialog footer{flex-wrap:wrap}.register-paste-dialog footer .primary-button{width:auto}.register-paste-dialog [role=alert]{color:#932638;background:#fff4f5;padding:10px}.register-paste-dialog footer [role=status]{margin-right:auto;font-size:12px}

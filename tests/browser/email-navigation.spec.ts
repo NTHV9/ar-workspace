@@ -53,7 +53,7 @@ test('Browser Back protects unsaved email edits until leaving is confirmed',asyn
 
 test('saving the email clears its navigation guard',async({page})=>{
  await setup(page);await page.getByLabel('Email message').fill('Synthetic saved message');
- await page.getByRole('button',{name:'Save workspace draft',exact:true}).click();await expect(page.locator('.email-feedback')).toContainText('Workspace draft saved');
+ await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.locator('.email-feedback')).toContainText('Workspace draft saved');
  const dialogs:string[]=[];page.on('dialog',async dialog=>{dialogs.push(dialog.message());await dialog.dismiss();});
  await page.evaluate(()=>history.back());await expect(page.getByLabel('Email message')).toHaveCount(0);expect(dialogs).toEqual([]);
 });

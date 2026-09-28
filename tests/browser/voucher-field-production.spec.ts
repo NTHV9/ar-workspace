@@ -26,6 +26,6 @@ for(const [hotel,width] of [['KAT',1440],['TLKL',1280]] as const)test(`deployed 
  const field=page.getByRole('button',{name:'Enter Voucher No.',exact:true});await expect(field).toBeVisible();await field.click();await page.getByRole('textbox',{name:'Edit document text',exact:true}).fill('0123456789');
  await expect(page.getByRole('spinbutton',{name:'Font size',exact:true})).toHaveValue('8');await expect(page.getByRole('button',{name:'Bold',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(page.getByText('Text overlaps another field. Add a row, move the box, or shorten the text.',{exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
  mkdirSync('.tmp/voucher-production',{recursive:true});await page.screenshot({path:`.tmp/voucher-production/${hotel}-${width}.png`});expect(errors).toEqual([]);expect(unexpected).toEqual([]);
 });

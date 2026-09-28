@@ -1,6 +1,9 @@
 /* Compact application type roles. The existing self-hosted family remains authoritative.
    Named chrome selectors intentionally exclude authored PDF and email content. */
 :root {
+  --ar-text-muted: #526982;
+  --ar-text-danger: #9b2c43;
+  --ar-text-action: #2455ba;
   --ar-type-page: 30px;
   --ar-type-dialog: 18px;
   --ar-type-section: 16px;

@@ -64,3 +64,7 @@ Original workbook/image references and prior baselines remain retained. No raste
 ## Deployment verification — 28 September 2026
 
 After documentation, the parent verified deployed runtime `bf892a9733c8e3e0801e92011a731a883b846c5d`, Worker `2d6440d7-2da4-4d84-a19a-916f599af84f`. Health/source and six anonymous access boundaries passed. All 27 register browser cases passed on deployed assets with synthetic APIs. No customer records or emails were changed.
+
+## Audit documentation alignment — 28 September 2026
+
+U13 now records this route exception in the root DESIGN.md and preserves its local rules here. Superseded Arial and unused summary/caption declarations were removed in the audited source; do not restore them as tokens. The full-width frameless sheet, Guest beside Account, autosave and horizontal scrolling remain. Keyboard help and the removed received-amount explanation remain absent. This documentation alignment does not re-open the earlier layout decision or extend its deployment evidence to unrelated changes.

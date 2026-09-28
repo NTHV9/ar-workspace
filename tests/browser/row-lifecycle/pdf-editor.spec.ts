@@ -40,14 +40,14 @@ test('multiline rows survive reload and can be deleted out of order with Undo/Re
  await page.getByRole('button',{name:'Delete row',exact:true}).click();await expect(page.getByRole('button',{name:'Move text layer',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByText('Draft saved. Final review is still required.',{exact:true})).toBeVisible();
  const delta=await page.evaluate(()=>(window as any).fixture.project.pages[0].rowEdits.reduce((n:number,e:any)=>n+(e.kind==='insert'?e.height:e.kind==='delete'?-e.height:0),0));expect(delta).toBeCloseTo(0,7);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
 });
 
 test('selecting unchanged special-style text does not prevent Preview',async({page})=>{
  await page.goto('/tests/browser/editor-resilience/harness.html');
  await page.getByRole('button',{name:'Edit original text: CLEAR THIS SPECIAL TEXT',exact:true}).click();
  await expect(page.getByRole('alert')).toHaveCount(0);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible({timeout:1500});
 });
 
@@ -62,14 +62,14 @@ test('deleting a new row keeps an independently placed note in its space',async(
  await page.locator('.pdf-layer-target.empty-cell .pdf-layer-move').nth(3).click();await page.getByRole('button',{name:'Delete row',exact:true}).click();
  await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(0);await expect(page.getByRole('alert')).toHaveCount(0);await expect(page.getByText('Row removed. Space containing other content was kept.',{exact:true})).toBeVisible();
  await expect(page.locator('.pdf-differences')).toContainText('KEEP NOTE');
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
 });
 
 test('whitespace-only source edits need no replacement font',async({page})=>{
  await page.goto('/tests/browser/editor-resilience/harness.html');
  await page.getByRole('button',{name:'Edit original text: CLEAR THIS SPECIAL TEXT',exact:true}).click();
  await page.getByRole('textbox',{name:'Layer text',exact:true}).fill(' \n ');
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible({timeout:1500});
 });
 
@@ -94,7 +94,7 @@ for(const action of ['add','delete'])test(`row tools after moving source text: $
  }else{
   await page.getByRole('button',{name:'Delete row',exact:true}).click();
   await expect(page.getByRole('button',{name:'Edit original text: City Ledger',exact:true})).toHaveCount(0,{timeout:1500});
-  await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
  }
  await expect(page.getByRole('alert')).toHaveCount(0);
 });
@@ -107,7 +107,7 @@ for(const width of [1440,1280])test(`insert/delete/review/export preserves the o
  await page.locator('.pdf-layer-target.empty-cell .pdf-layer-move').nth(3).click();await page.getByRole('button',{name:'Delete row',exact:true}).click();
  await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(0);await expect(page.getByRole('alert')).toHaveCount(0);await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
  await page.screenshot({path:`.tmp/pdf-row-lifecycle-deleted-${width}.png`,animations:'disabled'});
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const proof=await page.evaluate(async()=>{
   const f=(window as any).fixture,source=await f.loadSources(f.sources),output=await f.loadSources([{id:'out',name:'reviewed.pdf',kind:'invoice',bytes:f.saved[0].bytes}]);
   const before=document.createElement('canvas'),after=document.createElement('canvas');

@@ -1,0 +1,10 @@
+.account-summary{margin:10px 0 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.account-summary>summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:12px 0;color:#334e6a;font-size:12px}
+.account-summary>summary::-webkit-details-marker{display:none}.account-summary>summary strong{margin-left:auto;color:#17314f;font-variant-numeric:tabular-nums}.account-summary>summary small{font-size:11px}
+.account-summary[open]>summary>svg{transform:rotate(90deg)}.account-summary[open]{padding-bottom:12px}
+.account-summary:focus-within>summary{outline-offset:3px}
+#root .account-page .account-amount-link{border:0;background:none;box-shadow:none;padding:0;color:inherit;font:inherit;white-space:nowrap;font-variant-numeric:tabular-nums;text-decoration:underline;text-decoration-color:#b1c5dc;text-underline-offset:3px}
+#root .account-page .account-amount-link:hover{color:#2455ba;text-decoration-color:currentColor}
+.account-page .selection-bar{margin:0 0 14px}
+.account-page .detail-balance strong{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+@media(max-width:700px){.account-summary>summary{flex-wrap:wrap}.account-summary>summary small{display:none}}

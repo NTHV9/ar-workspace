@@ -1,3 +1,4 @@
+import {choosePdfTool} from '../fixtures/pdf-tools';
 import {test,expect,type Page} from '@playwright/test';
 import {reviewPreviewPages} from '../fixtures/pdf-preview';
 
@@ -150,7 +151,7 @@ test('source deletion removes ghost targets, survives Undo/Redo and reload, and 
 
 test('Delete text box removes an ordinary added object instead of leaving a source tombstone',async({page})=>{
  await openStatement(page);
- await page.getByRole('button',{name:'Text box',exact:true}).click();
+ await choosePdfTool(page,'Text box');
  await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC ADDED TEXT');
  await page.getByRole('button',{name:'Delete text box',exact:true}).click();
  await expect(page.locator('.pdf-layer-target')).toHaveCount(0);
@@ -200,7 +201,7 @@ for(const hotel of ['KAT','TSK'])test(`${hotel}: deleted source text stays absen
  const runs=await openStatement(page,hotel);
  await deleteVoucher(page,runs);
  await insertBelowLastRow(page);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await reviewPreviewPages(page);
  await expect(page.getByRole('checkbox')).toHaveCount(0);
  await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();

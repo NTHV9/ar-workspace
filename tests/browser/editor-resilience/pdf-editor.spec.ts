@@ -1,3 +1,4 @@
+import {choosePdfTool} from '../fixtures/pdf-tools';
 import {test,expect} from '@playwright/test';
 import {reviewPreviewPages} from '../fixtures/pdf-preview';
 
@@ -18,7 +19,7 @@ for(const action of ['inline','sidebar','delete-box'])test(`clearing unsupported
  else if(action==='sidebar')await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('');
  else {const input=page.getByRole('textbox',{name:'Edit document text',exact:true});await input.press('ControlOrMeta+a');await input.press('Backspace');}
  await expect(page.getByRole('button',{name:'Use Arial for this text',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
  await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');
 });
@@ -65,7 +66,7 @@ test('new rows accept new characters in every cell and wrap before the next colu
   await expect(input).toBeFocused();await input.fill(value);if(index<values.length-1)await input.press('Tab');
  }
  await expect(page.getByRole('alert')).toHaveCount(0);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const result=await page.evaluate(()=>{const f=(window as any).fixture,cells=f.project.pages[0].layers.filter((l:any)=>l.tableRow).sort((a:any,b:any)=>a.x-b.x);return {values:cells.map((l:any)=>l.text),fonts:cells.map((l:any)=>l.font),plain:cells.every((l:any)=>!l.original&&!l.sourceText),inside:cells.every((l:any,i:number)=>!cells[i+1]||l.x+l.width<=cells[i+1].x),wrapped:cells[1].height>cells[0].height,exported:f.saved[0].bytes.length>0};});
  expect(result).toMatchObject({values,plain:true,inside:true,wrapped:true,exported:true});expect(result.fonts).toEqual(Array(5).fill('Arial'));
@@ -90,18 +91,18 @@ test('Undo clears a resolved Preview warning and original text can be exported a
  await page.goto('/tests/browser/pdf-editor-harness.html?subset=1');
  await page.getByRole('button',{name:'Edit original text: D12345 - 1',exact:true}).click();
  await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('abcdefgh');
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'Page 1: choose a replacement font'})).toBeVisible();
  await page.getByRole('button',{name:'Undo',exact:true}).click();
  await expect(page.getByRole('alert')).toHaveCount(0);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toBeVisible();
 });
 
 test('a partial area selection expands to the whole word before it moves',async({page})=>{
  await page.goto('/tests/browser/editor-resilience/harness.html');
  const target=await page.getByRole('button',{name:'Edit original text: REF-001',exact:true}).boundingBox();expect(target).not.toBeNull();
- await page.getByRole('button',{name:'Move table / area',exact:true}).click();
+ await choosePdfTool(page,'Move table / area');
  // Read coordinates again after the contextual tools change the page position.
  const paper=await page.locator('.pdf-paper').boundingBox(),scale=paper!.width/595;
  const x=paper!.x+310*scale,y=paper!.y+(842-700-8*.718)*scale;
@@ -120,6 +121,6 @@ for(const width of [1440,1280])test(`document editing controls remain usable at 
  await expect(page.getByRole('textbox',{name:'Edit document text',exact:true})).toBeFocused();
  await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
  await expect(page.getByRole('button',{name:'Add row below',exact:true})).toBeInViewport();
- await expect(page.getByRole('button',{name:'Open mandatory Preview',exact:true})).toBeInViewport();
+ await expect(page.getByRole('button',{name:'Preview PDFs',exact:true})).toBeInViewport();
  await page.screenshot({path:`.tmp/pdf-resilience-${width}.png`,animations:'disabled'});
 });

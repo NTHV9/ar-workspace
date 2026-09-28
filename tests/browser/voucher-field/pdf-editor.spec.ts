@@ -15,7 +15,7 @@ test('blank Voucher entry uses the native face, location and pixels in Preview/e
   const exports=await f.exportProject(project,f.sources,loaded.documents);loaded.dispose();expected.dispose();return{field:{fontSize:field.fontSize,bold:field.bold,color:field.color,x:field.x,maskOriginal:field.maskOriginal},different,ink,exported:exports[0].bytes.length>0};
  });
  expect(result.field).toMatchObject({fontSize:8,bold:true,color:'#000000',x:472.5,maskOriginal:false});expect(result.ink).toBeGreaterThan(30);expect(result.different/result.ink).toBeLessThan(.06);expect(result.exported).toBe(true);
- await page.getByRole('button',{name:'Open mandatory Preview',exact:true}).click();await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await expect(page.getByRole('img',{name:'Final PDF page 1',exact:true})).toBeVisible();
 });
 test('changing Voucher font and reopening its target keeps a single entry',async({page})=>{
  await page.goto('/tests/browser/voucher-field/harness.html');const target=page.getByRole('button',{name:'Enter Voucher No.',exact:true});await target.click();

@@ -3,7 +3,7 @@ import {compactEmptyRowLines} from './row-compaction';
 import {deleteInsertedRow,insertedRowBands} from './inserted-rows';
 import {prepareRowDeletion,replacementForRun} from './source-edits';
 import {applyFlowEdit,pageCanvasHeight,MAX_FLOW_HEIGHT} from './flow';
-import {useEffect,useRef,useState,type PointerEvent} from 'react';
+import {useEffect,useId,useRef,useState,type PointerEvent} from 'react';
 import type {PDFDocumentProxy} from 'pdfjs-dist';
 import {detectLines,detectRowBarriers,type GraphicTarget} from './native-graphics';
 import {includeTouchedText,mapSourceRect,mapSourceTextRect} from './row-layout';
@@ -18,6 +18,9 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  const [barriers,setBarriers]=useState<GraphicTarget[]>([]),[geometryReady,setGeometryReady]=useState(false);
  const [moving,setMoving]=useState(false);
  const [notice,setNotice]=useState('');
+ const areaButton=useRef<HTMLButtonElement>(null),lineButton=useRef<HTMLButtonElement|null>(null),focusArea=useRef(false);
+ const [bounds,setBounds]=useState({x:'0',y:'0',width:'100',height:'50'}),[boundsError,setBoundsError]=useState('');const boundsErrorId=useId();
+ useEffect(()=>{if(area&&focusArea.current){focusArea.current=false;areaButton.current?.focus();}},[area,tool]);
  useEffect(()=>{setNotice('');},[page?.id,tool]);
  useEffect(()=>{if(layer?.id)setNotice('');},[layer?.id]);
  const ownedEdits=useRef(page?.rowEdits);
@@ -114,15 +117,18 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  }
  function cancel(){const g=gesture.current;gesture.current=null;setMoving(false);setArea(g?.pick?null:g?.before??null);}
  async function nudge(dx:number,dy:number){if(!area||!page||busy)return;const destination={...area,x:area.x+dx,y:area.y+dy};if(destination.x<0||destination.y<0||destination.x+area.width>page.width||destination.y+area.height>extent)return;if(await apply({id:crypto.randomUUID(),kind:'move',...area,dx,dy}))setArea(destination);}
+ function selectArea(rect:Area){if(!page||busy)return;setArea(includeTouchedText(rect,selectionTargets));setTool('objects');focusArea.current=true;onError('');setBoundsError('');setNotice('Area selected. Use arrow keys to move, Shift for larger steps, or Escape to clear.');}
+ function selectBounds(){if(!page)return;const rect=Object.fromEntries(Object.entries(bounds).map(([key,value])=>[key,value.trim()===''?NaN:Number(value)])) as Area;if(Object.values(rect).some(v=>!Number.isFinite(v))||rect.x<0||rect.y<0||rect.width<=0||rect.height<=0||rect.x+rect.width>page.width||rect.y+rect.height>extent){setBoundsError('Enter a positive width and height, with the entire area inside this page.');return;}selectArea(rect);}
  const position=(rect:Area)=>({left:`${rect.x/page!.width*100}%`,top:`${rect.y/extent*100}%`,width:`${rect.width/page!.width*100}%`,height:`${rect.height/extent*100}%`});
  const overlay=page&&<>
-  {tool==='objects'&&lines.map(line=>{const rect=mapSourceRect(line,page.rowEdits??[]);return rect?<button key={line.id} className="pdf-native-line" aria-label={'Move line '+line.id} title="Drag this line" style={position(rect)} onPointerDown={event=>begin(event,rect)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>:null;})}
+  {tool==='objects'&&lines.map(line=>{const rect=mapSourceRect(line,page.rowEdits??[]);return rect?<button key={line.id} className="pdf-native-line" aria-label={'Move line '+line.id} title="Drag this line or press Enter to select" style={position(rect)} onClick={event=>{if(event.detail===0){lineButton.current=event.currentTarget;selectArea(rect);}}} onPointerDown={event=>begin(event,rect)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>:null;})}
   {tool==='area'&&<div className="pdf-area-picker" aria-label="Select table or area" onPointerDown={event=>begin(event)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>}
-  {area&&(tool==='objects'||tool==='area')&&<button className={'pdf-native-area '+(moving?'moving':'')} aria-label="Move selected table or area" title="Drag the selected area, or use arrow keys" onKeyDown={event=>{if(event.repeat)return;const step=event.shiftKey?10:1,delta=({ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]} as Record<string,number[]>)[event.key];if(delta){event.preventDefault();void nudge(delta[0],delta[1]);}}} style={position(area)} onPointerDown={event=>begin(event,area)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>}
+  {area&&(tool==='objects'||tool==='area')&&<button ref={areaButton} className={'pdf-native-area '+(moving?'moving':'')} aria-label="Move selected table or area" title="Drag the selected area, or use arrow keys" onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setArea(null);lineButton.current?.focus();return;}if(event.repeat)return;const step=event.shiftKey?10:1,delta=({ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]} as Record<string,number[]>)[event.key];if(delta){event.preventDefault();void nudge(delta[0],delta[1]);}}} style={position(area)} onPointerDown={event=>begin(event,area)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>}
  </>;
  const controls=<>
   {notice&&<p role="status">{notice}</p>}
-  {(tool==='objects'||tool==='area')&&<div className="pdf-object-help"><p>{tool==='area'?'Drag around the whole table or area, then drag it to a new position.':area?'Drag the outlined area to move it. Undo restores its previous position.':'Drag a highlighted line, or use Move table / area for a group.'}</p>{area&&<button disabled={busy} onClick={()=>setArea(null)}>Clear area selection</button>}</div>}
+  {(tool==='objects'||tool==='area')&&<div className="pdf-object-help"><p>{tool==='area'?'Drag around the whole table or area, then drag it to a new position.':area?'Use arrow keys or drag the outlined area. Shift moves farther; Escape clears the selection.':'Drag a highlighted line, or use Move table / area for a group.'}</p>{area&&<button disabled={busy} onClick={()=>setArea(null)}>Clear area selection</button>}</div>}
+  {tool==='area'&&page&&<fieldset className="pdf-area-bounds" disabled={busy||!geometryReady}><legend>Area bounds · PDF points</legend>{(['x','y','width','height'] as const).map(key=><label key={key}>{key==='x'?'Left':key==='y'?'Top':key==='width'?'Width':'Height'}<input type="number" min={key==='x'||key==='y'?0:1} aria-invalid={!!boundsError} aria-describedby={boundsError?boundsErrorId:undefined} value={bounds[key]} onChange={event=>{setBounds({...bounds,[key]:event.target.value});setBoundsError('');}}/></label>)}<button type="button" onClick={selectBounds}>Select area</button>{boundsError&&<p role="alert" id={boundsErrorId}>{boundsError}</p>}</fieldset>}
  </>;
  const rowControls=<section className="pdf-row-controls"><h3>Row tools</h3><p>{anchor?`${anchor.tableRow?page?.layers.filter(l=>l.tableRow===anchor.tableRow).length:row?.template.length||1} fields on this row`:'Select text in the row you want to change.'}</p><div><button disabled={busy||!geometryReady||!anchor} onClick={()=>void insertRow()}>Add row below</button><button disabled={busy||!geometryReady||!anchor} onClick={()=>void deleteRow()}>Delete row</button>{anchor&&!anchor.tableRow&&<button disabled={busy||!geometryReady} onClick={()=>void removeEmptyLines()}>Remove empty lines</button>}</div></section>;
  return {overlay,controls,rowControls};
