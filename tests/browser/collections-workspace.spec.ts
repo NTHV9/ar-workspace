@@ -3,18 +3,20 @@ import {policyFixture} from './fixtures/collection-policy';
 import {calendarAdd} from '../../src/domain/collection';
 const today='2026-09-26',stamp='2026-09-26T03:00:00Z';
 const user={id:'00000000-0000-4000-8000-000000000001',email:'staff@example.com',aud:'authenticated',role:'authenticated',app_metadata:{providers:['google']},user_metadata:{},created_at:stamp};
-async function setup(page:Page,region:string){
+async function setup(page:Page,region:string,administrator=false){
+ const loginUser={...user,email:administrator?'ar@katathani.com':user.email};
  await page.clock.setFixedTime(new Date(stamp));const hotel=region==='phuket'?'KAT':'TLKL';const writes:Record<string,unknown>[]=[];
  const row=(account:string,name:string,n:number,stage:string|null=null,extra:Record<string,unknown>={})=>({hotel,account_id:account,account_name:name,account_type:'Travel Agent',id:n===1?'shared':'inv-'+n,invoice_no:account.toUpperCase()+'-'+(100+n),folio_no:'F-'+n,guest:n<=2?'First pair':'Guest '+n,open:n===1?100.25:n===2?200.25:250,transaction_date:calendarAdd(today,-30),collection_role:'standalone',collection_selectable:true,verification_state:'verified',workflow:{revision:1,billing_required:account==='harbor',credit_term:30,first_billing_date:null,last_reminder_stage:stage,last_reminder_date:stage?calendarAdd(today,-10):null,due_date:calendarAdd(today,-2)},...extra});
  const rows=[...Array.from({length:24},(_,i)=>row('harbor','Harbor Travel',i+1)),row('coral','Coral Holidays',1),row('palm','Palm Tours',1,'Final'),row('orchid','Orchid Agency',1,null,{workflow:{revision:1,billing_required:false,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:calendarAdd(today,20)}}),row('review','Review Account',1,null,{verification_state:'unverified',collection_selectable:false}),row('hold','Held Account',1,null,{exceptions:{held:true,needsReview:false,dispute:'',reopenedAt:null}}),row('setup','Setup Account',1,null,{workflow:null})];
  const accounts=[...new Set(rows.map(r=>r.account_id))].map(id=>{const own=rows.filter(r=>r.account_id===id);return {id,hotel,name:own[0].account_name,type:'Travel Agent',open:own.reduce((n,r)=>n+r.open,0),over90:0,items:own.length,synced_at:stamp,verification_state:'verified'};});
- await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user}}));
+ await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user:loginUser}}));
  await page.route('**/api/**',r=>{
   const p=new URL(r.request().url()).pathname;
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}});
-  if(p==='/api/access/me')return r.fulfill({json:{memberId:user.id,email:user.email,displayName:'Synthetic Staff',active:true,administrator:false,regions:[region],revision:1}});
+  if(p==='/api/access/me')return r.fulfill({json:{memberId:loginUser.id,email:loginUser.email,displayName:'Synthetic Staff',active:true,administrator,regions:administrator?['phuket','khao-lak']:[region],revision:1}});
   if(p==='/api/portfolio')return r.fulfill({json:{accounts,status:'connected',refresh:{running:false,hotels:[{hotel,status:'succeeded',last_success_at:stamp}]}}});
   if(p==='/api/refresh')return r.fulfill({json:{running:false,hotels:[{hotel,status:'succeeded',last_success_at:stamp}]}});
+  if(p==='/api/mail-reconciliation')return r.fulfill({json:{enabled:false,intervalMinutes:15,waiting:0,needsReview:0}});
   if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
   if(p==='/api/collection-queue')return r.fulfill({json:{rows}});
   if(p==='/api/documents'&&r.request().method()==='POST'){writes.push(r.request().postDataJSON());return r.fulfill({status:503,json:{error:'synthetic_stop_after_selection'}});}
@@ -22,7 +24,7 @@ async function setup(page:Page,region:string){
  });
  await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
  await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const key=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(key+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
- await page.goto('/?code=synthetic-code');await page.getByRole('button',{name:'Collections',exact:true}).click();await expect(page.getByRole('button',{name:/account Harbor Travel$/})).toBeVisible();
+ await page.goto('/?code=synthetic-code');if(administrator&&region!=='phuket')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption(region);await page.getByRole('button',{name:'Collections',exact:true}).click();await expect(page.getByRole('button',{name:/account Harbor Travel$/})).toBeVisible();
  return {writes,hotel,rows};
 }
 for(const [region,width] of [['phuket',1440],['khao-lak',1280],['phuket',390]] as const)test(`${region} ${width}: account-first work, bulk selection and exact document scope`,async({page})=>{
@@ -67,7 +69,9 @@ for(const [width,height] of [[1440,600],[1280,720]] as const)test(`${width}x${he
  await page.screenshot({path:`evidence/queue-invoice-room-${width}-${height}.png`,fullPage:false});
 });
 for(const [region,width,height] of [['phuket',1440,1000],['khao-lak',1280,900],['phuket',1440,600]] as const)test(`${region} ${width}x${height}: Accounts scroll independently without moving invoices`,async({page})=>{
- await page.setViewportSize({width,height});await setup(page,region);
+ await page.setViewportSize({width,height});const {rows}=await setup(page,region);
+ // Compact rows fit more accounts; keep enough data to exercise actual scroll boundaries.
+ rows.push(...Array.from({length:24},(_,i)=>({...rows[0],account_id:'scroll-'+i,account_name:'Scroll Account '+i,id:'scroll-invoice-'+i})));await page.getByRole('button',{name:'Reload queue',exact:true}).click();
  const queue=page.getByRole('region',{name:'Prioritized collection work'}),panel=page.getByRole('complementary',{name:'Collection work details'}),header=page.locator('.queue-work>header');
  await page.locator('.queue-work').scrollIntoViewIfNeeded();
  const initialPageY=await page.evaluate(()=>scrollY);
@@ -150,4 +154,61 @@ for(const [region,width,height] of [['phuket',1440,1000],['khao-lak',1280,900],[
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const table=panel.getByRole('group',{name:'Invoices in selected work'});expect(await table.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
  if(width<=1100){await panel.getByRole('button',{name:'Close queue details'}).click();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'.tmp/collections-redesign/accounts-mobile.png',fullPage:true});}
+});
+
+for(const [region,width,height] of [['phuket',1590,835],['khao-lak',1280,720],['phuket',1440,900]] as const)test(`${region} ${width}x${height}: Collections fits the viewport with independent invoice scrolling`,async({page})=>{
+ await page.setViewportSize({width,height});const {rows}=await setup(page,region,true);
+ rows.push(...Array.from({length:35},(_,i)=>({...rows[0],account_id:'volume-'+i,account_name:'Volume Account '+i,id:'volume-invoice-'+i})));
+ await page.getByRole('button',{name:'Reload queue',exact:true}).click();await page.getByRole('button',{name:/account Harbor Travel$/}).click();
+ const list=page.getByRole('group',{name:'Invoices in selected work'}),accounts=page.getByRole('region',{name:'Prioritized collection work'}),footer=page.locator('.queue-selection-footer');
+ await expect(footer).toBeInViewport({ratio:1});
+ expect(await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeLessThanOrEqual(1);
+ const metrics=await list.evaluate(e=>{const bounds=e.getBoundingClientRect(),header=e.querySelector('thead')!.getBoundingClientRect(),rows=[...e.querySelectorAll('tbody tr')].map(r=>r.getBoundingClientRect());return {height:bounds.height,rowHeight:rows[0].height,fullyVisible:rows.filter(r=>r.top>=header.bottom-1&&r.bottom<=bounds.bottom+1).length};});
+ expect(metrics.rowHeight).toBeLessThanOrEqual(49);expect(metrics.fullyVisible).toBeGreaterThanOrEqual(width===1590?8:width===1440?8:5);
+ const accountHeight=await accounts.locator('li').first().evaluate(e=>e.getBoundingClientRect().height);expect(accountHeight).toBeLessThanOrEqual(78);
+ const before=await accounts.evaluate(e=>e.scrollTop),footerBefore=await footer.boundingBox();const box=await list.boundingBox();
+ await page.mouse.move(box!.x+box!.width/2,box!.y+80);await page.mouse.wheel(0,500);await expect.poll(()=>list.evaluate(e=>e.scrollTop)).toBeGreaterThan(0);
+ expect(await accounts.evaluate(e=>e.scrollTop)).toBe(before);expect(await page.evaluate(()=>scrollY)).toBe(0);expect((await footer.boundingBox())!.y).toBe(footerBefore!.y);
+ await page.mouse.wheel(0,10000);await expect.poll(()=>list.evaluate(e=>Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop))).toBeLessThanOrEqual(1);await page.mouse.wheel(0,500);await page.waitForTimeout(100);expect(await page.evaluate(()=>scrollY)).toBe(0);
+ await page.getByRole('button',{name:'Collection filters',exact:true}).click();await expect(page.getByLabel('Queue timing',{exact:true})).toBeInViewport({ratio:1});await page.getByLabel('Queue timing',{exact:true}).press('Escape');
+ if(region==='phuket'){await page.locator('.queue-sync summary').click();await expect(page.getByRole('button',{name:'Check sent status now',exact:true})).toBeInViewport({ratio:1});expect((await list.boundingBox())!.height).toBe(metrics.height);await page.locator('.queue-sync summary').click();}
+ await list.evaluate(e=>{e.scrollTop=0;});await page.screenshot({path:`.tmp/collections-viewport/${region}-${width}-${height}.png`,fullPage:false});
+});
+
+test('visible work timing filters keep account totals and document selections in the same scope',async({page})=>{
+ const {rows,writes,hotel}=await setup(page,'phuket');rows.filter(r=>r.account_id==='harbor').forEach((r,i)=>{Object.assign(r.workflow!,{billing_required:false,due_date:calendarAdd(today,i<12?2:20)});});
+ await page.getByRole('button',{name:'Reload queue',exact:true}).click();await page.getByRole('button',{name:/account Harbor Travel$/}).click();
+ const timing=page.getByRole('group',{name:'Work timing'}),list=page.getByRole('group',{name:'Invoices in selected work'}),footer=page.locator('.queue-selection-footer');
+ await expect(list.locator('tbody tr')).toHaveCount(24);await page.getByLabel('Queue select HARBOR-101',{exact:true}).check();
+ await timing.getByRole('button',{name:'Ready',exact:true}).click();await expect(timing.getByRole('button',{name:'Ready',exact:true})).toHaveAttribute('aria-pressed','true');await expect(list.locator('tbody tr')).toHaveCount(12);await expect(footer).toContainText('0 selected');await expect(list).not.toContainText('Upcoming');
+ await page.getByLabel('Queue select HARBOR-101',{exact:true}).check();await timing.getByRole('button',{name:'Upcoming',exact:true}).click();await expect(list.locator('tbody tr')).toHaveCount(12);await expect(footer).toContainText('0 selected');await expect(page.getByLabel('Queue select HARBOR-101',{exact:true})).toHaveCount(0);
+ await timing.getByRole('button',{name:'All',exact:true}).click();await expect(list.locator('tbody tr')).toHaveCount(24);await expect(page.getByLabel('Queue select HARBOR-101',{exact:true})).not.toBeChecked();
+ await timing.getByRole('button',{name:'Ready',exact:true}).click();await page.getByRole('button',{name:'Select all shown',exact:true}).click();await expect(footer).toContainText('12 selected');await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
+ const modal=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Prepare documents',exact:true})});await modal.getByRole('button',{name:'Create document job',exact:true}).click();await expect.poll(()=>writes.length).toBe(1);
+ expect(writes[0]).toMatchObject({hotel,accountId:'harbor',purpose:'collection',ids:rows.filter(r=>r.account_id==='harbor').slice(0,12).map(r=>r.id)});
+});
+
+test('long account names, complete invoice identifiers and queue errors keep actions reachable',async({page})=>{
+ await page.setViewportSize({width:1280,height:720});const {rows}=await setup(page,'phuket');
+ const name='International Partnership Travel Company with a Longer Account Name',invoice='INV-2026-12345678901234567890';
+ rows.filter(r=>r.account_id==='harbor').forEach(r=>{r.account_name=name;});rows[1].invoice_no=invoice;rows[1].guest='A guest with a longer name that remains readable';
+ Object.assign(rows[0].workflow!,{first_billing_date:'2026-08-01',last_reminder_stage:'Friendly',last_reminder_date:'2026-09-16'});
+ await page.getByRole('button',{name:'Reload queue',exact:true}).click();await page.getByRole('button',{name:'Open KAT account '+name,exact:true}).click();await page.getByRole('navigation',{name:'Work stages for selected account'}).getByRole('button',{name:/Billing/}).click();
+ await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();await expect(page.getByLabel('Queue select '+invoice,{exact:true})).toBeVisible();
+ const cell=page.locator('.queue-invoice-number').filter({hasText:invoice});expect(await cell.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+ const list=page.getByRole('group',{name:'Invoices in selected work'}),footer=page.locator('.queue-selection-footer');expect(await list.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);await expect(footer).toBeInViewport({ratio:1});
+ await page.route('**/api/collection-queue',r=>r.fulfill({status:503,json:{error:'synthetic_unavailable'}}));await page.getByRole('button',{name:'Reload queue',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Showing the last successfully loaded queue.');await expect(footer).toBeInViewport({ratio:1});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await list.evaluate(e=>e.clientHeight)).toBeGreaterThan(100);
+ await page.screenshot({path:'.tmp/collections-viewport/long-names-and-error.png',fullPage:false});
+});
+
+test('timing keeps the default focused account when filtered totals change the sort order',async({page})=>{
+ const {rows}=await setup(page,'phuket');const remaining=rows.filter(r=>['harbor','coral'].includes(r.account_id));rows.splice(0,rows.length,...remaining);
+ rows.forEach(r=>{const index=rows.filter(x=>x.account_id==='harbor').indexOf(r);Object.assign(r.workflow!,{billing_required:false,last_reminder_stage:'Friendly',last_reminder_date:calendarAdd(today,-10),due_date:calendarAdd(today,r.account_id==='coral'||index<2?-2:20)});if(r.account_id==='coral')r.open=1000;});
+ await page.getByRole('button',{name:'Reload queue',exact:true}).click();const panel=page.getByRole('complementary',{name:'Collection work details'}),timing=page.getByRole('group',{name:'Work timing'});
+ await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();expect(new URL(page.url()).searchParams.has('qfocus')).toBe(false);
+ await timing.getByRole('button',{name:'Ready',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(2);
+ await expect(page.getByRole('region',{name:'Prioritized collection work'}).getByRole('button').first()).toHaveAccessibleName('Open KAT account Coral Holidays');
+ await timing.getByRole('button',{name:'Upcoming',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(22);
+ await timing.getByRole('button',{name:'All',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(24);
 });

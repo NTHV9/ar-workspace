@@ -1,0 +1,76 @@
+/* Collections gives the remaining viewport to its two independently scrolling lists. */
+.collection-page .queue-timing{display:flex;align-items:center;gap:2px;margin-left:auto;padding:3px;background:#e4ebf4;border-radius:7px}
+.collection-page .queue-timing button{min-height:30px;padding:5px 10px;border:0;border-radius:5px;box-shadow:none;background:transparent;color:#526982;font-size:12px;font-weight:600}
+.collection-page .queue-timing button[aria-pressed=true]{background:#fff;color:#214ba8;box-shadow:0 2px 4px #142b4512}
+.queue-desk .queue-more-views,.queue-desk .queue-more-views[open]{margin-left:0}
+
+@media(min-width:1101px){
+ .app-shell:has(>.collection-page){display:flex;flex-direction:column;height:calc(100dvh - 36px);min-height:0;overflow:visible}
+ .app-shell:has(>.collection-page)>.app-header,.app-shell:has(>.collection-page)>.dashboard-return,.app-shell:has(>.collection-page)>.page-error{flex-shrink:0}
+ #root .collection-page{display:flex;flex:1;flex-direction:column;min-height:0;padding:12px 24px;--ar-type-page:28px;--ar-type-dialog:22px}
+ .collection-page>.queue-title{flex:none;margin-bottom:10px;gap:12px}
+ .collection-page>.information-note,.collection-page>.error-message{flex:none;margin:0 0 8px;max-height:100px;overflow:auto}
+ .collection-page .queue-desk{display:flex;flex:1;flex-direction:column;min-height:0}
+ #root .collection-page .queue-desk>.queue-views{flex:none;gap:16px;padding:0 14px}
+ #root .collection-page .queue-desk>.queue-views>button{padding:10px 0;min-height:40px}
+ .collection-page .queue-more-views summary{padding:7px 0;min-height:40px}
+ .collection-page .queue-layout{flex:1;min-height:0;align-items:stretch;grid-template-rows:minmax(0,1fr)}
+ #root .collection-page .queue-desk .queue-work,#root .collection-page .queue-desk .queue-detail{display:flex;flex-direction:column;position:relative;top:auto;height:auto;min-height:0;max-height:none;align-self:stretch}
+ .collection-page .queue-work>header,.collection-page .queue-account-tools,.collection-page .queue-detail-heading,.collection-page .queue-invoice-tools,.collection-page .queue-selection-footer{flex:none}
+ .queue-desk .queue-work>header{padding:10px 14px 8px}
+ .queue-desk .queue-work header p{margin-top:3px}
+ .queue-account-tools{padding:0 12px 8px}
+ .queue-account-tools .queue-toolbar{gap:6px}
+ .queue-account-tools .queue-filter-chips{max-height:58px;overflow:auto;margin-top:6px}
+ .queue-account-tools .queue-filters{max-height:min(440px,calc(100dvh - 270px))}
+ .collection-page .queue-table-scroll,.collection-page .queue-invoice-list{flex:1;min-height:0;height:auto;overflow:auto;overscroll-behavior:contain}
+ .collection-page .queue-table-scroll{overflow-x:hidden;border-radius:0 0 0 13px}
+ .queue-desk .queue-account-item{gap:2px;padding:6px 14px;min-height:70px}
+ .queue-desk .queue-account-name{margin:0;font-size:15px;line-height:21px}
+ .queue-desk .queue-account-metrics{font-size:12px;line-height:17px}
+ .queue-desk .queue-account-meta{gap:6px;line-height:16px}
+ .queue-desk .queue-account-stages>span{padding:1px 4px;line-height:15px}
+ .queue-desk .queue-hotel{padding:1px 5px;line-height:16px}
+ .queue-desk .queue-detail-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:10px 16px}
+ .queue-desk .queue-detail-title{grid-column:1;grid-row:1;margin:0;gap:8px}
+ #root .queue-desk .queue-detail-title h2{line-height:1.3}
+ .queue-desk .queue-detail-context{grid-column:2;grid-row:1;gap:6px}
+ .queue-desk .queue-detail-context strong{margin-left:6px}
+ .collection-page .queue-work-stages{grid-column:1/-1;margin:0;padding:0;flex-wrap:nowrap;overflow:auto}
+ .queue-work-stages button{flex-shrink:0;padding:4px 8px;min-height:30px}
+ .queue-desk .queue-invoice-tools{padding:8px 16px}
+ .queue-desk .queue-find input{height:34px;padding:6px 0}
+ .queue-desk .queue-selected-filter{min-height:34px;padding:6px 8px}
+ .queue-desk .queue-list-actions{margin-top:3px;min-height:22px}
+ .queue-desk .queue-invoices th{padding-top:8px;padding-bottom:8px}
+ .queue-desk .queue-invoices td{height:44px;padding-top:5px;padding-bottom:5px;line-height:18px;white-space:normal}
+ #root .queue-desk .queue-invoices .queue-invoice-number b{white-space:normal;overflow-wrap:anywhere;line-height:18px}
+ #root .queue-desk .queue-invoices small{font-size:11px;line-height:15px}
+ .queue-desk .queue-invoice-number small{margin-top:1px}
+ .queue-desk .queue-selection-footer{min-height:52px;padding:8px 16px;gap:12px}
+ .queue-desk .queue-selection-footer>div{flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:6px 12px}
+ #root .collection-page .queue-selection-footer strong{font-size:20px}
+ .queue-desk .queue-selection-footer>button{min-height:36px;padding:7px 12px}
+ .collection-page .queue-detail-empty{min-height:0;overflow:auto}
+ .collection-page>.queue-sync{position:relative;flex:none;margin-top:6px;padding-top:4px;font-size:11px}
+ .collection-page>.queue-sync>div{position:absolute;bottom:calc(100% + 8px);right:0;z-index:6;width:min(580px,100%);max-height:260px;overflow:auto;padding:16px;background:#fff;border:1px solid #cddbe9;border-radius:10px;box-shadow:0 10px 24px #142b4526}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ .app-shell:has(>.collection-page)>.app-header{gap:6px;padding:8px 24px}
+ .app-shell:has(>.collection-page) .main-nav{padding:2px}
+ .app-shell:has(>.collection-page) .main-nav button{padding-top:7px;padding-bottom:7px}
+ .queue-desk .queue-detail-context{flex-wrap:wrap;justify-content:flex-end;max-width:190px;row-gap:3px}
+}
+/* At high zoom or a very short window, keep controls reachable through the page. */
+@media(min-width:1101px) and (max-height:620px){
+ .app-shell:has(>.collection-page){height:auto;min-height:calc(100dvh - 36px)}
+ .collection-page .queue-desk{flex:none;height:520px}
+}
+@media(max-width:1100px){
+ .collection-page .queue-timing{margin-left:0}
+ .collection-page .queue-timing button{min-height:36px}
+}
+@media(max-width:650px){
+ .collection-page .queue-timing{margin:4px 0}
+ .collection-page .queue-timing button{padding:6px 10px}
+}
