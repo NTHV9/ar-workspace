@@ -25,6 +25,7 @@ import {driveApi,driveCallback} from './drive/api';
 import {accountWorkspaceApi} from './accounts/workspace';
 import {remittanceApi,type RemittanceApiEnv} from './remittance/api';
 import type {DriveEnv} from './drive/shared';
+import {reportSheetLinks,type ReportSheetLinksEnv} from './reports/sheet-links';
 import {reportsApi} from './reports/api';
 import { probeOpera, type OperaEnv } from './opera/probe';
 import { OperaError } from './opera/client';
@@ -38,7 +39,7 @@ import type {EmailEnv} from './email/shared';
 import {rendererProof} from './statement/proof';
 import {isHotelId,regionHotels} from '../src/domain/hotels';
 import {configuredOperaHotels,hotelBelongsToRegion,regionalHotelScope,resultMatchesHotelScope} from './hotels';
-interface Env extends FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
+interface Env extends ReportSheetLinksEnv,FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function upstream(url: string, options: RequestInit) {
   const controller = new AbortController();
@@ -138,6 +139,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(remittanceRequest){if(!user.id)return json({error:'unauthorized'},401);return remittanceApi(request,env,user.id);}
     if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/invoice-entries'?dashboardInvoiceEntriesApi(request,env,user.id):path==='/api/dashboard/aging-invoices'?agingInvoicesApi(request,env,user.id):path==='/api/dashboard/hotel-overview'?dashboardHotelOverviewApi(request,env,user.id):path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
     if(registerRequest)return invoiceRegisterApi(request,env,user.id!);
+    if(path==='/api/reports/sheets')return reportSheetLinks(request,env,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']);
     if(path.startsWith('/api/reports/')){if(!user.id)return json({error:'unauthorized'},401);return reportsApi(request,env,user.id);}
     if(emailRequest){if(!user.id)return json({error:'unauthorized'},401);return emailApi(request,env,user.id);}
     if(settingsRequest){if(!user.id)return json({error:'unauthorized'},401);return settingsApi(request,env,user.id);}
