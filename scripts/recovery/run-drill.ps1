@@ -158,6 +158,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_invoice_register'){$fixtures+='invoice-register-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_dashboard_progressive_segments'){$fixtures+='dashboard-progressive-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_period_summary_cache'){$fixtures+='period-summary-cache-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_publish_batch_invoices'){$fixtures+='refresh-publish-batch-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture
