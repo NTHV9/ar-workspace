@@ -130,6 +130,14 @@ test('a single amount copied from Excel accepts thousands separators without cha
  const {writes}=await setup(page);await page.getByRole('button',{name:'Reports',exact:true}).click();await page.getByRole('button',{name:'Reported received · KAT 1234567890123',exact:true}).click();await page.getByLabel('Reported received',{exact:true}).fill('1,250.50');await page.getByLabel('Reported received',{exact:true}).press('Enter');await expect.poll(()=>writes.length).toBe(1);expect(writes[0].values.reportedReceived).toBe('1250.50');expect(writes[0].values).not.toHaveProperty('open');
 });
 
+test('opening the Google Sheets view preserves the report dirty-work guard',async({page})=>{
+ const {writes}=await setup(page);await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[]}}));
+ await page.getByRole('button',{name:'Reports',exact:true}).click();await page.getByRole('button',{name:'Owner · KAT 1234567890123',exact:true}).click();await page.getByLabel('Owner',{exact:true}).fill('Unfinished owner');
+ const dismiss=async(dialog:import('@playwright/test').Dialog)=>dialog.dismiss();page.on('dialog',dismiss);
+ await page.getByRole('navigation',{name:'Reports views'}).getByRole('button',{name:'Google Sheets',exact:true}).click();await expect(page.getByLabel('Owner',{exact:true})).toHaveValue('Unfinished owner');expect(writes).toHaveLength(0);
+ page.off('dialog',dismiss);page.once('dialog',dialog=>dialog.accept());await page.getByRole('navigation',{name:'Reports views'}).getByRole('button',{name:'Google Sheets',exact:true}).click();await expect(page.getByRole('region',{name:'Google Sheets'})).toBeVisible();expect(writes).toHaveLength(0);
+});
+
 for(const [width,height] of [[1440,900],[1280,720],[1920,1080]])test(`open register workspace ${width}: full-width sheet and column navigation`,async({page})=>{
  const {writes}=await setup(page);await page.setViewportSize({width,height});await page.getByRole('button',{name:'Reports',exact:true}).click();await expect(page.getByText('All matching rows loaded',{exact:true})).toBeVisible();
  const sheet=page.getByRole('region',{name:'Invoice register sheet',exact:true});const box=await sheet.boundingBox();expect(box!.x).toBe(0);expect(box!.width).toBe(width);expect(box!.y+76+5*36).toBeLessThanOrEqual(height);

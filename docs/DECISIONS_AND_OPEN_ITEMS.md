@@ -1,3 +1,6 @@
+## 29 September 2026 — Independent manual Google Sheets in Reports
+
+The owner chose existing Google Sheets/Excel files as a separate manually maintained dataset. Reports gains a Google Sheets view with Phuket/Khao Lak links opening in new tabs. Keep Invoice Register and External billing activity. No import, automatic population, two-way sync, OPERA-to-sheet updates, workbook conversion or Google sharing change is authorized by this feature. This supersedes the preceding discussion of integrating the two datasets. Existing application regional access controls which links are shown; Google continues to control access/edit permissions for the files. See REPORT_SHEET_LINKS.md.
 ## Owner confirmation — 25 September 2026: short credit terms
 
 Invoices whose effective Credit Term is known and less than 7 days skip the Friendly step in the collection work queue. The first applicable due-date round remains scheduled by the active policy (currently Follow-up 1 at Due + 1 day); it is Upcoming until that date. Terms of exactly 7 days or more retain Friendly. Missing terms retain setup/review handling. Preserve all actual-sent history, holds, verification and billing prerequisites; do not send or rewrite workflow evidence automatically.
