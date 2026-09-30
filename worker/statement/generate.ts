@@ -1,3 +1,4 @@
+import {accountWithAddressee} from '../documents/addressee';
 import {makeReader} from '../opera/probe';
 import {readVerifiedAccount,readBusinessDate,asObject} from '../refresh/read-snapshot';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
@@ -27,7 +28,8 @@ export async function workspaceStatement(env:RefreshEnv,job:DocumentJob){
    item.reservationInfo=asObject(asObject(folios).reservationFolioInformation).reservationInfo;
   }
  }
- const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'}),model=statementModel(raw,job.manifest,date);
+ const addressedAccount=await accountWithAddressee(reader,job.hotel,job.account_id,account);
+ const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'}),model=statementModel({...asObject(raw),accountDetails:addressedAccount},job.manifest,date);
  if(model.aging.some((b,i)=>b.cents!==Math.round(verified.account.agingBuckets[i]?.amount*100)))throw Error('document_source_changed');
  const assets=await backendRpc<StatementAssets>(env,'ar_statement_template',{p_hotel:job.hotel,p_version:job.template_version});
  if(!assets)throw Error('document_statement_template_missing');if(assets.version!==job.template_version)throw Error('document_statement_template_invalid');const bytes=await renderStatement(model,assets);
