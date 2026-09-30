@@ -51,3 +51,25 @@
 .aging-v4-invoice-total{grid-column:1;margin:4px 0 0;color:#42646f;font-size:12px;line-height:1.6}
 .aging-v4-invoice-total strong{font-size:18px;font-weight:700;color:var(--aging-v4-ink);margin-right:4px}
 .aging-v4-hotel>.aging-v4-invoice-count{grid-column:2;font-size:11px;line-height:1.5;margin:0}
+
+.aging-v4-signed{margin-top:10px;min-width:0}
+.aging-v4-signed-caption{color:var(--aging-v4-muted);font-size:11px;margin:0 0 9px}
+
+.aging-v4-overview .aging-v4-signed-range{display:grid;grid-template-columns:100px minmax(70px,1fr) 115px 49px;align-items:center;gap:8px;width:100%;min-height:37px;padding:5px 6px;text-align:left;border:0;border-radius:4px;border-bottom:1px solid var(--line);box-shadow:none;background:transparent;color:var(--aging-v4-ink);font-size:12px}
+.aging-v4-signed-label{font-weight:600}.aging-v4-signed-label small{display:inline;margin-left:4px;font-size:10px;color:var(--aging-v4-muted)}
+.aging-v4-signed-range svg{display:block;width:100%;height:20px;color:var(--aging-v4-muted)}
+.aging-v4-signed-range strong,.aging-v4-signed-share{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.aging-v4-signed-share{font-size:11px;color:var(--aging-v4-muted)}
+.aging-v4-overview .aging-v4-signed-range:hover,.aging-v4-overview .aging-v4-signed-range[aria-pressed=true]{background:#edf0fc;color:var(--ar-text-action)}
+.aging-v4-signed-range:focus-visible{outline:2px solid var(--ar-text-action);outline-offset:1px}
+@media(max-width:1100px){.aging-v4-overview .aging-v4-signed-range{grid-template-columns:88px minmax(30px,1fr) 109px 46px;gap:5px;font-size:11px}}
+@media(max-width:520px){.aging-v4-overview .aging-v4-signed-range{grid-template-columns:1fr auto auto;gap:2px 10px;padding:7px 6px;font-size:12px}.aging-v4-signed-range svg{grid-column:1/-1;grid-row:2}.aging-v4-signed-range strong{grid-column:2;grid-row:1}.aging-v4-signed-share{grid-column:3;grid-row:1}}
+
+/* The axis shares the plot column exactly, including narrow-screen reflow. */
+.aging-v4-signed-axis{display:grid;grid-template-columns:100px minmax(70px,1fr) 115px 49px;gap:8px;margin:0;padding:0 6px;font-size:10px;color:var(--aging-v4-muted)}
+.aging-v4-signed-scale{grid-column:2;display:grid;grid-template-columns:1fr auto 1fr;gap:5px;white-space:nowrap}
+.aging-v4-signed-scale>span:last-child{text-align:right}
+#root .aging-v4-overview .aging-v4-signed-range,#root .aging-v4-overview .aging-v4-signed-range:hover{box-shadow:none;background-image:none}
+#root .aging-v4-signed-label small{display:inline}
+@media(max-width:1100px){.aging-v4-signed-axis{grid-template-columns:88px minmax(30px,1fr) 109px 46px;gap:5px}.aging-v4-signed-scale>span:first-child,.aging-v4-signed-scale>span:last-child{visibility:hidden}}
+@media(max-width:520px){.aging-v4-signed-axis{display:block}.aging-v4-signed-scale>span:first-child,.aging-v4-signed-scale>span:last-child{visibility:visible}}

@@ -16,6 +16,7 @@ const stateLabel:Record<AgingCell['state'],string>={verified:'',absent:'No match
 const rangeColors=['#269d94','#68a8d3','#666bce','#ae91cd','#d5a03e','#d57571'];
 const known=(cell:AgingCell|undefined):cell is AgingCell&{amount:number}=>cell?.state==='verified'&&cell.amount!==null&&Number.isFinite(cell.amount);
 const cents=(value:number)=>Math.round(value*100);
+const share=(value:number|null)=>value===null?'% unavailable':value!==0&&Math.abs(value)<.05?`${value<0?'−':''}<0.1%`:`${value.toFixed(1)}%`;
 
 export default function AgingOverview({region,data,columns,label,selectedKey,onSelect,counts}:Props){
  const countText=(hotel:AgingHotel)=>counts?.[hotel]?.count==null?'—':counts![hotel]!.count!.toLocaleString('en-GB');
@@ -56,7 +57,18 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
   </div>
   <div className="aging-v4-profile">
    <div className="aging-v4-profile-heading"><h3>Age of open balances</h3><span>THB · % of net</span></div>
-   <div className="aging-v4-distribution">
+   {mode==='signed'?<div className="aging-v4-signed" aria-label="Signed aging balances">
+    <p className="aging-v4-signed-caption">Credits extend left of zero · THB</p>
+    <div className="aging-v4-signed-axis" aria-hidden="true"><span className="aging-v4-signed-scale"><span>Credits</span><span>0</span><span>Open balances</span></span></div>
+    {ranges.map((range,index)=>{
+     const value=values[index]!,active=range.key===selectedKey,max=Math.max(...values.map(v=>Math.abs(v??0)),1),end=300+value/max*290;
+     return <button type="button" className="aging-v4-signed-range" key={range.key} aria-label={`Compare ${range.bucket.label} days`} aria-pressed={active} onClick={()=>onSelect(range.key)}>
+      <span className="aging-v4-signed-label">{range.bucket.label}<small>days</small></span>
+      <svg viewBox="0 0 600 20" preserveAspectRatio="none" aria-hidden="true"><line x1="300" x2="300" y1="0" y2="20" stroke="currentColor"/><rect x={Math.min(300,end)} y="5" width={Math.abs(end-300)} height="10" rx="2" fill={range.color}/>{value!==0&&<circle cx={end} cy="10" r="2.5" fill={range.color}/>}</svg>
+      <strong>{amount(value)}</strong><span className="aging-v4-signed-share">{share(known(total)?agingPercentage(value,total.amount):null)}</span>
+     </button>;
+    })}
+   </div>:<div className="aging-v4-distribution">
     <div className="aging-v4-chart">
      {distribution?<>
       <svg className="aging-v4-ring" viewBox="0 0 180 180" role="img" aria-label="Aging distribution: verified nonnegative ranges as shares of net open">
@@ -70,7 +82,7 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
       <div className="aging-v4-ring-label" aria-hidden="true"><strong>{selectedPercent===null?'All ages':`${selectedPercent.toFixed(1)}%`}</strong><span>{selected?`${selected.bucket.label} days`:'of net open'}</span></div>
      </>:mode==='zero'?<div className="aging-v4-chart-message"><strong>0.00</strong><span>Net balance is zero</span></div>
       :mode==='unavailable'?<div className="aging-v4-chart-message"><strong>—</strong><span>Distribution unavailable</span></div>
-      :<SignedProfile values={values} colors={ranges.map(range=>range.color)} selectedIndex={ranges.findIndex(range=>range.key===selectedKey)}/>}
+      :null}
     </div>
     {distribution&&<div className="aging-v4-mobile-track" aria-hidden="true">{ranges.map((range,index)=><span key={range.key} style={{width:`${values[index]!/total.amount!*100}%`,backgroundColor:range.color}}/>)}</div>}
     <div className="aging-v4-ranges" aria-label="Select aging range">{ranges.map(range=>{
@@ -79,23 +91,11 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
      return <button type="button" className={'aging-v4-range'+(active?' is-selected':'')} style={{'--aging-v4-range-color':range.color} as CSSProperties} key={range.key} aria-label={`Compare ${range.bucket.label} days`} aria-pressed={active} onClick={()=>onSelect(range.key)}>
       <span className="aging-v4-range-label"><i aria-hidden="true"/><span>{range.bucket.label} <small>days</small></span>{active?<Check size={13} aria-hidden="true"/>:<ChevronRight size={13} aria-hidden="true"/>}</span>
       <strong>{amount(known(range.cell)?range.cell.amount:null)}</strong>
-      <span className="aging-v4-range-share">{!known(range.cell)?stateLabel[range.cell?.state??'unavailable']:percentage===null?'% unavailable':`${percentage.toFixed(1)}%`}</span>
+      <span className="aging-v4-range-share">{!known(range.cell)?stateLabel[range.cell?.state??'unavailable']:share(percentage)}</span>
      </button>;
     })}</div>
-   </div>
+   </div>}
    {(mode==='unavailable'||!reconciles)&&<p className="aging-v4-chart-note">{note}</p>}
   </div>
  </section>;
-}
-
-function SignedProfile({values,colors,selectedIndex}:{values:(number|null)[];colors:string[];selectedIndex:number}){
- const minimum=Math.min(0,...values.map(value=>value??0)),maximum=Math.max(0,...values.map(value=>value??0));
- const span=maximum-minimum||1;
- const x=(value:number)=>12+(value-minimum)/span*156;
- const rowHeight=130/Math.max(values.length,1);
- return <svg className="aging-v4-signed-profile" viewBox="0 0 180 174" role="img" aria-label={`Signed range balances in THB on one scale from ${amount(minimum)} to ${amount(maximum)}. Credits extend left of zero.`}>
-  <line x1={x(0)} x2={x(0)} y1="10" y2="148" stroke="#9aa9bd" strokeWidth="1"/>
-  <text x={x(0)} y="164" textAnchor="middle">0</text>
-  {values.map((value,index)=>value===null?null:<rect key={index} x={Math.min(x(0),x(value))} y={14+index*rowHeight} width={Math.abs(x(value)-x(0))} height={Math.min(12,rowHeight-5)} rx="2" fill={colors[index]} opacity={selectedIndex===index?1:.78}/>)}
- </svg>;
 }

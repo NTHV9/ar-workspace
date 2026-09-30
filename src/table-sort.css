@@ -1,0 +1,7 @@
+th .table-sort-button{display:inline-flex;align-items:center;justify-content:inherit;gap:4px;max-width:100%;padding:5px 0;border:0;border-radius:3px;background:transparent;box-shadow:none;color:inherit;font:inherit;white-space:nowrap}
+th .table-sort-button:hover{color:var(--ar-text-action);background:transparent;box-shadow:none}
+th .table-sort-button:focus-visible{outline:2px solid var(--ar-text-action);outline-offset:3px}
+th .table-sort-button svg{flex:none;opacity:.7}
+th[aria-sort=ascending] .table-sort-button,th[aria-sort=descending] .table-sort-button{color:var(--ar-text-action)}
+.table-sort-secondary{display:block;font-size:.9em;font-weight:500}
+.queue-invoices th .table-sort-button{padding-block:0}

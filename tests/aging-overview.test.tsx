@@ -13,6 +13,13 @@ function render(values:(number|null)[],net:number|null,states:AgingCell['state']
 }
 
 describe('aging distribution evidence',()=>{
+ it('labels every signed bar, exposes tiny credits and never rounds a nonzero share to negative zero',()=>{
+  const html=render([1000000,-10,0,0,0,0],999990);
+  expect(html).toContain('Credits extend left of zero');
+  expect(html).toContain('class="aging-v4-signed-range"');
+  expect(html).toContain('−&lt;0.1%');
+  expect(html).not.toContain('-0.0%');
+ });
  it('shows a share graphic only for fully verified nonnegative ranges reconciling to net, with exact THB and selected range',()=>{
   const html=render([12345678.91,400,300,200,100,0],12346678.91);
   expect(html).toContain('data-chart-mode="distribution"');

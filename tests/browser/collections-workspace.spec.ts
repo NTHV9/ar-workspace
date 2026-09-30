@@ -212,3 +212,15 @@ test('timing keeps the default focused account when filtered totals change the s
  await timing.getByRole('button',{name:'Upcoming',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(22);
  await timing.getByRole('button',{name:'All',exact:true}).click();await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('tbody tr')).toHaveCount(24);
 });
+
+for(const region of ['phuket','khao-lak'])test('invoice headers sort without changing exact selection in '+region,async({page})=>{
+ await setup(page,region);await page.getByRole('button',{name:/account Harbor Travel$/}).click();
+ const panel=page.getByRole('complementary',{name:'Collection work details'}),table=panel.locator('table');
+ await panel.getByRole('checkbox',{name:'Queue select HARBOR-101',exact:true}).check();
+ await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();await expect(table.locator('tbody tr').first()).toContainText('HARBOR-124');
+ await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();await expect(table.locator('tbody tr').first()).toContainText('HARBOR-101');
+ for(const name of ['Folio','Guest','Action date','Latest sent','Open · THB'])await panel.getByRole('button',{name:'Sort by '+name,exact:true}).click();
+ await expect(panel.getByRole('checkbox',{name:'Queue select HARBOR-101',exact:true})).toBeChecked();await expect(panel.locator('.queue-selection-footer')).toContainText('1 selected');
+ await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('HARBOR-102');await expect(table.locator('tbody tr')).toHaveCount(1);await expect(panel.locator('.queue-selection-footer')).toContainText('1 selected');
+ await page.screenshot({path:'evidence/collections-invoice-sort-'+region+'.png'});
+});

@@ -1,0 +1,77 @@
+import {useEffect,useState} from 'react';
+import {hotelInRegion,resolveRegion} from '../domain/hotels';
+import {checkedSummary} from './data';
+import {balancesResult,paidInvoicesResult} from './period-data';
+import {decimal} from './model';
+import type {PeriodDetail} from './PeriodBalances';
+import {compareValues,type SortValue} from '../table-sort';
+
+export type DetailRow=Record<string,unknown>;
+export interface DetailData {rows:DetailRow[];total:number;complete:boolean}
+export type DetailSortKey='hotel'|'account'|'invoice'|'folio'|'guest'|'date'|'amount'|'original'|'due'|'billing'|'latest';
+export function detailIdentity(row:DetailRow,kind:PeriodDetail['kind']){
+ const hotel=row.hotel,account=row.accountId??row.account_id,id=row.invoiceId??row.invoice_id??row.transactionId??row.id;
+ if(typeof hotel!=='string'||typeof account!=='string'||!account||typeof id!=='string'||!id)throw Error('dashboard_detail_identity');
+ if(kind==='sent'&&(typeof row.delivery_id!=='string'||!row.delivery_id))throw Error('dashboard_detail_identity');
+ return JSON.stringify([hotel,account,id,...kind==='sent'?[row.delivery_id]:[]]);
+}
+function decode(value:unknown,kind:PeriodDetail['kind']):DetailData{
+ if(kind==='balance'){const v=balancesResult(value);return {rows:v.rows as unknown as DetailRow[],total:v.total,complete:v.complete};}
+ if(kind==='payment_invoices'){const v=paidInvoicesResult(value);return {rows:v.rows as unknown as DetailRow[],total:v.total,complete:v.complete};}
+ const v=checkedSummary(value),coverage=(value as {coverage?:{complete?:boolean}}).coverage;
+ if(v.rows.some(r=>!r||typeof r!=='object'||Array.isArray(r)))throw Error('dashboard_detail_invalid');
+ return {rows:v.rows as DetailRow[],total:v.total,complete:kind==='sent'||coverage?.complete===true};
+}
+/** Fetch bounded API pages into a single view. Never silently deduplicate changed membership. */
+export async function readDetailPages(path:string,kind:PeriodDetail['kind'],token:string,signal:AbortSignal,onProgress:(count:number,total:number)=>void,transport:typeof fetch=fetch):Promise<DetailData>{
+ const [endpoint,search]=path.split('?'),query=new URLSearchParams(search),seen=new Set<string>(),rows:DetailRow[]=[];
+ let total:number|undefined,fingerprint:string|undefined,complete=true;
+ for(let page=0;;page++){
+  signal.throwIfAborted();query.set('page',String(page));query.set('limit','50');
+  const response=await transport(endpoint+'?'+query,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.any([signal,AbortSignal.timeout(30000)])});
+  if(!response.ok)throw Error('dashboard_detail_unavailable');
+  const value=await response.json(),data=decode(value,kind),raw=value as Record<string,unknown>;
+  // These are source/summary facts, not page contents. A changed publication must restart the read.
+  const nextFingerprint=JSON.stringify([raw.asOfDate,raw.mode,raw.capturedAt,raw.sourceAt,raw.coverage,raw.summary,raw.metrics,raw.stages,data.complete]);
+  if(data.total>50000||total!==undefined&&data.total!==total||fingerprint!==undefined&&fingerprint!==nextFingerprint||data.rows.length>50)throw Error('dashboard_detail_changed');
+  total=data.total;fingerprint=nextFingerprint;complete&&=data.complete;
+  for(const row of data.rows){
+   if(!hotelInRegion(row.hotel,resolveRegion(query))||query.has('hotel')&&row.hotel!==query.get('hotel')||query.has('account')&&(row.accountId??row.account_id)!==query.get('account')||query.has('type')&&(row.accountType??row.account_type)!==query.get('type'))throw Error('dashboard_detail_scope');
+   const key=detailIdentity(row,kind);if(seen.has(key))throw Error('dashboard_detail_changed');seen.add(key);rows.push(row);
+  }
+  if(rows.length>total||rows.length<total&&data.rows.length!==50)throw Error('dashboard_detail_changed');
+  onProgress(rows.length,total);
+  if(rows.length===total)return {rows,total,complete};
+ }
+}
+export function useDetailRows(path:string|null,kind:PeriodDetail['kind'],token:string,revision:number){
+ const key=JSON.stringify([path,kind,token,revision]);
+ type State={key:string;state:'loading'|'ready'|'error';data?:DetailData;loaded:number;total?:number};
+ const [stored,setStored]=useState<State>({key,state:'loading',loaded:0});
+ useEffect(()=>{
+  const controller=new AbortController();setStored({key,state:'loading',loaded:0});
+  if(path)void readDetailPages(path,kind,token,controller.signal,(loaded,total)=>{if(!controller.signal.aborted)setStored({key,state:'loading',loaded,total});}).then(data=>{if(!controller.signal.aborted)setStored({key,state:'ready',data,loaded:data.total,total:data.total});}).catch(()=>{if(!controller.signal.aborted)setStored({key,state:'error',loaded:0});});
+  return()=>controller.abort();
+ },[key,path,kind,token]);
+ return stored.key===key?stored:{key,state:'loading' as const,loaded:0};
+}
+export function sortDetailRows(rows:DetailRow[],kind:PeriodDetail['kind'],key:DetailSortKey,descending:boolean){
+ const numeric=(v:unknown)=>decimal(v)===null?null:Number(v);
+ const text=(v:unknown):SortValue=>typeof v==='string'||typeof v==='number'?v:null;
+ const value=(r:DetailRow):SortValue=>{
+  switch(key){
+   case 'hotel':return text(r.hotel);
+   case 'account':return text(r.accountName??r.account_name);
+   case 'invoice':return text(kind==='payments'?r.transactionId:r.invoiceNo??r.invoice_no);
+   case 'folio':return text(r.folioNo??r.folio_no);
+   case 'guest':return text(r.guest);
+   case 'date':return text(kind==='sent'?r.sent_at??r.sent_date:r.transactionDate);
+   case 'amount':return numeric(kind==='balance'?r.open:kind==='invoice_entries'?r.originalAmount:r.amount);
+   case 'original':return numeric(kind==='balance'?r.original:kind==='invoice_entries'?r.openAmount:r.appliedAmount);
+   case 'due':return text(r.dueDate);
+   case 'billing':return r.billingRequired===false?'Not required':r.billingRequired===null?'Setup needed':r.firstBillingDate?'Billed':'Not billed';
+   case 'latest':return text(r.latestStageLabel??r.latestStage??r.stage_label??r.kind);
+  }
+ };
+ return [...rows].sort((a,b)=>compareValues(value(a),value(b),descending)||compareValues(detailIdentity(a,kind),detailIdentity(b,kind)));
+}

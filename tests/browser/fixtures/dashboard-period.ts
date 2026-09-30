@@ -1,17 +1,18 @@
 import {type Page,type Route} from '@playwright/test';
+import {auditLogin,auditRoute} from './audit-workspace';
 import {policyFixture} from './collection-policy';
 import {currentAgingAccounts,currentAgingInvoices} from './current-aging';
 import type {DashboardBalanceRow} from '../../../worker/dashboard/model';
 export const dashboardToday='2026-09-12';
 const at='2026-09-12T02:59:00Z';
 const balanceRows:DashboardBalanceRow[]=[{hotel:'KAT',accountId:'kat-azure',accountNo:'SYN-A',accountName:'Azure Travel · Synthetic',accountType:'Agent',invoiceId:'kat-parent',invoiceNo:'INV-kat-parent',folioNo:'FOL-kat-parent',guest:'Synthetic guest',transactionDate:'2026-09-01',open:'100.00',original:'100.00',age:10,billingRequired:true,firstBillingDate:null,dueDate:null,latestStage:null,latestStageLabel:null,latestSentAt:null,verified:true},{hotel:'TSK',accountId:'tsk-azure',accountNo:'SYN-A',accountName:'Azure TSK · Synthetic',accountType:'Agent',invoiceId:'tsk-old',invoiceNo:'INV-tsk-old',folioNo:'FOL-tsk-old',guest:'Synthetic guest',transactionDate:'2026-04-01',open:'200.00',original:'300.00',age:160,billingRequired:true,firstBillingDate:'2026-05-01',dueDate:'2026-05-31',latestStage:'Final',latestStageLabel:'Final',latestSentAt:'2026-09-10T03:00:00Z',verified:true}];
-export async function setupDashboard(page:Page,options:{realClock?:boolean;overlappingSetup?:boolean;longStageLabel?:string;now?:string;balanceLift?:number;invoiceLift?:number;nullTotalBalance?:boolean;nullTotalActivity?:boolean;retiredSent?:boolean;retiredStage?:boolean;nullTskBalance?:boolean;freshness?:'running'|'failed';missingHistory?:boolean;failPayments?:boolean;large?:boolean;failRefreshOnce?:boolean;invoiceGap?:boolean;invoiceMappingGap?:boolean;billingUnclassified?:boolean;creditAmount?:number;creditOnly?:boolean;legacyCreditGap?:boolean}={}){
+export async function setupDashboard(page:Page,options:{realClock?:boolean;overlappingSetup?:boolean;longStageLabel?:string;now?:string;balanceLift?:number;invoiceLift?:number;nullTotalBalance?:boolean;nullTotalActivity?:boolean;retiredSent?:boolean;retiredStage?:boolean;nullTskBalance?:boolean;freshness?:'running'|'failed';missingHistory?:boolean;failPayments?:boolean;large?:boolean|number;failRefreshOnce?:boolean;invoiceGap?:boolean;invoiceMappingGap?:boolean;billingUnclassified?:boolean;creditAmount?:number;creditOnly?:boolean;legacyCreditGap?:boolean}={}){
  const calls:{path:string;query:URLSearchParams;method:string;body:any}[]=[],unexpected:string[]=[],errors:string[]=[];let catalogAdjustment=0,refreshes=0;
  await page.addInitScript(()=>addEventListener('DOMContentLoaded',()=>{const badge=document.createElement('aside');badge.textContent='SYNTHETIC TEST DATA';badge.setAttribute('aria-label','Synthetic test data');badge.style.cssText='position:fixed;bottom:8px;right:12px;z-index:9999;pointer-events:none;font:600 9px/1.4 sans-serif;padding:4px 7px;background:#fff;color:#51677e;border:1px solid #c8d6eb;border-radius:5px';document.body.appendChild(badge);}));
  if(!options.realClock)await page.clock.setFixedTime(new Date(options.now??'2026-09-12T03:00:00Z'));page.on('pageerror',e=>errors.push(e.message));
- const user={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
+ const user={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{providers:['google']},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
  await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-dashboard-token',refresh_token:'synthetic-dashboard-refresh',expires_at:Math.floor(Date.now()/1000)+86400,token_type:'bearer',user:u})),user);
- await page.route('https://example.supabase.co/**',route=>route.fulfill({json:{user}}));
+ await page.route('https://example.supabase.co/**',route=>route.fulfill({json:{access_token:'synthetic-dashboard-token',refresh_token:'synthetic-dashboard-refresh',expires_in:3600,token_type:'bearer',user}}));
  const handle=async(route:Route,record=true):Promise<void>=>{
   const req=route.request(),url=new URL(req.url()),path=url.pathname,q=url.searchParams;let body:any;try{body=req.postDataJSON();}catch{body=null;}if(record)calls.push({path,query:q,method:req.method(),body});
   if(path==='/api/dashboard/hotel-overview'){
@@ -31,14 +32,15 @@ export async function setupDashboard(page:Page,options:{realClock?:boolean;overl
    const inventory=scoped.map(a=>{const buckets=a.agingBuckets!.map((b,i)=>{const amount=b.amount+(a.id==='kat-azure'&&i===0?catalogAdjustment:0);return {key:JSON.stringify([b.label,b.start,b.end,b.sequence]),count:amount===0?0:1,amount:amount.toFixed(2),creditAmount:Math.max(0,-amount).toFixed(2),complete:true};});return {hotel:a.hotel,accountId:a.id,accountType:a.type,syncedAt:at,complete:true,unverified:0,buckets:[...buckets,{key:null,count:buckets.reduce((n,b)=>n+b.count,0),amount:(a.open+(a.id==='kat-azure'?catalogAdjustment:0)).toFixed(2),creditAmount:buckets.reduce((n,b)=>n+Number(b.creditAmount),0).toFixed(2),complete:true}]};});
    return route.fulfill({json:{asOfDate:dashboardToday,publications:['KAT','TSK'].map(hotel=>({hotel,sourceAt:at})),accounts:inventory,summary:{complete:true,count:inventory.reduce((n,a)=>n+a.buckets.at(-1)!.count,0),amount:inventory.reduce((n,a)=>n+Number(a.buckets.at(-1)!.amount),0).toFixed(2),creditAmount:inventory.reduce((n,a)=>n+Number(a.buckets.at(-1)!.creditAmount),0).toFixed(2),billing:[],followup:[],due:[],flags:[]},rows:[],total:0,complete:true}});
   }
-  if(path==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic-key'}});
+  if(path==='/api/access/me')return route.fulfill({json:{memberId:user.id,email:user.email,displayName:'Synthetic Staff',active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}});
+  if(path==='/api/config')return route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic-key',googleEnabled:true}});
   if(path==='/api/collection-policy')return route.fulfill({json:policyFixture});
   if(path==='/api/refresh')return route.fulfill({json:{jobs:[],running:false,hotels:['KAT','TSK'].map(h=>({hotel:h,status:'succeeded',last_success_at:at}))}});
   if(path==='/api/portfolio')return route.fulfill({json:{status:'connected',accounts:currentAgingAccounts.map(a=>({...a,open:a.open+(a.id==='kat-azure'?catalogAdjustment:0),agingBuckets:a.agingBuckets?.map((b,i)=>({...b,amount:b.amount+(a.id==='kat-azure'&&i===0?catalogAdjustment:0),debit:b.debit+(a.id==='kat-azure'&&i===0?catalogAdjustment:0)}))})),refresh:{running:false,hotels:['KAT','TSK'].map(h=>({hotel:h,status:'succeeded',last_success_at:at}))}}});
   if(path==='/api/reports/options')return route.fulfill({json:{rows:currentAgingAccounts.map(a=>({hotel:a.hotel,account_id:a.id,account_name:a.name,account_type:a.type})),total:currentAgingAccounts.length}});
   if(path.startsWith('/api/accounts/')){const id=decodeURIComponent(path.split('/')[4]);return route.fulfill({json:{invoices:(currentAgingInvoices[id]??[]).map((r:any)=>({...r,aging:r.age>150?'151+':'0–30',collection_selectable:r.collection_role!=='child'&&r.open>0,workflow:{revision:1,billing_required:true,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:null}}))}});}
   if(path==='/api/dashboard/balances'){
-   const missing=options.missingHistory||q.get('asOf')!=='2026-09-12'&&q.get('asOf')!=='2026-09-11';let rows=options.large?[...Array.from({length:61},(_,i)=>({...balanceRows[0],invoiceId:'s'+i,invoiceNo:'SYN-'+i})),balanceRows[1]]:balanceRows.filter(r=>q.get('asOf')==='2026-09-11'?r.hotel==='KAT':true);
+   const missing=options.missingHistory||q.get('asOf')!=='2026-09-12'&&q.get('asOf')!=='2026-09-11';let rows=options.large?[...Array.from({length:typeof options.large==='number'?options.large:61},(_,i)=>({...balanceRows[0],invoiceId:'s'+i,invoiceNo:'SYN-'+i})),balanceRows[1]]:balanceRows.filter(r=>q.get('asOf')==='2026-09-11'?r.hotel==='KAT':true);
    if(options.balanceLift)rows=rows.map(r=>({...r,open:(Number(r.open)+options.balanceLift!).toFixed(2)}));
    if(options.creditOnly)rows=[];
    if(options.creditAmount!==undefined&&!options.legacyCreditGap)rows.push({...balanceRows[0],invoiceId:'kat-credit',invoiceNo:'INV-kat-credit',folioNo:'FOL-kat-credit',open:options.creditAmount.toFixed(2),original:options.creditAmount.toFixed(2),latestStage:'Final',latestStageLabel:'Final',age:90});
@@ -64,3 +66,5 @@ export async function setupDashboard(page:Page,options:{realClock?:boolean;overl
  await page.route('**/api/**',route=>handle(route));
  return {calls,unexpected,errors,changeCatalog:(n:number)=>{catalogAdjustment=n;}};
 }
+
+export async function openDashboard(page:Page,url:string){await auditLogin(page);await auditRoute(page,url.replace(/^\/\?/,''));}
