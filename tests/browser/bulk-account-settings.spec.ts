@@ -52,3 +52,22 @@ test('saved type defaults reopen their exact hotel and values',async({page})=>{
  await setup(page,false,true);await page.locator('.bulk-saved-defaults summary').click();await page.getByRole('button',{name:'Edit KAT · OTA',exact:true}).click();await expect(page.getByLabel('New credit term')).toHaveValue('21');await expect(page.getByLabel('New billing requirement')).toHaveValue('false');
  await expect(page.getByRole('checkbox',{name:'KAT',exact:true})).toBeChecked();await expect(page.getByRole('checkbox',{name:'TSK',exact:true})).not.toBeChecked();await page.getByRole('button',{name:'Review changes',exact:true}).click();await expect(page.getByRole('region',{name:'Review account settings'})).toContainText('1 type defaults');
 });
+
+for(const width of [1440,390])test('account headers sort and list filters preserve chosen scope at '+width,async({page})=>{
+ await page.setViewportSize({width,height:900});await setup(page);
+ const list=page.getByRole('region',{name:'Account settings selection',exact:true}),rows=list.locator('tbody tr');
+ await page.getByRole('checkbox',{name:'Select KAT account Synthetic Travel',exact:true}).check();
+ await list.getByRole('button',{name:'Sort by Invoices',exact:true}).click();await expect(rows.first()).toContainText('12');await list.getByRole('button',{name:'Sort by Invoices',exact:true}).click();await expect(rows.first()).toContainText('3');
+ for(const label of ['Select','Account','Hotel','Type','Billing','Term · days'])await list.getByRole('button',{name:'Sort by '+label,exact:true}).click();
+ await page.getByLabel('Filter setting status',{exact:true}).selectOption('setup');await expect(rows).toHaveCount(3);await expect(page.getByText('1 selected',{exact:true})).toBeVisible();
+ await page.getByLabel('Filter credit term',{exact:true}).selectOption('unset');await page.getByRole('searchbox',{name:'Search account settings',exact:true}).fill('TLKL New');await expect(rows).toHaveCount(1);
+ await page.getByRole('button',{name:'Clear list filters',exact:true}).click();await expect(rows).toHaveCount(6);await expect(page.getByRole('checkbox',{name:'Select KAT account Synthetic Travel',exact:true})).toBeChecked();
+ await page.screenshot({path:`evidence/account-settings-sort-filter-${width}.png`,fullPage:false});
+ await page.getByRole('checkbox',{name:'Credit term',exact:true}).check();await page.getByLabel('New credit term').fill('14');await page.getByRole('button',{name:'Review changes',exact:true}).click();
+ const review=page.getByRole('region',{name:'Accounts receiving changes',exact:true});for(const label of ['Hotel','Account','Type','Billing requirement','Credit term','Result'])await review.getByRole('button',{name:'Sort by '+label,exact:true}).click();await expect(review.locator('tbody tr')).toHaveCount(1);
+});
+test('display filters do not shrink a selected Account Type default group',async({page})=>{
+ const {calls}=await setup(page);await page.getByRole('radio',{name:'Account types · fallback defaults'}).check();await page.getByRole('checkbox',{name:'OTA',exact:true}).check();
+ await page.getByLabel('Filter setting status').selectOption('setup');await expect(page.getByRole('region',{name:'Account settings selection'}).locator('tbody tr')).toHaveCount(3);await expect(page.locator('.bulk-scope-count')).toContainText('all 6 accounts');
+ await page.getByRole('checkbox',{name:'Credit term',exact:true}).check();await page.getByLabel('New credit term').fill('14');await page.getByRole('button',{name:'Review changes',exact:true}).click();expect(calls[0].body.accounts).toHaveLength(6);expect(calls[0].body.types).toHaveLength(6);
+});
