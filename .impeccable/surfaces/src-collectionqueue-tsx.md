@@ -98,3 +98,7 @@ Deployed on 27 September 2026 as runtime `0c58f4845075625ceeeb55c4c1f2628c8fda30
 Independent Accounts scrolling deployed later the same day as runtime `df00e173321d02975f50762044c4051e4bc21039`, Worker `7be070a0-931c-45db-874f-e5e4407e02c8`. Health/source and six anonymous boundaries passed; the three independent-scroll cases and compact-dialog case passed against deployed assets with synthetic APIs.
 
 The 28 September unified work surface is deployed as runtime `77f3e72bf67b4d73816de768a5a06aa5b4e501f6`, Worker `c39f16cc-de0d-42fa-b919-a36b7d6274fe`. Health/source and six anonymous access boundaries passed. Nineteen deployed browser cases passed; the remaining case had an initial login-load timeout and passed its focused rerun. Empty searches retain a 520px desktop panel and a visible Reset view; both regional Billing-filter cases verified that state after the final refinement. All browser data was synthetic.
+
+## Invoice sorting — 30 September 2026
+
+The invoice workbench adds compact sortable headers for Invoice, Folio, Guest, Action date, Latest sent and Open amount. Headers keep the existing height, natural identifier ordering and missing-last behavior. Sorting/searching does not clear the selected invoice IDs. The Account navigator's independent ordering and all exact scope/selection safeguards remain unchanged. Desktop/compact behavioral cases and synthetic captures are recorded in PROJECT_STATUS.md.
