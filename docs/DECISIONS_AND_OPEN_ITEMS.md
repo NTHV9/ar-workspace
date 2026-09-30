@@ -1,3 +1,7 @@
+## Owner confirmation — Existing invoices follow Account billing rules — 30 September 2026
+
+Changing Billing requirement **or Credit term** in Account settings applies the new pair to all existing invoice workflows for that Hotel + Account, including previously assigned/manual rules. This supersedes the earlier freeze-on-assignment behavior. Preserve actual billing dates and reminder history; recompute due dates from their applicable anchors and recalculate queues. New arrivals use the latest account rules. Unknown settings remain unknown; do not invent a term or requirement. The owner requested an audit of every invoice against Account settings; the scoped reconciliation and missing-settings counts are recorded in PROJECT_STATUS.md.
+
 ## Owner clarification — Work-table sorting and signed Aging — 30 September 2026
 
 Collections needs sortable invoice columns in its right workbench. Dashboard detail records should scroll continuously instead of requiring Next/Previous, with sorting across the complete selection. The owner clarified with a screenshot that every hotel, including TSK, must keep the ring with the same age-range list. Where credits exist, the ring represents positive range balances and is labeled accordingly; the range list retains exact signed net amounts and percentages. Negative ranges must not become positive ring slices, and unknown sources must remain unknown.
