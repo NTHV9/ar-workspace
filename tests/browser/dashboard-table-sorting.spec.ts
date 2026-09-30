@@ -47,7 +47,7 @@ for(const width of [1440,390])test('signed Aging retains the ring and marks cred
  await openDashboard(page,'/?dashboard=1&dashboardView=aging&hotel=TSK');
  const overview=page.getByRole('region',{name:'Current aging overview'});
  await expect(overview).toHaveAttribute('data-chart-mode','signed');await expect(overview.locator('.aging-v4-ring')).toHaveCount(1);
- await expect(overview).toContainText('−<0.1%');await expect(overview).toContainText('-10.00');await expect(overview).toContainText('Ring: positive ranges');await expect(overview.locator('.aging-v4-ring circle[stroke-dasharray]')).toHaveCount(1);
+ await expect(overview).toContainText('−<0.1%');await expect(overview).toContainText('-10.00');await expect(overview).not.toContainText('Ring: positive ranges');await expect(overview.locator('.aging-v4-ring-label')).not.toContainText('of positive ranges');await expect(overview.locator('.aging-v4-ring circle[stroke-dasharray]')).toHaveCount(1);
  await overview.getByRole('button',{name:'Compare 31–60 days',exact:true}).click();await expect(overview.getByRole('button',{name:'Compare 31–60 days',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(overview.locator('.aging-v4-ring-label')).toContainText('Credit');await overview.scrollIntoViewIfNeeded();await page.screenshot({path:`evidence/aging-signed-readable-${width}.png`});
  expect(await overview.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);

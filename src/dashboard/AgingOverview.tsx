@@ -38,7 +38,7 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
   :mode==='zero'?'Verified net balances are zero.'
   :mode==='unavailable'?'Source verification required · only verified values are shown.'
   :!reconciles?'Range total differs from net open. Ring shows positive ranges.'
-  :'Ring: positive ranges · Credits listed separately.';
+  :'';
 
  return <section className="aging-v4-overview" aria-label="Current aging overview" data-chart-mode={mode}>
   <div className="aging-v4-balance">
@@ -68,7 +68,7 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
        return percentage>0?<circle key={range.key} cx="90" cy="90" r="67" fill="none" stroke={range.color} strokeWidth={range.key===selectedKey?25:20} pathLength="100" strokeDasharray={`${percentage} ${100-percentage}`} strokeDashoffset={-previous} transform="rotate(-90 90 90)" className={range.key===selectedKey?'is-selected':''}/>:null;
       })}
      </svg>
-     <div className="aging-v4-ring-label" aria-hidden="true"><strong>{mode==='unavailable'?'—':mode==='zero'?'0.00':selectedValue!==null&&selectedValue<0?'Credit':selectedPercent===null?'All ages':share(selectedPercent)}</strong><span>{mode==='zero'?'Net balance is zero':selected?`${selected.bucket.label} days`:'of net open'}</span>{hasRing&&!distribution&&selectedValue!==null&&selectedValue>=0&&<small>of positive ranges</small>}</div>
+     <div className="aging-v4-ring-label" aria-hidden="true"><strong>{mode==='unavailable'?'—':mode==='zero'?'0.00':selectedValue!==null&&selectedValue<0?'Credit':selectedPercent===null?'All ages':share(selectedPercent)}</strong><span>{mode==='zero'?'Net balance is zero':selected?`${selected.bucket.label} days`:'of net open'}</span></div>
     </div>
     {hasRing&&<div className="aging-v4-mobile-track" aria-hidden="true">{ranges.map((range,index)=><span key={range.key} style={{width:`${ringValues[index]/ringTotal*100}%`,backgroundColor:range.color}}/>)}</div>}
     <div className="aging-v4-ranges" aria-label="Select aging range">{ranges.map(range=>{
@@ -81,7 +81,7 @@ export default function AgingOverview({region,data,columns,label,selectedKey,onS
      </button>;
     })}</div>
    </div>
-   {(mode==='unavailable'||mode==='signed'||!reconciles)&&<p className="aging-v4-chart-note">{note}</p>}
+   {(mode==='unavailable'||!reconciles)&&<p className="aging-v4-chart-note">{note}</p>}
   </div>
  </section>;
 }

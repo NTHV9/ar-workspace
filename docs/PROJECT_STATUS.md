@@ -1,3 +1,7 @@
+## 30 September 2026 — Simplify Aging ring copy
+
+- Owner requested removal of the visible “Ring: positive ranges · Credits listed separately.” caption and “of positive ranges” inside the ring. Removed only those visible explanations; retained the accessible chart description, signed values, chart calculation, zero/unknown handling and source mismatch notices. Existing chart browser assertions updated to verify absence of both captions. Deployment verification is recorded in PR #102.
+
 ## 30 September 2026 — Sortable work tables and readable signed Aging
 
 - Implemented Collections invoice-header sorting for Invoice, Folio, Guest, Action date, Latest sent and Open amount. Natural number ordering and missing-last behavior keep selection by exact invoice ID; existing Account sorting, hotel scope, independent scrolling and document commands are unchanged.
