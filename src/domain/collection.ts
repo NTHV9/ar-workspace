@@ -24,6 +24,7 @@ export function nextCollectionAction(invoice:QueueInvoice,today:string,policy:Co
  if(invoice.exceptions?.needsReview)return result('Needs review',null,'Reopened invoice requires explicit review');
  if(invoice.exceptions?.held)return result('On hold',null,'Manual hold requires explicit release');
  if(!w)return result('Setup needed',null,'Account billing rules have not been assigned');
+ if(w.account_setup_required)return result('Setup needed',null,'Using Account Type defaults; confirm Account settings.');
  if(w.last_reminder_stage&&(!validDate(w.last_reminder_date)||w.last_reminder_date>today))return result('Needs review',null,'Actual reminder date needs review');
  if(snapshotInvalid||w.last_reminder_stage&&!captured)return result('Needs review',null,'Historical stage policy needs review');
  if(urgent)return result('Urgent',w.last_reminder_date!);
