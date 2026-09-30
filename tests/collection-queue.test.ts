@@ -21,3 +21,9 @@ it('does not infer a short term when missing, or rewrite previously sent Friendl
  expect(nextCollectionAction(row,'2026-09-04')).toMatchObject({stage:'Follow 1',date:'2026-09-11',ready:false,latest:'Friendly'});
  expect(row.workflow.last_reminder_stage).toBe('Friendly');
 });
+
+it('keeps type-inherited rules in Setup needed until Account confirmation',()=>{
+ const inherited={...invoice,workflow:{...invoice.workflow!,billing_required:false,credit_term:30,due_date:'2026-09-01',account_setup_required:true}};
+ expect(nextCollectionAction(inherited,'2026-09-10')).toMatchObject({stage:'Setup needed',reason:'Using Account Type defaults; confirm Account settings.'});
+ expect(nextCollectionAction({...inherited,workflow:{...inherited.workflow,account_setup_required:false}},'2026-09-10')?.stage).not.toBe('Setup needed');
+});

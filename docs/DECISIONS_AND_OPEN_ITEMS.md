@@ -1,3 +1,9 @@
+## Owner confirmation — Bulk Account settings and type fallback — 30 September 2026
+
+- Settings must support selecting individual Accounts across permitted hotels, or Hotel + Account Type groups, with every Account-settings field available as a selective patch. Unchecked fields retain their values; review the exact affected scope before a single save.
+- Explicit Account settings take precedence over Account Type defaults. Type defaults apply only to current/new Accounts without explicit settings. Such inherited settings remain **Setup Needed** until someone saves/affirms settings at Account level, even when effective billing requirement, term and due date are available. Type updates never overwrite confirmed Account settings.
+- Account-level changes to requirement/term still propagate to its invoices under the previous confirmation. Type inheritance must retain provenance through the collection projection; confirmation with unchanged values must clear provisional status. Recipients remain staff-authored; no OPERA-email fallback or automatic sending.
+
 ## Owner confirmation — Existing invoices follow Account billing rules — 30 September 2026
 
 Changing Billing requirement **or Credit term** in Account settings applies the new pair to all existing invoice workflows for that Hotel + Account, including previously assigned/manual rules. This supersedes the earlier freeze-on-assignment behavior. Preserve actual billing dates and reminder history; recompute due dates from their applicable anchors and recalculate queues. New arrivals use the latest account rules. Unknown settings remain unknown; do not invent a term or requirement. The owner requested an audit of every invoice against Account settings; the scoped reconciliation and missing-settings counts are recorded in PROJECT_STATUS.md.

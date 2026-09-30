@@ -1,3 +1,4 @@
+import {bulkSettingsApi} from './settings/bulk-api';
 import {warmPeriodSummaries} from './dashboard/precompute';
 import {invoiceRegisterApi} from './register/api';
 import {dashboardHotelOverviewApi} from './dashboard/hotel-api';
@@ -142,6 +143,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(path==='/api/reports/sheets')return reportSheetLinks(request,env,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']);
     if(path.startsWith('/api/reports/')){if(!user.id)return json({error:'unauthorized'},401);return reportsApi(request,env,user.id);}
     if(emailRequest){if(!user.id)return json({error:'unauthorized'},401);return emailApi(request,env,user.id);}
+    if(path==='/api/account-settings/bulk'||path==='/api/account-settings/bulk/preview'||path==='/api/account-settings/bulk/apply')return bulkSettingsApi(request,env,env.REQUEST_ACTOR!);
     if(settingsRequest){if(!user.id)return json({error:'unauthorized'},401);return settingsApi(request,env,user.id);}
     if(rendererCheck)return new Response(new Uint8Array(await rendererProof()).buffer,{headers:{'Content-Type':'application/pdf','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
     if(documentRequest){if(!user.id)return json({error:'unauthorized'},401);return documentApi(request,env,user.id,headers);}

@@ -16,6 +16,7 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  const u=new URL(request.url),p=u.pathname,m=request.method,q=u.searchParams;
  if(!['GET','POST','PUT','DELETE'].includes(m))return denied();
  for(const key of ['region','hotel'])if(q.getAll(key).length>1)return denied();
+ if((p==='/api/account-settings/bulk'&&m==='GET'||['/api/account-settings/bulk/preview','/api/account-settings/bulk/apply'].includes(p)&&m==='POST')&&!q.size)return {kind:'global'};
  if(p==='/api/reports/sheets')return m==='GET'&&!q.size?{kind:'global'}:denied();
  const regional=():AccessIntent=>{try{const s=regionalHotelScope(q);return s.hotel?hotel(s.hotel):{kind:'region',region:s.region};}catch{return denied();}};
  if(p==='/api/invoice-register'&&m==='GET'||p==='/api/invoice-register/visibility'&&m==='POST')return regional();
