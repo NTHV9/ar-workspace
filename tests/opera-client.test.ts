@@ -122,3 +122,8 @@ it('adds the documented Statement fetch instruction only for explicit visibility
  expect(urls[0].searchParams.getAll('fetchInstructions')).not.toContain('Statement');
  expect(urls[1].searchParams.getAll('fetchInstructions')).toEqual(['Account','Summary','Invoices','Aging','Payments','Statement']);
 });
+
+it('reads only the requested linked profile address data by GET on the configured OPERA origin',async()=>{
+ let target:Request|undefined;const reader=new OperaReader(config,async()=> 'synthetic',async request=>{target=request;return Response.json({profileIdList:[]});});
+ await reader.profile('profile/id');expect(target?.method).toBe('GET');expect(new URL(target!.url).origin).toBe(config.origin);expect(new URL(target!.url).pathname).toBe('/crm/v1/profiles/profile%2Fid');expect(new URL(target!.url).searchParams.getAll('fetchInstructions')).toEqual(['Profile','Address']);expect(target?.redirect).toBe('manual');
+});

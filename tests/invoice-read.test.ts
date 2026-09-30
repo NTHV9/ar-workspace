@@ -94,3 +94,11 @@ it('identifies an AR credit without a reservation folio without fabricating an i
  await expect(readInvoiceModel(reader,manifest)).rejects.toThrow('document_credit_without_folio');
  expect(reader.reservationFolios).not.toHaveBeenCalled();expect(reader.invoicePostings).not.toHaveBeenCalled();
 });
+
+it('uses the verified linked profile address when the AR account only supplies an address reference',async()=>{
+ const {reader,p}=fixture();const current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
+ reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',type:'Address'},invoices:[current]}});
+ const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'],primaryInd:false}}],totalResults:1}}});
+ const linkedReader={...reader,profile};const model=await readInvoiceModel(linkedReader,p.manifest);
+ expect(model.address).toEqual(['Synthetic Travel','Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123']);
+});
