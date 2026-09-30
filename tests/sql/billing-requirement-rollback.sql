@@ -24,7 +24,14 @@ begin
  update public.ar_invoice_workflow set last_reminder_stage='Friendly',last_reminder_date='2026-09-02',revision=revision+1 where hotel='KAT' and account_id=scope and invoice_id='A';
  select jsonb_agg(to_jsonb(w) order by invoice_id) into before_history from public.ar_invoice_workflow w where hotel='KAT' and account_id=scope;
  r:=public.ar_settings_save_v2(actor,'KAT',scope,3,true,30,empty,empty,'{}');
- if r?'error' or before_history is distinct from (select jsonb_agg(to_jsonb(w) order by invoice_id) from public.ar_invoice_workflow w where hotel='KAT' and account_id=scope) then raise exception 'established rules or history changed';end if;
+ if r?'error' then raise exception 'later requirement save failed';end if;
+ if to_regprocedure('ar_private.apply_account_billing_rules(uuid,text,text)') is null then
+  if before_history is distinct from (select jsonb_agg(to_jsonb(w) order by invoice_id) from public.ar_invoice_workflow w where hotel='KAT' and account_id=scope) then raise exception 'legacy established rules or history changed';end if;
+ else
+  if exists(select 1 from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and (billing_required is distinct from true or credit_term is distinct from 30)) then raise exception 'rules did not follow account';end if;
+  if (select jsonb_agg(v-array['billing_required','credit_term','settings_revision','rules_manually_set','revision','updated_at','due_date'] order by v->>'invoice_id') from jsonb_array_elements(before_history)v) is distinct from
+   (select jsonb_agg(to_jsonb(w)-array['billing_required','credit_term','settings_revision','rules_manually_set','revision','updated_at','due_date'] order by invoice_id) from public.ar_invoice_workflow w where hotel='KAT' and account_id=scope) then raise exception 'established history changed';end if;
+ end if;
  -- Exercise migration repair scope with an old, unassigned workflow.
  insert into public.ar_account_settings(hotel,account_id,billing_required,credit_term,revision) values('TSK',scope,false,null,1);
  perform ar_private.apply_unassigned_billing_rules('TSK',scope);
