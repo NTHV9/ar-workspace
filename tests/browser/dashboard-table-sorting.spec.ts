@@ -35,7 +35,7 @@ for(const width of [1440,390])test('Dashboard all records sort across source pag
  expect(await page.locator('.dashboard-page').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
 
-for(const width of [1440,390])test('signed Aging has named aligned bars while positive Aging retains its ring at '+width,async({page})=>{
+for(const width of [1440,390])test('signed Aging retains the ring and marks credits without inventing positive shares at '+width,async({page})=>{
  await setupDashboard(page);await page.setViewportSize({width,height:900});
  const accounts=currentAgingAccounts.map(a=>a.id==='tsk-azure'?{...a,open:999990,agingBuckets:a.agingBuckets!.map((b,i)=>({...b,amount:i===0?1000000:i===1?-10:0,debit:i===0?1000000:0,credit:i===1?-10:0}))}:a);
  await page.route('**/api/portfolio**',r=>r.fulfill({json:{status:'connected',accounts,refresh:{running:false,hotels:['KAT','TSK'].map(hotel=>({hotel,status:'succeeded',last_success_at:'2026-09-12T02:59:00Z'}))}}}));
@@ -46,10 +46,10 @@ for(const width of [1440,390])test('signed Aging has named aligned bars while po
  });
  await openDashboard(page,'/?dashboard=1&dashboardView=aging&hotel=TSK');
  const overview=page.getByRole('region',{name:'Current aging overview'});
- await expect(overview).toHaveAttribute('data-chart-mode','signed');await expect(overview.locator('.aging-v4-signed-range')).toHaveCount(6);
- await expect(overview).toContainText('−<0.1%');await expect(overview).toContainText('-10.00');
+ await expect(overview).toHaveAttribute('data-chart-mode','signed');await expect(overview.locator('.aging-v4-ring')).toHaveCount(1);
+ await expect(overview).toContainText('−<0.1%');await expect(overview).toContainText('-10.00');await expect(overview).toContainText('Ring: positive ranges');await expect(overview.locator('.aging-v4-ring circle[stroke-dasharray]')).toHaveCount(1);
  await overview.getByRole('button',{name:'Compare 31–60 days',exact:true}).click();await expect(overview.getByRole('button',{name:'Compare 31–60 days',exact:true})).toHaveAttribute('aria-pressed','true');
- await overview.scrollIntoViewIfNeeded();await page.screenshot({path:`evidence/aging-signed-readable-${width}.png`});
+ await expect(overview.locator('.aging-v4-ring-label')).toContainText('Credit');await overview.scrollIntoViewIfNeeded();await page.screenshot({path:`evidence/aging-signed-readable-${width}.png`});
  expect(await overview.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
  await page.getByRole('button',{name:'KAT',exact:true}).click();
  // KAT's original synthetic data also contains credits; select a positive account type instead.

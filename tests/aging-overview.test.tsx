@@ -13,10 +13,10 @@ function render(values:(number|null)[],net:number|null,states:AgingCell['state']
 }
 
 describe('aging distribution evidence',()=>{
- it('labels every signed bar, exposes tiny credits and never rounds a nonzero share to negative zero',()=>{
+ it('keeps the ring for signed ranges, labels its positive basis and never rounds a nonzero share to negative zero',()=>{
   const html=render([1000000,-10,0,0,0,0],999990);
-  expect(html).toContain('Credits extend left of zero');
-  expect(html).toContain('class="aging-v4-signed-range"');
+  expect(html).toContain('Credits listed separately');
+  expect(html).toContain('class="aging-v4-ring"');
   expect(html).toContain('−&lt;0.1%');
   expect(html).not.toContain('-0.0%');
  });
@@ -33,7 +33,7 @@ describe('aging distribution evidence',()=>{
   expect(html).toContain('data-chart-mode="signed"');
   expect(html).toContain('-20.00');
   expect(html).toContain('-20.0%');
-  expect(html).toContain('Credits extend left of zero');
+  expect(html).toContain('Credits listed separately');
  });
  it('does not present non-reconciling ranges as parts of net',()=>{
   const html=render([120,20,0,0,0,0],100);

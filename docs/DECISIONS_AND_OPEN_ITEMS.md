@@ -1,6 +1,6 @@
 ## Owner clarification — Work-table sorting and signed Aging — 30 September 2026
 
-Collections needs sortable invoice columns in its right workbench. Dashboard detail records should scroll continuously instead of requiring Next/Previous, with sorting across the complete selection. The owner explicitly chose to keep distribution rings where supported and improve the signed Aging view for TSK; credits must remain signed and unknown sources must remain unknown.
+Collections needs sortable invoice columns in its right workbench. Dashboard detail records should scroll continuously instead of requiring Next/Previous, with sorting across the complete selection. The owner clarified with a screenshot that every hotel, including TSK, must keep the ring with the same age-range list. Where credits exist, the ring represents positive range balances and is labeled accordingly; the range list retains exact signed net amounts and percentages. Negative ranges must not become positive ring slices, and unknown sources must remain unknown.
 
 ## 29 September 2026 — Independent manual Google Sheets in Reports
 
