@@ -1,3 +1,9 @@
+## 30 September 2026 — Account settings sorting and list filters
+
+- Added accessible ascending/descending sorting to every data column in the Account selection, review and saved-type-default tables. Selected rows sort by exact Hotel + Account identity; counts/terms sort numerically, with unset terms last in both directions. No settings value or save target changes when sorting.
+- Search now combines words across Account name/number/ID, Hotel, Type, billing and setup status. Existing Hotel/Type scope controls are joined by list filters for billing requirement, own/type/absent/setup state, credit-term ranges and presence of invoices. Clear list filters resets only the display filters. Selected Accounts remain selected across searches/filters; Type mode visibly retains the whole chosen Hotel/Type group and review uses that complete scope.
+- Tested: four focused list tests and all ten bulk-settings browser cases passed, including desktop/mobile sorting, selected identity retention, combined filters, review sorting and Type-scope preservation. TypeScript/production build passed. Synthetic captures `account-settings-sort-filter-1440.png` and `-390.png` preserve the incumbent layout; no database, rule precedence, access or sending behavior changed. Deployment and final CI are recorded in the delivery PR.
+
 ## 30 September 2026 — Bulk Account settings with provisional type defaults
 
 - Implemented Settings → Account settings: searchable multi-hotel selection, Account Type scope, selective replacement of all eight settings groups, saved type-default editing, explicit review and atomic apply. Unchecked values remain untouched; uncertain retries use the same command identity. Form errors stay beside the affected field and focus it. Individual Account settings show when values are inherited and saving unchanged values confirms them.
