@@ -18,12 +18,16 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  if(!manifest.reservation_id||!manifest.folio_date||!manifest.folio_no)throw Error(current.invoiceType==='Credit'&&!current.folioNo&&!record(current.reservationId??{}).id?'document_credit_without_folio':'document_invoice_selector_missing');
  const valid=(i:Record<string,unknown>)=>String(i.transactionNo)===manifest.id&&String(i.invoiceNo)===manifest.invoice_no&&String(i.folioNo)===manifest.folio_no&&amountCents(i.balance,'THB')===Math.round(manifest.open*100)&&i.folioDate===manifest.folio_date&&i.parentInvoiceNo==null;
  if(!valid(current)||record(current.reservationId).id!==manifest.reservation_id)fail();
- const historical=await reader.reservationFolios(manifest.reservation_id,manifest.folio_date,true),window=nativeFolioSelector(historical,manifest),folioInfo=record(record(historical).reservationFolioInformation),reservation=folioInfo.reservationInfo;
  const scope={hotel:manifest.hotel as Parameters<OperaReader['financialTransactionDetail']>[0]['hotel'],accountId:manifest.account_id,transactionId:manifest.id};
- const detail=record(await reader.financialTransactionDetail(scope)),accounts=list(detail.details);if(accounts.length!==1||accounts[0].hotelId!==manifest.hotel||record(accounts[0].accountId).id!==manifest.account_id)fail();
+ // These selectors depend only on the already-validated AR identity. Drain all
+ // three reads on failure; balance/posting/tax checks and the final fence stay.
+ const reads=await Promise.allSettled([reader.reservationFolios(manifest.reservation_id,manifest.folio_date,true),reader.financialTransactionDetail(scope),reader.invoiceReservation(manifest.reservation_id)]);
+ const [historical,rawDetail,rawHeader]=reads.map(result=>{if(result.status==='rejected')throw result.reason;return result.value;});
+ const window=nativeFolioSelector(historical,manifest),folioInfo=record(record(historical).reservationFolioInformation),reservation=folioInfo.reservationInfo;
+ const detail=record(rawDetail),accounts=list(detail.details);if(accounts.length!==1||accounts[0].hotelId!==manifest.hotel||record(accounts[0].accountId).id!==manifest.account_id)fail();
  const invoices=list(accounts[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(invoices.length!==1||!valid(invoices[0]))fail();const invoice=invoices[0];
  if(typeof invoice.internalFolioWindowID!=='string')fail();
- const header=record(record(await reader.invoiceReservation(manifest.reservation_id)).reservations),reservations=list(header.reservation);
+ const header=record(record(rawHeader).reservations),reservations=list(header.reservation);
  if(reservations.length!==1||header.hasMore===true||reservations[0].hotelId!==manifest.hotel||!list(reservations[0].reservationIdList).some(r=>r.type==='Reservation'&&String(r.id)===manifest.reservation_id))fail();
  const customReference=reservations[0].customReference;if(customReference!=null&&typeof customReference!=='string')throw Error('document_invoice_header_invalid');
  const postings=record(await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string})),postingRows=list(postings.invoicePostingsDetails);if(!postingRows.length||postingRows.length>=4000)throw Error('document_invoice_postings_incomplete');

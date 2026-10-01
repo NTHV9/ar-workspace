@@ -1,3 +1,4 @@
+import {loadJobSources} from './pdf/load-job-sources';
 import {phuketEmailEnabled} from './access/model';
 import {isHotelId,type HotelId} from './domain/hotels';
 import {createReviewHandoff} from './pdf/review-handoff';
@@ -43,11 +44,9 @@ export default function DocumentRoute({token,jobId,onClose,onJobIdentity,onDirty
  },[jobId,loadRevision]);
  function openEmail(){if(!job||!phuketEmailEnabled(job.hotel)){setSources(null);setError('Email delivery is not enabled for Khao Lak. Download the reviewed documents for external billing.');return;}setSources(null);setInitialProject(undefined);setCompose(true);const url=new URL(location.href);url.searchParams.set('compose','1');history.replaceState(null,'',url);}
  async function openEditor(restore=true){if(!job||compact||closed)return;const life=generation.current,attempt=++opening.current;setBusy(true);setError('');try{
-  const ready=job.files.filter(f=>f.state==='ready');if(!ready.length)throw new Error('No source PDF is ready.');
-  if(ready.reduce((sum,f)=>sum+(f.byte_count??0),0)>maxBytes)throw new Error('Package exceeds the configured editor memory budget. Use a smaller selection.');
-  const docs:PdfSourceDocument[]=[];for(const file of ready){const r=await fetch(`/api/documents/${job.id}/files/${file.id}`,{headers:{Authorization:`Bearer ${tokenRef.current}`}});if(!r.ok){if(r.status===410)throw Error(operationMessages.storage_file_expired);throw new Error('A private source file could not be loaded. No partial package was opened.');}const bytes=new Uint8Array(await r.arrayBuffer());docs.push({id:file.id,name:file.kind==='statement'?'Statement.pdf':`Invoice ${job.manifest.find(i=>i.id===file.invoice_id)?.invoice_no??file.ordinal}.pdf`,kind:file.kind,invoiceId:file.invoice_id??undefined,...(file.kind==='invoice'?{invoiceLabel:(()=>{const invoice=job.manifest.find(i=>i.id===file.invoice_id);return `Invoice ${invoice?.invoice_no??file.ordinal}${invoice?.folio_no?' · Folio '+invoice.folio_no:''}`;})()}:{}),invoiceIds:job.manifest.map(i=>i.id),bytes});}
+  const requestToken=tokenRef.current;const docs=await loadJobSources(job,requestToken,maxBytes);
   let project:PdfProject|undefined;if(!transient&&restore&&job.project_key)project=await requestJson<PdfProject>(`/api/documents/${job.id}/project`,tokenRef.current);
-  if(alive.current&&generation.current===life&&opening.current===attempt){setInitialProject(project);setEditorReviewed(!!project&&job.acknowledged&&job.exports.length>0);handoff.current=createReviewHandoff();setSources(docs);}
+  if(alive.current&&generation.current===life&&opening.current===attempt&&tokenRef.current===requestToken){setInitialProject(project);setEditorReviewed(!!project&&job.acknowledged&&job.exports.length>0);handoff.current=createReviewHandoff();setSources(docs);}
  }catch(e){if(alive.current&&generation.current===life&&opening.current===attempt)setError(e instanceof Error?e.message:'Unable to open editor');}finally{if(alive.current&&generation.current===life&&opening.current===attempt)setBusy(false);}}
  async function uploadExport(file:PdfExportFile){if(!job)throw Error('Document preparation unavailable');return requestJson<Omit<DocumentExport,'name'>>(`/api/documents/${job.id}/upload?kind=export`,tokenRef.current,{method:'POST',headers:{'Content-Type':'application/pdf'},body:new Uint8Array(file.bytes).buffer});}
  async function review(files:PdfExportFile[],next:'email'|'download'){

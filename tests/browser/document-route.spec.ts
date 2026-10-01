@@ -5,6 +5,18 @@ import {reviewPreviewPages} from './fixtures/pdf-preview';
 import { test, expect, type Page } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import {assertButtonVisibility} from './fixtures/button-visibility';
+import {auditLogin,auditRoute} from './fixtures/audit-workspace';
+
+test('PDF performance: downloads two sources before either completes',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient'),bytes=await syntheticInvoice();
+ const files=[{...controls.job.files[0],byte_count:bytes.length},{...controls.job.files[0],id:'b0000000-0000-4000-8000-000000000094',invoice_id:'B',ordinal:2,byte_count:bytes.length}];
+ await page.route('**/api/documents/'+jobId,r=>r.fulfill({json:{...controls.job,files}}));
+ let release=()=>{};const gate=new Promise<void>(r=>{release=r;}),started:string[]=[];
+ for(const file of files)await page.route('**/api/documents/'+jobId+'/files/'+file.id,async r=>{started.push(file.id);await gate;await r.fulfill({contentType:'application/pdf',body:Buffer.from(bytes)});});
+ await auditLogin(page);await auditRoute(page,'documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ try{await expect.poll(()=>started.length,{timeout:1200,intervals:[50]}).toBe(2);}finally{release();}
+ await expect(page.getByRole('button',{name:'Select page 2',exact:true})).toBeVisible();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');await page.screenshot({path:'evidence/pdf-parallel-source-loading.png',animations:'disabled'});expect(controls.outboundRequests).toEqual([]);
+});
 
 test('clearing an existing Voucher erases every original glyph in exported PDF',async({page})=>{
  await mockApplication(page,'combined','transient',await syntheticInvoice(3,'OLDVCH','A',true));
@@ -114,13 +126,14 @@ async function mockApplication(page: Page, requestedLayout='combined', lifecycle
     releasePortfolio() { this.holdPortfolio = false; this.pendingPortfolio.splice(0).forEach(resolve => resolve()); },
   };
   await page.addInitScript(value => localStorage.setItem('sb-example-auth-token', JSON.stringify(value)), session('synthetic-token-old'));
-  await page.route('https://example.supabase.co/**', route => route.fulfill({ json: { user } }));
+  await page.route('https://example.supabase.co/**', route => route.fulfill({ json: {...session('synthetic-token-old'),user} }));
   // Every application API is intercepted; unexpected calls fail locally and cannot
   // touch OPERA, Supabase, customer documents, or production services.
   await page.route('**/api/**', async route => {
     const request = route.request(), url = new URL(request.url()), token = request.headers().authorization || '';
     if(/\/(send|gmail-draft)$/.test(url.pathname))controls.outboundRequests.push(url.pathname);
-    if (url.pathname === '/api/config') return route.fulfill({ json: { supabaseUrl: 'https://example.supabase.co', publishableKey: 'synthetic-key' } });
+    if (url.pathname === '/api/config') return route.fulfill({ json: { supabaseUrl: 'https://example.supabase.co', publishableKey: 'synthetic-key',googleEnabled:true } });
+    if (url.pathname === '/api/access/me') return route.fulfill({json:{memberId:user.id,email:user.email,displayName:'Synthetic Staff',active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}});
     if (url.pathname === '/api/refresh') return route.fulfill({ json: { jobs: [], running: false, hotels: [] } });
     if (url.pathname === '/api/portfolio') {
       controls.portfolioRequests.push(token);

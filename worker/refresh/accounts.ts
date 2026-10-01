@@ -3,10 +3,11 @@ import {makeReader} from '../opera/probe';
 import {OperaError} from '../opera/client';
 import {backendRpc,previousInvoices,type RefreshEnv} from './backend';
 import {readVerifiedAccount} from './read-snapshot';
+import type {OperaReader} from '../opera/client';
 
 /** Stage verified accounts privately. The caller publishes only after every
  * account succeeds and the hotel's complete membership is checked again. */
-export async function stageRefreshAccounts(env:RefreshEnv,runId:string,hotel:string,ids:readonly string[],businessDate:string,step:Pick<WorkflowStep,'do'>):Promise<number>{
+export async function stageRefreshAccounts(env:RefreshEnv,runId:string,hotel:string,ids:readonly string[],businessDate:string,step:Pick<WorkflowStep,'do'>,reader:OperaReader=makeReader(env,hotel)):Promise<number>{
  let invalidAccounts=0;
  for(let offset=0;offset<ids.length;offset+=2){
   const outcomes=await Promise.allSettled(ids.slice(offset,offset+2).map(async(_id,relative)=>{
@@ -15,7 +16,7 @@ export async function stageRefreshAccounts(env:RefreshEnv,runId:string,hotel:str
    if(!await backendRpc<boolean>(env,'ar_renew_refresh',{p_run_id:runId}))throw Error('refresh_lease_expired');
    try{
     const previous=await previousInvoices(env,hotel,ids[index]);
-    const snapshot=await readVerifiedAccount(makeReader(env,hotel),hotel,ids[index],businessDate,previous);
+    const snapshot=await readVerifiedAccount(reader,hotel,ids[index],businessDate,previous);
     await backendRpc(env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});
     return {ok:true,invoices:snapshot.invoices.length,code:'',stage:'',diagnostics:null};
    }catch(error){

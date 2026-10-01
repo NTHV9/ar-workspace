@@ -93,7 +93,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(accountId)return [accountId];
         return discoverAccountIds(reader,hotel);
       });
-      const invalidAccounts=await stageRefreshAccounts(runtime,runId,hotel,ids,businessDate,step);
+      const invalidAccounts=await stageRefreshAccounts(runtime,runId,hotel,ids,businessDate,step,reader);
       if(payload.validateOnly){
         await step.do('finish-validation-only',async()=>{await backendRpc(runtime,'ar_fail_refresh',{p_run_id:runId,p_error_code:'validation_only_finished'});return {validated:invalidAccounts===0};});
         return {hotel,status:invalidAccounts?'validation_failed':'validated',accounts:ids.length};
