@@ -29,3 +29,30 @@ test('a longer wrapped continuation stays with its row for TSK too',async({page}
 test('selecting a third source line still inserts below the complete row',async({page})=>{
  await page.goto('/tests/browser/statement-rows/harness.html?guest=Example%2C%20Verylongfamilyname%20ExtraWords');await page.getByRole('button',{name:'Edit original text: ExtraWords',exact:true}).click();await page.getByRole('button',{name:'Add row below',exact:true}).click();await page.getByRole('button',{name:'Save draft',exact:true}).click();const edit=await page.evaluate(()=>(window as any).fixture.project.pages[0].rowEdits[0]);expect(edit.y).toBeGreaterThan(247);expect(edit.y).toBeLessThan(254);await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(8);
 });
+
+
+test('header newline leaves opposite header fixed and Whiteout is directly available',async({page})=>{
+ await page.goto('/tests/browser/statement-rows/harness.html',{waitUntil:'domcontentloaded'});
+ const right=page.getByRole('button',{name:'Edit original text: 11/09/26',exact:true});const before=await right.boundingBox();
+ await page.getByRole('button',{name:'Edit original text: SYNTHETIC ROW TEST',exact:true}).click();
+ await page.getByRole('textbox',{name:'Edit document text',exact:true}).fill('SYNTHETIC ROW TEST\n1 Example Street\nExample Town');
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ const after=await right.boundingBox();expect(after!.y).toBeCloseTo(before!.y,1);
+ expect(await page.evaluate(()=>(window as any).fixture.project.pages[0].rowEdits??[])).toHaveLength(0);
+ await expect(page.getByRole('button',{name:'Whiteout',exact:true})).toBeVisible();
+ await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
+ await page.screenshot({path:'evidence/pdf-independent-header-lines-1440.png',animations:'disabled'});
+ await page.getByRole('button',{name:'Whiteout',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Move whiteout layer',exact:true})).toBeVisible();
+});
+
+
+test('newline in a Statement item still expands the whole row',async({page})=>{
+ await page.goto('/tests/browser/statement-rows/harness.html');
+ const lower=page.getByRole('button',{name:'Edit original text: F002',exact:true});const before=await lower.boundingBox();
+ await page.getByRole('button',{name:'Edit original text: F001',exact:true}).click();
+ await page.getByRole('textbox',{name:'Edit document text',exact:true}).fill('F001\nEXTRA\nLINE');
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ expect((await lower.boundingBox())!.y).toBeGreaterThan(before!.y);
+ expect(await page.evaluate(()=>(window as any).fixture.project.pages[0].rowEdits.some((e:any)=>e.kind==='insert'))).toBe(true);
+});
