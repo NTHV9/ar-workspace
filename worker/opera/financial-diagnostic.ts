@@ -1,4 +1,5 @@
 import {OperaError,type OperaErrorCode,type OperaReader} from './client';
+import {safeAuthenticationDiagnostic,type AuthReason} from './auth';
 import {readCorroboratedApplications} from './applied-payments';
 import {makeReader} from './probe';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
@@ -8,7 +9,7 @@ import {isHotelId} from '../../src/domain/hotels';
 
 export interface FinancialDiagnosticOptions {maxAccounts?:1|2;maxPages?:number;maxRows?:number}
 type DiagnosticStage='candidates'|'business_date'|'history_20'|'history_10'|'adjacent_days'|'detail'|'mapping';
-interface DiagnosticError {stage:DiagnosticStage;code:OperaErrorCode|'unavailable'}
+interface DiagnosticError {stage:DiagnosticStage;code:OperaErrorCode|'unavailable';upstreamStatus?:number;authReason?:AuthReason|string}
 interface DateCount {present:number;withinWindow:number}
 type DateField='transactionDate'|'postingDate'|'revenueDate'|'transferDate'|'closeDate';
 type DateFields=Record<DateField,DateCount>;
@@ -24,6 +25,8 @@ export interface FinancialDiagnosticSample {
 }
 export interface FinancialDiagnosticResult {
  hotel:FinancialHotel;status:'checked'|'no_candidates'|'unavailable';windowDays:7;accountsChecked:number;candidatesSelected:number;
+ /** Public OAuth client identifier fingerprint for operator matching; no secret/token fingerprint. */
+ authClientFingerprint?:string;
  readChecksPassed:boolean;financialPeriodCoverageVerified:false;applicationDatesVerified:false;samples:FinancialDiagnosticSample[];error?:DiagnosticError;
 }
 interface Candidate {accountId:string;invoiceTransactionId:string|null;invoiceNo:string|null}
@@ -38,7 +41,7 @@ function candidates(value:unknown,hotel:FinancialHotel,limit:number):Candidate[]
   return {accountId:row.accountId,invoiceTransactionId:row.invoiceTransactionId as string|null,invoiceNo:row.invoiceNo as string|null};
  });
 }
-function error(stage:DiagnosticStage,value:unknown):DiagnosticError {return {stage,code:value instanceof OperaError?value.code:'unavailable'};}
+function error(stage:DiagnosticStage,value:unknown):DiagnosticError {return {stage,code:value instanceof OperaError?value.code:'unavailable',...(value instanceof OperaError?{upstreamStatus:value.upstreamStatus,...safeAuthenticationDiagnostic(value)}:{})};}
 const shapeFields=['details','invoices','payments','appliedPayments','invoicePayments','paymentDetails','hotelId','accountId','id','type','transactionNo','invoiceNo','paymentTrxNo','appliedAmount','amount','currencyCode','transactionDate','postingDate','closeDate','balance','originalAmount','warnings'];
 function fieldShape(value:unknown,depth=0):FieldShape {
  const type=value===null?'null':Array.isArray(value)?'array':typeof value;
@@ -103,7 +106,7 @@ export async function runFinancialDiagnostic(env:RefreshEnv,hotel:FinancialHotel
  const result:FinancialDiagnosticResult={hotel,status:'unavailable',windowDays:7,accountsChecked:0,candidatesSelected:0,readChecksPassed:false,financialPeriodCoverageVerified:false,applicationDatesVerified:false,samples:[]};
  let selected:Candidate[];try{selected=candidates(await backendRpc(env,'ar_financial_diagnostic_candidates',{p_hotel:hotel,p_limit:maxAccounts}),hotel,maxAccounts);}catch(e){result.error=error('candidates',e);return result;}
  result.candidatesSelected=selected.length;if(!selected.length){result.status='no_candidates';return result;}
- let reader:ReturnType<typeof makeReader>,end:string;try{reader=makeReader(env,hotel);end=await readBusinessDate(reader,hotel);}catch(e){result.error=error('business_date',e);return result;}
+ let reader:ReturnType<typeof makeReader>,end:string;try{reader=makeReader(env,hotel);end=await readBusinessDate(reader,hotel);}catch(e){result.error=error('business_date',e);if(e instanceof OperaError&&e.stage==='authentication'&&env.OPERA_CLIENT_ID)result.authClientFingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(env.OPERA_CLIENT_ID)))].map(n=>n.toString(16).padStart(2,'0')).join('');return result;}
  const start=shifted(end,-6),observedAt=new Date().toISOString();
  for(const [index,candidate]of selected.entries()){
   const entry=sample(index);result.samples.push(entry);result.accountsChecked++;let stage:DiagnosticStage='history_20';

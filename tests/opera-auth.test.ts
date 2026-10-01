@@ -19,3 +19,15 @@ it('does not expose the upstream authentication body in an error',async()=>{
   const getToken=createTokenProvider('https://gateway.example.com','SYNTHETIC',auth,async()=>new Response('private failure detail',{status:401}));
   await expect(getToken()).rejects.toMatchObject({code:'provider_unauthorized',message:'provider_unauthorized:authentication'});
 });
+
+it('classifies a rejected client without echoing credentials from the OAuth body',async()=>{
+ const getToken=createTokenProvider('https://gateway.example.com','SYNTHETIC',auth,async()=>Response.json({error:'invalid_client',error_description:'Failed to authenticate application synthetic-secret'},{status:401}));
+ const e=await getToken().catch(e=>e);expect(e).toMatchObject({code:'provider_unauthorized',upstreamStatus:401,stage:'authentication',diagnostics:{authReason:'client_credentials_rejected'}});expect(JSON.stringify(e)).not.toContain('synthetic-secret');
+});
+
+it.each([['Client secret has expired','credentials_expired'],['Enterprise id is required','enterprise_missing'],['Enterprise does not have access to gateway','enterprise_access_denied'],['Failed to authenticate application','application_authentication_rejected']])('returns only an allowlisted reason for %s',async(body,reason)=>{
+ const getToken=createTokenProvider('https://gateway.example.com','SYNTHETIC',auth,async()=>new Response(body,{status:401}));await expect(getToken()).rejects.toMatchObject({diagnostics:{authReason:reason}});
+});
+it('bounds and suppresses an oversized OAuth error and never returns unknown provider text',async()=>{
+ const getToken=createTokenProvider('https://gateway.example.com','SYNTHETIC',auth,async()=>new Response('private-key-value'.repeat(400),{status:401}));const e=await getToken().catch(e=>e);expect(e.diagnostics).toEqual({authReason:'authentication_rejected'});expect(JSON.stringify(e)).not.toContain('private-key-value');
+});
