@@ -1,3 +1,8 @@
+## Owner confirmation — Proactive current data and PDF speed — 1 October 2026
+
+- Owner wants opening the website to show the most recently published OPERA data without having to click Refresh OPERA or wait for a full provider import. Confirmed proactive background checks every five minutes, coalescing with existing shared hotel jobs. Preserve 07:00/19:00 Thai scheduled history/discovery, manual refresh, publication verification and source timestamps. Five-minute checks do not promise instantaneous source visibility or publish partial/unverified data.
+- Speed up PDF preparation and source loading, retaining Invoice/Statement content, final balance fences, selected identities, file ordering, memory limits and no duplicate native print commands. No paid service or accounting write is authorized by this performance change.
+
 ## Owner confirmation — Bulk Account settings and type fallback — 30 September 2026
 
 - Settings must support selecting individual Accounts across permitted hotels, or Hotel + Account Type groups, with every Account-settings field available as a selective patch. Unchecked fields retain their values; review the exact affected scope before a single save.

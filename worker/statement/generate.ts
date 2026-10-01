@@ -8,9 +8,10 @@ import type {DocumentJob} from '../documents/jobs';
 import {statementModel} from './model';
 import {renderStatement,supportedStatementTemplate,type StatementAssets} from './render';
 import {PDFDocument} from 'pdf-lib';
-export async function workspaceStatement(env:RefreshEnv,job:DocumentJob){
+import type {DocumentResources} from '../documents/resources';
+export async function workspaceStatement(env:RefreshEnv,job:DocumentJob,resources?:DocumentResources){
  if(job.statement_source!=='workspace'||!supportedStatementTemplate(job.template_version))throw Error('document_statement_source_invalid');
- const reader=makeReader(env,job.hotel);const businessDate=await readBusinessDate(reader,job.hotel);
+ const reader=resources?.reader()??makeReader(env,job.hotel);const businessDate=await readBusinessDate(reader,job.hotel);
  const verified=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
  for(const m of job.manifest){const row=verified.invoices.find(i=>i.id===m.id);if(!row||!['standalone','parent'].includes(row.collection_role)||row.open!==m.open||row.invoice_no!==m.invoice_no||row.folio_no!==m.folio_no)throw Error('document_source_changed');}
  const raw=await reader.account(job.account_id),account=asObject(asObject(raw).accountDetails);
@@ -31,7 +32,7 @@ export async function workspaceStatement(env:RefreshEnv,job:DocumentJob){
  const addressedAccount=await accountWithAddressee(reader,job.hotel,job.account_id,account);
  const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'}),model=statementModel({...asObject(raw),accountDetails:addressedAccount},job.manifest,date);
  if(model.aging.some((b,i)=>b.cents!==Math.round(verified.account.agingBuckets[i]?.amount*100)))throw Error('document_source_changed');
- const assets=await backendRpc<StatementAssets>(env,'ar_statement_template',{p_hotel:job.hotel,p_version:job.template_version});
+ const assets=await (resources?resources.statementAssets(job.template_version!):backendRpc<StatementAssets>(env,'ar_statement_template',{p_hotel:job.hotel,p_version:job.template_version}));
  if(!assets)throw Error('document_statement_template_missing');if(assets.version!==job.template_version)throw Error('document_statement_template_invalid');const bytes=await renderStatement(model,assets);
  const digest=await crypto.subtle.digest('SHA-256',new Uint8Array(bytes));return {bytes,pages:(await PDFDocument.load(bytes)).getPageCount(),sha256:[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('')};
 }

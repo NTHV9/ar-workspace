@@ -8,6 +8,7 @@ import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {makeReader} from '../opera/probe';
 import {OperaError} from '../opera/client';
 import {getNativeInvoicePdf,type DocumentInvoice} from './native-invoice';
+import {documentResources} from './resources';
 export interface DocumentFile {id:string;kind:'statement'|'invoice';invoice_id:string|null;ordinal:number;state:string;storage_key:string|null;error_code:string|null;byte_count:number|null;sha256:string|null}
 export interface DocumentExport {name:string;storage_key:string;byte_count:number;sha256:string}
 export interface DocumentJob {invoice_source?:'native'|'workspace';invoice_template_version?:string|null;lifecycle?:'legacy'|'transient';closed_at?:string|null;closed_reason?:'sent'|'discarded'|null;execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
@@ -45,9 +46,13 @@ export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,
 export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowStep){
  assertWritesEnabled(env);
  const job=await documentJob(env,jobId);if(!job)throw new Error('document_job_missing');
- for(const file of job.files){
-  if(!['pending','generating'].includes(file.state))continue;
-  await step.do(`document-${file.id}`,{retries:{limit:0,delay:'5 seconds'},timeout:'8 minutes'},async()=>{
+ const resources=documentResources(env,job.hotel);
+ const pending=job.files.filter(file=>['pending','generating'].includes(file.state));
+ // Workspace generation is read-only. Historical native printing stays serial,
+ // retaining its original no-repeat and uncertain-result semantics.
+ const parallel=job.invoice_source==='workspace'?2:1;
+ for(let offset=0;offset<pending.length;offset+=parallel){
+  const outcomes=await Promise.allSettled(pending.slice(offset,offset+parallel).map(file=>step.do(`document-${file.id}`,{retries:{limit:0,delay:'5 seconds'},timeout:'8 minutes'},async()=>{
    const claim=await backendRpc<{claimed:boolean;file:DocumentFile}>(env,'ar_document_claim_file',{p_job_id:job.id,p_file_id:file.id});
    if(!claim.claimed)return {state:claim.file.state};
    let renderStarted=false;
@@ -55,7 +60,7 @@ export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowSt
     if(file.kind==='statement'&&job.statement_source!=='workspace')throw new OperaError('invalid_configuration',undefined,'document_statement_source_retired');
     const invoice=job.manifest.find(i=>i.id===file.invoice_id);if(file.kind!=='statement'&&(!invoice||invoice.hotel!==job.hotel||invoice.account_id!==job.account_id))throw new Error('document_manifest_invalid');
     if(file.kind==='invoice'&&job.invoice_source!==undefined&&!['native','workspace'].includes(job.invoice_source))throw Error('document_invoice_source_invalid');
-    const pdf=file.kind==='statement'?await workspaceStatement(env,job):job.invoice_source==='workspace'?await workspaceInvoice(env,job,invoice!):await getNativeInvoicePdf(makeReader(env,job.hotel),invoice!,()=>{renderStarted=true;});
+    const pdf=file.kind==='statement'?await workspaceStatement(env,job,resources):job.invoice_source==='workspace'?await workspaceInvoice(env,job,invoice!,resources):await getNativeInvoicePdf(makeReader(env,job.hotel),invoice!,()=>{renderStarted=true;});
     const key=`jobs/${job.id}/originals/${file.id}.pdf`;
     await uploadPrivate(env,key,pdf.bytes,'application/pdf');
     await backendRpc(env,'ar_document_finish_file',{p_job_id:job.id,p_file_id:file.id,p_storage_key:key,p_bytes:pdf.bytes.length,p_sha256:pdf.sha256});
@@ -65,7 +70,9 @@ export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowSt
     await backendRpc(env,'ar_document_fail_file',{p_job_id:job.id,p_file_id:file.id,p_code:code,p_uncertain:renderStarted});
     return {state:renderStarted?'uncertain':'unavailable',code};
    }
-  });
+  })));
+  // Drain admitted peers before a workflow error can trigger reconciliation.
+  const failure=outcomes.find(result=>result.status==='rejected');if(failure?.status==='rejected')throw failure.reason;
  }
  const result=await documentJob(env,job.id);return {state:result?.state??'unavailable',files:result?.files.length??0};
 }

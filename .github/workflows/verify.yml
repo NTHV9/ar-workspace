@@ -27,6 +27,8 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Verify browser workflows with synthetic APIs
         run: pnpm test:browser:smoke
+      - name: Verify background refresh and parallel PDF loading
+        run: pnpm exec playwright test --config playwright.performance.config.ts -g 'PDF performance|saved Aging is usable'
       - name: Preserve browser failure report
         if: failure()
         uses: actions/upload-artifact@v4

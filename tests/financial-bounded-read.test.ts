@@ -20,5 +20,5 @@ it('stops admission immediately when the first reader throws synchronously',asyn
 it('keeps the history queue separate and bounds two hotels to at most six financial read chains',()=>{
  const config=JSON.parse(readFileSync('wrangler.jsonc','utf8'));
  expect(config.workflows.map((workflow:{binding:string;concurrency:{limit:number}})=>[workflow.binding,workflow.concurrency.limit])).toEqual([['AR_DOCUMENTS',2],['AR_REFRESH',2],['AR_FINANCIAL',2]]);
- expect(config.triggers.crons).toEqual(['0 0,12 * * *','*/15 * * * *']);
+ expect(config.triggers.crons).toEqual(['0 0,12 * * *','*/15 * * * *','*/5 * * * *']);
 });

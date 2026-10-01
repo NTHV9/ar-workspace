@@ -1,6 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {setupRegional,regionalAccounts} from './fixtures/hotel-regions';
 import {hotelInRegion,regionHotels,type RegionId} from '../../src/domain/hotels';
+import {auditLogin,auditRoute} from './fixtures/audit-workspace';
 
 async function setup(page:Page,region:RegionId,noPublication=false,fastCompletion=false){
  const context=await setupRegional(page),hotels=regionHotels(region),oldAt='2026-09-12T02:59:00Z',newAt='2026-09-12T03:01:00Z';
@@ -16,6 +17,11 @@ async function setup(page:Page,region:RegionId,noPublication=false,fastCompletio
 }
 
 for(const region of ['phuket','khao-lak'] as const){
+ test(`${region}: saved Aging is usable while OPERA refresh is still pending`,async({page})=>{
+  const state=await setupRegional(page);let release=()=>{};const pending=new Promise<void>(r=>{release=r;}),started:{value:boolean}={value:false};
+  await page.route('**/api/refresh*',async route=>{if(route.request().method()==='POST'){started.value=true;await pending;return route.fulfill({json:{jobs:[{status:'running',created:false}]}});}return route.fallback();});
+  try{await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=aging&region='+region);await expect.poll(()=>started.value).toBe(true);await expect(page.getByRole('heading',{name:'Age of open balances'})).toBeVisible();await expect(page.locator('.aging-v4-profile-heading')).toContainText('THB');expect(state.errors).toEqual([]);}finally{release();}
+ });
  test(`${region}: updates Dashboard figures when one hotel finishes`,async({page})=>{
   const state=await setup(page,region);await page.goto('/?dashboard=1&region='+region);
   await expect(page.getByRole('heading',{name:'Dashboard',exact:true})).toBeVisible();
