@@ -4,11 +4,13 @@ import {sweepRetention} from '../operations/retention-sweep';
 import type {DriveEnv} from '../drive/shared';
 import {financialWorkflow,requestFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
 import {backendRpc,type RefreshEnv,type RefreshParams} from './backend';
+import {isHotelId} from '../../src/domain/hotels';
 export async function postPublicationMaintenance(runtime:RefreshEnv&FinancialIngestionEnv&DriveEnv,payload:RefreshParams,step:WorkflowStep){
  const {runId,hotel,accountId}=payload;
  // Current/open/manual runs release their scarce slots at publication. Preset
  // warming also has the existing maintenance cron; monthly cleanup stays daily.
  if(payload.refreshReason!=='scheduled')return;
+ if(!isHotelId(hotel))throw Error('invalid_workflow_parameters');
       {try{await step.do('period-summary-precompute',{retries:{limit:0,delay:'5 seconds'},timeout:'10 minutes'},()=>warmPeriodSummaries(runtime));}catch{/* Published source data remains successful; maintenance retries this optional cache. */}}
       if(payload.refreshReason==='scheduled'&&!accountId&&runtime.FINANCIAL_HISTORY_ENABLED==='true')await step.do('enqueue-financial-history',{retries:{limit:1,delay:'5 seconds'},timeout:'2 minutes'},async()=>{
         try{const actor=await backendRpc<string|null>(runtime,'ar_financial_service_actor',{});if(!actor)return {status:'actor_unavailable'};
