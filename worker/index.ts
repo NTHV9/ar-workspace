@@ -1,3 +1,4 @@
+import {safeAuthenticationDiagnostic} from './opera/auth';
 import {bulkSettingsApi} from './settings/bulk-api';
 import {warmPeriodSummaries} from './dashboard/precompute';
 import {invoiceRegisterApi} from './register/api';
@@ -194,7 +195,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
       if(origin&&origin!==new URL(request.url).origin)return json({error:'forbidden'},403);
       const hotel=new URL(request.url).searchParams.get('hotel');
       if(!isHotelId(hotel))return json({error:'invalid_hotel'},400);
-      try{return json(await probeOpera(env,hotel));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined},503);}
+      try{return json(await probeOpera(env,hotel));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined,...(e instanceof OperaError?safeAuthenticationDiagnostic(e):{})},503);}
     }
     const allRows = async (table: string, query: string) => {
       const result: unknown[] = [];
