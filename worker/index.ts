@@ -34,6 +34,7 @@ import { probeOpera, type OperaEnv } from './opera/probe';
 import { OperaError } from './opera/client';
 import { backendRpc, requestRefresh, type RefreshEnv } from './refresh/backend';
 import {currentRefreshCron} from './refresh/schedule';
+import {dispatchCurrentTicker} from './refresh/ticker';
 import {documentApi} from './documents/api';
 import {settingsApi} from './settings/api';
 import {requestMailReconcile,gmailReconcileCron,type ReconcileEnv} from './email/reconcile';
@@ -252,17 +253,19 @@ export default {
     if (new URL(request.url).pathname.startsWith('/api/')) return handleApi(request, env,background);
     return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Application assets unavailable', { status: 503 });
   },
-  async scheduled(event:{cron?:string},env:Env) {
+  async scheduled(event:{cron?:string;scheduledTime?:number},env:Env) {
     if(writesHeld(env))return;
     if(event.cron===gmailReconcileCron){
       // Each maintenance task gets one attempt even when another service fails.
       // Durable candidates retry on the next cron; no private failures are logged.
-      await Promise.allSettled([
+      const outcomes=await Promise.allSettled([
+        dispatchCurrentTicker(env,event.scheduledTime),
         ...(env.GMAIL_RECONCILE_ENABLED==='true'?[requestMailReconcile(env,'scheduled')]:[]),
         sweepTransientDocuments(env),
         sweepFinancialLogs(env),
         warmPeriodSummaries(env),
       ]);
+      if(outcomes[0].status==='rejected')throw Error('refresh_ticker_dispatch_unavailable');
       return;
     }
     if(!['0 0,12 * * *','*/5 * * * *',currentRefreshCron].includes(event.cron??'')||env.OPERA_REFRESH_ENABLED!=='true')return;
