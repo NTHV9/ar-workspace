@@ -15,6 +15,7 @@ export async function setupDashboard(page:Page,options:{realClock?:boolean;overl
  await page.route('https://example.supabase.co/**',route=>route.fulfill({json:{access_token:'synthetic-dashboard-token',refresh_token:'synthetic-dashboard-refresh',expires_in:3600,token_type:'bearer',user}}));
  const handle=async(route:Route,record=true):Promise<void>=>{
   const req=route.request(),url=new URL(req.url()),path=url.pathname,q=url.searchParams;let body:any;try{body=req.postDataJSON();}catch{body=null;}if(record)calls.push({path,query:q,method:req.method(),body});
+  if(path==='/api/dashboard/management')return route.fulfill({status:503,json:{error:'legacy_dashboard_fixture'}});
   if(path==='/api/dashboard/hotel-overview'){
    const make=async(hotel?:string)=>{
     const result:Record<string,unknown>={};

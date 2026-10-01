@@ -2,7 +2,7 @@ import {expect,it} from 'vitest';
 import {containsOutsideHotel,requestAccessIntent} from '../worker/access/scope';
 const id='00000000-0000-4000-8000-000000000021';
 const request=(path:string,method='GET',body?:unknown)=>new Request('https://app.test'+path,{method,...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
-it.each(['/api/portfolio','/api/collection-queue','/api/refresh','/api/dashboard/balances','/api/dashboard/aging-invoices','/api/remittances','/api/external-billing','/api/financial/status'])('binds regional reads independently of client UI: %s',async path=>{
+it.each(['/api/portfolio','/api/collection-queue','/api/refresh','/api/dashboard/management','/api/dashboard/balances','/api/dashboard/aging-invoices','/api/remittances','/api/external-billing','/api/financial/status'])('binds regional reads independently of client UI: %s',async path=>{
  expect(await requestAccessIntent(request(path+'?region=khao-lak'))).toMatchObject({kind:'region',region:'khao-lak'});
  expect(await requestAccessIntent(request(path))).toMatchObject({kind:'region',region:'phuket'});
  await expect(requestAccessIntent(request(path+'?region=khao-lak&hotel=KAT'))).rejects.toThrow('access_forbidden');

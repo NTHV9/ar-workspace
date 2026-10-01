@@ -161,6 +161,7 @@ try {
     if($AdditionalMigrationNames -contains 'ar_publish_batch_invoices'){$fixtures+='refresh-publish-batch-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_account_billing_rules'){$fixtures+='account-billing-propagation-rollback.sql'}
     if($AdditionalMigrationNames -contains 'ar_bulk_account_settings'){$fixtures+='bulk-account-settings-rollback.sql'}
+    if($AdditionalMigrationNames -contains 'ar_management_dashboard'){$fixtures+='management-dashboard-rollback.sql'}
     foreach($fixture in $fixtures){
         Invoke-LocalSql -Database $sourceDb -File (Join-Path $workspace ('tests/sql/'+$fixture)) | Out-Null
         $fixtureResults+=$fixture
