@@ -33,6 +33,7 @@ import {reportsApi} from './reports/api';
 import { probeOpera, type OperaEnv } from './opera/probe';
 import { OperaError } from './opera/client';
 import { backendRpc, requestRefresh, type RefreshEnv } from './refresh/backend';
+import {currentRefreshCron} from './refresh/schedule';
 import {documentApi} from './documents/api';
 import {settingsApi} from './settings/api';
 import {requestMailReconcile,gmailReconcileCron,type ReconcileEnv} from './email/reconcile';
@@ -264,8 +265,8 @@ export default {
       ]);
       return;
     }
-    if(!['0 0,12 * * *','*/5 * * * *'].includes(event.cron??'')||env.OPERA_REFRESH_ENABLED!=='true')return;
-    const proactive=event.cron==='*/5 * * * *';
+    if(!['0 0,12 * * *','*/5 * * * *',currentRefreshCron].includes(event.cron??'')||env.OPERA_REFRESH_ENABLED!=='true')return;
+    const proactive=event.cron!=='0 0,12 * * *';
     // Five-minute current-data checks share the existing database freshness and
     // hotel locks. Only the twice-daily schedule also imports financial history.
     const results=await Promise.allSettled(configuredOperaHotels(env.OPERA_HOTEL_IDS).map(hotel=>requestRefresh(proactive?{...env,REFRESH_STALE_MINUTES:'5'}:env,hotel,null,proactive?'open':'scheduled')));

@@ -1,14 +1,15 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import worker,{handleApi} from '../worker/index';
 import {requestMailReconcile,runMailReconcile} from '../worker/email/reconcile';
+import {currentRefreshCron} from '../worker/refresh/schedule';
 const mocked=vi.hoisted(()=>({check:vi.fn(),send:vi.fn(),draft:vi.fn()}));
 vi.mock('../worker/email/delivery',()=>({checkDelivery:mocked.check,deliverMessage:mocked.send,sendDiagnostic:mocked.draft,deliveryView:vi.fn()}));
 afterEach(()=>{vi.unstubAllGlobals();vi.clearAllMocks();});
 const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic',GMAIL_RECONCILE_ENABLED:'true'};
-it('five-minute OPERA prefetch uses shared stale checks for every hotel without Gmail or historical imports',async()=>{
+it.each(['*/5 * * * *',currentRefreshCron])('five-minute OPERA prefetch %s uses shared stale checks without Gmail or historical imports',async cron=>{
  const calls:{path:string;args:any}[]=[];
  vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push({path:url.split('/').at(-1)!,args:JSON.parse(String(init.body))});return Response.json({status:'fresh',created:false});});
- await worker.scheduled({cron:'*/5 * * * *'},{...env,OPERA_REFRESH_ENABLED:'true',OPERA_HOTEL_IDS:'KAT,TSK,TLKL,WAKL,TLFO,TSAN',OPERA_CLIENT_ID:'synthetic',OPERA_CLIENT_SECRET:'synthetic',OPERA_APP_KEY:'synthetic',AR_REFRESH:{create:vi.fn(),get:vi.fn()}});
+ await worker.scheduled({cron},{...env,OPERA_REFRESH_ENABLED:'true',OPERA_HOTEL_IDS:'KAT,TSK,TLKL,WAKL,TLFO,TSAN',OPERA_CLIENT_ID:'synthetic',OPERA_CLIENT_SECRET:'synthetic',OPERA_APP_KEY:'synthetic',AR_REFRESH:{create:vi.fn(),get:vi.fn()}});
  expect(calls.map(c=>c.path)).toEqual(Array(6).fill('ar_request_refresh'));
  expect(calls.map(c=>c.args)).toEqual(['KAT','TSK','TLKL','WAKL','TLFO','TSAN'].map(hotel=>({p_hotel:hotel,p_account_id:null,p_reason:'open',p_stale_minutes:5})));
  expect(mocked.send).not.toHaveBeenCalled();expect(mocked.draft).not.toHaveBeenCalled();

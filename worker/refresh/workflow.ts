@@ -1,10 +1,10 @@
+import {postPublicationMaintenance} from './post-publication';
 import {warmPeriodSummaries} from '../dashboard/precompute';
 import {acceptanceEnvironment} from '../acceptance/context';
 import {assertWritesEnabled} from '../operations/write-hold';
-import {sweepRetention} from '../operations/retention-sweep';
 import type {DriveEnv} from '../drive/shared';
 import {writeManagedStorage} from '../operations/storage';
-import {financialWorkflow,runFinancialHistory,requestFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
+import {runFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
 import {runFinancialDiagnostic} from '../opera/financial-diagnostic';
 import {runMailReconcile} from '../email/reconcile';
 import type {ReconcileEnv} from '../email/reconcile';
@@ -35,6 +35,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     assertStatementWorkflowPolicy(payload);
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!isHotelId(hotel))throw new Error('invalid_workflow_parameters');
+    // Retire diagnostic control windows without entering an unregistered financial run.
+    if(payload.currentTickerStart!==undefined)return {status:'retired'};
     if(payload.folioTypeProbe)return step.do('folio-report-configuration',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},()=>readFolioReportTypes(makeReader(runtime,hotel),hotel));
     if(payload.invoiceContractJob){
       if(!uuidPattern.test(payload.invoiceContractJob))throw Error('document_probe_scope_invalid');
@@ -106,18 +108,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(!accountId){const after=await discoverAccountIds(reader,hotel);const expected=new Set(ids);if(after.length!==ids.length||after.some(id=>!expected.has(id)))throw new OperaError('pagination_changed');}
         await backendRpc(runtime,'ar_publish_refresh',{p_run_id:runId,p_expected_accounts:ids.length});return {accounts:ids.length};
       });
-      {try{await step.do('period-summary-precompute',{retries:{limit:0,delay:'5 seconds'},timeout:'10 minutes'},()=>warmPeriodSummaries(runtime));}catch{/* Published source data remains successful; maintenance retries this optional cache. */}}
-      if(payload.refreshReason==='scheduled'&&!accountId&&runtime.FINANCIAL_HISTORY_ENABLED==='true')await step.do('enqueue-financial-history',{retries:{limit:1,delay:'5 seconds'},timeout:'2 minutes'},async()=>{
-        try{const actor=await backendRpc<string|null>(runtime,'ar_financial_service_actor',{});if(!actor)return {status:'actor_unavailable'};
-          const next=await requestFinancialHistory(runtime,actor,{commandId:runId,hotel,reason:'scheduled'});
-          const workflow=financialWorkflow(runtime,next.stepsVersion);
-          if(next.id&&['queued','running'].includes(next.status)&&workflow){try{await workflow.create({id:next.id,params:{runId:next.id,hotel,actorId:actor,financialHistory:true}});}catch{await(await workflow.get(next.id)).status();}}
-          return {status:next.status};
-        }catch{return {status:'financial_queue_unavailable'};}
-      });
-      if(!accountId&&runtime.RETENTION_ENABLED==='true')await step.do('completed-file-retention',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},async()=>{
-        try{return await sweepRetention(runtime);}catch{return {enabled:true,error:'retention_unavailable'};}
-      });
+      await postPublicationMaintenance(runtime,payload,step);
       return {hotel,status:'succeeded',accounts:ids.length};
     }catch(error){
       const serialized=error instanceof Error?error.message.match(/^OperaError: ([a-z_]+)(?::([a-z_]+))?$/):null;
