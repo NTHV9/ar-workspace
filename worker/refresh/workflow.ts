@@ -25,7 +25,6 @@ import type {InvoiceAssets} from '../invoice/types';
 import {readInvoicePacket} from '../invoice/read';
 import {auditInvoiceRead} from '../invoice/read-audit';
 import {invoiceModel,record as invoiceRecord} from '../invoice/model';
-import {runCurrentTicker} from './ticker';
 
 export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & ReconcileEnv & FinancialIngestionEnv & DriveEnv,RefreshParams> {
   async run(event:WorkflowEvent<RefreshParams>,step:WorkflowStep) {
@@ -36,7 +35,6 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     assertStatementWorkflowPolicy(payload);
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!isHotelId(hotel))throw new Error('invalid_workflow_parameters');
-    if(payload.currentTickerStart!==undefined)return runCurrentTicker(runtime,payload.currentTickerStart,step);
     if(payload.folioTypeProbe)return step.do('folio-report-configuration',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},()=>readFolioReportTypes(makeReader(runtime,hotel),hotel));
     if(payload.invoiceContractJob){
       if(!uuidPattern.test(payload.invoiceContractJob))throw Error('document_probe_scope_invalid');
