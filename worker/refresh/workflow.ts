@@ -35,6 +35,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     assertStatementWorkflowPolicy(payload);
     if(payload.mailReconcile){if(!/^[0-9a-f-]{36}$/.test(runId??''))throw Error('invalid_workflow_parameters');return runMailReconcile(runtime,runId,step);}
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!isHotelId(hotel))throw new Error('invalid_workflow_parameters');
+    // Retire diagnostic control windows without entering an unregistered financial run.
+    if(payload.currentTickerStart!==undefined)return {status:'retired'};
     if(payload.folioTypeProbe)return step.do('folio-report-configuration',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},()=>readFolioReportTypes(makeReader(runtime,hotel),hotel));
     if(payload.invoiceContractJob){
       if(!uuidPattern.test(payload.invoiceContractJob))throw Error('document_probe_scope_invalid');

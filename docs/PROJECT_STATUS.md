@@ -1,7 +1,8 @@
-## 1 October 2026 — Proactive schedule registration follow-up
+## 1 October 2026 — Verified recurring current refresh
 
-- All six initial current refreshes succeeded and the browser adopted their publications. The new step-expression five-minute schedule was visibly stored in Production, but no new current workflow or matching Cron Event was observed after more than 30 minutes; the existing 15-minute schedule continued succeeding. Reapplying identical triggers through CLI and the Production editor did not establish a new run. These facts do not prove a handler failure or a provider outage.
-- Replaced only that schedule with equivalent explicit minute values to force a new provider registration identity. The handler accepts both representations during propagation; frequency, shared freshness locks, six hotel scope, daily history and maintenance remain. Seventeen focused scheduler/capacity cases and production build pass. Real recurring execution still requires verification; deployment and final evidence are recorded in the follow-up PR.
+- The new short-form schedule was visibly stored, but matching events/runs were not initially observed. Re-registered the equivalent explicit five-minute values. A fresh unfiltered instance read later showed automatic current runs created at 18:26 and 18:36 ICT; the time-filtered metadata view had not shown those entries. Exact per-ID reads are used for final verification. No claim of a proven Cloudflare outage or handler defect.
+- Kept the direct five-minute schedule and removed the experimental durable fallback. Its exact manually seeded window was still queued with zero steps and was terminated without creating financial work or touching business history. A retirement guard keeps a delayed diagnostic window out of the normal financial-run claim path. Existing cron timing, freshness locks and capacity remain.
+- Initial real current imports succeeded for all six hotels. One subsequent TSAN round reported a failed run rather than publishing unknown data as zero; later automatic retry/publication evidence, final source and CI are recorded in the follow-up PR.
 
 ## 1 October 2026 — Proactive OPERA current data and PDF preparation speed
 
