@@ -26,11 +26,12 @@ for(const region of ['phuket','khao-lak'] as const)for(const width of [1440,1280
  await page.locator('.management-exact-figures>summary').click();
  await expect(page.getByRole('region',{name:'Accounts over 60 days',exact:true}).locator('tbody tr')).toHaveCount(region==='phuket'?4:8);
  await expect(page.locator('.management-more')).not.toHaveAttribute('open','');
+ if(width===390)for(const label of ['View billed · still open','View not yet billed','View invoice age over 60 days'])await expect(page.getByRole('button',{name:label,exact:true}).locator('small').last()).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(fixture.errors).toEqual([]);
  if(width===390){expect(await page.locator('.management-period-glance dd').evaluateAll(cells=>cells.every(cell=>getComputedStyle(cell).whiteSpace==='nowrap'))).toBe(true);}
  if(width===1440){const glance=page.getByRole('region',{name:'Period billing at a glance',exact:true});await expect(glance).toContainText(region==='phuket'?'1,600.00':'3,200.00');const bounds=await glance.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThan(900);}
- await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/dashboard-${region}-${width}.png`,animations:'disabled'});
- if(width===1440)await page.screenshot({path:`.impeccable/review/dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
+ await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/flow-dashboard-${region}-${width}.png`,animations:'disabled'});
+ if(width===1440)await page.screenshot({path:`.impeccable/review/flow-dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
 });
 test('CFO Account search/sort and scoped invoice drill preserve report selection',async({page})=>{
  const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
@@ -71,10 +72,17 @@ test('hotel chart keyboard selection shows exact source figures and opens the se
 
 for(const width of [1440,1280,390])test(`million-scale Dashboard has visible exact totals and usable priority rows at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:900});await managementFixture(page);
- await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);const scale=(v:any)=>{if(v&&typeof v==='object')for(const k of Object.keys(v)){if(['amount','creditAmount','unbilledAmount'].includes(k)&&typeof v[k]==='string')v[k]=(Number(v[k])*100000).toFixed(2);else scale(v[k]);}};scale(data);await route.fulfill({json:data});});
+ await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);const scale=(v:any)=>{if(v&&typeof v==='object')for(const k of Object.keys(v)){if(['amount','creditAmount','unbilledAmount'].includes(k)&&typeof v[k]==='string')v[k]=(Number(v[k])*100000).toFixed(2);else scale(v[k]);}};scale(data);data.accountsOver60!.forEach(a=>a.accountName='Synthetic International Travel and Hospitality Reservation Services '+a.hotel);await route.fulfill({json:data});});
  await openDashboard(page,'/?dashboard=1');await page.evaluate(()=>document.fonts.ready);
  await expect(page.getByRole('button',{name:'View outstanding',exact:true})).toContainText('200,000,000.00 THB');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  if(width>600){const last=page.getByRole('region',{name:'Priority accounts',exact:true}).locator('li').nth(2);const box=await last.boundingBox();expect(box!.y+box!.height).toBeLessThan(900);}
- await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/dashboard-millions-${width}.png`,animations:'disabled'});
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/flow-dashboard-millions-${width}.png`,animations:'disabled'});
+});
+
+
+test('billing legend responds to keyboard and touch selection without changing financial scope',async({page})=>{
+ const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1');
+ const notBilled=page.getByRole('button',{name:'Show not billed share',exact:true});await notBilled.focus();await notBilled.press('Enter');await expect(notBilled).toHaveAttribute('aria-pressed','true');await expect(page.locator('.billing-ring-unbilled')).toHaveAttribute('stroke-dasharray','20 100');await expect(page.getByRole('img',{name:'20.0% of billing-required invoice value not billed',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Show billed share',exact:true}).click();await expect(page.getByRole('img',{name:'80.0% of billing-required invoice value billed',exact:true})).toBeVisible();expect(queries).toHaveLength(1);
 });
