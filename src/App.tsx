@@ -222,10 +222,13 @@ export function App() {
     openedOwner.current=session.user.id+':'+region;void requestRefresh('open');
   },[session?.user.id,review,recovery,region,accessReady,params.has('usersAccess')]);
   useEffect(()=>{
-    if(!accessReady||review||recovery||!session||!refresh?.running)return;
+    if(!accessReady||review||recovery||!session||params.has('usersAccess'))return;
     const controller=new AbortController(),token=session.access_token;
     let timer:ReturnType<typeof setTimeout>;
+    let polling=false,running=refresh?.running===true;
     const poll=async()=>{
+      if(polling||controller.signal.aborted)return;
+      clearTimeout(timer);polling=true;
       try {
         const response=await fetch('/api/refresh'+(region==='khao-lak'?'?region=khao-lak':''),{signal:controller.signal,headers:{Authorization:`Bearer ${token}`}});
         if(!response.ok)throw new Error();
@@ -234,13 +237,15 @@ export function App() {
         setRefresh(next);setRefreshError('');
         // A completed hotel can be displayed while other hotels are still reading.
         // Keep a pending catalog request intact rather than restarting it every poll.
-        reloadForRefresh(next,!next.running);
-        if(!next.running)return;
+        reloadForRefresh(next,running&&!next.running);
+        running=next.running;
       } catch { if(controller.signal.aborted||sessionRef.current?.access_token!==token||resolveRegion(paramsRef.current)!==region)return;setRefreshError('Refresh status is temporarily unavailable. Saved data is retained.'); }
-      timer=setTimeout(poll,3000);
+      polling=false;timer=setTimeout(poll,running?3000:30000);
     };
-    timer=setTimeout(poll,3000);
-    return()=>{controller.abort();clearTimeout(timer);};
+    const wake=()=>{if(document.visibilityState==='visible')void poll();};
+    addEventListener('focus',wake);document.addEventListener('visibilitychange',wake);
+    timer=setTimeout(poll,running?3000:30000);
+    return()=>{controller.abort();clearTimeout(timer);removeEventListener('focus',wake);document.removeEventListener('visibilitychange',wake);};
   },[session?.access_token,review,recovery,refresh?.running,region,accessReady]);
   const openAccount=(a:Account,invoiceId?:string)=>{savedPortfolio.current={search:location.search,scroll:window.scrollY};const next=new URLSearchParams(paramsRef.current);next.set('account',a.id);next.set('property',a.hotel);next.delete('focusInvoice');if(invoiceId)next.set('focusInvoice',invoiceId);history.pushState(null,'',`?${next}`);paramsRef.current=next;setParams(next);window.scrollTo(0,0);};
   const back=()=>{if(accountDirty.current&&!window.confirm('Discard unsaved account changes?'))return;const next=new URLSearchParams(paramsRef.current);next.delete('account');next.delete('property');next.delete('focusInvoice');next.delete('documentJob');next.delete('documents');next.delete('pdfCheck');next.delete('pdfHotel');history.pushState(null,'',`?${next}`);paramsRef.current=next;setParams(next);requestAnimationFrame(()=>window.scrollTo(0,savedPortfolio.current.scroll));};

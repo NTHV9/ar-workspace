@@ -5,7 +5,7 @@ import type {BudgetEnvironment} from '../operations/budget';
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
 import {isHotelId} from '../../src/domain/hotels';
-export interface RefreshParams { currentTickerStart?:number; invoiceAuditId?:string; invoiceReadAudit?:boolean; invoiceModelProbe?:boolean; invoiceRenderProbe?:boolean; invoiceContractJob?:string; folioTypeProbe?:boolean; acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
+export interface RefreshParams { scheduledMaintenance?:boolean; currentTickerStart?:number; invoiceAuditId?:string; invoiceReadAudit?:boolean; invoiceModelProbe?:boolean; invoiceRenderProbe?:boolean; invoiceContractJob?:string; folioTypeProbe?:boolean; acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   GOOGLE_ONLY_AUTH?:string;
   REQUEST_ACTOR?:string;
@@ -63,6 +63,13 @@ export async function requestRefresh(env:RefreshEnv,hotel:string,accountId:strin
           throw new OperaError('provider_unavailable');
         }
       }catch{throw new OperaError('provider_unavailable',undefined,'workflow_dispatch');}
+    }
+    // Existing instances keep their original parameters. Preserve the daily
+    // obligation in a separate idempotent instance when joining a current run.
+    if(reason==='scheduled'&&canonical.reason!=='scheduled'&&!canonical.account_id){
+      const id=job.id+'-scheduled';
+      try{await env.AR_REFRESH.create({id,params:{runId:job.id,hotel,refreshReason:'scheduled',scheduledMaintenance:true}});}
+      catch{const state=await(await env.AR_REFRESH.get(id)).status();if(!['queued','running','waiting','sleeping','complete'].includes(state.status??''))throw new OperaError('provider_unavailable',undefined,'scheduled_dispatch');}
     }
   }
   return job;
