@@ -23,51 +23,51 @@ for(const region of ['phuket','khao-lak'] as const){
   try{await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=aging&region='+region);await expect.poll(()=>started.value).toBe(true);await expect(page.getByRole('heading',{name:'Age of open balances'})).toBeVisible();await expect(page.locator('.aging-v4-profile-heading')).toContainText('THB');expect(state.errors).toEqual([]);}finally{release();}
  });
  test(`${region}: updates Dashboard figures when one hotel finishes`,async({page})=>{
-  const state=await setup(page,region);await page.goto('/?dashboard=1&region='+region);
+  const state=await setup(page,region);await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=period&region='+region);
   await expect(page.getByRole('heading',{name:'Dashboard',exact:true})).toBeVisible();
   const requests=()=>state.regionalCalls.filter(c=>c.path==='/api/dashboard/hotel-overview').length;
-  await expect.poll(requests).toBeGreaterThan(0);await expect(page.getByRole('button',{name:'Reload saved data',exact:true})).toBeEnabled();
-  const before=requests();state.publish();await expect.poll(requests,{timeout:6000}).toBe(before+1);expect(state.errors).toEqual([]);
+  await expect.poll(requests).toBeGreaterThan(0);await expect(page.getByRole('button',{name:'OPERA data status',exact:true})).toBeEnabled();
+  const before=requests();state.publish();await expect.poll(requests,{timeout:6000}).toBeGreaterThan(before);expect(state.errors).toEqual([]);
  });
  test(`${region}: shows a completed hotel publication while the other hotels keep refreshing`,async({page})=>{
-  const state=await setup(page,region);await page.goto('/?region='+region);
-  await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
-  await expect(page.locator('.accounts-panel')).toContainText('Regional Travel');
-  state.publish();await expect(page.locator('.accounts-panel')).toContainText('Fresh publication',{timeout:6000});
-  expect(state.reads()).toBe(2);expect(state.errors).toEqual([]);
+  const state=await setup(page,region);await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=aging&region='+region);await page.getByLabel('Aging view',{exact:true}).selectOption('accounts');
+  await expect(page.getByRole('heading',{name:'Current Aging'})).toBeVisible();
+  await expect(page.locator('.aging-desktop-table')).toContainText('Regional Travel');
+  const before=state.reads();state.publish();await expect(page.locator('.aging-desktop-table')).toContainText('Fresh publication',{timeout:6000});
+  expect(state.reads()).toBe(before+1);expect(state.errors).toEqual([]);
  });
  test(`${region}: keeps the current portfolio usable while saved data is reloading`,async({page})=>{
-  const state=await setup(page,region);await page.goto('/?region='+region);
-  const heading=page.getByRole('heading',{name:'Receivables portfolio'});await expect(heading).toBeVisible();await expect(page.locator('.accounts-panel')).toContainText('Regional Travel');
-  let release=()=>{};state.hold(new Promise<void>(resolve=>{release=resolve;}));
+  const state=await setup(page,region);await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=aging&region='+region);await page.getByLabel('Aging view',{exact:true}).selectOption('accounts');
+  const heading=page.getByRole('heading',{name:'Current Aging'});await expect(heading).toBeVisible();await expect(page.locator('.aging-desktop-table')).toContainText('Regional Travel');
+  const before=state.reads();let release=()=>{};state.hold(new Promise<void>(resolve=>{release=resolve;}));
   try{
-   await page.getByRole('button',{name:'Reload saved data',exact:true}).click();await expect.poll(state.reads).toBe(2);
+   await page.getByRole('button',{name:'OPERA data status',exact:true}).click();await page.getByRole('button',{name:'Reload saved data',exact:true}).click();await expect.poll(state.reads).toBe(before+1);
    await expect(heading).toBeVisible({timeout:1000});await expect(page.getByText('Loading your workspace…',{exact:true})).toHaveCount(0);
-   await page.getByRole('textbox',{name:'Search Account / Account ID'}).fill('Regional');
+   await page.getByRole('searchbox',{name:'Search current aging'}).fill('Regional');
   }finally{release();}
-  await expect(page.locator('.accounts-panel')).toContainText('Regional Travel');expect(state.errors).toEqual([]);
+  await expect(page.locator('.aging-desktop-table')).toContainText('Regional Travel');expect(state.errors).toEqual([]);
  });
 }
 
 test('Dashboard refreshes after the first ever publication while another hotel has no completed snapshot',async({page})=>{
- const state=await setup(page,'phuket',true);await page.goto('/?dashboard=1');
- await expect(page.locator('.live-status')).toContainText('Never refreshed');await expect(page.getByRole('button',{name:'Reload saved data',exact:true})).toBeEnabled();
+ const state=await setup(page,'phuket',true);await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=period');
+ await expect(page.getByRole('button',{name:'OPERA data status',exact:true})).toHaveAttribute('title',/Never refreshed/);await expect(page.getByRole('button',{name:'OPERA data status',exact:true})).toBeEnabled();
  const requests=()=>state.regionalCalls.filter(c=>c.path==='/api/dashboard/hotel-overview').length;await expect.poll(requests).toBeGreaterThan(0);
- const before=requests();state.publish();await expect.poll(requests,{timeout:6000}).toBe(before+1);expect(state.errors).toEqual([]);
+ const before=requests();state.publish();await expect.poll(requests,{timeout:6000}).toBeGreaterThan(before);expect(state.errors).toEqual([]);
 });
 
 test('loads a fast completed publication even if no active job remains to poll',async({page})=>{
- const state=await setup(page,'phuket',false,true);await page.goto('/?region=phuket');
- await expect(page.locator('.accounts-panel')).toContainText('Final publication');expect(state.reads()).toBe(2);expect(state.errors).toEqual([]);
+ const state=await setup(page,'phuket',false,true);await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=aging&region=phuket');await page.getByLabel('Aging view',{exact:true}).selectOption('accounts');
+ await expect(page.locator('.aging-desktop-table')).toContainText('Final publication');expect(state.reads()).toBe(2);expect(state.errors).toEqual([]);
 });
 
 test('coalesces polls during a slow reload and catches a final publication arriving in flight',async({page})=>{
- const state=await setup(page,'phuket');await page.goto('/?region=phuket');await expect(page.locator('.accounts-panel')).toContainText('Regional Travel');
+ const state=await setup(page,'phuket');await auditLogin(page);await auditRoute(page,'dashboard=1&dashboardView=aging&region=phuket');await page.getByLabel('Aging view',{exact:true}).selectOption('accounts');await expect(page.locator('.aging-desktop-table')).toContainText('Regional Travel');
  let release=()=>{};state.hold(new Promise<void>(resolve=>{release=resolve;}));
  try{
   state.publish();await expect.poll(state.reads,{timeout:6000}).toBe(2);
   state.finish();await expect.poll(state.finishedPolls,{timeout:6000}).toBeGreaterThan(0);
-  expect(state.reads()).toBe(2);await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
+  expect(state.reads()).toBe(2);await expect(page.getByRole('heading',{name:'Current Aging'})).toBeVisible();
  }finally{release();}
- await expect(page.locator('.accounts-panel')).toContainText('Final publication');expect(state.reads()).toBe(3);expect(state.errors).toEqual([]);
+ await expect(page.locator('.aging-desktop-table')).toContainText('Final publication');expect(state.reads()).toBe(3);expect(state.errors).toEqual([]);
 });

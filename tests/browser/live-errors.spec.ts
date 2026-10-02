@@ -1,21 +1,20 @@
 import { test, expect } from '@playwright/test';
+import {auditWorkspace,auditLogin,auditRoute} from './fixtures/audit-workspace';
 
 // Controlled browser regression only. These fictional sessions/responses never reach the real API.
 test('same-user snapshot survives a transient service error and invoice retry reloads the ledger',async({page})=>{
-  const user={id:'synthetic-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-08T00:00:00Z'};
-  await page.addInitScript(user=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-test-session',refresh_token:'synthetic-test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user})),user);
-  await page.route('**/api/config',r=>r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic-test-key',googleEnabled:false}}));
-  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
-  let reads=0,invoiceReads=0;
-  await page.route('**/api/portfolio',r=>{reads++;return r.fulfill(reads===2?{status:503,json:{error:'supabase_unavailable'}}:{json:{accounts:[{hotel:'KAT',id:'synthetic',name:'Fictional regression account',type:'Agent',open:100,over90:0,items:1}]}});});
+  await auditWorkspace(page);
+  let failCatalog=false,invoiceReads=0;
+  await page.route('**/api/portfolio',r=>{return r.fulfill(failCatalog?{status:503,json:{error:'supabase_unavailable'}}:{json:{accounts:[{hotel:'KAT',id:'synthetic',name:'Fictional regression account',type:'Agent',open:100,over90:0,items:1,verification_state:'verified',agingBuckets:[{label:'Up to 30',start:0,end:30,sequence:0,amount:100,debit:100,credit:0}]}]}});});
   await page.route('**/api/accounts/KAT/synthetic',r=>{invoiceReads++;return r.fulfill(invoiceReads===1?{status:503,json:{error:'supabase_unavailable'}}:{json:{invoices:[{hotel:'KAT',account_id:'synthetic',id:'test',guest:'Fictional guest',invoice_no:'SYN-1',folio_no:'SYN-2',transaction_date:'2026-09-08',original:100,open:100,aging:'Unknown'}]}});});
-  await page.goto('/?portfolio=1');
-  await expect(page.locator('.accounts-panel')).toContainText('Fictional regression account');
-  await page.getByRole('button',{name:'Reload saved data'}).click();
+  await auditLogin(page);await page.getByLabel('Aging view',{exact:true}).selectOption('accounts');
+  await expect(page.locator('.aging-desktop-table')).toContainText('Fictional regression account');
+  await page.getByRole('button',{name:'OPERA data status',exact:true}).click();
+  failCatalog=true;await page.getByRole('button',{name:'Reload saved data'}).click();
   await expect(page.getByRole('alert')).toContainText('unavailable');
-  await expect(page.locator('.accounts-panel')).toContainText('Fictional regression account');
-  await page.getByRole('button',{name:'Retry',exact:true}).click();
-  await page.locator('.accounts-panel td.kat button').click();
+  await expect(page.locator('.aging-desktop-table')).toContainText('Fictional regression account');
+  failCatalog=false;await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await auditRoute(page,'dashboard=1&dashboardView=aging&account=synthetic&property=KAT');
   await expect(page.getByRole('alert')).toContainText('Invoice data is unavailable');
   await page.getByRole('button',{name:'Retry',exact:true}).click();
   await expect(page.locator('.ledger')).toContainText('SYN-1');

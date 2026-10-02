@@ -1,4 +1,4 @@
-import {postPublicationMaintenance} from './post-publication';
+import {postPublicationMaintenance,joinedScheduledMaintenance} from './post-publication';
 import {warmPeriodSummaries} from '../dashboard/precompute';
 import {acceptanceEnvironment} from '../acceptance/context';
 import {assertWritesEnabled} from '../operations/write-hold';
@@ -37,6 +37,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     if(!/^[0-9a-f-]{36}$/.test(runId??'')||!isHotelId(hotel))throw new Error('invalid_workflow_parameters');
     // Retire diagnostic control windows without entering an unregistered financial run.
     if(payload.currentTickerStart!==undefined)return {status:'retired'};
+    if(payload.scheduledMaintenance)return joinedScheduledMaintenance(runtime,payload,step);
     if(payload.folioTypeProbe)return step.do('folio-report-configuration',{retries:{limit:0,delay:'5 seconds'},timeout:'3 minutes'},()=>readFolioReportTypes(makeReader(runtime,hotel),hotel));
     if(payload.invoiceContractJob){
       if(!uuidPattern.test(payload.invoiceContractJob))throw Error('document_probe_scope_invalid');

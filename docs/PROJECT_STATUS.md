@@ -1,3 +1,17 @@
+## 2026-10-02 — Audit corrections (local verification)
+
+- Implemented idle publication discovery every 30 seconds and on visible/focus return; active jobs retain 3-second status polling. Unchanged publications do not reload the catalog. Owner/region fences and coalesced reloads remain.
+- Scheduled requests joining an open/manual refresh dispatch one deterministic companion workflow. It waits for successful publication before history/precompute/retention; failed source runs never imply verified financial data. No schema, accounting, credentials, retention criteria or paid capacity changes.
+- Aging comparisons show all filtered groups continuously, retaining search, sort and drill-return position.
+- Reported legacy browser fixtures now use Google tab authentication and Aging navigation, with CI regression coverage.
+- Tested: fresh TypeScript build, production build, 1,570 unit tests and 14 focused browser cases passed. Live browser control currently times out; deployment/live verification not yet claimed.
+
+## 2 October 2026 — Inspection-only system audit
+
+- Owner requested a complete audit with actual workflow checks and allowed synthetic email tests to a one-time recipient. No application/configuration/schema/access/deployment fixes were made. Report: [2026-10-02-system-audit](audits/2026-10-02-system-audit.md).
+- Verified two functional findings using failing isolated reproductions: idle pages do not observe a later publication; a scheduled refresh joining an open run can lose historical-ingestion/maintenance intent. Also recorded outdated legacy browser fixtures and remaining Aging Account pagination/copy as test/UX findings.
+- Passed 1,566 unit cases, 154 smoke browser cases, 78 additional editor cases, fresh typecheck, and a local 93-migration/46-fixture replay with no provider access. Live admin Google login, both regions, major read surfaces, bulk-setting search/sort/filter and one Statement+Invoice preparation were exercised. Seven synthetic emails were Sent-verified; no real customer email or actual billing/history write. A single reviewed test preparation/local email preparation is retained; identifiers remain private. Cloudflare CLI metadata access was unavailable and is not claimed verified.
+
 ## 1 October 2026 — Verified recurring current refresh
 
 - The new short-form schedule was visibly stored, but matching events/runs were not initially observed. Re-registered the equivalent explicit five-minute values. A fresh unfiltered instance read later showed automatic current runs created at 18:26 and 18:36 ICT; the time-filtered metadata view had not shown those entries. Exact per-ID reads are used for final verification. No claim of a proven Cloudflare outage or handler defect.
