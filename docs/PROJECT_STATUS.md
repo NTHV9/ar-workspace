@@ -1616,3 +1616,6 @@
 - Cloudflare browser **30 cases ผ่าน** รวม Statement row insertion/กรอบสีต่อเนื่อง/เครื่องหมาย + อยู่ในcell, Fit width1440×900และ1280×800, exact reviewed-byte email preparation, auth และ Account/Portfolio regression. ใช้ synthetic API/PDF fixtures; ภาพหลักฐานใหม่จากdeployed assetsตรงกับlocal ไม่ส่งอีเมลจริง
 - [PR #13](https://github.com/NTHV9/ar-workspace/pull/13) Merge แล้ว `064311358b55314140a570d1faf3a1f104457781` หลัง [CI ผ่าน](https://github.com/NTHV9/ar-workspace/actions/runs/34620937628); merge treeตรงกับsourceที่deploy/test
 ##
+
+
+Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed as Worker `660d164c-a9e8-4e6b-b03b-6038802e2c86`. Exact source health, database verification and six unauthenticated route boundaries passed. This supersedes the local-only checkpoint above. Signed-in live visual validation still awaits owner Google sign-in; PR #113 CI/merge is recorded separately.

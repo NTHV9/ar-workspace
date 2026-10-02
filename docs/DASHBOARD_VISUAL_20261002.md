@@ -40,3 +40,6 @@ All following PNGs are font-ready local browser captures using synthetic fixture
 No backend, schema, authentication, email or financial-rule change. Closing outstanding balances remain separate from selected-period original invoice values. Actual first billing remains the evidence for Billed; Draft does not count. OPERA Invoice age >60 remains separate from days after Due date. Credits stay signed, unknown does not become zero, duplicate children do not increase totals, and every Account action retains Hotel + Account identity. Remittance does not settle OPERA debt.
 
 The real signed-in browser verification is blocked by an expired Google session requiring the owner to sign in. This report claims no new live financial verification. At this documentation checkpoint the visual revision has not been deployed or merged, and production enablement is not verified. No cloud resources or global configuration were changed by the documentation pass.
+
+
+Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed as Worker `660d164c-a9e8-4e6b-b03b-6038802e2c86`. Exact source health, database verification and six unauthenticated route boundaries passed. This supersedes the local-only checkpoint above. Signed-in live visual validation still awaits owner Google sign-in; PR #113 CI/merge is recorded separately.
