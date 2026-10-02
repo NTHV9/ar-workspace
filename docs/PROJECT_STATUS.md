@@ -1,3 +1,10 @@
+## 2026-10-02 — Dashboard visual overview (local verification)
+
+- Owner chose billing/outstanding overview and urgent Accounts together. Implemented a billing-required original-value completion ring, ranked aged Accounts, signed hotel aging on a common scale with exact selection and hotel-invoice drill, exact hotel/billing tables in a disclosure, and Account-type proportional bars. The continuous searchable/sortable aged Account list remains. Million-scale summary amounts have visible exact THB captions, and compact spacing keeps the third priority row with metadata inside the checked desktop first viewport.
+- Financial definitions, source/unknown handling, signed credits and Hotel + Account boundaries remain. No backend, schema, authentication or email change. Global DESIGN.md, its sidecar and original reference images are preserved; scoped palette/type/radius variants are documented without repairing global drift.
+- Tested locally: 1,574 unit tests, forced TypeScript build, production build and 14 CFO browser cases passed, including Phuket/Khao Lak at 1440/1280/390, million-scale amounts, scoped drills and priority-row bounds. Synthetic viewport/full-page captures are in `.impeccable/review/`; [Dashboard visual evidence](DASHBOARD_VISUAL_20261002.md) records provenance and limits. One detector run found a width transition (removed) plus intentional scoped variants. Final reviewer verdict SHIP resolves the two scored fixes, not a new whole-surface audit.
+- Status: implemented/tested locally; this visual revision is not yet deployed, merged or confirmed enabled. Real signed-in browser verification remains blocked by an expired Google session requiring owner sign-in. No new live financial result is claimed.
+
 ## 2026-10-02 — Audit corrections (local verification)
 
 - Implemented idle publication discovery every 30 seconds and on visible/focus return; active jobs retain 3-second status polling. Unchanged publications do not reload the catalog. Owner/region fences and coalesced reloads remain.
@@ -1609,3 +1616,6 @@
 - Cloudflare browser **30 cases ผ่าน** รวม Statement row insertion/กรอบสีต่อเนื่อง/เครื่องหมาย + อยู่ในcell, Fit width1440×900และ1280×800, exact reviewed-byte email preparation, auth และ Account/Portfolio regression. ใช้ synthetic API/PDF fixtures; ภาพหลักฐานใหม่จากdeployed assetsตรงกับlocal ไม่ส่งอีเมลจริง
 - [PR #13](https://github.com/NTHV9/ar-workspace/pull/13) Merge แล้ว `064311358b55314140a570d1faf3a1f104457781` หลัง [CI ผ่าน](https://github.com/NTHV9/ar-workspace/actions/runs/34620937628); merge treeตรงกับsourceที่deploy/test
 ##
+
+
+Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed as Worker `660d164c-a9e8-4e6b-b03b-6038802e2c86`. Exact source health, database verification and six unauthenticated route boundaries passed. This supersedes the local-only checkpoint above. Signed-in live visual validation still awaits owner Google sign-in; PR #113 CI/merge is recorded separately.
