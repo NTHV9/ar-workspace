@@ -1,3 +1,10 @@
+## 2026-10-02 — Dashboard visual overview (local verification)
+
+- Owner chose billing/outstanding overview and urgent Accounts together. Implemented a billing-required original-value completion ring, ranked aged Accounts, signed hotel aging on a common scale with exact selection and hotel-invoice drill, exact hotel/billing tables in a disclosure, and Account-type proportional bars. The continuous searchable/sortable aged Account list remains. Million-scale summary amounts have visible exact THB captions, and compact spacing keeps the third priority row with metadata inside the checked desktop first viewport.
+- Financial definitions, source/unknown handling, signed credits and Hotel + Account boundaries remain. No backend, schema, authentication or email change. Global DESIGN.md, its sidecar and original reference images are preserved; scoped palette/type/radius variants are documented without repairing global drift.
+- Tested locally: 1,574 unit tests, forced TypeScript build, production build and 14 CFO browser cases passed, including Phuket/Khao Lak at 1440/1280/390, million-scale amounts, scoped drills and priority-row bounds. Synthetic viewport/full-page captures are in `.impeccable/review/`; [Dashboard visual evidence](DASHBOARD_VISUAL_20261002.md) records provenance and limits. One detector run found a width transition (removed) plus intentional scoped variants. Final reviewer verdict SHIP resolves the two scored fixes, not a new whole-surface audit.
+- Status: implemented/tested locally; this visual revision is not yet deployed, merged or confirmed enabled. Real signed-in browser verification remains blocked by an expired Google session requiring owner sign-in. No new live financial result is claimed.
+
 ## 2026-10-02 — Audit corrections (local verification)
 
 - Implemented idle publication discovery every 30 seconds and on visible/focus return; active jobs retain 3-second status polling. Unchanged publications do not reload the catalog. Owner/region fences and coalesced reloads remain.
