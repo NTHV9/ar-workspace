@@ -80,4 +80,4 @@
 
 ## Authorized correction follow-up
 
-The owner subsequently authorized fixes. F1/F2/U1 are implemented locally and T1 reported suites now use current authentication/navigation. Fresh typecheck, production build, 1,570 unit tests and 14 browser regressions pass. Deployment and live verification remain pending evidence.
+The owner subsequently authorized fixes. F1/F2/U1 are implemented locally and T1 reported suites now use current authentication/navigation. Fresh typecheck, production build, 1,570 unit tests and 14 browser regressions pass. Source `32a318f802867cbb0c9ceb6d032122f7e06301ce` deployed as Worker `6cc6e277-b3b0-44de-bf76-deff3339df02`; public source/database health and six unauthenticated boundaries pass. Signed-in live visual verification awaits the owner completing Google sign-in.

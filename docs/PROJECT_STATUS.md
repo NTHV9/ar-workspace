@@ -4,7 +4,7 @@
 - Scheduled requests joining an open/manual refresh dispatch one deterministic companion workflow. It waits for successful publication before history/precompute/retention; failed source runs never imply verified financial data. No schema, accounting, credentials, retention criteria or paid capacity changes.
 - Aging comparisons show all filtered groups continuously, retaining search, sort and drill-return position.
 - Reported legacy browser fixtures now use Google tab authentication and Aging navigation, with CI regression coverage.
-- Tested: fresh TypeScript build, production build, 1,570 unit tests and 14 focused browser cases passed. Live browser control currently times out; deployment/live verification not yet claimed.
+- Tested: fresh TypeScript build, production build, 1,570 unit tests and 14 focused browser cases passed. Deployed source `32a318f802867cbb0c9ceb6d032122f7e06301ce`, Worker `6cc6e277-b3b0-44de-bf76-deff3339df02`. Exact source health, Supabase and six anonymous route boundaries passed. Browser sign-in reaches Google; its password challenge requires the owner before signed-in visual verification. PR #112 CI pending.
 
 ## 2 October 2026 — Inspection-only system audit
 
