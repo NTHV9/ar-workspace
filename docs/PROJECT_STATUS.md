@@ -1,3 +1,9 @@
+## 2026-10-06 — Original-file consent blocker revalidated across three goal turns
+
+- Goal turn classification: actual schema/runtime/authorization-UI progress; then independent native-probe preparation and bounded runtime evidence; then this current-state blocked audit. The same exact-original permission question remains unanswered throughout. Automatic continuations are not permission to select either file in Google Picker.
+- Current authenticated Connect checks for both original files still return authorization_required. Fresh Supabase readback confirms zero connected trackers, zero imported rows and zero bootstrap previews. Production health remains exact source 4123897a0d5e17a8376d1f42e232443cbe9837e4 with database_verified/OPERA connected; private probe has zero HTTP intents/create attempts and no live listener.
+- Full objective remains incomplete: actual original-file read/import, live identity/fidelity/conflict acceptance and original confirmed-Sent writeback are unverified; native live CAS is unperformed. Neither source workbook, membership, schema, financial balance, desktop executable nor source file selection was changed by this audit. The blocked audit threshold is satisfied: further original integration requires the pending user's exact-file authorization; unsafe/native-unqualified writes remain held. Do not restart completed tests or infer consent from another automatic continuation.
+
 ## 2026-10-06 — Native probe prepared; private runtime unavailable
 
 - Previous goal turn made actual schema/runtime/authorization-UI progress. Original-file permission remains unanswered; automatic goal continuation is not consent. No original file was selected, imported or written.
