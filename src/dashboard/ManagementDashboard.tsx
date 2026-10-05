@@ -34,8 +34,9 @@ export function ManagementDashboard({source,scope,onDetail,onReload}:{source:Sou
    <div className="management-summary-column">{reportMetric('open','Outstanding')}{reportMetric('over60','Invoices over 60 days')}
   <section className="management-block management-types"><header><h3>By Account type</h3><span>Outstanding · THB</span></header><div className="management-type-list">{data?.types.map(t=><div key={t.type}><strong>{t.type}</strong><b>{amount(t.amount)}</b><div className="management-type-track"><i style={{width: t.amount===null||Number(t.amount)<0?'0%':(Math.abs(Number(t.amount))/Math.max(1,...(data?.types??[]).map(x=>Math.abs(Number(x.amount))))*100)+'%'}}/></div><span>{number(t.count)} items · {number(t.over60)} over 60 days</span></div>)}</div></section>
    </div>
+   <div className="management-billing-wide"><BillingProgress data={data??undefined} scope={scope}/></div>
    <div className="management-main-column"><HotelAgingChart data={data??undefined} onDetail={onDetail}/><PriorityAccounts data={data??undefined} onDetail={onDetail}/></div>
-   <div className="management-billing-column"><BillingProgress data={data??undefined} scope={scope}/>{reportMetric('over60_unbilled','Unbilled invoices over 60 days')}{reportMetric('billed','Billed · still open')}</div>
+   <div className="management-billing-column">{reportMetric('over60_unbilled','Unbilled invoices over 60 days')}{reportMetric('billed','Billed · still open')}</div>
   </div>
   <details className="management-exact-figures"><summary>Hotel &amp; billing figures</summary>
   <div className="management-report-grid">

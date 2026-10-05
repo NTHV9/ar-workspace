@@ -1,3 +1,10 @@
+## 2026-10-05 — Spacious Billing progress (local checkpoint)
+
+- Owner rejected the compact billing panel as cramped, superseding its prior right-rail constraint. Implemented wide Billing progress spanning center/right above the aging/priority and current-measure columns, with a 148px desktop ring and three open New invoices/Billed/Not billed groups using 18px amounts and 12px counts. Supporting totals remain in a native disclosure; left summaries and six aging rows retain their behavior.
+- Existing financial APIs/meanings, signed credits, unknown-not-zero values, counts, exact totals and Hotel + Account scope remain. No backend/schema/auth/email/financial-rule or global-design change.
+- Local checks: 21 focused browser cases, fresh TypeScript and production build passed; 14 new synthetic captures cover both regions, millions and expanded billing at desktop/mobile widths. First-900px amount/count checks apply to Invoices over 60 days and Unbilled invoices over 60 days; Billed · still open can continue below that viewport with million-scale captions/counts. Fresh full scoped reviewer `wide_billing_finish`: SHIP, all 14 captures valid, no scored fix. Missing separate QUALITY BAR is recorded; prior clarity detector `[]` preceded this reflow and was not rerun. Evidence: [Billing space](DASHBOARD_BILLING_SPACE_20261005.md).
+- Status: implemented/tested locally; wide billing is not yet deployed or verified enabled. The preceding clarity correction is already live. Final review, deployment/source and CI state are tracked separately in PR #115; no new live financial outcome is claimed.
+
 ## 2026-10-05 — Dashboard clarity correction (local checkpoint)
 
 - Owner reported unreadable aging ranges/title and crowded Billing progress on the deployed variant 3. Implemented Invoice Aging as six independent label/amount/bar buttons with All hotels/Hotel selection, 47px row targets including zero/credit values, exact selection and existing invoice drill. Billing retains its ring/exact billed/not-billed figures, aligns New invoices and moves remaining categories into Other invoice totals. Missing range counts remain unavailable.
