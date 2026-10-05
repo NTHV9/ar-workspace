@@ -34,6 +34,10 @@ Native outbound writes remain **held**: a synthetic Drive v2 whole-file import r
 
 The two exact CAS test objects were checked against their private creation journals, markers, ownership and current permissions, then moved to recoverable Trash with readback verification. Neither original tracker was a cleanup target; private probe evidence remains outside Git.
 
+An independent synthetic native Sheets v4 probe was subsequently prepared outside Git with eleven mock tests, isolated typecheck and Astra review. Its staged, private protocol requires create-intent/ID journaling, exact own-file checks, separate receipt signing, a date-only update, advanced ETag from the same source, metadata/grid sandwiches, a real row-sort control and delayed full-snapshot checks. A Drive v2 tag on a Sheets v4 operation remains a hypothesis; a passing finite experiment would not establish an undocumented general Google guarantee.
+
+The private remote transport did not reach HTTP preflight: Windows workerd failed with exception 0xc0000005 both with existing Wrangler 4.129.0 and one isolated official 4.147.0 retry. No Sheets v4 call or native file creation occurred; do not describe the v4 method as tested or refuted. Main package/lock, global settings and active production deployment remain unchanged. The prepared probe can resume in a supported private runtime; no public preview or production diagnostic substitution was deployed. [Official remote-development model](https://developers.cloudflare.com/workers/local-development/#wrangler-dev---remote-legacy), [pinned vendor release](https://github.com/cloudflare/workers-sdk/releases/tag/wrangler@4.147.0).
+
 Phuket's XLSX provider has a separately gated conditional-write path; activation is pending proof and deployment configuration. Preserve full workbook content/formulas, exact identity and expected values, provider revision/strong-head checks, and uncertain-result reconciliation. Do not retry an uncertain upload or overwrite a changed source. All provider credentials remain server-side, with exact-target authorization and no credentialed arbitrary URL/redirect fetch.
 
 ## Implemented and tested locally
