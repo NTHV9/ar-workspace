@@ -1,6 +1,7 @@
 <!doctype html><html><head><meta charset="utf-8"><title>Voucher field fixture</title></head><body><div id="root"></div><script type="module">
 import React from 'react';
 import {createRoot} from 'react-dom/client';
+import {flushSync} from 'react-dom';
 import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';
 import {PdfWorkspace} from '/src/pdf/PdfWorkspace.tsx';
 import * as engine from '/src/pdf/engine.ts';
@@ -19,6 +20,8 @@ async function make(voucher){
 }
 const query=new URLSearchParams(location.search),sources=query.has('private')?[{id:'invoice',name:'Private Invoice.pdf',kind:'invoice',bytes:new Uint8Array(await(await fetch('/__voucher_source.pdf')).arrayBuffer())}]:await make(query.has('filled')?'87654321':'');
 const root=createRoot(document.getElementById('root'));
-const mount=(initialProject)=>root.render(React.createElement(PdfWorkspace,{documents:sources,initialProject,hotel:'KAT',accountName:'Synthetic account',selectedCount:1,onClose:()=>{},onSaveDraft:async(project)=>{window.fixture.draft=project;},onSave:async(files,project)=>{window.fixture.saved={files,project};}}));
+let editorSession=0;
+// Reopening a saved project must discard the old editor before targets are observed.
+const mount=(initialProject)=>flushSync(()=>root.render(React.createElement(PdfWorkspace,{key:++editorSession,documents:sources,initialProject,hotel:'KAT',accountName:'Synthetic account',selectedCount:1,onClose:()=>{},onSaveDraft:async(project)=>{window.fixture.draft=project;},onSave:async(files,project)=>{window.fixture.saved={files,project};}})));
 window.fixture={...engine,...source,restoreProject,getDocument,make,sources,mount};mount();
 </script></body></html>
