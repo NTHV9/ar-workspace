@@ -1,3 +1,10 @@
+## 2026-10-05 — Balanced Dashboard rows (local checkpoint)
+
+- Owner's actual screenshot rejected uneven/disproportionate stacks. Implemented four equal aligned summary cards, an equal-width/equal-height Billing progress + six-row Invoice Aging pair, and a lower aligned By Account type + Needs attention pair. Replaced the old column CSS cascades; at 1050px and below panels stack and cards become two columns. Billing retains its 148px desktop ring with readable exact amounts in a broad half-width panel.
+- Preserve exact THB/counts, signed credits, unavailable-not-zero values, OPERA age >60, billing-required aged-unbilled scope, selected-period original-value billing and Hotel + Account drills. Existing shell/header, other pages and financial APIs remain; no backend/schema/auth/email/financial-rule or global-design change. Prior CI fixture/synchronization fixes are already in the merged baseline; no gate/harness change in this request.
+- Final local checks passed: 25 focused browser cases, 1,574 unit cases, fresh TypeScript, browser build and production build. Final-source detector returned `[]`; fresh full scoped reviewer `balanced_dashboard_finish`: SHIP, all 18 synthetic captures valid, no scored fix. Card/panel width/height/baseline and no-overflow assertions cover desktop/mobile, large amounts, expanded billing and seven Account types including credit. Evidence: [Balanced rows](DASHBOARD_BALANCED_ROWS_20261005.md).
+- Status: implemented/tested locally; not yet deployed or verified enabled. Branch `codex/dashboard-balanced-layout` starts from merged `971fa31`; final deployment/source and CI state belong to the new delivery PR. Global design/sidecar, original references and earlier captures are preserved; no private customer image/data or new live financial result is recorded.
+
 ## 2026-10-05 — Saved-editor fixture isolation for delivery checks
 
 - Wide Billing remains live and unchanged. Final CI's idle-publication verification passed after synchronization; a paired smoke run then reproduced the existing Voucher-reopen timeout while the identical other run passed.
