@@ -1,3 +1,9 @@
+## 2026-10-05 — Wide Billing delivered and idle-publication test synchronization
+
+- Wide Billing progress is deployed from source `8b7122b07c0d53293ada888c479e7de4bf52848b`, Worker `66b03c07-729d-42bc-a874-9404b05d0d2b`. Signed-in live verification at 1280px observed a roughly899px panel, three amount/count groups, no horizontal amount overflow, working supporting disclosure and no Dashboard alerts. Source health, Supabase and six anonymous route boundaries passed. Real customer screenshots remain private; scoped visual/readability review and21browser cases passed.
+- Current-head paired CI included one successful full verification and one idle-publication timeout. A controlled2-second metadata reply made the old test fail3/3: its1500ms catalog deadline began before the network reply. Explicit startup readiness, chronological fake time and waiting for the new publication reply preserve the original1500ms reaction assertion while removing that synchronization race. No production polling/app code was changed.
+- The corrected immediate/slow cases passed10/10 repeats; all15background/loading cases passed. Debug instrumentation is removed. Final CI/merge evidence remains in [PR #115](https://github.com/NTHV9/ar-workspace/pull/115); no gate is bypassed.
+
 ## 2026-10-05 — Spacious Billing progress (local checkpoint)
 
 - Owner rejected the compact billing panel as cramped, superseding its prior right-rail constraint. Implemented wide Billing progress spanning center/right above the aging/priority and current-measure columns, with a 148px desktop ring and three open New invoices/Billed/Not billed groups using 18px amounts and 12px counts. Supporting totals remain in a native disclosure; left summaries and six aging rows retain their behavior.
