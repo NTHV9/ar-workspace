@@ -1,7 +1,7 @@
 import {useState,type CSSProperties} from 'react';
 import {ArrowUpRight,ChevronDown} from 'lucide-react';
 import type {ManagementDashboardData} from '../../worker/dashboard/management-model';
-import type {DashboardScope} from './model';
+import {addAmounts,type DashboardScope} from './model';
 import type {PeriodDetail} from './PeriodBalances';
 import {amount,number} from './period-data';
 import {agingPlot,attentionAccounts,billingCompletion} from './management-visuals';
@@ -24,7 +24,10 @@ export function BillingProgress({data,scope}:Pick<Props,'data'|'scope'>){
     </div><small>Billing-required value</small></div>
     <dl>{(['billed','unbilled'] as const).map(key=><div key={key} className={'billing-legend-'+key}><dt><button className="management-billing-focus" aria-label={key==='billed'?'Show billed share':'Show not billed share'} aria-pressed={billingFocus===key} onClick={()=>setBillingFocus(key)} onFocus={()=>setBillingFocus(key)} onMouseEnter={()=>setBillingFocus(key)}><i/>{key==='billed'?'Billed':'Not billed'}</button></dt><dd>{amount(cohort(key)?.amount)}<small>{number(cohort(key)?.count)} invoices</small></dd></div>)}</dl>
    </div>
-   <footer><span>New invoices <b>{number(cohort('issued')?.count)}</b><small>{amount(cohort('issued')?.amount)}</small></span>{(['not_required','setup','credit'] as const).map(key=>{const row=cohort(key);return key==='credit'&&!row?.count?null:<span key={key}>{key==='setup'?'Setup needed':key==='credit'?'Credits':'Billing not required'} <b>{number(row?.count)}</b><small>{amount(row?.amount)}</small></span>;})}</footer>
+   <footer className="management-billing-other">
+    <div className="billing-other-row"><span>New invoices<small>{number(cohort('issued')?.count)} invoices</small></span><strong>{amount(cohort('issued')?.amount)}</strong></div>
+    <details><summary>Other invoice totals<ChevronDown size={14}/></summary>{(['not_required','setup','credit'] as const).map(key=>{const row=cohort(key);return key==='credit'&&!row?.count?null:<div className="billing-other-row" key={key}><span>{key==='setup'?'Setup needed':key==='credit'?'Credits':'Billing not required'}<small>{number(row?.count)} invoices</small></span><strong>{amount(row?.amount)}</strong></div>;})}</details>
+   </footer>
   </section>;
 }
 export function PriorityAccounts({data,onDetail}:Pick<Props,'data'|'onDetail'>){
@@ -37,18 +40,19 @@ export function PriorityAccounts({data,onDetail}:Pick<Props,'data'|'onDetail'>){
 }
 
 export function HotelAgingChart({data,onDetail}:Pick<Props,'data'|'onDetail'>){
- const plot=agingPlot(data),[selection,setSelection]=useState<{hotel:string;band:number}|null>(null);
- const selected=data?.hotels.find(h=>h.hotel===selection?.hotel),active=selected?.bands.find(b=>b.key===selection?.band);
+ const plot=agingPlot(data),[hotel,setHotel]=useState('All'),[selection,setSelection]=useState<number|null>(null);
+ const activeHotel=data?.hotels.find(h=>h.hotel===hotel)?.hotel??'All';
+ const rows=(data?.hotels??[]).filter(h=>activeHotel==='All'||h.hotel===activeHotel);
+ const ranges=bands.map((label,key)=>({key,label,amount:plot?addAmounts(rows.map(h=>h.bands.find(b=>b.key===key)?.amount??null)):null,count:plot&&rows.every(h=>h.bands.find(b=>b.key===key)?.count!=null)?rows.reduce((n,h)=>n+h.bands.find(b=>b.key===key)!.count!,0):null}));
+ const positive=Math.max(0,...ranges.map(b=>Math.max(0,Number(b.amount)))),negative=Math.max(0,...ranges.map(b=>Math.max(0,-Number(b.amount)))),scale=positive+negative,zero=scale?negative/scale*100:0;
+ const active=selection===null?null:ranges[selection];
  return <section className="management-aging-chart" aria-label="Hotel aging chart">
-  <header><div><h3>Where the balance sits</h3><span>Invoice age by hotel · THB</span></div><div className="management-chart-legend">{bands.map((label,i)=><span key={label}><i style={{background:colors[i]}}/>{label}</span>)}</div></header>
-  {!plot?<p className="management-chart-empty">Aging verification pending</p>:plot.scale===0?<p className="management-chart-empty">No open balance in this scope</p>:<div className="management-column-chart">{plot.rows.map(h=><div className="management-column-hotel" key={h.hotel}>
-   <button className="management-hotel-total" onClick={()=>onDetail({kind:'balance',metric:'open',hotel:h.hotel})}>{amount(h.amount)}<ArrowUpRight size={13}/></button>
-   <div className="management-column-track" style={{'--zero':plot.negativeShare+'%'} as CSSProperties}>
-    <div className="management-column-positive" style={{height:(h.positive/plot.scale*100)+'%'}}>{h.bands.filter(b=>Number(b.amount)>0).map(b=><button key={b.key} className={selection?.hotel===h.hotel&&selection.band===b.key?'is-active':''} aria-label={`${h.hotel} · ${bands[b.key]} days · ${amount(b.amount)} THB`} aria-pressed={selection?.hotel===h.hotel&&selection.band===b.key} title={`${bands[b.key]}: ${amount(b.amount)} THB`} style={{flex:Number(b.amount),background:colors[b.key]}} onFocus={()=>setSelection({hotel:h.hotel,band:b.key})} onMouseEnter={()=>setSelection({hotel:h.hotel,band:b.key})} onClick={()=>setSelection({hotel:h.hotel,band:b.key})}/>)}</div>
-    <div className="management-column-negative" style={{height:(h.negative/plot.scale*100)+'%'}}>{h.bands.filter(b=>Number(b.amount)<0).map(b=><button key={b.key} className={selection?.hotel===h.hotel&&selection.band===b.key?'is-active':''} aria-label={`${h.hotel} · ${bands[b.key]} days · ${amount(b.amount)} THB credit`} aria-pressed={selection?.hotel===h.hotel&&selection.band===b.key} title={`${bands[b.key]}: ${amount(b.amount)} THB`} style={{flex:-Number(b.amount),background:colors[b.key]}} onFocus={()=>setSelection({hotel:h.hotel,band:b.key})} onMouseEnter={()=>setSelection({hotel:h.hotel,band:b.key})} onClick={()=>setSelection({hotel:h.hotel,band:b.key})}/>)}</div>
-   </div><b>{h.hotel}</b><small>{number(h.count)} items</small>
-  </div>)}</div>}
-
-  <footer className="management-chart-selection" aria-live="polite">{active&&selected?<><span><b>{selected.hotel} · {bands[active.key]} days</b> {amount(active.amount)} THB · {number(active.count)} items</span><button onClick={()=>onDetail({kind:'balance',metric:'open',hotel:selected.hotel})}>View hotel invoices<ArrowUpRight size={14}/></button></>:<span>{plot?.negativeShare?'Credits extend below zero. ':''}Select a range to see its figures</span>}</footer>
+  <header><div><h3>Invoice Aging</h3><span>Open balance by invoice age · THB</span></div></header>
+  <div className="management-aging-hotels" role="group" aria-label="Aging hotel">{['All',...(data?.hotels??[]).map(h=>h.hotel)].map(id=><button key={id} aria-pressed={activeHotel===id} onClick={()=>{setHotel(id);setSelection(null);}}>{id==='All'?'All hotels':id}</button>)}</div>
+  {!plot?<p className="management-chart-empty">Aging verification pending</p>:<div className="management-range-list">{ranges.map(b=><button key={b.key} className={'management-age-range'+(selection===b.key?' is-active':'')} aria-label={`${activeHotel==='All'?'All hotels':activeHotel} · ${b.label} days · ${amount(b.amount)} THB${Number(b.amount)<0?' credit':''}`} aria-pressed={selection===b.key} onFocus={()=>setSelection(b.key)} onMouseEnter={()=>setSelection(b.key)} onClick={()=>setSelection(b.key)}>
+   <span className="management-age-label"><i style={{background:colors[b.key]}}/>{b.label}<small>days</small></span><strong>{amount(b.amount)}</strong>
+   <span className="management-range-track" style={{'--zero':zero+'%'} as CSSProperties}><i className={Number(b.amount)<0?'is-credit':''} style={{left:(Number(b.amount)<0?zero-Math.abs(Number(b.amount))/scale*100:zero)+'%',width:(scale?Math.abs(Number(b.amount))/scale*100:0)+'%',background:colors[b.key]}}/></span>
+  </button>)}</div>}
+  <footer className="management-chart-selection" aria-live="polite">{active?<><span><b>{activeHotel==='All'?'All hotels':activeHotel} · {active.label} days</b> {amount(active.amount)} THB · {number(active.count)} items</span><button onClick={()=>onDetail({kind:'balance',metric:'open',...(activeHotel==='All'?{}:{hotel:activeHotel})})}>{activeHotel==='All'?'View invoices':'View hotel invoices'}<ArrowUpRight size={14}/></button></>:<span>{plot?'Select an age range for details':'Amounts are unavailable until verified'}</span>}</footer>
  </section>;
 }

@@ -28,10 +28,10 @@ for(const region of ['phuket','khao-lak'] as const)for(const width of [1440,1280
  await expect(page.locator('.management-more')).not.toHaveAttribute('open','');
  if(width===390)for(const label of ['View billed · still open','View unbilled invoices over 60 days','View invoices over 60 days'])await expect(page.getByRole('button',{name:label,exact:true}).locator('small').last()).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(fixture.errors).toEqual([]);
- if(width===390){expect(await page.locator('.management-period-glance dd').evaluateAll(cells=>cells.every(cell=>getComputedStyle(cell).whiteSpace==='nowrap'))).toBe(true);}
+ if(width===390){expect(await page.locator('.management-period-glance dd').evaluateAll(cells=>cells.every(cell=>cell.scrollWidth<=cell.clientWidth+1))).toBe(true);}
  if(width===1440){const glance=page.getByRole('region',{name:'Period billing at a glance',exact:true});await expect(glance).toContainText(region==='phuket'?'1,600.00':'3,200.00');const bounds=await glance.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThan(900);}
- await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/layered-dashboard-${region}-${width}.png`,animations:'disabled'});
- if(width===1440)await page.screenshot({path:`.impeccable/review/layered-dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
+ await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/clarity-dashboard-${region}-${width}.png`,animations:'disabled'});
+ if(width===1440)await page.screenshot({path:`.impeccable/review/clarity-dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
 });
 test('CFO Account search/sort and scoped invoice drill preserve report selection',async({page})=>{
  const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
@@ -64,7 +64,7 @@ test('visual Dashboard exposes exact billing progress and priority-account drill
 });
 test('hotel chart keyboard selection shows exact source figures and opens the selected hotel',async({page})=>{
  await managementFixture(page);await openDashboard(page,'/?dashboard=1');
- const chart=page.getByRole('region',{name:'Hotel aging chart',exact:true});const range=chart.getByRole('button',{name:/TSK · 61–90 days/});await range.focus();await range.press('Enter');
+ const chart=page.getByRole('region',{name:'Hotel aging chart',exact:true});await chart.getByRole('button',{name:'TSK',exact:true}).click();const range=chart.getByRole('button',{name:/TSK · 61–90 days/});await range.focus();await range.press('Enter');
  await expect(chart.locator('footer')).toContainText('TSK · 61–90 days');await expect(chart.locator('footer')).toContainText('180.00');
  await chart.getByRole('button',{name:'View hotel invoices',exact:true}).click();expect(new URL(page.url()).searchParams.get('dashboardDetailHotel')).toBe('TSK');
 });
@@ -81,7 +81,10 @@ for(const width of [1440,1280,390])test(`million-scale Dashboard has visible exa
  const priority=page.getByRole('region',{name:'Priority accounts',exact:true}).locator('li');
  for(const row of await priority.all()){const name=await row.locator('b').boundingBox(),value=await row.locator('strong').boundingBox();expect(name!.x+name!.width).toBeLessThanOrEqual(value!.x);}
  await priority.nth(2).scrollIntoViewIfNeeded();await expect(priority.nth(2).getByRole('button')).toBeVisible();
- await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/layered-dashboard-millions-${width}.png`,animations:'disabled'});
+ await page.locator('.management-billing-other summary').click();
+ for(const row of await page.locator('.billing-other-row').all()){const label=await row.locator(':scope>span').boundingBox(),value=await row.locator(':scope>strong').boundingBox();expect(label!.x+label!.width).toBeLessThanOrEqual(value!.x);}
+ await page.locator('.management-billing-other summary').click();
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/clarity-dashboard-millions-${width}.png`,animations:'disabled'});
 });
 
 
@@ -104,5 +107,16 @@ test('unknown age coverage keeps both aged metric amounts unavailable',async({pa
 });
 test('negative hotel ranges render below zero and retain signed inspection',async({page})=>{
  await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.hotels[0].bands[0].amount='-20.00';data.hotels[0].amount='280.00';data.hotels[0].creditAmount='-40.00';data.hotels[1].credits=0;data.hotels[1].creditAmount='0.00';data.types[0].amount='1280.00';for(const m of data.metrics){if(m.key==='open')m.amount='1280.00';if(m.key==='billed'){m.amount='120.00';m.count=4;}if(m.key==='unbilled'){m.amount='400.00';m.count=2;}if(m.key==='not_required')m.count=3;if(m.key==='setup')m.count=4;}data.openBalanceBreakdown!.positive={amount:'1320.00',count:13};data.openBalanceBreakdown!.credit={amount:'-40.00',count:1};await route.fulfill({json:data});});await openDashboard(page,'/?dashboard=1');
- const credit=page.locator('.management-column-negative button').first();await expect(credit).toHaveAttribute('aria-label',/KAT.*credit/);expect((await credit.boundingBox())!.height).toBeGreaterThan(0);await credit.focus();await expect(page.locator('.management-chart-selection')).toContainText('-฿20.00');
+ await page.getByRole('group',{name:'Aging hotel'}).getByRole('button',{name:'KAT',exact:true}).click();const credit=page.locator('.management-age-range').filter({has:page.locator('.is-credit')}).first();await expect(credit).toHaveAttribute('aria-label',/KAT.*credit/);expect((await credit.boundingBox())!.height).toBeGreaterThan(0);await credit.focus();await expect(page.locator('.management-chart-selection')).toContainText('-฿20.00');
+});
+
+for(const width of [1280,661,390])test(`age ranges and large billing totals stay readable at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await managementFixture(page);
+ await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);const scale=(v:any)=>{if(v&&typeof v==='object')for(const k of Object.keys(v)){if(['amount','creditAmount','unbilledAmount'].includes(k)&&typeof v[k]==='string')v[k]=(Number(v[k])*10000).toFixed(2);else scale(v[k]);}};scale(data);await route.fulfill({json:data});});await openDashboard(page,'/?dashboard=1');
+ const chart=page.getByRole('region',{name:'Hotel aging chart',exact:true});await expect(chart.getByRole('heading',{name:'Invoice Aging',exact:true})).toBeVisible();await expect(chart.locator('.management-age-range')).toHaveCount(6);
+ for(const row of await chart.locator('.management-age-range').all()){const box=await row.boundingBox();expect(box!.height).toBeGreaterThanOrEqual(44);}
+ await chart.getByRole('button',{name:'KAT',exact:true}).click();await expect(chart.getByRole('button',{name:/KAT.*121.*0.00/})).toBeVisible();
+ const billing=page.getByRole('region',{name:'Period billing at a glance',exact:true});await expect(billing).toContainText('24,000,000.00');await billing.locator('summary').click();await expect(billing).toContainText('Billing not required');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.screenshot({path:`.impeccable/review/clarity-billing-expanded-${width}.png`,fullPage:true,animations:'disabled'});
 });
