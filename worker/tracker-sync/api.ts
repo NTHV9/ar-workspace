@@ -15,10 +15,11 @@ export async function trackerApi(request:Request,env:TrackerEnv,owner:string,ada
   if(request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin||request.headers.get('Sec-Fetch-Site')==='cross-site')return json({error:'tracker_forbidden'},403);
   if(request.headers.get('Content-Type')?.split(';')[0]!=='application/json')return json({error:'tracker_invalid'},400);
   const input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await boundedBody(request,8192))) as Record<string,unknown>;
-  if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!['action','revision','conflictId','choice','previewId','snapshotHash'].includes(k)))return json({error:'tracker_invalid'},400);
+  if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!['action','revision','conflictId','choice','previewId','snapshotHash','selectedFileId'].includes(k))||input.selectedFileId!==undefined&&input.action!=='connect')return json({error:'tracker_invalid'},400);
   if(input.action==='connect'){
    if(!Number.isSafeInteger(input.revision)||Number(input.revision)<0)return json({error:'tracker_invalid'},400);
    const target=trackerFile(env,region);if(!target||!/^[A-Za-z0-9_-]{20,200}$/.test(target))return json({error:'tracker_target_unconfigured'},409);
+   if(input.selectedFileId!==undefined&&input.selectedFileId!==target)return json({error:'tracker_target_conflict'},409);
    // Connection proves current file/schema access; client cannot supply a target.
    validateTrackerSnapshot(await adapter.read(env,owner,region,target));
    return json(await backendRpc(env,'ar_tracker_connect',{p_actor:actor,p_region:region,p_file_id:target,p_revision:input.revision}));

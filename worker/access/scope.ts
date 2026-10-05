@@ -19,8 +19,8 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  if((p==='/api/account-settings/bulk'&&m==='GET'||['/api/account-settings/bulk/preview','/api/account-settings/bulk/apply'].includes(p)&&m==='POST')&&!q.size)return {kind:'global'};
  if(p==='/api/reports/sheets')return m==='GET'&&!q.size?{kind:'global'}:denied();
  if(p==='/api/reports/tracker-revisions')return m==='GET'&&!q.size?{kind:'global'}:denied();
- if(p==='/api/reports/tracker'){
-  const region=q.get('region');return ['GET','POST'].includes(m)&&q.size===1&&(region==='phuket'||region==='khao-lak')?{kind:'region',region}:denied();
+ if(p==='/api/reports/tracker'||p==='/api/reports/tracker-picker'){
+  const region=q.get('region');return (m==='GET'||p==='/api/reports/tracker'&&m==='POST')&&q.size===1&&(region==='phuket'||region==='khao-lak')?{kind:'region',region}:denied();
  }
  const regional=():AccessIntent=>{try{const s=regionalHotelScope(q);return s.hotel?hotel(s.hotel):{kind:'region',region:s.region};}catch{return denied();}};
  if(p==='/api/invoice-register'&&m==='GET'||p==='/api/invoice-register/visibility'&&m==='POST')return regional();

@@ -1,6 +1,7 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import type {RegionId} from '../domain/hotels';
 import {notifyRegisterChanged} from '../register/model';
+import {DRIVE_SCOPE,openDriveFilePicker,prepareDrivePicker,type DriveFilePickerConfig,type PickerRuntime} from '../drive/picker';
 interface Conflict {id:string;rowKey:string;field:string;reason:string;sheetValue:unknown;webValue:unknown;revision:number}
 interface Status {connected:boolean;enabled:boolean;available:boolean;heldWrites?:number;writebackAvailable?:boolean;bootstrapConfirmed?:boolean;revision:number;lastCheckedAt:string|null;pending:number;conflictCount:number;conflicts:Conflict[];sheetActivity?:{actualDate:string;field:string;invoices:number}[]}
 interface Preview {previewId:string;snapshotHash:string;rowCount:number;matchedRows:number;heldRows:number;eligibleFields:number;reportedStatuses?:number;conflictingFields:number;details:{rowKey:string;field:string;sheetValue:unknown;webValue:unknown;decision:string}[]}
@@ -9,6 +10,20 @@ const canAccept=(c:Conflict)=>c.reason!=='invalid_source_field'&&!['S','T','AA']
 export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}){
  const [result,setResult]=useState<{owner:string;status:Status}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[review,setReview]=useState(false);
  const owner=token+region,status=result?.owner===owner?result.status:null;
+ const actorRef=useRef(owner);actorRef.current=owner;const pickerOperation=useRef<AbortController|null>(null);
+ const [authorizationOwner,setAuthorizationOwner]=useState<string|null>(null),[pickerState,setPickerState]=useState<{owner:string;config:DriveFilePickerConfig;runtime:PickerRuntime}|null>(null),[pickerError,setPickerError]=useState(''),[pickerAttempt,setPickerAttempt]=useState(0);
+ const needsAuthorization=authorizationOwner===owner,picker=pickerState?.owner===owner?pickerState:null;
+ useEffect(()=>()=>{pickerOperation.current?.abort();},[owner]);
+ useEffect(()=>{
+  const controller=new AbortController();setPickerState(null);setPickerError('');
+  if(needsAuthorization&&status?.available)void Promise.all([
+   fetch(`/api/reports/tracker-picker?region=${region}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal}).then(async response=>{
+    const data=await response.json() as DriveFilePickerConfig&{error?:string};if(!response.ok||data.error)throw Error(data.error??'tracker_picker_unavailable');
+    if(data.scope!==DRIVE_SCOPE||typeof data.clientId!=='string'||typeof data.browserKey!=='string'||!/^\d{1,20}$/.test(data.projectNumber)||!/^[A-Za-z0-9_-]{20,200}$/.test(data.fileId)||!data.fileName||!['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.google-apps.spreadsheet'].includes(data.mimeType)||data.accountEmail!=='ar@katathani.com')throw Error('tracker_picker_unavailable');return data;
+   }),prepareDrivePicker(),
+  ]).then(([config,runtime])=>{if(!controller.signal.aborted&&actorRef.current===owner)setPickerState({owner,config,runtime});}).catch(e=>{if(!controller.signal.aborted&&actorRef.current===owner)setPickerError(e instanceof Error&&e.message==='tracker_picker_drive_not_connected'?'Reconnect the AR Drive account in Storage, then retry Picker.':'Google Picker could not load. Retry to check its configuration and connection.');});
+  return()=>controller.abort();
+ },[needsAuthorization,status?.available,token,region,owner,pickerAttempt]);
  const [previewResult,setPreviewResult]=useState<{owner:string;value:Preview}|null>(null),preview=previewResult?.owner===owner?previewResult.value:null;
  useEffect(()=>{
   const controller=new AbortController();setResult(null);setError('');
@@ -26,8 +41,16 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
    const data=await response.json() as Preview&{error?:string};if(!response.ok||data.error)throw Error(data.error);
    if(input.action==='preview'){
     if(!data.previewId||!data.snapshotHash||!Array.isArray(data.details))throw Error();setPreviewResult({owner,value:data});
-   }else{setPreviewResult(null);setRevision(n=>n+1);notifyRegisterChanged();}
-  }catch(e){setPreviewResult(null);setError(e instanceof Error&&e.message==='tracker_authorization_required'?'Google access to this exact file is required. Authorize the file before reconnecting.':e instanceof Error&&['tracker_revision_conflict','tracker_preview_changed'].includes(e.message)?'This item changed. Load a fresh preview before reviewing again.':'Tracker update could not be confirmed. Retry to check the latest state.');}finally{setBusy(false);}
+   }else{setPreviewResult(null);setAuthorizationOwner(null);setRevision(n=>n+1);notifyRegisterChanged();}
+  }catch(e){setPreviewResult(null);if(e instanceof Error&&e.message==='tracker_authorization_required')setAuthorizationOwner(owner);setError(e instanceof Error&&e.message==='tracker_authorization_required'?'Google access to this exact file is required. Authorize the file before reconnecting.':e instanceof Error&&['tracker_revision_conflict','tracker_preview_changed'].includes(e.message)?'This item changed. Load a fresh preview before reviewing again.':'Tracker update could not be confirmed. Retry to check the latest state.');}finally{setBusy(false);}
+ };
+ const authorizeOriginal=async()=>{
+  if(!picker||busy||!status)return;const controller=new AbortController();pickerOperation.current?.abort();pickerOperation.current=controller;setBusy(true);setError('');
+  try{
+   const selected=await openDriveFilePicker(picker.config,picker.runtime,controller.signal);
+   if(selected&&actorRef.current===owner&&!controller.signal.aborted)await command({action:'connect',revision:status.revision,selectedFileId:selected});
+  }catch(e){if(actorRef.current===owner&&!controller.signal.aborted)setError(e instanceof Error&&e.message==='drive_file_mismatch'?'That file is not the configured original tracker. Open Picker again and select the original file.':e instanceof Error&&e.message==='drive_picker_scope_invalid'?'Google returned an unexpected permission grant. Retry with Drive file access only.':'File authorization was not confirmed. Retry and select the approved AR Drive account.');}
+  finally{if(actorRef.current===owner)setBusy(false);if(pickerOperation.current===controller)pickerOperation.current=null;}
  };
  return <div className="report-tracker" aria-label={`${region} tracker synchronization`}>
   {error&&<p role="alert">{error} <button disabled={busy} onClick={()=>setRevision(n=>n+1)}>Retry status</button></p>}
@@ -38,6 +61,7 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
     {!status.connected?<button disabled={busy} onClick={()=>void command({action:'connect',revision:status.revision})}>Connect tracker</button>:status.bootstrapConfirmed?<button disabled={busy} onClick={()=>void command({action:'sync'})}>{busy?'Checking…':'Check changes'}</button>:<button disabled={busy} onClick={()=>void command({action:'preview'})}>Preview tracker import</button>}
     {status.conflictCount>0&&<button aria-expanded={review} onClick={()=>setReview(v=>!v)}>Review differences ({status.conflictCount})</button>}
    </div>}
+   {needsAuthorization&&status.available&&<div className="report-tracker-review"><p>Use the AR Drive account <strong>ar@katathani.com</strong> to authorize this region’s original tracker file. Selecting it grants file access; the backend checks its own AR connection before showing Connected.</p><div className="report-tracker-actions"><button disabled={busy||!picker} onClick={()=>void authorizeOriginal()}>Authorize original tracker file</button>{pickerError&&<button disabled={busy} onClick={()=>setPickerAttempt(n=>n+1)}>Retry loading Picker</button>}</div>{pickerError?<p role="alert">{pickerError}</p>:!picker&&<p role="status">Loading Google Picker…</p>}{picker&&<p>Only {picker.config.fileName} can be selected.</p>}</div>}
    {preview&&<div className="report-tracker-review"><strong>Review the initial tracker import</strong><p>{preview.matchedRows} matched rows · {preview.eligibleFields} eligible fields · {preview.reportedStatuses??0} reported sheet statuses · {preview.heldRows} held rows · {preview.conflictingFields} field differences. Confirming imports eligible history and preserves conflicts for review.</p>
     <div className="report-tracker-preview-scroll"><table><thead><tr><th>Invoice key</th><th>Field</th><th>Sheet</th><th>AR web</th><th>Decision</th></tr></thead><tbody>{preview.details.map((item,index)=><tr key={index}><td>{item.rowKey}</td><td>{item.field}</td><td>{value(item.sheetValue)}</td><td>{value(item.webValue)}</td><td>{item.decision}</td></tr>)}</tbody></table></div>
     <p>Showing up to 200 field differences. The confirmation covers the reviewed snapshot of {preview.rowCount} rows; a changed file requires a fresh preview.</p><div className="report-tracker-actions"><button disabled={busy} onClick={()=>void command({action:'confirm_preview',previewId:preview.previewId,snapshotHash:preview.snapshotHash})}>Confirm initial import</button><button disabled={busy} onClick={()=>setPreviewResult(null)}>Discard preview</button></div>

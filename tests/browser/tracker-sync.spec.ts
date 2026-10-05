@@ -53,3 +53,23 @@ test('committed tracker revisions refresh a clean Register and preserve a dirty 
  await tracking.click();const input=page.getByLabel('Tracking status',{exact:true});await input.selectOption('Disputed');const before=registerReads;
  revision=3;await page.clock.fastForward(61000);await expect(input).toHaveValue('Disputed');expect(registerReads).toBe(before);
 });
+test('original file authorization rejects other files and connects only after backend reread',async({page})=>{
+ await auditWorkspace(page);let connected=false;const commands:Record<string,unknown>[]=[];const fileId='synthetic_original_phuket_12345';
+ await page.addInitScript(()=>{
+  let selected:(data:{action:string;docs?:{id:string}[]})=>void;
+  class View {setIncludeFolders(){return this;}setSelectFolderEnabled(){return this;}setEnableDrives(){return this;}setLabel(){return this;}setMimeTypes(){return this;}setFileIds(id:string){Reflect.set(window,'syntheticPickerFileId',id);return this;}}
+  class Builder {setDeveloperKey(){return this;}setAppId(){return this;}setOAuthToken(){return this;}setOrigin(){return this;}setTitle(){return this;}addView(){return this;}setCallback(cb:typeof selected){selected=cb;return this;}build(){return {setVisible(){},dispose(){}};}}
+  Object.assign(window,{syntheticPickerGrants:[],syntheticPickFile:(id:string)=>selected({action:'picked',docs:[{id}]}),google:{accounts:{oauth2:{initTokenClient(request:{scope:string;include_granted_scopes:boolean;login_hint:string;callback:(response:unknown)=>void}){return {requestAccessToken(){Reflect.get(window,'syntheticPickerGrants').push({scope:request.scope,include_granted_scopes:request.include_granted_scopes,login_hint:request.login_hint});request.callback({access_token:'synthetic-ephemeral-picker-token',scope:'https://www.googleapis.com/auth/drive.file',expires_in:3600});}};}}},picker:{DocsView:View,PickerBuilder:Builder,ViewId:{FOLDERS:'folders',DOCS:'docs'},Action:{PICKED:'picked',CANCEL:'cancel'}}},gapi:{load(_name:string,options:{callback:()=>void}){options.callback();}}});
+ });
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:`https://docs.google.com/spreadsheets/d/${fileId}/edit`}]}}));
+ await page.route('**/api/reports/tracker-picker?region=phuket',r=>r.fulfill({json:{clientId:'synthetic-client',browserKey:'synthetic-key',projectNumber:'123456',scope:'https://www.googleapis.com/auth/drive.file',fileId,fileName:'Master_KAT_AR_Tracker_Phuket.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',accountEmail:'ar@katathani.com'}}));
+ await page.route('**/api/reports/tracker?region=phuket',async r=>{
+  if(r.request().method()==='POST'){const input=r.request().postDataJSON();commands.push(input);if(!input.selectedFileId){await r.fulfill({status:409,json:{error:'tracker_authorization_required'}});return;}expect(input.selectedFileId).toBe(fileId);expect(JSON.stringify(input)).not.toContain('synthetic-ephemeral-picker-token');connected=true;await r.fulfill({json:{connected:true,revision:1}});return;}
+  await r.fulfill({json:{connected,enabled:connected,available:true,bootstrapConfirmed:false,revision:connected?1:0,lastCheckedAt:null,pending:0,conflictCount:0,conflicts:[]}});
+ });
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await page.getByRole('button',{name:'Connect tracker'}).click();const authorize=page.getByRole('button',{name:'Authorize original tracker file'});await expect(authorize).toBeEnabled();
+ expect(await page.evaluate(()=>Reflect.get(window,'syntheticPickerGrants'))).toEqual([]);await authorize.click();expect(await page.evaluate(()=>Reflect.get(window,'syntheticPickerFileId'))).toBe(fileId);
+ await page.evaluate(()=>Reflect.get(window,'syntheticPickFile')('synthetic_other_file_12345'));await expect(page.getByRole('alert').first()).toContainText('not the configured original');expect(commands).toHaveLength(1);
+ await authorize.click();await page.evaluate(id=>Reflect.get(window,'syntheticPickFile')(id),fileId);await expect(page.getByRole('button',{name:'Preview tracker import'})).toBeVisible();
+ expect(commands).toEqual([{action:'connect',revision:0},{action:'connect',revision:0,selectedFileId:fileId}]);expect(await page.evaluate(()=>Reflect.get(window,'syntheticPickerGrants'))).toEqual([{scope:'https://www.googleapis.com/auth/drive.file',include_granted_scopes:false,login_hint:'ar@katathani.com'},{scope:'https://www.googleapis.com/auth/drive.file',include_granted_scopes:false,login_hint:'ar@katathani.com'}]);
+});

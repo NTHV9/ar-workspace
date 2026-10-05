@@ -1,5 +1,6 @@
 import {safeAuthenticationDiagnostic} from './opera/auth';
 import {trackerApi} from './tracker-sync/api';
+import {trackerPickerConfig} from './tracker-sync/picker';
 import {trackerAdapter} from './tracker-sync/provider';
 import {syncTracker,type TrackerEnv} from './tracker-sync/service';
 import {bulkSettingsApi} from './settings/bulk-api';
@@ -149,6 +150,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(path==='/api/reports/sheets')return reportSheetLinks(request,env,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']);
     if(path==='/api/reports/tracker-revisions'){if(request.method!=='GET'||requestUrl.search)return json({error:'tracker_invalid'},400);if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return json(await backendRpc(env,'ar_tracker_revisions',{p_actor:env.REQUEST_ACTOR??user.id!}));}
     if(path==='/api/reports/tracker'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerApi(request,env,user.id!,trackerAdapter);}
+    if(path==='/api/reports/tracker-picker'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerPickerConfig(request,env,user.id!);}
     if(path.startsWith('/api/reports/')){if(!user.id)return json({error:'unauthorized'},401);return reportsApi(request,env,user.id);}
     if(emailRequest){if(!user.id)return json({error:'unauthorized'},401);return emailApi(request,env,user.id);}
     if(path==='/api/account-settings/bulk'||path==='/api/account-settings/bulk/preview'||path==='/api/account-settings/bulk/apply')return bulkSettingsApi(request,env,env.REQUEST_ACTOR!);
