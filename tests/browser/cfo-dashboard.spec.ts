@@ -21,17 +21,17 @@ for(const region of ['phuket','khao-lak'] as const)for(const width of [1440,1280
  await openDashboard(page,'/?dashboard=1&region='+region+'&dashboardFrom=2026-09-01&dashboardTo=2026-09-12&dashboardDateMode=range');
  const report=page.getByRole('region',{name:'Management summary',exact:true});await expect(report.getByRole('button',{name:'View outstanding',exact:true})).toContainText(region==='phuket'?'2,000.00':'4,000.00');
  await page.locator('.management-exact-figures>summary').click();
- const aging=page.getByRole('region',{name:'Hotel aging summary',exact:true});await expect(aging).toContainText('180.00');await expect(aging).toContainText('61–90 not billed');
+ const aging=page.getByRole('region',{name:'Hotel aging summary',exact:true});await expect(aging).toContainText('180.00');await expect(aging).toContainText('Over 60 not billed');
  const cohort=page.getByRole('region',{name:'Period invoice billing summary',exact:true});await expect(cohort).toContainText(region==='phuket'?'2,400.00':'4,800.00');await expect(cohort).toContainText('Billing not required');
  await page.locator('.management-exact-figures>summary').click();
  await expect(page.getByRole('region',{name:'Accounts over 60 days',exact:true}).locator('tbody tr')).toHaveCount(region==='phuket'?4:8);
  await expect(page.locator('.management-more')).not.toHaveAttribute('open','');
- if(width===390)for(const label of ['View billed · still open','View not yet billed','View invoice age over 60 days'])await expect(page.getByRole('button',{name:label,exact:true}).locator('small').last()).toBeVisible();
+ if(width===390)for(const label of ['View billed · still open','View unbilled invoices over 60 days','View invoices over 60 days'])await expect(page.getByRole('button',{name:label,exact:true}).locator('small').last()).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(fixture.errors).toEqual([]);
  if(width===390){expect(await page.locator('.management-period-glance dd').evaluateAll(cells=>cells.every(cell=>getComputedStyle(cell).whiteSpace==='nowrap'))).toBe(true);}
  if(width===1440){const glance=page.getByRole('region',{name:'Period billing at a glance',exact:true});await expect(glance).toContainText(region==='phuket'?'1,600.00':'3,200.00');const bounds=await glance.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThan(900);}
- await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/flow-dashboard-${region}-${width}.png`,animations:'disabled'});
- if(width===1440)await page.screenshot({path:`.impeccable/review/flow-dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
+ await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/layered-dashboard-${region}-${width}.png`,animations:'disabled'});
+ if(width===1440)await page.screenshot({path:`.impeccable/review/layered-dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
 });
 test('CFO Account search/sort and scoped invoice drill preserve report selection',async({page})=>{
  const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
@@ -76,8 +76,12 @@ for(const width of [1440,1280,390])test(`million-scale Dashboard has visible exa
  await openDashboard(page,'/?dashboard=1');await page.evaluate(()=>document.fonts.ready);
  await expect(page.getByRole('button',{name:'View outstanding',exact:true})).toContainText('200,000,000.00 THB');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- if(width>600){const last=page.getByRole('region',{name:'Priority accounts',exact:true}).locator('li').nth(2);const box=await last.boundingBox();expect(box!.y+box!.height).toBeLessThan(900);}
- await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/flow-dashboard-millions-${width}.png`,animations:'disabled'});
+ // Variant 3 keeps the aged-unbilled measure in the first view; long Account names may extend the priority list.
+ if(width>600){const metric=page.getByRole('button',{name:'View unbilled invoices over 60 days',exact:true});const box=await metric.boundingBox();expect(box!.y+box!.height).toBeLessThan(900);}
+ const priority=page.getByRole('region',{name:'Priority accounts',exact:true}).locator('li');
+ for(const row of await priority.all()){const name=await row.locator('b').boundingBox(),value=await row.locator('strong').boundingBox();expect(name!.x+name!.width).toBeLessThanOrEqual(value!.x);}
+ await priority.nth(2).scrollIntoViewIfNeeded();await expect(priority.nth(2).getByRole('button')).toBeVisible();
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/layered-dashboard-millions-${width}.png`,animations:'disabled'});
 });
 
 
@@ -85,4 +89,20 @@ test('billing legend responds to keyboard and touch selection without changing f
  const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1');
  const notBilled=page.getByRole('button',{name:'Show not billed share',exact:true});await notBilled.focus();await notBilled.press('Enter');await expect(notBilled).toHaveAttribute('aria-pressed','true');await expect(page.locator('.billing-ring-unbilled')).toHaveAttribute('stroke-dasharray','20 100');await expect(page.getByRole('img',{name:'20.0% of billing-required invoice value not billed',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Show billed share',exact:true}).click();await expect(page.getByRole('img',{name:'80.0% of billing-required invoice value billed',exact:true})).toBeVisible();expect(queries).toHaveLength(1);
+});
+
+
+test('both aged indicators retain amount/count and unbilled drill scope',async({page})=>{
+ await managementFixture(page);await openDashboard(page,'/?dashboard=1');
+ const aged=page.getByRole('button',{name:'View invoices over 60 days',exact:true}),unbilled=page.getByRole('button',{name:'View unbilled invoices over 60 days',exact:true});
+ await expect(aged).toContainText('440.00');await expect(aged).toContainText('4 invoices');await expect(unbilled).toContainText('400.00');await expect(unbilled).toContainText('2 invoices');
+ await unbilled.click();expect(new URL(page.url()).searchParams.get('dashboardMetric')).toBe('over60_unbilled');await expect(page.getByRole('region',{name:'Dashboard invoice details',exact:true})).toContainText('SYN-61');
+});
+test('unknown age coverage keeps both aged metric amounts unavailable',async({page})=>{
+ await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.agesComplete=false;data.accountsOver60=null;await route.fulfill({json:data});});await openDashboard(page,'/?dashboard=1');
+ for(const name of ['View invoices over 60 days','View unbilled invoices over 60 days']){const metric=page.getByRole('button',{name,exact:true});await expect(metric).toBeDisabled();await expect(metric.locator('strong')).toHaveText('—');}
+});
+test('negative hotel ranges render below zero and retain signed inspection',async({page})=>{
+ await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.hotels[0].bands[0].amount='-20.00';data.hotels[0].amount='280.00';data.hotels[0].creditAmount='-40.00';data.hotels[1].credits=0;data.hotels[1].creditAmount='0.00';data.types[0].amount='1280.00';for(const m of data.metrics){if(m.key==='open')m.amount='1280.00';if(m.key==='billed'){m.amount='120.00';m.count=4;}if(m.key==='unbilled'){m.amount='400.00';m.count=2;}if(m.key==='not_required')m.count=3;if(m.key==='setup')m.count=4;}data.openBalanceBreakdown!.positive={amount:'1320.00',count:13};data.openBalanceBreakdown!.credit={amount:'-40.00',count:1};await route.fulfill({json:data});});await openDashboard(page,'/?dashboard=1');
+ const credit=page.locator('.management-column-negative button').first();await expect(credit).toHaveAttribute('aria-label',/KAT.*credit/);expect((await credit.boundingBox())!.height).toBeGreaterThan(0);await credit.focus();await expect(page.locator('.management-chart-selection')).toContainText('-฿20.00');
 });

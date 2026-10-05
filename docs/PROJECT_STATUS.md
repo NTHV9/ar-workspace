@@ -1,3 +1,10 @@
+## 2026-10-05 — Dashboard variant 3 layered overview (local checkpoint)
+
+- Owner selected variant 3 and authorized implementation/deployment. Implemented the Dashboard body with exposure/type summaries left, hotel aging/priority Accounts center and compact billing right. Aged unbilled is immediately below billing, before Billed · still open, to preserve its first-viewport priority. Existing global header, design and other pages remain outside the change.
+- Preserve OPERA Invoice age >60, the billing-required unbilled subset with count/amount, signed credits, unknown-not-zero values, Hotel + Account identity and selected-period original value versus current balance. Existing real API data paths remain; private prototype financial snapshots are not included in the app or Git. No backend/schema/auth/email change.
+- Local validation reported: 1,574 unit cases, 18 focused browser cases, fresh typecheck and production build passed. Full 165-case smoke suite was still running at this checkpoint. Fresh reviewer SHIP is limited to the scored fixes: inline filters, compact billing/aged-unbilled inside the first 900px at 1440/1280 including million values, readable long names and no amount overlap. Eleven synthetic review captures cover both regions and large values. Evidence: [Layered overview](DASHBOARD_LAYERED_OVERVIEW_20261005.md).
+- Status: implemented/tested locally; this revision is not yet deployed or verified enabled at this checkpoint. No new live financial or signed-in production visual result is claimed. Global DESIGN.md, its sidecar, original references and previous captures remain unchanged.
+
 ## 2026-10-03 — Dashboard flow after owner feedback (local verification)
 
 - Owner rejected the prior delivered Dashboard as stiff, superseding its previous scoped SHIP acceptance. Branch `codex/dashboard-flow` implements unboxed exposure/filter controls, one asymmetric light billing/priority field, a larger ring, quieter New invoices, fewer repeated separators and small hotel badges. Mobile compact rows retain all counts and exact million-scale amounts; the continuous aged Account list and existing drills remain.
