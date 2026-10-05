@@ -1,4 +1,7 @@
 import {safeAuthenticationDiagnostic} from './opera/auth';
+import {trackerApi} from './tracker-sync/api';
+import {trackerAdapter} from './tracker-sync/provider';
+import {syncTracker,type TrackerEnv} from './tracker-sync/service';
 import {bulkSettingsApi} from './settings/bulk-api';
 import {warmPeriodSummaries} from './dashboard/precompute';
 import {invoiceRegisterApi} from './register/api';
@@ -43,7 +46,7 @@ import type {EmailEnv} from './email/shared';
 import {rendererProof} from './statement/proof';
 import {isHotelId,regionHotels} from '../src/domain/hotels';
 import {configuredOperaHotels,hotelBelongsToRegion,regionalHotelScope,resultMatchesHotelScope} from './hotels';
-interface Env extends ReportSheetLinksEnv,FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
+interface Env extends TrackerEnv,ReportSheetLinksEnv,FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function upstream(url: string, options: RequestInit) {
   const controller = new AbortController();
@@ -82,7 +85,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
   const documentRequest=path==='/api/documents'||path.startsWith('/api/documents/');
   const pdfMatch=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/([^/]+)\/(pdf|json)$/.exec(path);
   const pdfValidation=pdfMatch&&isHotelId(pdfMatch[2])?pdfMatch:null;
-  if (request.method !== 'GET'&&!accessRequest&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!registerRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest&&!billingRequest&&!operationsRequest&&!acceptanceRequest) return json({ error: 'method_not_allowed' }, 405);
+  if (request.method !== 'GET'&&path!=='/api/reports/tracker'&&!accessRequest&&!operaProbe&&!refreshRequest&&!collectionValidation&&!documentRequest&&!registerRequest&&!settingsRequest&&!emailRequest&&!driveRequest&&!remittanceRequest&&!exceptionRequest&&!policyRequest&&!financialRequest&&!billingRequest&&!operationsRequest&&!acceptanceRequest) return json({ error: 'method_not_allowed' }, 405);
   if (path === '/api/config') {
     let googleEnabled = false;
     if (env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY) {
@@ -144,6 +147,8 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/management'?managementDashboardApi(request,env,user.id):path==='/api/dashboard/invoice-entries'?dashboardInvoiceEntriesApi(request,env,user.id):path==='/api/dashboard/aging-invoices'?agingInvoicesApi(request,env,user.id):path==='/api/dashboard/hotel-overview'?dashboardHotelOverviewApi(request,env,user.id):path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
     if(registerRequest)return invoiceRegisterApi(request,env,user.id!);
     if(path==='/api/reports/sheets')return reportSheetLinks(request,env,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']);
+    if(path==='/api/reports/tracker-revisions'){if(request.method!=='GET'||requestUrl.search)return json({error:'tracker_invalid'},400);if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return json(await backendRpc(env,'ar_tracker_revisions',{p_actor:env.REQUEST_ACTOR??user.id!}));}
+    if(path==='/api/reports/tracker'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerApi(request,env,user.id!,trackerAdapter);}
     if(path.startsWith('/api/reports/')){if(!user.id)return json({error:'unauthorized'},401);return reportsApi(request,env,user.id);}
     if(emailRequest){if(!user.id)return json({error:'unauthorized'},401);return emailApi(request,env,user.id);}
     if(path==='/api/account-settings/bulk'||path==='/api/account-settings/bulk/preview'||path==='/api/account-settings/bulk/apply')return bulkSettingsApi(request,env,env.REQUEST_ACTOR!);
@@ -254,6 +259,10 @@ export default {
   },
   async scheduled(event:{cron?:string},env:Env) {
     if(writesHeld(env))return;
+    if(env.TRACKER_SYNC_ENABLED==='true'&&['*/5 * * * *',currentRefreshCron].includes(event.cron??'')){
+      const bindings=await backendRpc<{region:'phuket'|'khao-lak';owner:string}[]>(env,'ar_tracker_scheduled_bindings',{});
+      await Promise.allSettled(bindings.map(b=>syncTracker(env,b.owner,b.owner,b.region,trackerAdapter)));
+    }
     if(event.cron===gmailReconcileCron){
       // Each maintenance task gets one attempt even when another service fails.
       // Durable candidates retry on the next cron; no private failures are logged.

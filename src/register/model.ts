@@ -14,6 +14,7 @@ export interface RegisterRow {
  billing_required:boolean|null;credit_term:number|null;first_billing_date:string|null;due_date:string|null;
  last_reminder_stage:string|null;last_reminder_date:string|null;promised_date:string|null;tracking_status:string;
  owner_name:string;reported_received:string|null;note:string;edited_at:string|null;hidden:boolean;
+ sourceTrackingStatusRaw?:string|null;sourceTrackingStatusObservedAt?:string|null;sourceTrackingStatusProvenance?:string|null;
 }
 export interface RegisterResult {rows:RegisterRow[];total:number;hiddenTotal:number;summary:{invoices:number;open:number;unverified:number}}
 export interface RegisterCommand {commandId:string;revision:number;workflowRevision:number;exceptionRevision:number;values:RegisterValues}

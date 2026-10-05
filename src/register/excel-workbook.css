@@ -43,3 +43,4 @@
 @media(max-width:800px){.excel-workbook .register-table td[data-pinned=guest]{position:static!important;left:auto!important;box-shadow:none}.excel-workbook .register-table th[data-pinned=guest]{left:auto!important;z-index:3;box-shadow:none}}
 
 .excel-value-bar textarea{min-height:26px;max-height:100px;resize:vertical;line-height:18px;overflow:auto}
+.register-sheet-status{display:inline;margin-left:6px;font-size:11px;line-height:13px;color:var(--ar-text-muted)}
