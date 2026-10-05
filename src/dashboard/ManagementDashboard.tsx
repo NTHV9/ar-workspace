@@ -30,13 +30,11 @@ export function ManagementDashboard({source,scope,onDetail,onReload}:{source:Sou
   {source.state==='error'&&<p role="alert" className="management-notice">The management summary could not be refreshed.{data?' Showing the last loaded report.':' The detailed Dashboard remains available below.'} <button onClick={onReload}>Retry summary</button></p>}
   {data&&!known&&<p role="status" className="management-notice">{data.mode==='unavailable'?'No snapshot is available for this date.':'Some balances still need verification.'} <button onClick={onReload}>Reload</button></p>}
   {data?.freshness?.failedHotels.length? <p role="status" className="management-notice">{data.freshness.failedHotels.join(' / ')} refresh failed. Last saved results are shown.</p>:null}
-  <div className="management-layered-grid">
-   <div className="management-summary-column">{reportMetric('open','Outstanding')}{reportMetric('over60','Invoices over 60 days')}
+  <div className="management-summary-grid">{reportMetric('open','Outstanding')}{reportMetric('over60','Invoices over 60 days')}{reportMetric('over60_unbilled','Unbilled invoices over 60 days')}{reportMetric('billed','Billed · still open')}</div>
+  <div className="management-primary-panels"><BillingProgress data={data??undefined} scope={scope}/><HotelAgingChart data={data??undefined} onDetail={onDetail}/></div>
+  <div className="management-secondary-panels">
   <section className="management-block management-types"><header><h3>By Account type</h3><span>Outstanding · THB</span></header><div className="management-type-list">{data?.types.map(t=><div key={t.type}><strong>{t.type}</strong><b>{amount(t.amount)}</b><div className="management-type-track"><i style={{width: t.amount===null||Number(t.amount)<0?'0%':(Math.abs(Number(t.amount))/Math.max(1,...(data?.types??[]).map(x=>Math.abs(Number(x.amount))))*100)+'%'}}/></div><span>{number(t.count)} items · {number(t.over60)} over 60 days</span></div>)}</div></section>
-   </div>
-   <div className="management-billing-wide"><BillingProgress data={data??undefined} scope={scope}/></div>
-   <div className="management-main-column"><HotelAgingChart data={data??undefined} onDetail={onDetail}/><PriorityAccounts data={data??undefined} onDetail={onDetail}/></div>
-   <div className="management-billing-column">{reportMetric('over60_unbilled','Unbilled invoices over 60 days')}{reportMetric('billed','Billed · still open')}</div>
+   <PriorityAccounts data={data??undefined} onDetail={onDetail}/>
   </div>
   <details className="management-exact-figures"><summary>Hotel &amp; billing figures</summary>
   <div className="management-report-grid">

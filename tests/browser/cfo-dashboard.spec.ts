@@ -29,9 +29,9 @@ for(const region of ['phuket','khao-lak'] as const)for(const width of [1440,1280
  if(width===390)for(const label of ['View billed · still open','View unbilled invoices over 60 days','View invoices over 60 days'])await expect(page.getByRole('button',{name:label,exact:true}).locator('small').last()).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(fixture.errors).toEqual([]);
  if(width===390){expect(await page.locator('.management-period-glance dd').evaluateAll(cells=>cells.every(cell=>cell.scrollWidth<=cell.clientWidth+1))).toBe(true);}
- if(width===1440){const glance=page.getByRole('region',{name:'Period billing at a glance',exact:true});await expect(glance).toContainText(region==='phuket'?'1,600.00':'3,200.00');const bounds=await glance.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThan(900);expect(bounds!.width).toBeGreaterThan(800);}
- await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/wide-billing-dashboard-${region}-${width}.png`,animations:'disabled'});
- if(width===1440)await page.screenshot({path:`.impeccable/review/wide-billing-dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
+ if(width===1440){const glance=page.getByRole('region',{name:'Period billing at a glance',exact:true});await expect(glance).toContainText(region==='phuket'?'1,600.00':'3,200.00');const bounds=await glance.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThan(900);const agingBox=await page.getByRole('region',{name:'Hotel aging chart',exact:true}).boundingBox();expect(Math.abs(bounds!.width-agingBox!.width)).toBeLessThan(2);expect(Math.abs(bounds!.height-agingBox!.height)).toBeLessThan(2);}
+ await page.evaluate(async()=>{await document.fonts.ready;window.scrollTo(0,0);});await page.screenshot({path:`.impeccable/review/balanced-dashboard-${region}-${width}.png`,animations:'disabled'});
+ if(width===1440)await page.screenshot({path:`.impeccable/review/balanced-dashboard-${region}-full-1440.png`,fullPage:true,animations:'disabled'});
 });
 test('CFO Account search/sort and scoped invoice drill preserve report selection',async({page})=>{
  const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
@@ -84,7 +84,7 @@ for(const width of [1440,1280,390])test(`million-scale Dashboard has visible exa
  await page.locator('.management-billing-other summary').click();
  for(const row of await page.locator('.billing-other-row').all()){const label=await row.locator(':scope>span').boundingBox(),value=await row.locator(':scope>strong').boundingBox();expect(label!.x+label!.width).toBeLessThanOrEqual(value!.x);}
  await page.locator('.management-billing-other summary').click();
- await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/wide-billing-dashboard-millions-${width}.png`,animations:'disabled'});
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/balanced-dashboard-millions-${width}.png`,animations:'disabled'});
 });
 
 
@@ -118,5 +118,22 @@ for(const width of [1280,661,390])test(`age ranges and large billing totals stay
  await chart.getByRole('button',{name:'KAT',exact:true}).click();await expect(chart.getByRole('button',{name:/KAT.*121.*0.00/})).toBeVisible();
  const billing=page.getByRole('region',{name:'Period billing at a glance',exact:true});await expect(billing).toContainText('24,000,000.00');await billing.locator('summary').click();await expect(billing).toContainText('Billing not required');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- await page.screenshot({path:`.impeccable/review/wide-billing-expanded-${width}.png`,fullPage:true,animations:'disabled'});
+ await page.screenshot({path:`.impeccable/review/balanced-expanded-${width}.png`,fullPage:true,animations:'disabled'});
+});
+
+for(const width of [1920,1280,661,390])test(`balanced overview aligns cards and panels with seven Account types at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:1000});await managementFixture(page);
+ await page.route('**/api/dashboard/management?*',async route=>{
+  const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);
+  data.types=['OTA','CCR','BTA','PTA','OTH','REN','DRF'].map((type,i)=>({type,amount:[1000,500,200,150,100,70,-20][i].toFixed(2),count:[4,2,2,2,2,1,1][i],over60:i===0?4:0}));
+  await route.fulfill({json:data});
+ });await openDashboard(page,'/?dashboard=1');
+ await expect(page.locator('.management-type-list>div')).toHaveCount(7);
+ const cards=await page.locator('.management-summary-grid>.management-total').all();expect(cards).toHaveLength(4);
+ const boxes=await Promise.all(cards.map(card=>card.boundingBox()));
+ expect(Math.max(...boxes.map(b=>b!.width))-Math.min(...boxes.map(b=>b!.width))).toBeLessThan(2);
+ for(let i=0;i<boxes.length;i+=width>1050?4:2){const row=boxes.slice(i,i+(width>1050?4:2));expect(Math.max(...row.map(b=>b!.height))-Math.min(...row.map(b=>b!.height))).toBeLessThan(2);expect(Math.max(...row.map(b=>b!.y))-Math.min(...row.map(b=>b!.y))).toBeLessThan(2);}
+ if(width>1050)for(const selector of ['.management-primary-panels','.management-secondary-panels']){const panes=await page.locator(selector+'>section').all(),bounds=await Promise.all(panes.map(pane=>pane.boundingBox()));expect(Math.abs(bounds[0]!.width-bounds[1]!.width)).toBeLessThan(2);expect(Math.abs(bounds[0]!.height-bounds[1]!.height)).toBeLessThan(2);expect(Math.abs(bounds[0]!.y-bounds[1]!.y)).toBeLessThan(2);}
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`.impeccable/review/balanced-real-density-${width}.png`,fullPage:true,animations:'disabled'});
 });
