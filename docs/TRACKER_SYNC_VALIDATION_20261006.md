@@ -16,6 +16,10 @@ The authorization failure now has a scoped Google Picker flow. Configuration req
 
 The new flow passed typecheck, 28 focused unit cases including folder regressions, and one built-browser case covering wrong-file/cancel handling, exact-file selection and backend re-read. Actual selection remains pending action-time user confirmation because it grants the AR app access to the original file; Google sign-in alone did not grant that access. No broader Drive scope, credential migration, workbook replacement or One Shot change is required.
 
+Final source `4123897a0d5e17a8376d1f42e232443cbe9837e4` passed the full 173-file / 1,621-test suite and production build, then deployed as Worker `351c6c91-cfc9-4fce-9a36-1f93304f906e` with preparation enabled and blob writes disabled. Live health returned the exact source, database_verified and OPERA connected; both anonymous Picker configuration requests returned 401. Actual original-file grant/import/writeback is still pending, not certified by this deployment.
+
+Signed-in live Reports verified both exact original filenames, enabled authorization buttons, and successful configuration/library preparation. The action-time confirmation question covers only the two original file grants. No Google consent or file selection was performed, and database readback remains zero bindings/rows/previews. Private live screenshots are not tracked in Git.
+
 ## Authorized scope
 
 - Preserve the original Phuket **XLSX file identity** and the existing Khao Lak native file. Exact IDs remain in private configuration. No copy adoption, conversion or sharing change is part of this integration.
