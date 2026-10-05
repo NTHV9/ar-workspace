@@ -1,3 +1,9 @@
+## 2026-10-05 — Saved-editor fixture isolation for delivery checks
+
+- Wide Billing remains live and unchanged. Final CI's idle-publication verification passed after synchronization; a paired smoke run then reproduced the existing Voucher-reopen timeout while the identical other run passed.
+- The synthetic fixture used `root.render` to update initial-project props while the old editor/target was still present. Its reopening operation now creates a keyed editor session inside `flushSync`, so visibility belongs to the restored session. The test additionally verifies saved Voucher text and Arial font before editing, the final saved value, and a single layer. Production PDF/editor behavior is unchanged.
+- Original local case passed5/5, consistent with intermittent CI timing. Corrected reopen passed10/10 and all5Voucher cases passed. No timeout expansion, skipped assertion, fixture-financial data change or merge-gate bypass. Final verification is recorded in PR #115.
+
 ## 2026-10-05 — Wide Billing delivered and idle-publication test synchronization
 
 - Wide Billing progress is deployed from source `8b7122b07c0d53293ada888c479e7de4bf52848b`, Worker `66b03c07-729d-42bc-a874-9404b05d0d2b`. Signed-in live verification at 1280px observed a roughly899px panel, three amount/count groups, no horizontal amount overflow, working supporting disclosure and no Dashboard alerts. Source health, Supabase and six anonymous route boundaries passed. Real customer screenshots remain private; scoped visual/readability review and21browser cases passed.
