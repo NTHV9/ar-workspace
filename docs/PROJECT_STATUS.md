@@ -1,3 +1,8 @@
+## 2026-10-07 — Final CI browser fixture correction; new CI pending
+
+- Documentation head `77d9c45` fails [CI run 37538842255](https://github.com/NTHV9/ar-workspace/actions/runs/37538842255) only at the invoice-error browser assertion; unit/type/build/bundle checks, 172 browser smoke tests and three performance tests pass. A controlled local race reproduces the failure: late catalog Retry completion triggers a second invoice read, and the first-request-only 503 fixture returns healthy data before manual invoice Retry.
+- The fixture now keeps invoice failure active until explicit manual Retry. The controlled race passes three repeated runs, the ordinary case passes three repeated runs, and the final 15-test audit group passes. Assertions retain the cached account/amount, unavailable state without a false empty ledger, and a new successful invoice read after manual Retry. Only the test fixture changes; no App/runtime, redeployment, original-file update or email is involved. The next CI run is pending and is not claimed passing. The enabled release checkpoint below remains unchanged.
+
 ## 2026-10-07 — Normal tracker synchronization deployed and enabled
 
 - Normal source `10fa10927586c36763bfb4062ac253a5c4bc340b` is deployed as Worker `6999143d-51b4-422f-9e28-73de113fc08b`, alone at 100% in deployment `64a7fae9-bcc1-4730-a390-46a5558ea102`. Tracker synchronization, Phuket blob writeback and Khao Lak native best-effort writeback are enabled. Phuket retains its conditional-write path; native updates carry the owner's explicit concurrent-overwrite waiver and make no CAS/exclusion claim. There is no per-batch human controller or required updater upgrade.
