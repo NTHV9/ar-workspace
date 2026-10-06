@@ -1,5 +1,11 @@
 # Partial tracker integration — validation checkpoint, 6 October 2026
 
+## Confirmed reminder reversion protection
+
+Migration 98 SHA-256 `ff04acb5eb5bff1d179a388bdf1ea4310f84f80ce2e2f4f4e2eb07bafb0830d5` is applied after an independently reproduced local failure and corrected exact-artifact verification. It protects U/V/W against older nonempty source dates after confirmed-Sent writeback, with canonical identity/owner/stage and actual written-day corroboration. An older queued receipt may legitimately write a newer same-stage Sent date; that case is covered. Equal/blank/later inputs, R, explicit Keep AR/Accept Sheet resolutions, financial values, private permissions and queue fairness retain their tested behavior.
+
+The first unparenthesized CASE candidate failed actual PostgreSQL parsing and rolled back. A local harness had exercised an installed prototype instead of that exact artifact; its CASE validation claim is withdrawn. The corrected harness restores the authoritative original definition, enables body checking, applies the complete reviewed artifact and asserts the installed definition before runtime tests. Root reruns pass. Actual DDL-only rollback/persistent qualification checks exact definition/security/index and ten unchanged data fingerprints; it inserts no business fixtures. Current function MD5 is `66ce764d8cf8ecad11804aa101f4c3a0`, helper client EXECUTE is denied, index valid, actual business Sent/outbox zero and original writer flags unchanged.
+
 ## Completed isolated provider verification
 
 The single authorized diagnostic was actually sent and verified, then its exact sender-side message was moved to recoverable Trash. The recipient's copy is unchanged. Actual cloned production SQL plus the production tracker service and provider adapter verified two-row preview/bootstrap, TEST receipt binding to A only, A billing date 2026-10-06/due date 2026-11-05, B unchanged, one R publication with full-byte and parsed-date readback, and a second Sync with no added publication/history/event. One diagnostic does not establish three actual Follow 1–3 sends or original-business acceptance.
