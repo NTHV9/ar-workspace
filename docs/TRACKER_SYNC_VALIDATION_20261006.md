@@ -1,8 +1,15 @@
 # Partial tracker integration — validation checkpoint, 6 October 2026
 
-Status: migration applied and runtime deployed; preparation controls enabled, but neither original tracker is authorized/connected and no bootstrap import has occurred. Native outbound remains held. Google Sheets API is enabled on the confirmed AR project; this does not grant access to the exact source files.
+Status: both exact original trackers are now authorized and connected through the AR Worker's existing drive.file grant. Both live previews succeed after migration 95. Initial Phuket confirmation failed; successful bootstrap import and original-file outbound writes are still unverified. Preparation is enabled, blob CAS enablement is false, and native outbound remains held.
 
-## Live checkpoint
+## Current exact-original checkpoint
+
+- Owner confirmation preceded selection of the two original files in Google Picker. Backend read/connection succeeded for both. Neither original ID, XLSX/native format, workbook structure nor AgingMaster 1.0.6 was replaced.
+- Reviewed migration 95 SHA-256 `68ca9f46d802f3b49d1bb918fe025557bb5b6068114eeafa38ac0ff21f8b83b9` was applied transactionally. Synthetic source-eligibility/race fixtures and the complete 2,028-row preview capacity fixture passed. Real previews report Phuket 2,028 matched/0 held/755 eligible and Khao Lak 796 matched/48 held/492 eligible; 55 LFS source rows are excluded. Full immutable preview snapshots retain every reviewed row and financial/source fences.
+- The first actual Phuket confirmation failed. Exact stored-preview BEGIN/ROLLBACK diagnostics reached cancellation at about 45 seconds. Bounded 8-second follow-up profiles preserve every guard and confirm heavy repeated ledger scans: baseline tracker conflicts scanned about 9.7 million tuples, and tracker rows about 3.3 million. A transaction-local custom-plan comparison reduced these scans but still hit 8 seconds. JIT was already off on production; ten live database-size scans took 0.027 seconds, so a much slower local filesystem scan is not a proven production cause.
+- No successful import, native cell CAS, original-file writeback or confirmed-Sent end-to-end result is claimed. Private diagnostic exports/results remain ignored. A narrowly scoped performance correction is being tested and reviewed before deployment. The earlier checkpoints below describe history before this consent, not current grant status.
+
+## Deployment checkpoint before exact-file consent
 
 - The exact migration SHA below was applied transactionally with BEGIN/COMMIT to the confirmed Supabase project. Readback: tracker schema present, zero bindings. All ten private tracker tables deny SELECT to anon/authenticated roles.
 - Source `f791516f05871ab73330c365198c6e84fb7a85bd` deployed initially disabled as Worker version `97198f9b-bf88-4b81-9573-c2c03b6ee7bf`. Health returned HTTP 200, database_verified, OPERA connected and matching source; anonymous tracker/revision requests for both regions returned 401.
