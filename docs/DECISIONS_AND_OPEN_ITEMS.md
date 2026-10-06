@@ -1,5 +1,7 @@
 ## Latest actual scope and native proposal authorization — 6 October 2026
 
+The owner subsequently requested isolated synthetic E2E testing with cleanup and no business recording, and authorized one diagnostic email with the existing synthetic-only PDF. Preserve minimum private technical intent/receipt until external actions are reconciled; exclude it from real invoice/Sent/KPI records. This does not authorize fake original-workbook dates, general native writeback, sharing changes or claiming original-business acceptance. Reviewed migration 97 queue rotation is applied without enabling writes. The coordinated native writer choice remains pending.
+
 Both original trackers are authorized, connected, imported and rechecked. Original inbound is enabled; original outbound remains disabled/held. Actual synthetic Phuket conditional controls and updated-original in-memory fidelity pass, but original genuine-Sent end-to-end remains unperformed. Native qualification stopped when a competing cell change did not advance the tested validator; no stale request followed. The owner requested a coordinated-writer proposal, not implementation or permission/ownership/updater changes. Existing file IDs/formats and AgingMaster 1.0.6 remain unchanged. [Current evidence](TRACKER_SYNC_VALIDATION_20261006.md), [proposal and limits](TRACKER_NATIVE_WRITER_PROPOSAL_20261006.md). Earlier authorization/deployment checkpoints below are historical.
 
 ## Latest bounded authorization — Partial tracker integration — 6 October 2026
