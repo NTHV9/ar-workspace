@@ -68,4 +68,3 @@ begin
 end $$;
 select field,variant,conflicts,baseline_value,accepted_date,workflow_date,current_stage_date,outbox_state,sheet_actual_history,confirmed_history,due_unchanged from tracker_sent_reversion_observations order by field,variant;
 rollback;
-

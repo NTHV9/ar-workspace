@@ -1,5 +1,9 @@
 # Partial tracker integration — validation checkpoint, 6 October 2026
 
+## First billing date review protection
+
+Migration 99 SHA-256 `7263fb5eda3c4909d7cdf26af48a2018c56ac874b29420cf53de0725d7e212ef` is applied after the exact local and actual DDL-only checks. It adds only a parenthesized R guard against dates later than the precomputed genuine earliest billing floor. It preserves earlier legitimate dates and existing explicit resolution semantics. Actual function MD5 is `e045baa9ba5e63412e318c8830a09fd4`; owner/ACL/config and ten data fingerprints are unchanged, with no cloud business fixtures, provider writes or email. Read-only conflict pagination/filtering is separate work in progress; original outbound remains held.
+
 ## Confirmed reminder reversion protection
 
 Migration 98 SHA-256 `ff04acb5eb5bff1d179a388bdf1ea4310f84f80ce2e2f4f4e2eb07bafb0830d5` is applied after an independently reproduced local failure and corrected exact-artifact verification. It protects U/V/W against older nonempty source dates after confirmed-Sent writeback, with canonical identity/owner/stage and actual written-day corroboration. An older queued receipt may legitimately write a newer same-stage Sent date; that case is covered. Equal/blank/later inputs, R, explicit Keep AR/Accept Sheet resolutions, financial values, private permissions and queue fairness retain their tested behavior.
