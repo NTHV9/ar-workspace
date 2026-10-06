@@ -1,5 +1,17 @@
 # Partial tracker integration — validation checkpoint, 6 October 2026
 
+## Completed isolated provider verification
+
+The single authorized diagnostic was actually sent and verified, then its exact sender-side message was moved to recoverable Trash. The recipient's copy is unchanged. Actual cloned production SQL plus the production tracker service and provider adapter verified two-row preview/bootstrap, TEST receipt binding to A only, A billing date 2026-10-06/due date 2026-11-05, B unchanged, one R publication with full-byte and parsed-date readback, and a second Sync with no added publication/history/event. One diagnostic does not establish three actual Follow 1–3 sends or original-business acceptance.
+
+The initial pre-create failure was isolated to rejecting valid boolean inherited permissions. Test-only helpers now accept them only after complete sole-owner/private/path validation; missing/malformed values and other audiences still fail. No original permissions or write flags changed. Exact test-file then empty-folder Trash/readback completed; the terminal journal recorded all five operations confirmed. The private schema cleanup compatibility fix (SHA-256 `0f9e06ceba27238860af470c3d4947fdf1646a64be6b7bd7f38f9440664bc1dc`) locks the terminal journal as its exact owner without an UPDATE grant, then runs the reviewed reverse-dependency checks and removes the fixture. Final actual readback has zero test schemas/roles/memberships/facade, zero business Sent/original outbox, 19 test-mode historical sent receipts and auth restrictions enabled.
+
+Baseline alone at 100%, normal health and original IDs/formats are verified. Only minimal ignored technical receipt/evidence remains. Original outbound is still held; native writer coordination and original-business acceptance are not completed by this synthetic test.
+
+## Historical checkpoints below
+
+The entries below record earlier stages of this investigation. Their local-only, pending setup and incomplete cleanup statements are superseded by the completed isolated provider verification above.
+
 ## Actual isolated database qualification
 
 The authorized single diagnostic has already been sent and verified, excluded from business Sent. Actual PostgreSQL 17.6 metadata/security/receipt preflight and isolated installation/catalog security checks pass with an outer ROLLBACK. The reviewed rollback script SHA-256 is `78ee10ad29eccbfcd0507df675c9373e7dad912e3ed672ea01d48719d8ea68c8`. Root inspection confirms this script does not call the runtime facade or billing bridge; hardcoded pipeline labels are not actual runtime proof. The positive billing-R pipeline remains local evidence. Readback shows no remaining test schema, role or membership, zero business Sent/original outbox entries, 19 test-mode deliveries and both original auth restrictions enabled. Managed installer membership grants SET without INHERIT in the child-to-installer direction only; no original auth fixture is inserted or auth restriction disabled.
