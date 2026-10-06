@@ -1,3 +1,11 @@
+## Unattended native sync required — 7 October 2026
+
+The owner clarified that normal synchronization must run automatically without a human controller or per-batch approval, and asked whether other native approaches had actually been investigated. This supersedes operator-opened windows as the proposed normal workflow. It does not authorize changing original sharing/ownership, workbook structure or AgingMaster 1.0.6. Exceptional conflicting data must remain visible; do not infer permission to overwrite it. The failed live native test concerns the tested Drive entity-tag path only, not every possible native integration. Further API alternatives are documentation analysis unless separately qualified on owned synthetic fixtures. [Impact and alternatives report](TRACKER_NATIVE_AUTOMATIC_IMPACT_20261007.md).
+
+## Automatic native design selected — 7 October 2026
+
+The owner selected an automatic Khao Lak design with an impact review before implementation. This authorizes planning and feasibility analysis, not permission/ownership/provider-identity/updater changes or enabling original native writeback. Preserve existing original IDs/formats, manual Sheet entry and the currently working AgingMaster 1.0.6 unless the owner explicitly accepts a concrete changed workflow. No additional test email is authorized; the single diagnostic is consumed and cleaned. Code, schema and read-only conflict visibility work within the existing integration scope may continue.
+
 ## Latest actual scope and native proposal authorization — 6 October 2026
 
 The owner subsequently requested isolated synthetic E2E testing with cleanup and no business recording, and authorized one diagnostic email with the existing synthetic-only PDF. Preserve minimum private technical intent/receipt until external actions are reconciled; exclude it from real invoice/Sent/KPI records. This does not authorize fake original-workbook dates, general native writeback, sharing changes or claiming original-business acceptance. Reviewed migration 97 queue rotation is applied without enabling writes. The coordinated native writer choice remains pending.

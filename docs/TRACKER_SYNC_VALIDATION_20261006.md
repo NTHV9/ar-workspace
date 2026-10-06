@@ -1,5 +1,9 @@
 # Partial tracker integration — validation checkpoint, 6 October 2026
 
+## Read-only conflict visibility deployment — 7 October 2026
+
+Migration 100 and source `dee00dcfcfa8d8e9103797efbcc8b447b6a8ef6e` are deployed with original writer flags held. The page reader caps output at 50, preserves six-digit microsecond/UUID cursors and regional authorization, and supports direct dates/reference/identity/tracking filters without bulk acknowledgment. Root verifies the real Khao Lak dates view reaches 21 records despite 686 references and 48 identity holds, plus two distinct 50-record reference pages. Resolver actions are not exercised on live records. Actual DDL qualification preserves ten data fingerprints, existing status/snapshot contracts and service-only permissions; source health and anonymous rejection pass. Independent full unit verification is 1,645 tests / 174 files passed. This completes read-only visibility, not original-file writeback acceptance or native writer enablement.
+
 ## First billing date review protection
 
 Migration 99 SHA-256 `7263fb5eda3c4909d7cdf26af48a2018c56ac874b29420cf53de0725d7e212ef` is applied after the exact local and actual DDL-only checks. It adds only a parenthesized R guard against dates later than the precomputed genuine earliest billing floor. It preserves earlier legitimate dates and existing explicit resolution semantics. Actual function MD5 is `e045baa9ba5e63412e318c8830a09fd4`; owner/ACL/config and ten data fingerprints are unchanged, with no cloud business fixtures, provider writes or email. Read-only conflict pagination/filtering is separate work in progress; original outbound remains held.
