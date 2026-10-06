@@ -1,5 +1,11 @@
 # Partial tracker integration — validation checkpoint, 6 October 2026
 
+## Actual isolated database qualification
+
+The authorized single diagnostic has already been sent and verified, excluded from business Sent. Actual PostgreSQL 17.6 metadata/security/receipt preflight and isolated installation/catalog security checks pass with an outer ROLLBACK. The reviewed rollback script SHA-256 is `78ee10ad29eccbfcd0507df675c9373e7dad912e3ed672ea01d48719d8ea68c8`. Root inspection confirms this script does not call the runtime facade or billing bridge; hardcoded pipeline labels are not actual runtime proof. The positive billing-R pipeline remains local evidence. Readback shows no remaining test schema, role or membership, zero business Sent/original outbox entries, 19 test-mode deliveries and both original auth restrictions enabled. Managed installer membership grants SET without INHERIT in the child-to-installer direction only; no original auth fixture is inserted or auth restriction disabled.
+
+This is not persistent setup or completed Drive writeback evidence. The service/provider fixture chain and cleanup still need actual execution; original outbound remains held. Final cleanup must verify that no unexpected external object depends on either exact test schema before removal. Private scalar receipts and synthetic evidence remain ignored, with no recipient or customer record committed.
+
 Status: original inbound is authorized, connected, imported and rechecked successfully. Synthetic XLSX conditional-write controls and in-memory fidelity against the updated original pass. Native validator qualification fails at competing-change detection. Blob CAS enablement is false and native outbound remains held; original confirmed-Sent writeback and the full bidirectional goal remain unverified. Later sections retain earlier historical checkpoints and do not supersede the latest evidence below.
 
 ## Latest actual qualification and source-update evidence
