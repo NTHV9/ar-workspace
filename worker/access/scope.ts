@@ -1,6 +1,7 @@
 import {hotelRegion,isHotelId,type HotelId} from '../../src/domain/hotels';
 import {regionalHotelScope} from '../hotels';
 import {boundedBody} from '../email/shared';
+import {parseTrackerConflictQuery} from '../tracker-sync/conflict-query';
 export type AccessKind='hotel'|'region'|'document'|'email'|'delivery'|'remittance'|'remittance_save'|'remittance_command'|'exception_command'|'billing'|'global';
 export interface AccessIntent {kind:AccessKind;hotel?:HotelId;region?:string;ref?:string;mail?:boolean}
 const denied=():never=>{throw Error('access_forbidden');};
@@ -19,6 +20,9 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  if((p==='/api/account-settings/bulk'&&m==='GET'||['/api/account-settings/bulk/preview','/api/account-settings/bulk/apply'].includes(p)&&m==='POST')&&!q.size)return {kind:'global'};
  if(p==='/api/reports/sheets')return m==='GET'&&!q.size?{kind:'global'}:denied();
  if(p==='/api/reports/tracker-revisions')return m==='GET'&&!q.size?{kind:'global'}:denied();
+ if(p==='/api/reports/tracker-conflicts'){
+  if(m!=='GET')return denied();try{return {kind:'region',region:parseTrackerConflictQuery(u).region};}catch{return denied();}
+ }
  if(p==='/api/reports/tracker'||p==='/api/reports/tracker-picker'){
   const region=q.get('region');return (m==='GET'||p==='/api/reports/tracker'&&m==='POST')&&q.size===1&&(region==='phuket'||region==='khao-lak')?{kind:'region',region}:denied();
  }

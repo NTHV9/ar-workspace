@@ -3,6 +3,7 @@ import {auditWorkspace,auditLogin,auditRoute} from './fixtures/audit-workspace';
 for(const width of [1280,390])test(`tracker status and reviewed differences ${width}`,async({page})=>{
  await page.setViewportSize({width,height:800});await auditWorkspace(page);const commands:unknown[]=[];
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker-conflicts?*',r=>r.fulfill({json:{region:'phuket',category:'all',counts:{all:1,dates:1,references:0,identity:0,other:0},rows:[{id:'00000000-0000-4000-8000-000000000001',rowKey:'KAT · Synthetic account · 00001',field:'R',reason:'concurrent_or_unmapped_edit',sheetValue:'2026-09-01',webValue:'2026-09-02',revision:3,createdAt:'2026-09-30T00:00:00.000001Z'}],nextCursor:null}}));
  await page.route('**/api/reports/tracker?region=phuket',async r=>{
   if(r.request().method()==='POST'){commands.push(r.request().postDataJSON());await r.fulfill({json:{resolved:true}});return;}
   await r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:'2026-09-30T00:00:00Z',pending:2,conflictCount:1,conflicts:[{id:'00000000-0000-4000-8000-000000000001',rowKey:'KAT · Synthetic account · 00001',field:'R',reason:'concurrent_or_unmapped_edit',sheetValue:'2026-09-01',webValue:'2026-09-02',revision:3}]}});

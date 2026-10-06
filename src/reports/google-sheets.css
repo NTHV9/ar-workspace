@@ -11,6 +11,11 @@
 .report-tracker p{line-height:1.6;margin:0 0 10px}
 .report-tracker [role=alert]{color:var(--ar-text-danger)}
 .report-tracker-actions{display:flex;flex-wrap:wrap;gap:8px}
+.report-tracker-conflict-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.report-tracker-conflict-controls label{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.report-tracker-conflict-controls select{max-width:100%;min-height:36px;border:1px solid var(--line);border-radius:7px;background:var(--white);color:var(--ink);font:inherit;padding:6px 10px}
+.report-tracker-pagination{align-items:center;justify-content:space-between;margin-top:14px}
+.report-tracker-field-code{color:var(--ar-text-muted);font-weight:400}
 .report-tracker button{min-height:36px;border:1px solid var(--line);border-radius:8px;background:var(--white);padding:7px 12px;color:var(--ar-text-action);font:inherit;cursor:pointer}
 .report-tracker button:hover{background:var(--surface)}
 .report-tracker button:disabled{opacity:.6;cursor:wait}

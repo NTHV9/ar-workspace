@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import type {RegionId} from '../domain/hotels';
 import {notifyRegisterChanged} from '../register/model';
 import {DRIVE_SCOPE,openDriveFilePicker,prepareDrivePicker,type DriveFilePickerConfig,type PickerRuntime} from '../drive/picker';
+import {trackerConflictCategories,trackerConflictCategoryLabels,trackerConflictFieldLabels,validConflictPage,type TrackerConflictPage,type TrackerConflictCategory} from '../domain/tracker-conflicts';
 interface Conflict {id:string;rowKey:string;field:string;reason:string;sheetValue:unknown;webValue:unknown;revision:number}
 interface Status {connected:boolean;enabled:boolean;available:boolean;heldWrites?:number;writebackAvailable?:boolean;bootstrapConfirmed?:boolean;revision:number;lastCheckedAt:string|null;pending:number;conflictCount:number;conflicts:Conflict[];sheetActivity?:{actualDate:string;field:string;invoices:number}[]}
 interface Preview {previewId:string;snapshotHash:string;rowCount:number;matchedRows:number;heldRows:number;eligibleFields:number;reportedStatuses?:number;conflictingFields:number;details:{rowKey:string;field:string;sheetValue:unknown;webValue:unknown;decision:string}[]}
@@ -11,6 +12,15 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
  const [result,setResult]=useState<{owner:string;status:Status}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[review,setReview]=useState(false);
  const owner=token+region,status=result?.owner===owner?result.status:null;
  const actorRef=useRef(owner);actorRef.current=owner;const pickerOperation=useRef<AbortController|null>(null);
+ const [navigation,setNavigation]=useState<{owner:string;reload:number;category:TrackerConflictCategory;cursors:(string|null)[]}>({owner,reload:0,category:'all',cursors:[null]});
+ const category=navigation.owner===owner?navigation.category:'all',cursors=navigation.owner===owner&&navigation.reload===revision?navigation.cursors:[null],cursor=cursors.at(-1)??null;
+ const pageKey=JSON.stringify([owner,revision,category,cursor]),[pageResult,setPageResult]=useState<{key:string;page:TrackerConflictPage}|null>(null),[pageError,setPageError]=useState<{key:string;message:string}|null>(null),[pageRetry,setPageRetry]=useState(0),page=pageResult?.key===pageKey?pageResult.page:null;
+ useEffect(()=>{setReview(false);setBusy(false);},[owner]);
+ useEffect(()=>{
+  if(!review)return;const controller=new AbortController();setPageError(null);setPageResult(null);
+  const query=new URLSearchParams({region,category});if(cursor)query.set('cursor',cursor);
+  void fetch('/api/reports/tracker-conflicts?'+query,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal}).then(async response=>{if(!response.ok)throw Error();const data:unknown=await response.json();if(!validConflictPage(data,region,category))throw Error();if(!controller.signal.aborted&&actorRef.current===owner)setPageResult({key:pageKey,page:data});}).catch(()=>{if(!controller.signal.aborted&&actorRef.current===owner)setPageError({key:pageKey,message:'Differences could not be loaded. Retry this page.'});});return()=>controller.abort();
+ },[review,token,region,owner,category,cursor,pageKey,pageRetry]);
  const [authorizationOwner,setAuthorizationOwner]=useState<string|null>(null),[pickerState,setPickerState]=useState<{owner:string;config:DriveFilePickerConfig;runtime:PickerRuntime}|null>(null),[pickerError,setPickerError]=useState(''),[pickerAttempt,setPickerAttempt]=useState(0);
  const needsAuthorization=authorizationOwner===owner,picker=pickerState?.owner===owner?pickerState:null;
  useEffect(()=>()=>{pickerOperation.current?.abort();},[owner]);
@@ -39,10 +49,11 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
   setBusy(true);setError('');try{
    const response=await fetch(`/api/reports/tracker?region=${region}`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(input)});
    const data=await response.json() as Preview&{error?:string};if(!response.ok||data.error)throw Error(data.error);
+   if(actorRef.current!==owner)return;
    if(input.action==='preview'){
     if(!data.previewId||!data.snapshotHash||!Array.isArray(data.details))throw Error();setPreviewResult({owner,value:data});
    }else{setPreviewResult(null);setAuthorizationOwner(null);setRevision(n=>n+1);notifyRegisterChanged();}
-  }catch(e){setPreviewResult(null);if(e instanceof Error&&e.message==='tracker_authorization_required')setAuthorizationOwner(owner);setError(e instanceof Error&&e.message==='tracker_authorization_required'?'Google access to this exact file is required. Authorize the file before reconnecting.':e instanceof Error&&['tracker_revision_conflict','tracker_preview_changed'].includes(e.message)?'This item changed. Load a fresh preview before reviewing again.':'Tracker update could not be confirmed. Retry to check the latest state.');}finally{setBusy(false);}
+  }catch(e){if(actorRef.current!==owner)return;setPreviewResult(null);if(e instanceof Error&&e.message==='tracker_authorization_required')setAuthorizationOwner(owner);setError(e instanceof Error&&e.message==='tracker_authorization_required'?'Google access to this exact file is required. Authorize the file before reconnecting.':e instanceof Error&&['tracker_revision_conflict','tracker_preview_changed'].includes(e.message)?'This item changed. Load a fresh preview before reviewing again.':'Tracker update could not be confirmed. Retry to check the latest state.');}finally{if(actorRef.current===owner)setBusy(false);}
  };
  const authorizeOriginal=async()=>{
   if(!picker||busy||!status)return;const controller=new AbortController();pickerOperation.current?.abort();pickerOperation.current=controller;setBusy(true);setError('');
@@ -66,11 +77,13 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
     <div className="report-tracker-preview-scroll"><table><thead><tr><th>Invoice key</th><th>Field</th><th>Sheet</th><th>AR web</th><th>Decision</th></tr></thead><tbody>{preview.details.map((item,index)=><tr key={index}><td>{item.rowKey}</td><td>{item.field}</td><td>{value(item.sheetValue)}</td><td>{value(item.webValue)}</td><td>{item.decision}</td></tr>)}</tbody></table></div>
     <p>Showing up to 200 field differences. The confirmation covers the reviewed snapshot of {preview.rowCount} rows; a changed file requires a fresh preview.</p><div className="report-tracker-actions"><button disabled={busy} onClick={()=>void command({action:'confirm_preview',previewId:preview.previewId,snapshotHash:preview.snapshotHash})}>Confirm initial import</button><button disabled={busy} onClick={()=>setPreviewResult(null)}>Discard preview</button></div>
    </div>}
-   {review&&status.conflicts.length>0&&<div className="report-tracker-review"><p>Review each difference before applying it. Credit terms and formulas remain reference values.</p>
-    {status.conflicts.map(c=><article key={c.id}><strong>{c.field} · {c.reason.replaceAll('_',' ')}</strong><p className="report-tracker-identity">{c.rowKey}</p><dl><div><dt>Sheet</dt><dd>{value(c.sheetValue)}</dd></div><div><dt>AR web</dt><dd>{value(c.webValue)}</dd></div></dl>
+   {review&&<div className="report-tracker-review"><p>Review each difference before applying it. Credit terms and formulas remain reference values.</p>
+    <div className="report-tracker-conflict-controls"><label>Difference type <select value={category} disabled={busy} onChange={e=>setNavigation({owner,reload:revision,category:e.target.value as TrackerConflictCategory,cursors:[null]})}>{trackerConflictCategories.map(c=><option key={c} value={c}>{trackerConflictCategoryLabels[c]}{page?` (${page.counts[c]})`:''}</option>)}</select></label><span>{page?`${page.counts[category]} pending · Page ${cursors.length}`:'Loading differences…'}</span></div>
+    {pageError?.key===pageKey?<p role="alert">{pageError.message} <button onClick={()=>setPageRetry(n=>n+1)}>Retry differences</button></p>:!page?<p role="status">Loading differences…</p>:<>{page.rows.length===0&&<p>No pending differences in this category.</p>}
+    {page.rows.map(c=><article key={c.id}><strong>{trackerConflictFieldLabels[c.field]??c.field}{/^[A-Z]{1,2}$/.test(c.field)&&<span className="report-tracker-field-code"> ({c.field})</span>} · {c.reason.replaceAll('_',' ')}</strong><p className="report-tracker-identity">{c.rowKey}</p><dl><div><dt>Sheet</dt><dd>{value(c.sheetValue)}</dd></div><div><dt>AR web</dt><dd>{value(c.webValue)}</dd></div></dl>
      {c.reason==='unmapped_tracking_status'&&<p>The sheet status is retained verbatim. A status mapping needs review before it can replace the AR status.</p>}
      {c.field!=='identity'&&<div className="report-tracker-actions"><button disabled={busy} onClick={()=>void command({action:'resolve',conflictId:c.id,revision:c.revision,choice:'keep_web'})}>Keep AR value</button>{canAccept(c)&&<button disabled={busy} onClick={()=>void command({action:'resolve',conflictId:c.id,revision:c.revision,choice:'accept_sheet'})}>Accept sheet value</button>}</div>}
-    </article>)}{status.conflictCount>status.conflicts.length&&<p>Showing the first {status.conflicts.length} items. Resolve these to load the next items.</p>}
+    </article>)}<div className="report-tracker-actions report-tracker-pagination"><button disabled={busy||cursors.length===1} onClick={()=>setNavigation({owner,reload:revision,category,cursors:cursors.slice(0,-1)})}>Back</button><span>Showing {page.rows.length} of {page.counts[category]} pending differences</span><button disabled={busy||!page.nextCursor} onClick={()=>page.nextCursor&&setNavigation({owner,reload:revision,category,cursors:[...cursors,page.nextCursor]})}>Next</button></div></>}
    </div>}
    {!!status.sheetActivity?.length&&<details className="report-tracker-review"><summary>Activity recorded in the sheet</summary><p>Actual dates have day precision. Import time is separate; matching verified Gmail events are excluded. Sheet records do not establish message counts or historical amounts.</p><table><thead><tr><th>Actual date</th><th>Activity</th><th>Invoices</th></tr></thead><tbody>{status.sheetActivity.map(item=><tr key={item.actualDate+item.field}><td>{item.actualDate}</td><td>{item.field==='R'?'First billing':item.field==='U'?'Follow 1':item.field==='V'?'Follow 2':'Follow 3'}</td><td>{item.invoices}</td></tr>)}</tbody></table></details>}
   </>}
