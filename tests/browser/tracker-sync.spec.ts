@@ -1,5 +1,12 @@
 import {test,expect} from '@playwright/test';
 import {auditWorkspace,auditLogin,auditRoute} from './fixtures/audit-workspace';
+test('native best-effort status is explicit and never claims conditional safety',async({page})=>{
+ await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'khao-lak',url:'https://docs.google.com/spreadsheets/d/synthetic_native_original_123456/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=khao-lak',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,writebackAvailable:true,writeAssurance:'best-effort',bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:2,conflictCount:0,conflicts:[]}});});
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');
+ await expect(page.getByText('Automatic date writeback uses best-effort updates.',{exact:false})).toBeVisible();await expect(page.getByText('Concurrent edits may be overwritten.',{exact:false})).toBeVisible();await expect(page.getByText('Writeback to this file is held until a safe update method is verified.',{exact:false})).toHaveCount(0);expect(commands).toHaveLength(0);
+});
 for(const width of [1280,390])test(`tracker status and reviewed differences ${width}`,async({page})=>{
  await page.setViewportSize({width,height:800});await auditWorkspace(page);const commands:unknown[]=[];
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));

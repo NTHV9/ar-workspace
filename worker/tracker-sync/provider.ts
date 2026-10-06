@@ -4,6 +4,7 @@ import {boundedBytes,readJson} from '../drive/shared';
 import type {RegionId} from '../../src/domain/hotels';
 import type {TrackerAdapter,TrackerEnv,ProviderSnapshot,ProviderWrite} from './service';
 import {prepareTrackerWorkbook,type TrackerCellChange} from './workbook';
+import {readNativeTracker,writeNativeTrackerBatch} from './native';
 
 const XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',NATIVE='application/vnd.google-apps.spreadsheet';
 const targets={phuket:{name:'Master_KAT_AR_Tracker_Phuket.xlsx',mime:XLSX},'khao-lak':{name:'Master_SAN_AR_Tracker',mime:NATIVE}} as const;
@@ -49,9 +50,11 @@ async function readStable(token:string,region:RegionId,fileId:string){
  throw Error('tracker_snapshot_changed');
 }
 export async function readTrackerWorkbook(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<ProviderSnapshot>{
- target(env,region,fileId);const token=await access(env,owner),snapshot=await readStable(token,region,fileId);
+ target(env,region,fileId);const token=await access(env,owner);
+ if(region==='khao-lak'&&env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true'){const meta=await metadata(token,region,fileId),snapshot=await readNativeTracker(token,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)snapshot.capabilities.writeAssurance='held';return snapshot;}
+ const snapshot=await readStable(token,region,fileId);
  return {version:snapshot.version,rows:snapshot.parsed.rows,schemaFingerprint:snapshot.parsed.schemaFingerprint,
-  capabilities:{conditionalWrite:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'proven':'unverified'}};
+  capabilities:{conditionalWrite:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'proven':'unverified',writeAssurance:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'cas':'held'}};
 }
 /** Version comparisons are observations, never atomic authorization. v3 If-Match
  * was ignored by the live synthetic probe; native conditional writes remain
@@ -61,6 +64,7 @@ export async function writeTrackerCells(env:TrackerEnv,owner:string,region:Regio
 }
 export async function writeTrackerBatch(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
  target(env,region,fileId);
+ if(region==='khao-lak'&&env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true'){const token=await access(env,owner),meta=await metadata(token,region,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict'};return writeNativeTrackerBatch(token,fileId,inputs);}
  if(region!=='phuket'||(env as CasEnv).TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict'};
  if(!inputs.length||inputs.length>100||inputs.reduce((sum,input)=>sum+input.changes.length,0)>300)throw Error('tracker_batch_limit');
  if(inputs.some(input=>!input.changes.length||input.changes.some(c=>!['R','U','V','W'].includes(c.field)||typeof c.value!=='string')))throw Error('tracker_patch_forbidden');

@@ -69,6 +69,7 @@ function dateString(value:string,date1904:boolean):string|null {
  const date=/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(value.trim());if(date){let year=Number(date[3]);if(year<100)year+=2000;if(year>2400)year-=543;const parsed=new Date(Date.UTC(year,Number(date[2])-1,Number(date[1])));if(parsed.getUTCDate()!==Number(date[1])||parsed.getUTCMonth()!==Number(date[2])-1)throw Error('tracker_date_invalid');return parsed.toISOString().slice(0,10);}
  throw Error('tracker_date_invalid');
 }
+export {dateString as trackerDateValue};
 const dateFields=new Set<TrackerField>(['R','T','U','V','W','X']);
 function value(cell:Cell|undefined,field:TrackerField,date1904:boolean):string|null {if(!cell||cell.raw==='')return null;if(cell.type==='e')throw Error('tracker_cell_error');return dateFields.has(field)?dateString(cell.raw,date1904):cell.raw;}
 function blockedDateCell(cell:Cell|undefined):boolean {

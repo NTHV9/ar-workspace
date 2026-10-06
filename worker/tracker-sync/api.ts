@@ -10,7 +10,7 @@ export async function trackerApi(request:Request,env:TrackerEnv,owner:string,ada
  if(!['GET','POST'].includes(request.method))return json({error:'method_not_allowed'},405);
  try{
   const status=await backendRpc<Record<string,unknown>>(env,'ar_tracker_status',{p_actor:actor,p_region:region});
-  if(request.method==='GET')return json({...status,available:env.TRACKER_SYNC_ENABLED==='true',writebackAvailable:region==='phuket'&&env.TRACKER_BLOB_CAS_ENABLED==='true'});
+  if(request.method==='GET'){const enabled=region==='phuket'?env.TRACKER_BLOB_CAS_ENABLED==='true':env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true';return json({...status,available:env.TRACKER_SYNC_ENABLED==='true',writebackAvailable:enabled,writeAssurance:enabled?(region==='phuket'?'cas':'best-effort'):'held'});}
   if(env.TRACKER_SYNC_ENABLED!=='true')return json({error:'tracker_disabled'},409);
   if(request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin||request.headers.get('Sec-Fetch-Site')==='cross-site')return json({error:'tracker_forbidden'},403);
   if(request.headers.get('Content-Type')?.split(';')[0]!=='application/json')return json({error:'tracker_invalid'},400);

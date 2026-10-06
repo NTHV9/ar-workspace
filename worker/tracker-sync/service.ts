@@ -3,10 +3,11 @@ import type {ReportSheetLinksEnv} from '../reports/sheet-links';
 import type {DriveEnv} from '../drive/shared';
 import type {RegionId,HotelId} from '../../src/domain/hotels';
 import type {TrackerValues,TrackerField} from './model';
+import {trackerIdentityMatches} from './native';
 
-export interface TrackerEnv extends RefreshEnv,ReportSheetLinksEnv,DriveEnv {TRACKER_SYNC_ENABLED?:string;TRACKER_BLOB_CAS_ENABLED?:string}
-export interface ProviderRow {rowKey:string;hotel:HotelId;accountNo:string;invoiceNo:string;folio:string|null;transactionDate?:string|null;fields:TrackerValues;locator:unknown;issues?:string[];formulaFields?:TrackerField[];blockedWriteFields?:('R'|'U'|'V'|'W')[]}
-export interface ProviderSnapshot {version:string;rows:ProviderRow[];schemaFingerprint:string;capabilities:{conditionalWrite:'proven'|'unsupported'|'unverified'}}
+export interface TrackerEnv extends RefreshEnv,ReportSheetLinksEnv,DriveEnv {TRACKER_SYNC_ENABLED?:string;TRACKER_BLOB_CAS_ENABLED?:string;TRACKER_NATIVE_BEST_EFFORT_ENABLED?:string}
+export interface ProviderRow {rowKey:string;hotel:HotelId;accountNo:string;invoiceNo:string;folio:string|null;folioNo?:string|null;transactionDate?:string|null;fields:TrackerValues;locator:unknown;issues?:string[];formulaFields?:TrackerField[];blockedWriteFields?:('R'|'U'|'V'|'W')[]}
+export interface ProviderSnapshot {version:string;rows:ProviderRow[];schemaFingerprint:string;capabilities:{conditionalWrite:'proven'|'unsupported'|'unverified';writeAssurance?:'cas'|'best-effort'|'held'}}
 export interface ProviderWrite {version:string;rowKey:string;expectedIdentity:Omit<ProviderRow,'fields'|'locator'|'rowKey'>;locator:unknown;changes:{field:TrackerField;value:string|null;expected:string|null}[]}
 export interface TrackerAdapter {
  read(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<ProviderSnapshot>;
@@ -46,8 +47,8 @@ export async function confirmTrackerPreview(env:TrackerEnv,actor:string,owner:st
 export function validateTrackerSnapshot(snapshot:ProviderSnapshot){
  if(!snapshot.version||!snapshot.schemaFingerprint||!Array.isArray(snapshot.rows)||snapshot.rows.length>100000||new Set(snapshot.rows.map(r=>r.rowKey)).size!==snapshot.rows.length)throw Error('tracker_schema_unverified');
 }
-/** Shared DB lease coalesces all tabs and scheduled checks. A write timeout is read
- * back before a later attempt; adapter must prove conditional write itself. */
+/** Shared DB lease coalesces tabs/checks. Native best-effort uncertainty is
+ * readback-only; conditional blob writes keep their existing CAS behavior. */
 export async function syncTracker(env:TrackerEnv,actor:string,owner:string,region:RegionId,adapter:TrackerAdapter,force=false){
  const lock=crypto.randomUUID(),claim=await backendRpc<{status:string;fileId?:string}>(env,'ar_tracker_claim',{p_actor:actor,p_region:region,p_lock:lock,p_force:force});
  if(claim.status!=='claimed')return {status:claim.status};
@@ -60,15 +61,17 @@ export async function syncTracker(env:TrackerEnv,actor:string,owner:string,regio
   await backendRpc(env,'ar_tracker_membership',{p_actor:actor,p_region:region,p_lock:lock,p_keys:snapshot.rows.map(r=>r.rowKey)});
   const pending=await backendRpc<{id:string;rowKey:string;identity:ProviderWrite['expectedIdentity'];locator:unknown;field:TrackerField;value:string|null;expected:string|null;state:string}[]>(env,'ar_tracker_outbox',{p_actor:actor,p_region:region,p_lock:lock});
   const eligible:typeof pending=[];
-  const record=async(item:typeof pending[number],state:'written'|'conflict'|'uncertain'|'held')=>backendRpc(env,'ar_tracker_write_result',{p_actor:actor,p_region:region,p_lock:lock,p_id:item.id,p_state:state,p_expected:item.expected,p_value:item.value,p_version:version});
+  const record=async(item:typeof pending[number],state:'written'|'conflict'|'uncertain'|'held')=>backendRpc<{state?:string}>(env,'ar_tracker_write_result',{p_actor:actor,p_region:region,p_lock:lock,p_id:item.id,p_state:state,p_expected:item.expected,p_value:item.value,p_version:version});
   for(const item of pending){
    const row=rows.find(r=>r.rowKey===item.rowKey);
    // Exact readback also resolves a prior upload timeout without another write.
    let state:'written'|'conflict'|'uncertain'|'held';
-   if(!row||row.holdReason||row.ambiguous||row.fieldHolds.includes(item.field)||item.value===null)state='conflict';
+   const nativeUncertain=region==='khao-lak'&&item.state==='uncertain';
+   if(nativeUncertain){const exact=!!row&&trackerIdentityMatches(row,item.identity)&&!row.holdReason&&!row.ambiguous&&!row.fieldHolds.includes(item.field)&&!row.formulaFields?.includes(item.field)&&item.value!==null&&row.fields[item.field]===item.value;await record(item,exact?'written':'uncertain');continue;}
+   if(!row||!trackerIdentityMatches(row,item.identity)||row.holdReason||row.ambiguous||row.fieldHolds.includes(item.field)||row.formulaFields?.includes(item.field)||item.value===null)state='conflict';
    else if(row.fields[item.field]===item.value)state='written';
    else if(row.blockedWriteFields?.some(f=>f===item.field))state='held';
-   else if(snapshot.capabilities.conditionalWrite!=='proven')state='held';
+   else if(region==='khao-lak'?env.TRACKER_NATIVE_BEST_EFFORT_ENABLED!=='true'||snapshot.capabilities.writeAssurance!=='best-effort':snapshot.capabilities.conditionalWrite!=='proven')state='held';
    else{eligible.push(item);continue;}
    await record(item,state);
   }
@@ -82,6 +85,9 @@ export async function syncTracker(env:TrackerEnv,actor:string,owner:string,regio
   }
   for(const item of eligible.filter(i=>contradictory.has(i.rowKey)))await record(item,'conflict');
   const attempted=eligible.filter(i=>!contradictory.has(i.rowKey)),inputs=[...groups.values()].filter(g=>!contradictory.has(g.rowKey));
+  // Durably freeze every native intent before the first provider mutation. A
+  // worker termination/result-RPC failure must not turn it into another POST.
+  if(region==='khao-lak'&&inputs.length)for(const item of attempted){const intent=await record(item,'uncertain');if(intent.state!=='uncertain')throw Error('tracker_intent_not_confirmed');}
   if(inputs.length&&adapter.writeBatch){
    let result:{status:'written'|'conflict'|'uncertain';version?:string};
    try{result=await adapter.writeBatch(env,owner,region,claim.fileId,inputs);}catch{result={status:'uncertain'};}
