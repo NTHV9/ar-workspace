@@ -1,6 +1,14 @@
 # Partial tracker integration — validation checkpoint, 6 October 2026
 
-Status: both exact original trackers are now authorized and connected through the AR Worker's existing drive.file grant. Both live previews succeed after migration 95. Initial Phuket confirmation failed; successful bootstrap import and original-file outbound writes are still unverified. Preparation is enabled, blob CAS enablement is false, and native outbound remains held.
+Status: both exact originals are authorized, connected and successfully bootstrap-imported through ordinary AR website previews and confirmations. Migrations 95 and 96 are applied and live verification preserves financial/settings/Sent fingerprints. Blob CAS enablement is false and native outbound remains held; original-file writeback and the complete bidirectional goal are still unverified.
+
+## Verified original imports
+
+- Migration 96 SHA-256 `65b133a9c7a382db3626884de6e4610519770be743db00c31b8aa8f3a3473c9b` is applied. It coalesces repeated ledger writes, adds exact lookup indexes and confines parameter-aware planning to seven private ledger helpers and the unchanged accepted-fact trigger body. Original baseline comparisons, locks, immutable histories, five distinct conflict insertion semantics, permissions, budget checks and atomic confirmation remain intact.
+- Fresh original-file rollback qualification completed within the existing 8-second limit: Phuket 6.865 seconds (333 changed invoices, 1,077 facts, 3,624 conflicts); Khao Lak 3.750 seconds (321 changed invoices, 570 facts, 711 conflicts). Exact dataset qualification is not an arbitrary-load guarantee. The full local Windows capacity test remains red due measured slow filesystem quota scans; it is not relabeled green or repaired by weakening quotas/timeouts. Compilation, 16-component normalized old/new parity, focused behavior, private ACL and caller-setting checks pass.
+- Actual ordinary website confirmations succeeded for both regions. Database totals are 2,872 observed tracker rows, 1,647 provenance records, two bootstrapped regions and 4,335 pending differences. Khao Lak preserves 48 identity-held rows and 21 invalid-source-field holds; S/T reference differences cannot overwrite web credit/billing settings. Raw source status remains separate. No unmatched-row history, future send-date facts, false sheet editor/sender or fabricated delivery ID is recorded.
+- All five before/after actual-import fingerprints match: OPERA account/invoice financial source, Account settings, Account Type defaults and confirmed Sent. Source revisions match in the same window. Subsequent Phuket Check changes preserves totals and creates no repeated histories. Original metadata retains the existing XLSX/native identities and pre-import modification dates. No original-file outbound command or write has occurred; AgingMaster 1.0.6 remains unchanged.
+- The failure/diagnostic checkpoints below are retained as history. Remaining full acceptance concerns provider conditional writeback/fidelity/conflicts and genuine confirmed-Sent end-to-end evidence; imports alone do not complete that scope.
 
 ## Current exact-original checkpoint
 
