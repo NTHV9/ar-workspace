@@ -1,3 +1,9 @@
+## 2026-10-07 — Tracker implementation delivered as Draft PR 117
+
+- [Draft PR 117](https://github.com/NTHV9/ar-workspace/pull/117) targets the confirmed default branch `codex/first-increment`. The previously merged Dashboard baseline and its squash merge have identical trees; an ancestry merge resolves only the status-document insertion conflict and preserves the complete tracker tree `c9b67f36aa54e493a6a0c40d9ca3c4f918f81d84`. The PR contains tracker changes, not duplicate Dashboard styling or captures.
+- Fresh full unit verification passes 1,645 tests / 174 files, and TypeScript/production build pass. Draft state makes the incomplete original/native outbound scope explicit; creating the PR does not enable writes, merge code, change the deployed source or complete the integration goal. GitHub verification is running on the review branch; final check results belong in PR metadata without claiming success before a terminal result.
+- The scope question about preserving every aspect of the current updater or allowing a reviewed publish-workflow adjustment remains unanswered. No second question, new test mail, original-file date, permission change or executable run is issued while that decision is pending.
+
 ## 2026-10-07 — Native identity assumptions corrected; current inbound rechecked
 
 - Fresh connected metadata verifies the exact original Khao Lak native ID/title and returns a normalized inventory of one owner, twelve user writers and one domain writer. The observed owner differs from the AR login; the earlier report's claim that AR owns this native master is corrected. This normalized connector result omits permission IDs/details and effective inheritance, so it is not an exhaustive restoration manifest and does not prove the application's access route. No ownership transfer is presumed necessary.
