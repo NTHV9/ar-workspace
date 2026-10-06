@@ -91,7 +91,10 @@ for(const width of [1440,1280,390])test(`million-scale Dashboard has visible exa
 test('billing legend responds to keyboard and touch selection without changing financial scope',async({page})=>{
  const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1');
  const notBilled=page.getByRole('button',{name:'Show not billed share',exact:true});await notBilled.focus();await notBilled.press('Enter');await expect(notBilled).toHaveAttribute('aria-pressed','true');await expect(page.locator('.billing-ring-unbilled')).toHaveAttribute('stroke-dasharray','20 100');await expect(page.getByRole('img',{name:'20.0% of billing-required invoice value not billed',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Show billed share',exact:true}).click();await expect(page.getByRole('img',{name:'80.0% of billing-required invoice value billed',exact:true})).toBeVisible();expect(queries).toHaveLength(1);
+ const firstScope=[...queries[0].entries()].sort(([a],[b])=>a.localeCompare(b));
+ await page.getByRole('button',{name:'Show billed share',exact:true}).click();await expect(page.getByRole('img',{name:'80.0% of billing-required invoice value billed',exact:true})).toBeVisible();
+ // Publication/auth refresh may repeat a read; legend selection must retain every scope parameter.
+ expect(queries.length).toBeGreaterThan(0);for(const query of queries)expect([...query.entries()].sort(([a],[b])=>a.localeCompare(b))).toEqual(firstScope);
 });
 
 

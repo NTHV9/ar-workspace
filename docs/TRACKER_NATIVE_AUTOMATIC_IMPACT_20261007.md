@@ -1,6 +1,27 @@
 # Khao Lak native tracker — ผลกระทบของการควบคุมผู้เขียนแบบอัตโนมัติ
 
-สถานะ: **ออกแบบและประเมินผลกระทบเท่านั้น — ยังไม่อนุมัติ implementation/activation** ตรวจแหล่งอ้างอิงวันที่ 7 ตุลาคม 2026
+สถานะล่าสุด: **เจ้าของอนุมัติพัฒนา Khao Lak native แบบ best effort โดยยอมรับความเสี่ยงเขียนทับ — ยังไม่ implemented/tested/enabled จากเอกสารนี้** ตรวจแหล่งอ้างอิงวันที่ 7 ตุลาคม 2026
+
+## คำตัดสินล่าสุดแทนข้อกำหนด CAS เดิมเฉพาะ Khao Lak
+
+เจ้าของยืนยันว่า “Khao Lak ไม่ต้องมีกันการทับข้อมูลก็ได้” จึงอนุญาตให้พัฒนา native date writer แบบ **best effort** ไม่ต้องผ่าน native CAS หรือเปลี่ยนสิทธิ์เพื่อกันผู้เขียนก่อน การอ่านก่อนเขียนยังมีช่วงที่คนหรือ updater แก้แทรกได้ และการตรวจหลังเขียนไม่รับประกันว่าจะตรวจพบค่าของคนที่ถูกทับไปแล้ว ข้อจำกัดนี้ต้องแสดงตามจริง ไม่เรียก conditional write ว่า proven
+
+คง file ID/native format/แท็บ/คอลัมน์/สูตร และ AgingMaster 1.0.6 เดิม ไม่เปลี่ยน ACL, owner, provider identity หรือเพิ่มผู้คุมรอบงาน Phuket ยังใช้ข้อกำหนด CAS เดิมทั้งหมด ส่วนที่เหลือด้านล่างเป็นประวัติการประเมินทางเลือกที่ **ไม่ใช่ gate เพิ่มสำหรับ native best effort ที่เจ้าของเพิ่งอนุมัติ**
+
+### สัญญาการพัฒนาแบบมีขอบเขต
+
+1. **ความสามารถและ flag:** เพิ่ม `writeAssurance: conditional | best_effort | disabled` หรือ discriminated type ที่เทียบเท่า แยกจาก `conditionalWrite` เดิม ใช้ flag Khao เฉพาะ `TRACKER_NATIVE_BEST_EFFORT_ENABLED` ค่าเริ่มต้น false; ภูเก็ตไม่รับ best effort และไม่เปลี่ยน flag เดิม คำว่า database owner/actor ใน API ไม่ใช่ Drive file owner
+2. **เป้าหมายและ credential:** ใช้ provider grant ของแอปที่มีอยู่ ตรวจ exact configured ID/ชื่อ/MIME/not-trashed และความสามารถเขียนจาก provider จริง ห้ามอาศัย normalized connector ACL เป็นหลักฐานสิทธิ์แอป วันนี้ normalized owner ต่างจาก AR login, domain writer เป็นอีกโดเมน และไม่มี explicit AR user entry; ผลนี้ยังไม่พิสูจน์ว่า AR ไม่มีสิทธิ์หรือได้สิทธิ์จากทางใด เพราะไม่มี permission IDs/details/parents/version ครบ
+3. **ข้อมูลสดก่อนเขียน:** อ่าน native Sheets grid แล้วหา main tab ด้วยชื่อและ headers ที่ยืนยันใหม่ ไม่ใช้ sheetId/row number เก่าจาก outbox เป็นอำนาจเขียน ผูก AG กับ A/C/E/F และ G เมื่อมี transaction date corroboration; ตรวจ unique row/key/canonical hotel-account-invoice, leading zeros และ LFS exclusion เหมือน reader ปัจจุบัน ถ้า schema/identity/expected-value เปลี่ยน หรือสูตรอยู่ใน target ให้ conflict/held ที่มองเห็นได้ ไม่มี fuzzy match
+4. **ขอบเขตการเขียน:** รับเฉพาะ confirmed Sent outbox ที่เลือก invoice จริง R first billing และ U/V/W Follow 1/2/3 ไม่มี Friendly/Final/draft/TEST ส่งเข้า original ใช้ Sheets `batchUpdate` เดียวสำหรับ batch ที่ตรวจแล้ว ด้วย `updateCells` เฉพาะ `userEnteredValue.numberValue` ของ exact date cells ไม่แตะ number format/formula/notes/comments/คอลัมน์อื่น ไม่ whole-file upload ไม่ใช้ string date ที่พึ่ง locale; validate actual day/serial และรักษาขอบเขต outbox สูงสุด 100 รายการเดิม
+5. **สถานะที่พบก่อน POST:** ค่าเท่ากับวันที่เป้าหมายและตัวตนตรงทั้งหมดให้ยืนยัน readback โดยไม่ POST; ค่าไม่ตรง expected ให้พัก ไม่ฝืนเขียน การตรวจนี้ลดข้อผิดพลาดที่ตรวจพบได้ แต่ไม่ใช่ atomic precondition กับคำขอที่ตามมา
+6. **หลัง POST/ผลไม่แน่ชัด:** อ่าน identity+target cells ใหม่ก่อน `written` หาก timeout/response หาย/แถวย้าย/ค่าหรือสูตรต่าง ให้ uncertain หรือ conflict ที่สืบค้นได้ ไม่ rollback ทั้งไฟล์ ไม่ restore เซลล์เดิม ไม่มี blind retry native uncertain ใน cron ถัดไป; exact readback อาจปิดงานได้โดยไม่เขียนอีก หากยังพิสูจน์ไม่ได้ให้คงสถานะเพื่อการทบทวนข้อขัดแย้งเป็นกรณีพิเศษ ไม่ส่งอีเมลซ้ำ
+7. **ใช้ flow เดิม:** existing cron/DB lease/outbox ทำงานอัตโนมัติ ไม่เพิ่ม auto-email, fake Sent, field-authority override หรือการเปลี่ยน credit/due/financial truth อ่านกลับหลัง updater รอบถัดไปและใช้ conflict review เดิมเมื่อพบ reversion; ไม่อ้างว่าป้องกันการทับได้
+8. **หลักฐานก่อน enable:** unit/service tests ครอบคลุม flag off/cross-region, row move, duplicate/key mismatch, formula/expected-value change, serial/date-format fidelity, A-only/B-unselected, batch เดียว และ uncertain cron ที่ไม่ POST ซ้ำ จากนั้นทดสอบจริงเฉพาะ native fixture ที่ระบบสร้างเองและตรวจสิทธิ์ได้: R/U/V/W numeric values, สูตร/format/เซลล์อื่นคงเดิม, response-lost read-only reconciliation และ cleanup ไม่ส่งอีเมลเพิ่ม ไม่ใส่วันที่ทดสอบใน original ไม่มีการตั้ง CAS เป็น gate ใหม่ แต่ต้องระบุ race window ที่ยอมรับและผลที่ทดสอบจริง
+
+การแก้ `service.ts` ต้องตรวจ full expected identity ก่อนทางลัด echo ด้วย ไม่ใช่ตรวจแค่ rowKey/วันที่ และต้องแยก native uncertain จากเส้นทาง retry เดิมของ adapter ไม่ให้ flag best effort เปิดทางลองเขียนซ้ำโดยไม่รู้ผลครั้งแรก เอกสารนี้เป็น contract ให้ผู้ implement ตรวจรายละเอียด ไม่ใช่รายงานว่าการแก้ดังกล่าวทำแล้ว
+
+## ประวัติข้อเสนอ automatic governance ก่อนคำยอมรับ best effort
 
 เจ้าของเลือกให้ออกแบบแบบอัตโนมัติและตรวจผลกระทบก่อนแล้ว จึงไม่ใช่สถานะ “ยังไม่เลือกแนวทางออกแบบ” อีกต่อไป แต่ยังไม่มีอนุมัติเปลี่ยน owner, ACL, provider account, launcher/schedule หรือไฟล์จริง เอกสารนี้ต่อจาก [ข้อเสนอวันที่ 6 ตุลาคม](TRACKER_NATIVE_WRITER_PROPOSAL_20261006.md); รอบที่ให้คนเปิดหน้าต่างงานเองเป็นทางเลือกสำรอง ไม่ใช่แบบอัตโนมัติที่ผ่านการรับรองแล้ว
 

@@ -1,4 +1,10 @@
-## Updater compatibility decision pending — 7 October 2026
+## Khao Lak best-effort writeback authorized — 7 October 2026
+
+The owner explicitly removes the requirement to prevent concurrent overwrite for Khao Lak, stating that writes do not overlap. Root explains that overlapping human/updater edits can still be overwritten; read-before/write-after checks cannot guarantee otherwise. This supersedes the strict native CAS/exclusive-writer gate for this region only and resolves the pending updater scope question by keeping the current 1.0.6 workflow unchanged. It does not authorize broad whole-file replacement, known-conflict overwrite, formula changes, ACL/ownership/credential changes, fake business Sent or another test email. Phuket retains its existing conditional-write requirements.
+
+Implement a default-off, Khao-only best-effort date writer: verified actual Sent R first billing and U/V/W Follow 1–3; fresh exact schema/canonical identity/current-value checks; narrow atomic cell batch preserving formats/unrelated cells; explicit uncertainty with read-only reconciliation and no blind native retry. Label assurance honestly, qualify against owned synthetic native data, then enable the exact original region within this authorization. The previously proposed owner/launcher changes are not required gates for this selected route. [Current implementation contract](TRACKER_NATIVE_AUTOMATIC_IMPACT_20261007.md).
+
+## Historical updater compatibility decision — superseded by Khao waiver
 
 Read-only inspection of the exact existing 1.0.6 executable confirms full-content Drive publishing and a machine-local mutex, not cross-client atomic exclusion. Fresh native metadata also corrects the former assumption that AR owns the original Khao Lak master; no ownership transfer is presumed required. The owner has been asked whether the updater's publish workflow may change if needed, subject to concrete impact review and tests before original changes, or must remain entirely unchanged. This is a scope question, not authorization already received. Original outbound remains held; the goal is incomplete. [Evidence and proposed impacts](TRACKER_NATIVE_AUTOMATIC_IMPACT_20261007.md).
 

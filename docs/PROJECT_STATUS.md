@@ -1,3 +1,9 @@
+## 2026-10-07 — Khao-only best-effort date writer authorized; implementation underway
+
+- The owner removes the native no-overwrite/CAS requirement for Khao Lak. A separate default-off assurance/flag will permit narrow R/U/V/W writes while preserving verified Sent provenance, current schema/identity/value checks and read-only reconciliation after uncertainty. Root states the remaining concurrent-edit risk explicitly. Phuket CAS, original IDs/formats, manual Sheet entry and 1.0.6 remain unchanged; no owner/ACL/credential/updater change is needed for the selected route.
+- Astra supplies the scoped contract; Sol Medium is implementing code/tests. Actual native qualification is being prepared separately. Neither this decision nor draft implementation enables original writes or supplies original-business acceptance. The prior updater scope question is superseded, not asked again.
+- Draft-head GitHub verification passes unit/build/bundle checks but fails one Dashboard browser assertion requiring exactly one read; 171 browser cases pass. Root reproduces the selected old assertion successfully five times locally and changes its scope verification to compare every actual query parameter, permitting a legitimate repeated read without accepting a financial-scope change. Three affected local runs pass; no Dashboard product code or visual baseline is changed.
+
 ## 2026-10-07 — Tracker implementation delivered as Draft PR 117
 
 - [Draft PR 117](https://github.com/NTHV9/ar-workspace/pull/117) targets the confirmed default branch `codex/first-increment`. The previously merged Dashboard baseline and its squash merge have identical trees; an ancestry merge resolves only the status-document insertion conflict and preserves the complete tracker tree `c9b67f36aa54e493a6a0c40d9ca3c4f918f81d84`. The PR contains tracker changes, not duplicate Dashboard styling or captures.
