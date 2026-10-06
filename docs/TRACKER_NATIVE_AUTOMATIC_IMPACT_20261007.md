@@ -16,8 +16,8 @@
 
 อย่างไรก็ตาม ยังเสนอว่า “อัตโนมัติได้โดยไม่กระทบงานเดิมเลย” ไม่ได้ เพราะ:
 
-- บัญชี `ar@katathani.com` ที่เป็น owner ไม่สามารถถูกกันด้วย ACL ของไฟล์เดียวกันระหว่างที่มนุษย์/desktop/web ใช้ตัวตนนี้ร่วมกันได้ การแยก OAuth client แต่ใช้ Google user เดียวกันไม่แยกสิทธิ์ตามผู้เขียน
-- ต้องแยกตัวตนอย่างน้อยในเชิงสิทธิ์ระหว่าง controller ของ native, updater และคนที่กรอกชีต หาก updater กับคนยังเป็น owner/user เดียวกัน การแย่งสิทธิ์ระหว่างสองกลุ่มนี้ยังเป็นข้อตกลงร่วมกัน ไม่ใช่การบังคับจาก Google
+- Metadata ที่อ่านวันที่ 7 ตุลาคมระบุว่า **เจ้าของไฟล์ต่างจากบัญชี AR login** ข้อสมมติเดิมว่า AR เป็น native owner ถูกแก้ไขแล้ว ไม่เปิดเผยอีเมลเจ้าหน้าที่ในเอกสารนี้ และยังไม่ทราบตัวตนที่ updater ใช้ การโอน ownership จึงไม่ใช่ข้อกำหนดที่ยืนยันว่าจำเป็น
+- ต้องแยก native writer จาก principal ที่มนุษย์/updater ใช้เขียนแข่งกัน การแยก OAuth client แต่ใช้ Google user เดียวกันไม่แยกสิทธิ์ ถ้า AR เป็น writer ก็อาจลดสิทธิ์ของ AR ชั่วคราวได้หลังตรวจสิทธิ์ทุกทาง โดย native writer ใช้อีก principal; แต่หาก updater/คนใช้ owner จริง จะกัน owner ด้วย ACL ไม่ได้ ความเสี่ยงนี้เป็นเงื่อนไขที่ต้องตรวจ ไม่ใช่สถานะจริงที่พิสูจน์แล้ว
 - ทีมจะมีช่วงอ่านอย่างเดียว และวันที่ Sent อาจลงชีตหลังเวลาส่งจริง เวลาทำ batch ไม่ใช่วันที่ส่ง; วันธุรกิจยังมาจากหลักฐาน Sent เดิม
 - เอกสาร Google ที่ตรวจไม่ให้ข้อรับรองว่าเปลี่ยน ACL แล้วคำขอเขียนที่รับไปก่อนหน้าจะสิ้นสุดภายในกี่วินาที จึงใช้การ downgrade แล้วรอเวลาคงที่หรือเห็น revision นิ่งแทนหลักฐานว่าไม่มีงานค้างไม่ได้
 
@@ -28,13 +28,25 @@
 | หัวข้อ | หลักฐานที่มี | สิ่งที่ยังต้องตรวจแบบอ่านอย่างเดียว |
 |---|---|---|
 | ไฟล์เป้าหมาย | `Master_SAN_AR_Tracker` เป็น native file เดิม; exact ID อยู่ใน private configuration | ID/MIME/parents/owner/ACL ล่าสุดก่อนเสนอรายการเปลี่ยนจริง |
-| ผู้เขียน | Inventory วันที่ 6 ตุลาคมมี owner 1, user writers 12, domain writer 1 | permission IDs, inheritance/effective access, group paths และความเปลี่ยนแปลงหลัง inventory; ข้อมูล connector ที่ normalize แล้วยังไม่ใช่ restoration manifest |
+| ผู้เขียน | Connector วันที่ 7 ตุลาคมยืนยันไฟล์เดิมและ owner ต่างจาก AR login; grants ที่ normalize แล้วมี owner 1, user writers 12, domain writer 1 | ยังไม่มี direct permission IDs, inheritance/effective access และ version ในผล normalized; ยังไม่ทราบ AR ได้ writer จาก direct/domain/group ทางใดทั้งหมด จึงยังไม่ใช่ restoration manifest |
 | แหล่ง tracking | Sheet → เว็บเปิดใช้แล้ว; OPERA ยังเป็นแหล่งยอดเงิน | ไม่มีการเปลี่ยน authority ของ Account credit/billing rules หรือ reported received ให้เป็นการปิดหนี้ |
-| Native concurrency | positive cell write ในไฟล์จำลองผ่าน แต่หลังแก้ค่าแข่งกัน Drive v2 JSON ETag ไม่เปลี่ยน จึงหยุดก่อน stale request | ยังไม่มี native content-generation validator ที่ผ่าน; ไม่ได้พิสูจน์ว่า Sheets v4 ละเลย `If-Match` |
+| Native concurrency | capture ตรวจ strong HTTP ETag ของ Sheets ก่อน แต่ไม่มีตัวที่ใช้ได้ จึงเลือก Drive v2 JSON entity ETag; positive cell write ผ่าน แต่ tag นี้ไม่เปลี่ยนหลัง competitor แก้เซลล์ จึงหยุดก่อน stale request | ยังไม่มี native content-generation validator ที่ผ่าน; ไม่ใช่การทดสอบเฉพาะ Drive อย่างเดียว และไม่ได้พิสูจน์ว่า Sheets v4 ละเลย `If-Match` |
 | ผู้เขียนรายวัน | 1.0.6 เป็น executable ที่เจ้าของใช้อยู่และต้องคงเดิม | ทุกเครื่อง/shortcut/schedule/ผู้เริ่มงาน, ตัวตน Drive ที่แต่ละ instance ใช้, งานที่กำลังทำ และการเข้าสู่บัญชี updater แยกโดยไม่เปลี่ยน binary ทำได้หรือไม่ |
 | การทดสอบล่าสุด | isolated Billing-R SQL/service/provider E2E และ cleanup ผ่านจริงบน XLSX จำลอง | ไม่ใช่ native exclusivity proof, original-business writeback proof หรือการส่ง Follow 1–3 จริงสามฉบับ |
 
 ไม่ระบุชื่อเจ้าหน้าที่, permission IDs, recipient หรือ credentials ในเอกสารนี้ ไม่ติดต่อหรือสั่งงานแชท Detail One Shot และไม่รันโปรแกรม updater เพื่อทดสอบกับต้นฉบับในขั้นออกแบบนี้ [หลักฐานระบบที่ทำแล้ว](TRACKER_SYNC_VALIDATION_20261006.md)
+
+## ตรวจ executable 1.0.6 ที่มีอยู่จริงแบบอ่านอย่างเดียว
+
+พบ `Desktop/Aging Master/AgingMaster_1.0.6.exe` จริง ขนาด 45,151,342 bytes และ SHA-256 `dd92d1c4aaf40b3dbe7ea29216250316f37efc5245fb15a1a46d3b8bd5ffef85`; embedded build version เป็น 1.0.6 แม้ PE version metadata ไม่มี ไม่รัน executable ไม่อ่าน credential store และข้าม generated OAuth client configuration ที่อาจมี secret
+
+การตรวจ packaged public modules แบบ in-memory พบว่า auth/UI/runtime/workflow/gateway/credential-store code ตรงกับ source ที่อ่านได้ในระดับ normalized bytecode/constants/names; modules ที่ไม่ตรงใช้หลักฐานจาก binary เท่านั้น ไม่อ้างว่า source ทุกไฟล์เป็น build ต้นทางเดียวกัน ข้อค้นพบที่เปลี่ยนแผนคือ:
+
+- OAuth ใหม่เปิดให้เลือก Google principal อีกตัวได้ในทางโค้ด แต่ launch ปกติ reuse Windows credential slot เดียว ไม่มี account-switch/logout/reconnect control ที่ผู้ใช้เรียกจาก UI/CLI ที่ตรวจพบ จึงยังไม่พิสูจน์ว่าแยกบัญชีได้โดยไม่เปลี่ยนการตั้งค่าสภาพแวดล้อมหรือ credential เดิม
+- เปิดโปรแกรมแล้วเริ่มงานอัปเดตอัตโนมัติ; gateway ใน binary ส่ง full workbook content ผ่าน Drive v3 files.update โดยไม่มี explicit If-Match header มี preflight/readback/recovery แต่ไม่ใช่ cross-writer atomic proof
+- Global Windows mutex กัน instance บนเครื่องเดียว การเพิ่ม optional launcher ครอบ executable ไม่กัน direct launch, สำเนาโปรแกรม หรือเครื่องอื่นได้เอง ต้องยืนยัน inventory และกลไกบังคับจริงก่อนเสนอใช้เป็นตัวกันชนอัตโนมัติ
+
+ไม่มี account switch, credential reset, launcher change, program execution, cloud call หรือ workbook change จากการตรวจ binary นี้ การแยกบัญชี/สิทธิ์หรือแยก manual facts กับ system facts จึงยังเป็นข้อเสนอที่ต้องกำหนดผลกระทบก่อน ไม่ใช่ automatic route ที่ผ่านแล้ว
 
 ## ขอบเขตที่ Google รับรอง
 
@@ -49,14 +61,14 @@ Sheets batchUpdate ใช้เปลี่ยนหลายเซลล์พ�
 | ทางเลือก | ผลต่อทีมและ 1.0.6 | ข้อสรุป |
 |---|---|---|
 | A. Controller แยกตัวตน + สิทธิ์สลับตามช่วงงาน | ทีมกรอกชีตเดิมนอกช่วง read-only; ต้องแยก updater principal, ควบคุมทุก launcher และมี owner ที่ไม่ใช้กับงานมนุษย์/desktop ปกติ | **ยังไม่เลือก** ต้องเป็นการเริ่ม/จบอัตโนมัติทั้งหมดจึงตรงคำยืนยันล่าสุด; ยังต้องพิสูจน์ account/launcher compatibility และ in-flight handoff |
-| B. คง owner/บัญชีร่วมเดิม แล้วใช้เวลาเงียบ/DB lease/Apps Script lock | เปลี่ยนงานน้อย แต่คนหรือ desktop ในบัญชีเดียวกันยังเขียนข้าม lock ได้ | ไม่ผ่านเกณฑ์ automatic conflict-safe; ทำได้เพียง controlled pilot ที่ยอมรับข้อจำกัดชัดเจน |
+| B. คงสิทธิ์ผู้เขียนทั้งหมด แล้วใช้เวลาเงียบ/DB lease/Apps Script lock | เปลี่ยนงานน้อย แต่คนหรือ desktop ที่ไม่ร่วม lock ยังเขียนข้ามได้ ไม่จำเป็นต้องเป็น owner เดียวกัน | ไม่ผ่านเกณฑ์ automatic conflict-safe; ทำได้เพียง controlled pilot ที่ยอมรับข้อจำกัดชัดเจน |
 | C. บังคับทุกการแก้ผ่านเว็บหรือ write gateway เดียว | การกรอก Sheet โดยตรงและการ upload ของ 1.0.6 ต้องเปลี่ยนวิธีทำงานอย่างมาก | ไม่เลือกใน scope นี้ เพราะขัดกับ Sheet manual tracking เป็นแหล่งหลัก; ไม่ทำเงียบ ๆ |
 
 การย้ายไป shared drive ไม่ใช่ทางลัดที่เสนอในรอบนี้ เพราะเปลี่ยน inheritance/manager authority และต้องตรวจ compatibility เพิ่ม โดยยังไม่ตอบปัญหาผู้มีสิทธิ์สูงที่ข้าม controller
 
 ### ทางเลือกที่ไม่ต้องมีคนคุม: ตรวจจาก API และผลกระทบ
 
-ตารางนี้เป็น **การวิเคราะห์เอกสารและแบบระบบ ยังไม่ได้ทดสอบทางเลือกเหล่านี้กับบริการจริง** หลักฐาน native ที่ทดสอบแล้วมีเพียง positive write และการหยุดเมื่อ JSON entity ETag ไม่เปลี่ยนหลัง competitor แก้เซลล์ ไม่ได้ส่ง stale request ของ Sheets v4 จึงยังสรุปไม่ได้ว่า API นั้นละเลย `If-Match`
+ตารางนี้เป็น **การวิเคราะห์เอกสารและแบบระบบ ยังไม่ได้ทดสอบทางเลือกเหล่านี้กับบริการจริง** การทดสอบ native ตรวจช่องทาง strong HTTP ETag ของ Sheets ก่อนแล้วไม่พบตัวที่ใช้ได้ ณ capture จึงใช้ Drive v2 JSON entity ETag; positive write ผ่าน แต่หยุดเมื่อ tag ที่เลือกไม่เปลี่ยนหลัง competitor แก้เซลล์ ไม่ได้ส่ง stale request ของ Sheets v4 จึงยังสรุปไม่ได้ว่า API นั้นละเลย `If-Match`
 
 | วิธี | ช่วยอะไร | สิ่งที่ยังไม่แก้ / ผลกระทบต่อข้อกำหนด |
 |---|---|---|
@@ -75,7 +87,13 @@ Sheets batchUpdate ใช้เปลี่ยนหลายเซลล์พ�
 
 Event log ควรมี durable unique event key และ reconciliation; [append API](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append) ไม่ได้ให้ application idempotency key จึงไม่ถือว่าลองซ้ำหลัง timeout แล้วปลอดจาก duplicate โดยตัวมันเอง หากใช้ [IMPORTRANGE](https://support.google.com/docs/answer/3093340) ต้องอนุมัติการเชื่อมไฟล์/ผลด้านการเข้าถึงและเวลา refresh ด้วย ไม่สร้างไฟล์ใหม่หรือเพิ่มสูตรในรอบออกแบบนี้
 
-**ข้อสรุปเฉพาะหลักฐานที่มี:** ยังไม่มีวิธีที่ผ่านการพิสูจน์ว่าคงพร้อมกันได้ทั้ง original structure/formulas, direct human edits ในทุกเวลา, owner ร่วมเดิม, 1.0.6 ที่ไม่ร่วมควบคุมผู้เขียน และ automatic conflict-safe writeback การเปลี่ยนอย่างน้อยส่วนที่ทำให้ผู้เขียนร่วมสัญญาเดียวกัน หรือเปลี่ยนวิธีเก็บ/แสดงวันที่ เป็นทางเลือกออกแบบ ไม่ใช่ข้อสรุปว่า Google native ทุกวิธีทำไม่ได้ งานถัดไปที่อนุญาตตอนนี้คือจัดทำ impact/compatibility matrix ของสองแบบนี้จากหลักฐานอ่านอย่างเดียว แล้วให้เจ้าของอนุมัติ **การเปลี่ยน setup ครั้งเดียว** ที่จำเป็นก่อน implementation; ไม่ขอให้มีผู้คุมตามปกติทุก batch และยังคงให้ตรวจข้อขัดแย้งจริงเป็นกรณีพิเศษได้
+**ข้อสรุปเฉพาะหลักฐานที่มี:** ยังไม่มีวิธีที่ผ่านการพิสูจน์ว่าคงพร้อมกันได้ทั้ง original structure/formulas, direct human edits ในทุกเวลา, สิทธิ์ผู้เขียนที่ยังไม่มีการกันการทำงานพร้อมกัน, 1.0.6 ที่ไม่ร่วมควบคุมผู้เขียน และ automatic conflict-safe writeback การเปลี่ยนอย่างน้อยส่วนที่ทำให้ผู้เขียนร่วมสัญญาเดียวกัน หรือเปลี่ยนวิธีเก็บ/แสดงวันที่ เป็นทางเลือกออกแบบ ไม่ใช่ข้อสรุปว่า Google native ทุกวิธีทำไม่ได้ งานถัดไปที่อนุญาตตอนนี้คือจัดทำ impact/compatibility matrix ของสองแบบนี้จากหลักฐานอ่านอย่างเดียว แล้วให้เจ้าของอนุมัติ **การเปลี่ยน setup ครั้งเดียว** ที่จำเป็นก่อน implementation; ไม่ขอให้มีผู้คุมตามปกติทุก batch และยังคงให้ตรวจข้อขัดแย้งจริงเป็นกรณีพิเศษได้
+
+### ทางเลือกที่กระทบน้อยลงจากข้อมูล owner ล่าสุด
+
+**ตรวจแบบคงเจ้าของเดิมก่อน ไม่เริ่มจาก ownership transfer:** ใช้ native writer ที่แยกจากผู้เขียนปกติ และให้ซอฟต์แวร์มีอำนาจจัดสิทธิ์ที่เจ้าของเดิมอนุมัติ ระบบจะปิดสิทธิ์เขียนของผู้แข่งขันทุกทางระหว่าง batch แล้วคืนเอง AR ที่เป็นเพียง writer อาจถูกพักสิทธิ์ได้ ต่างจากสมมติฐานเดิมที่มองว่า AR เป็น owner อย่างไรก็ตาม การเพิ่ม direct reader ให้ AR ไม่ลบ domain writer ที่ยังครอบอยู่ จึงต้องตรวจและจัดการสิทธิ์ทุกทางตามจริง
+
+ตรวจต่อแบบอ่านอย่างเดียวตามลำดับ: (1) exact ACL/parents/capabilities และเส้นทางสิทธิ์ AR (2) updater ใช้ principal ใดและทุกจุดที่เปิด executable 1.0.6 (3) เจ้าของเดิมมี human/desktop edits หรือ client ค้างหรือไม่ (4) ความสามารถของ launcher ที่ไม่แก้ binary ในการรอจบทั้งรอบและกันการเปิดซ้ำ หาก owner เดิมยังแก้ไฟล์เองได้พร้อมกับ automation การรับรองว่า exclusive จริงยังทำไม่ได้ด้วย ACL เพียงอย่างเดียว ต้องเสนอการแยกบทบาทเพิ่มเติม; ไม่สมมติว่าต้องโอน owner หรือทำได้แล้ว
 
 ### ตัวตนและสิทธิ์ที่แบบ A ต้องมี
 
@@ -90,7 +108,7 @@ Event log ควรมี durable unique event key และ reconciliation; [ap
 
 ฝั่ง AR จะต้องแยก native provider credential profile สำหรับไฟล์/region นี้ออกจากการล็อกอินเว็บและ Gmail โดยไม่เปลี่ยนตัวตนของบริการ Phuket/เก็บไฟล์เดิม ไม่คัดลอก token จากโปรแกรม desktop และไม่เปิด domain-wide delegation การเพิ่มบัญชีหรือ grant เป็นขั้นตอนใหม่ที่ต้องระบุ exact account/file/scopes ก่อนอนุมัติ; `drive.file` เป็น scope ที่ API permission รองรับ แต่ความสามารถกับบัญชีและไฟล์จริงยังต้องตรวจ ไม่สมมติว่ามีสิทธิ์พร้อมแล้ว [Permission scopes](https://developers.google.com/workspace/drive/api/reference/rest/v3/permissions/create)
 
-การโอน My Drive ownership ภายใน Workspace ต้องเป็นบัญชีในองค์กรเดียวกันตามเงื่อนไข Google; เจ้าของเดิมจะกลายเป็น writer และ service account ไม่สามารถรับ ownership ได้ตามข้อจำกัด storage quota จึงยังไม่เลือกหรือสร้างบัญชีใหม่ในเอกสารนี้ [Ownership transfer](https://developers.google.com/workspace/drive/api/guides/transfer-file)
+**เฉพาะหากการประเมินภายหลังจำเป็นต้องเสนอ ownership transfer:** การโอน My Drive ownership ภายใน Workspace ต้องเป็นบัญชีในองค์กรเดียวกันตามเงื่อนไข Google; เจ้าของเดิมจะกลายเป็น writer และ service account ไม่สามารถรับ ownership ได้ตามข้อจำกัด storage quota ยังไม่มีหลักฐานว่าต้องใช้ทางนี้ และยังไม่เลือกหรือสร้างบัญชีใหม่ในเอกสารนี้ [Ownership transfer](https://developers.google.com/workspace/drive/api/guides/transfer-file)
 
 ต้องเสนอ exact owner/permission changes แยกก่อนลงมือ หากใช้ ownership transfer ต้องคง parents โดยไม่เลือกย้ายไป root ใหม่ และต้องแจ้งว่าการโอนมี notification ที่ปิดไม่ได้ ไม่ถือว่าการอนุมัติอีเมลทดสอบครั้งก่อนครอบคลุม notification นี้ [Permission creation/transfer options](https://developers.google.com/workspace/drive/api/reference/rest/v3/permissions/create)
 

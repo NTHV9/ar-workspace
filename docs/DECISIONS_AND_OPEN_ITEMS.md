@@ -1,3 +1,7 @@
+## Updater compatibility decision pending — 7 October 2026
+
+Read-only inspection of the exact existing 1.0.6 executable confirms full-content Drive publishing and a machine-local mutex, not cross-client atomic exclusion. Fresh native metadata also corrects the former assumption that AR owns the original Khao Lak master; no ownership transfer is presumed required. The owner has been asked whether the updater's publish workflow may change if needed, subject to concrete impact review and tests before original changes, or must remain entirely unchanged. This is a scope question, not authorization already received. Original outbound remains held; the goal is incomplete. [Evidence and proposed impacts](TRACKER_NATIVE_AUTOMATIC_IMPACT_20261007.md).
+
 ## Unattended native sync required — 7 October 2026
 
 The owner clarified that normal synchronization must run automatically without a human controller or per-batch approval, and asked whether other native approaches had actually been investigated. This supersedes operator-opened windows as the proposed normal workflow. It does not authorize changing original sharing/ownership, workbook structure or AgingMaster 1.0.6. Exceptional conflicting data must remain visible; do not infer permission to overwrite it. The failed live native test concerns the tested Drive entity-tag path only, not every possible native integration. Further API alternatives are documentation analysis unless separately qualified on owned synthetic fixtures. [Impact and alternatives report](TRACKER_NATIVE_AUTOMATIC_IMPACT_20261007.md).
