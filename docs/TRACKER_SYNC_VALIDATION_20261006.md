@@ -1,6 +1,35 @@
-# Partial tracker integration — validation checkpoint, 6 October 2026
+# Tracker integration — current deployment, usage and validation
 
-## Read-only conflict visibility deployment — 7 October 2026
+## Current enabled release — 7 October 2026
+
+Normal source `10fa10927586c36763bfb4062ac253a5c4bc340b` is effective as Worker `6999143d-51b4-422f-9e28-73de113fc08b`, alone at 100% in deployment `64a7fae9-bcc1-4730-a390-46a5558ea102`. `TRACKER_SYNC_ENABLED`, `TRACKER_BLOB_CAS_ENABLED` and `TRACKER_NATIVE_BEST_EFFORT_ENABLED` are true. The unchanged original Phuket XLSX uses the qualified conditional blob writer; the unchanged Khao Lak native file uses explicitly authorized best-effort date updates. Native writeback does **not** promise CAS or exclusion of concurrent edits. The owner accepts that remaining risk; no human-controlled writer window, per-batch approval or AgingMaster upgrade is required. Known schema, identity, formula and current-value conflicts still stop a write.
+
+The normal release preserves 26 plaintext bindings, ten baseline secret names, three workflows, compatibility settings and the 50,000-subrequest limit, asset headers and cron schedules. Temporary QA variables/routes/UI/capabilities are excluded. Health verifies HTTP 200/status ok, database_verified, OPERA connected and matching source. Both ordinary original-file Check changes operations pass after enablement: Phuket **7 October 05:03:58 ICT** (zero pending writes, 3,625 review items), Khao Lak **05:04:44 ICT** (zero pending writes, 755 review items). No live difference resolver or additional email is used for these checks.
+
+Final actual database readback after both checks confirms zero business Sent, original outbox, test schemas and test facades; outbox definition `e2f89d62dc6815c1d6ea4db716342af3` remains unchanged. These are normal original read/empty-queue checks, not a customer business-send/date-writeback acceptance test.
+
+## Staff usage
+
+1. Open **Reports → Google Sheets** for the authorized region. Existing original file links and connected tracking continue to use the same IDs, names and XLSX/native formats.
+2. Automatic checks run through the shared scheduler/lease; **Check changes** requests a fresh check without sending an email. A confirmed business Sent from the normal human-operated mail flow supplies eligible date work. Draft, unknown-send, reply and remittance states do not establish Sent or OPERA settlement.
+3. Only **R (first actual billing)** and **U/V/W (actual Follow 1/2/3)** are outbound date cells. Earlier legitimate first billing can precede Gmail; due-date policy still uses authoritative web credit/billing settings. S/T/AA remain references/formulas, Z is reported received rather than cleared OPERA money, and source responsibility/notes/raw tracking status do not invent sender/editor provenance.
+4. Use **Review differences** and its date/reference/identity filters and pages to reach pending conflicts. Choose **Keep AR value** or **Accept sheet value** only for the reviewed item; these are deliberate resolutions, not bulk acknowledgment. An older confirmed reminder writeback or a later R than the genuine billing floor is held for review. No automatic check erases immutable confirmed Sent.
+5. Khao Lak status identifies **best-effort** updates. A concurrent edit can still be overwritten between preflight and publication. Native publication records its original intended values before POST; a lost response remains uncertain and is reconciled read-only against the full invoice identity and intended date. New same-field work is fenced while that uncertainty remains. Check changes is not an automatic retry of an unknown native command.
+
+AgingMaster **1.0.6** remains unchanged. This release adds no required user settings, ownership/permission change or updater coordination workflow. OPERA remains the financial source; tracking changes cannot clear an invoice merely from a reply, remittance, API error or missing source row.
+
+## What is actually qualified
+
+- Original inbound connection/bootstrap and subsequent reads are verified. Phuket conditional provider controls and production-patcher fidelity against the original were separately verified; normal original rechecks pass after enabling the writer.
+- The owned native positive test verifies seven admitted alias rows, initial blank four-date targets, S=30 and the expected T formula. Exactly one production-adapter R/U/V/W batch is issued with simulated return loss. Read-only full GridData reconciliation verifies the four desired dates and preservation of formulas, styles, other cells and tabs. Repeated mutation is rejected with 409 before adapter invocation; read-only repeat is a no-op. This proves the bounded synthetic best-effort route, not a native no-overwrite guarantee or four actual customer reminder sends.
+- Positive and earlier failed-run objects are recoverably Trashed by their exact private journals, with terminal revisions 16 and 17 respectively. The failed guard-control history remains failed; it is not merged into the positive result. Both private SQL facades/schemas are guardedly removed, ten normal fingerprints match, and actual cleanup readback has zero test schemas, zero business Sent and zero original outbox. Private object IDs, customer data, capabilities and recipients remain outside Git.
+- **Not performed:** an actual customer business Sent → writeback on either original. No additional email was sent. Synthetic provider qualification, deployed/enabled flags and successful empty-queue rechecks do not fabricate that original-business acceptance result. The single earlier approved diagnostic remains a TEST receipt.
+
+## Historical checkpoints — current state above supersedes earlier holds
+
+The sections below preserve the investigation as it happened. Statements about held writers, missing grants, pending native implementation or proposed writer coordination describe those earlier dates. They are not current deployment requirements; the owner's later native waiver and the enabled normal release above supersede them. Their failures, limitations and withdrawn proof claims remain historical evidence.
+
+## Historical read-only conflict visibility deployment — 7 October 2026
 
 Migration 100 and source `dee00dcfcfa8d8e9103797efbcc8b447b6a8ef6e` are deployed with original writer flags held. The page reader caps output at 50, preserves six-digit microsecond/UUID cursors and regional authorization, and supports direct dates/reference/identity/tracking filters without bulk acknowledgment. Root verifies the real Khao Lak dates view reaches 21 records despite 686 references and 48 identity holds, plus two distinct 50-record reference pages. Resolver actions are not exercised on live records. Actual DDL qualification preserves ten data fingerprints, existing status/snapshot contracts and service-only permissions; source health and anonymous rejection pass. Independent full unit verification is 1,645 tests / 174 files passed. This completes read-only visibility, not original-file writeback acceptance or native writer enablement.
 
@@ -90,9 +119,9 @@ Signed-in live Reports verified both exact original filenames, enabled authoriza
 - Exact Hotel/Account/Invoice matching, reviewed bootstrap snapshot, revision checks, ambiguity holds and conflict review precede acceptance. Preserve first actual billing evidence and prevent duplicate facts/writes.
 - Current AgingMaster **1.0.6 remains unchanged**; this integration does not impose a new executable or all-PC upgrade requirement. Earlier 1.0.7/1.0.8 delivery notes are historical to the separate conversion/correction work.
 
-## Write constraints
+## Historical conditional-write constraints
 
-Native outbound writes remain **held**: a synthetic Drive v2 whole-file import returned HTTP 412 but still changed native content. That tested route is not a safe conditional-write mechanism. This is not a completed Sheets API v4 conditional-cell test; enabling the API does not prove a safe row-bound update. Do not bypass that hold using a normal Sheets update or interpret provider success as proof that competing edits were protected. Confirmed dates can remain queued/held without claiming they were written.
+At this earlier checkpoint, native outbound was **held**: a synthetic Drive v2 whole-file import returned HTTP 412 but still changed native content. That tested route was not a safe conditional-write mechanism. Enabling the API did not prove a conditional row-bound update. The current best-effort route is enabled under the later explicit owner waiver; it does not rehabilitate this failed CAS mechanism or claim concurrent-edit exclusion.
 
 The two exact CAS test objects were checked against their private creation journals, markers, ownership and current permissions, then moved to recoverable Trash with readback verification. Neither original tracker was a cleanup target; private probe evidence remains outside Git.
 
@@ -108,7 +137,7 @@ Phuket's XLSX provider has a separately gated conditional-write path; activation
 - Final local replay passed **94 migrations** with expanded tracker rollback fixtures. Core browser checks passed **five cases at 1280/390 px**. Root's full suite passed **172 files / 1,614 tests** and production build. Provider focused tests passed **39 cases**. These are local/synthetic results, not production imports or provider writeback acceptance.
 - Source surfaces: `worker/tracker-sync/`, Reports status/review controls, register revision refresh and private SQL migration. Existing Reports link authentication and regional boundaries remain relevant; a link opening alone does not prove a tracker connection.
 
-## Remaining live acceptance
+## Historical remaining acceptance at preparation
 
 1. Migration/deployment checks above are complete. Preserve their exact schema/source and private grants while completing remaining live original-file behavior acceptance.
 2. Verify the preparation-enabled runtime and exact-original authorization UI without claiming a connection from the link or enabled flag alone.
