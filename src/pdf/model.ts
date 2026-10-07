@@ -1,5 +1,6 @@
 import {validateInvoiceAttachments} from './invoice-attachments';
 import { pageCanvasHeight, MAX_FLOW_HEIGHT } from './flow';
+import {pdfFilename,deliveryFilenames} from './filenames';
 import type { PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument } from './types';
 
 /** Reject untrusted persisted edit data before it can reach the canvas or image loader. */
@@ -103,14 +104,27 @@ export function restoreProject(input: unknown, original: PdfProject, sources?:Pd
   });
   const result:PdfProject={ version: 1, content: saved.content as PdfProject['content'], delivery: saved.delivery as PdfProject['delivery'], pages };
   if(saved.invoiceAttachments!==undefined){if(!Array.isArray(saved.invoiceAttachments)||!sources)return fail();result.invoiceAttachments=saved.invoiceAttachments as PdfProject['invoiceAttachments'];try{validateInvoiceAttachments(result,sources);result.invoiceAttachments=result.invoiceAttachments!.map(a=>({sourceId:a.sourceId,invoiceId:a.invoiceId}));}catch{return fail();}}
+  for(const field of ['sourceNames','outputNames'] as const){
+    const raw=saved[field];if(raw===undefined)continue;
+    if(!raw||typeof raw!=='object'||Array.isArray(raw)||Object.keys(raw).length>1000)return fail();
+    const names:Record<string,string>={};
+    for(const [key,value] of Object.entries(raw)){
+      if(field==='sourceNames'){if(!sourceIds.has(key))return fail();}
+      else{try{const id=JSON.parse(key);if(!Array.isArray(id)||id.length!==4||!['combined','split','separate'].includes(id[0])||!['statement','invoices','both'].includes(id[1])||!['documents','statement','invoices','invoice'].includes(id[2])||!Array.isArray(id[3])||!id[3].length||id[3].length>sourceIds.size||id[3].some((v:unknown)=>typeof v!=='string'||!sourceIds.has(v)))return fail();}catch{return fail();}}
+      try{const name=string(value,200);if(pdfFilename(name)!==name)return fail();names[key]=name;}catch{return fail();}
+    }
+    result[field]=names;
+  }
+  if(sources)try{deliveryFilenames(result,deliveryGroups(result,sources));}catch{return fail();}
   return result;
 }
 
-export function deliveryGroups(project: PdfProject, sources: PdfSourceDocument[]): { name: string; pages: PdfProjectPage[] }[] {
+export function deliveryGroups(project: PdfProject, sources: PdfSourceDocument[]): { id:string; name: string; pages: PdfProjectPage[] }[] {
   validateInvoiceAttachments(project,sources);
   const statements = sources.filter(s => s.kind === 'statement');
   const invoices = sources.filter(s => s.kind === 'invoice');
-  const groups = (documents: PdfSourceDocument[]) => documents.map(source => ({ name: source.name.replace(/\.pdf$/i, ''), pages: project.pages.filter(p => p.sourceId === source.id) })).filter(g => g.pages.length);
+  const id=(role:string,documents:PdfSourceDocument[])=>JSON.stringify([project.delivery,project.content,role,documents.map(s=>s.id).sort()]);
+  const groups = (documents: PdfSourceDocument[]) => documents.map(source => ({ id:id('statement',[source]),name: source.name.replace(/\.pdf$/i, ''), pages: project.pages.filter(p => p.sourceId === source.id) })).filter(g => g.pages.length);
   const statementPages = groups(statements).flatMap(g => g.pages);
   // Multiple source documents for one invoice must still be delivered together.
   const invoiceGroups: ReturnType<typeof groups> = [];
@@ -120,12 +134,12 @@ export function deliveryGroups(project: PdfProject, sources: PdfSourceDocument[]
     if (invoices[index].id !== source.id) continue;
     const ids = new Set(invoices.filter(s => (s.invoiceId || s.id) === key).map(s => s.id));
     const pages = [...project.pages.filter(p => ids.has(p.sourceId)),...(project.invoiceAttachments??[]).filter(a=>a.invoiceId===key).flatMap(a=>project.pages.filter(p=>p.sourceId===a.sourceId))];
-    if (pages.length) invoiceGroups.push({ name: source.name.replace(/\.pdf$/i, ''), pages });
+    if (pages.length) invoiceGroups.push({ id:id('invoice',invoices.filter(s=>ids.has(s.id))),name: source.name.replace(/\.pdf$/i, ''), pages });
   }
   const statement = project.content === 'invoices' ? [] : statementPages;
   const invoice = project.content === 'statement' ? [] : invoiceGroups;
-  if (project.delivery === 'combined' || project.content === 'statement') return [{ name: 'Documents', pages: [...statement, ...invoice.flatMap(g => g.pages)] }].filter(g => g.pages.length);
-  return [...(statement.length ? [{ name: 'Statement', pages: statement }] : []), ...(project.delivery === 'split' ? (invoice.length ? [{ name: 'Invoices', pages: invoice.flatMap(g => g.pages) }] : []) : invoice)];
+  if (project.delivery === 'combined' || project.content === 'statement') return [{ id:id('documents',[...(project.content==='invoices'?[]:statements),...(project.content==='statement'?[]:invoices)]),name: 'Documents', pages: [...statement, ...invoice.flatMap(g => g.pages)] }].filter(g => g.pages.length);
+  return [...(statement.length ? [{ id:id('statement',statements),name: 'Statement', pages: statement }] : []), ...(project.delivery === 'split' ? (invoice.length ? [{ id:id('invoices',invoices),name: 'Invoices', pages: invoice.flatMap(g => g.pages) }] : []) : invoice)];
 }
 
 export function movePage(project: PdfProject, id: string, direction: -1 | 1): PdfProject {

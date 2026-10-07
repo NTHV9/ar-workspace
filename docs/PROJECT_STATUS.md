@@ -1,3 +1,9 @@
+## 2026-10-07 — PDF filenames, scan decoding and local address lines verified
+
+- Owner requests output and imported-scan name editing, repair of white scanned pages and independent address-line insertion. Output names now follow reviewed Download/Email handoff; scan names remain display metadata within the preparation. Validation, Undo/Redo, dirty state, collision protection and reviewed-project invalidation are covered.
+- Actual three-page scan reproduction isolates missing PDF.js decoder assets; version-matched same-origin decoder assets and shared readers restore it. Failed-image and oversized normal-image cases show errors. Standalone address Add row now grows only its text box, preserving opposite-column pixels/whiteout; Statement/Invoice table insertion still moves the entire row.
+- Full units **1,706 / 178 files**, consolidated PDF browser **39 cases**, TypeScript and production build pass. Root inspects actual local edited-export pages; Astra reviews GO. Customer files remain private; synthetic screenshot overwrites are preserved privately and tracked evidence restored. No schema/financial/retention/email change. Deployment pending; [evidence](PDF_WORKSPACE_REPAIRS_20261007.md).
+
 ## 2026-10-07 — Horizontal Account comparison and 61+ labels deployed
 
 - Owner selects a shared Account-name row with separate Hotel columns in both Account lists. Exact ledger identities, full amounts, scoped Invoice drills, valid counterpart cells during search and selected-Hotel sorting are preserved. Ambiguous/blank names remain independent; missing and unknown values stay distinct. Dynamic details grow by 200 comparison rows; the expanded aged list retains all rows. Other pages/backend/schema are unchanged.

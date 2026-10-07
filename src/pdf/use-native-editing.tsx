@@ -7,7 +7,8 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from 'react';
 import type {PDFDocumentProxy} from 'pdfjs-dist';
 import {detectLines,detectRowBarriers,type GraphicTarget} from './native-graphics';
 import {includeTouchedText,mapSourceRect,mapSourceTextRect} from './row-layout';
-import {createReplacementLayer} from './source-text';
+import {createReplacementLayer,measureLayerText} from './source-text';
+import {tableTextFlows} from './text-scope';
 import {renderPage} from './engine';
 import type {DetectedText,PdfLayer,PdfProjectPage,PdfRowEdit} from './types';
 
@@ -57,6 +58,12 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  async function insertRow(){
   if(!page||!anchor||!geometryReady)return;
   const okay=await changePage(before=>{
+   if(!tableTextFlows(before,anchor,runs)){
+    // Stationery fields own only their source mask; never flow another column.
+    const next={...anchor,text:anchor.text+'\n'};
+    next.height=Math.max(anchor.height+anchor.fontSize*1.25,measureLayerText(next).height);
+    return {...before,layers:before.layers.map(l=>l.id===anchor.id?next:l)};
+   }
    const compacted=compactEmptyRowLines(before,anchor,runs,barriers),base=compacted.page;
    const current=rowGeometry(base,compacted.anchor,runs,barriers),owned=anchor.tableRow?insertedRowBands(base,anchor.tableRow):[];
    const standalone=!anchor.tableRow&&!current.template.length;

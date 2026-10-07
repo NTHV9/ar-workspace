@@ -56,3 +56,50 @@ test('newline in a Statement item still expands the whole row',async({page})=>{
  expect((await lower.boundingBox())!.y).toBeGreaterThan(before!.y);
  expect(await page.evaluate(()=>(window as any).fixture.project.pages[0].rowEdits.some((e:any)=>e.kind==='insert'))).toBe(true);
 });
+
+test('standalone Add row below preserves opposite column pixels, source whiteout and Undo',async({page})=>{
+ await page.goto('/tests/browser/statement-rows/harness.html');
+ await page.getByRole('button',{name:'Whiteout',exact:true}).click();
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await page.evaluate(()=>{const f=(window as any).fixture;f.before=structuredClone(f.project);});
+ await page.getByRole('button',{name:'Edit source text',exact:true}).click();
+ await page.getByRole('button',{name:'Edit original text: SYNTHETIC ROW TEST',exact:true}).click();
+ await page.getByRole('button',{name:'Add row below',exact:true}).click();
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ const proof=await page.evaluate(async()=>{
+  const f=(window as any).fixture,l=await f.loadSources(f.sources),before=f.before.pages[0],after=f.project.pages[0];
+  const a=document.createElement('canvas'),b=document.createElement('canvas');await f.renderPage(before,l.documents,a,2);await f.renderPage(after,l.documents,b,2);
+  const left=a.getContext('2d')!.getImageData(650,0,500,350).data,right=b.getContext('2d')!.getImageData(650,0,500,350).data;
+  const same=left.every((v:number,i:number)=>v===right[i]);l.dispose();
+  return {same,rowEdits:after.rowEdits??[],whiteoutBefore:before.layers.filter((v:any)=>v.kind==='whiteout'),whiteoutAfter:after.layers.filter((v:any)=>v.kind==='whiteout'),text:after.layers.find((v:any)=>v.kind==='replacement').text,tableRows:after.layers.filter((v:any)=>v.tableRow).length};
+ });
+ expect(proof.same).toBe(true);expect(proof.rowEdits).toEqual([]);expect(proof.whiteoutAfter).toEqual(proof.whiteoutBefore);expect(proof.text).toBe('SYNTHETIC ROW TEST\n');expect(proof.tableRows).toBe(0);
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('textbox',{name:'Edit document text',exact:true})).toHaveValue('SYNTHETIC ROW TEST');
+});
+
+async function syntheticCcitt(width=64,height=64){
+ const {PDFDocument,PDFName}=await import('pdf-lib');const doc=await PDFDocument.create(),sheet=doc.addPage([595,842]);
+ // A Group 4 horizontal run followed by vertical-zero rows and EOFB.
+ const bits='0010011010100000011110000110111'+'1'.repeat(63)+'000000000001000000000001';
+ const padded=bits+'0'.repeat((8-bits.length%8)%8),data=Uint8Array.from(padded.match(/.{8}/g)!.map(s=>parseInt(s,2)));
+ const image=doc.context.register(doc.context.stream(data,{Type:'XObject',Subtype:'Image',Width:width,Height:height,ColorSpace:'DeviceGray',BitsPerComponent:1,Filter:'CCITTFaxDecode',DecodeParms:doc.context.obj({K:-1,Columns:width,Rows:height,BlackIs1:true})}));
+ sheet.node.set(PDFName.of('Resources'),doc.context.obj({XObject:{Scan:image}}));sheet.node.addContentStream(doc.context.register(doc.context.stream('q 400 0 0 400 40 40 cm /Scan Do Q')));return [...await doc.save()];
+}
+
+test('synthetic CCITT scan renders and survives a native PDF copy using shipped decoders',async({page})=>{
+ await page.goto('/tests/browser/statement-rows/harness.html');await page.waitForFunction(()=>(window as any).fixture);
+ const ink=await page.evaluate(async bytes=>{
+  const f=(window as any).fixture,source={id:'scan',name:'Synthetic scan.pdf',kind:'invoice',bytes:Uint8Array.from(bytes)},l=await f.loadSources([source]);
+  const count=async(p:any,documents:any)=>{const c=document.createElement('canvas');await f.renderPage(p,documents,c,1);const a=c.getContext('2d')!.getImageData(0,0,c.width,c.height).data;let n=0;for(let i=0;i<a.length;i+=4)if(a[i]<200)n++;return n;};
+  const original=await count(l.project.pages[0],l.documents),files=await f.exportProject(l.project,[source],l.documents),copy=await f.loadSources([{...source,bytes:files[0].bytes}]),exported=await count(copy.project.pages[0],copy.documents);l.dispose();copy.dispose();return {original,exported};
+ },await syntheticCcitt());expect(ink.original).toBeGreaterThan(1000);expect(ink.exported).toBe(ink.original);
+});
+
+test('missing decoder and oversized source image reject instead of showing a blank successful page',async({page})=>{
+ await page.context().route('**/pdfjs/*/wasm/**',route=>route.abort());
+ await page.goto('/tests/browser/statement-rows/harness.html');await page.waitForFunction(()=>(window as any).fixture);
+ for(const [index,bytes] of [await syntheticCcitt(),await syntheticCcitt(6000,6000)].entries()){
+  const error=await page.evaluate(async bytes=>{const f=(window as any).fixture;let l:any;try{l=await f.loadSources([{id:'scan',name:'Synthetic scan.pdf',kind:'invoice',bytes:Uint8Array.from(bytes)}]);await f.renderPage(l.project.pages[0],l.documents,document.createElement('canvas'),1);return '';}catch(e){return e instanceof Error?e.message:String(e);}finally{l?.dispose();}},bytes);
+  expect(error,'synthetic image case '+index).toMatch(/decode|maximum allowed size|image/i);
+ }
+});
