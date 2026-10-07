@@ -33,10 +33,44 @@ test('a rejected multi-file import leaves the existing package intact',async({pa
 for(const action of ['Continue to email','Download reviewed PDFs'])test(`transient handoff keeps merged invoice bytes for ${action}`,async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html?attachments=1&transient=1');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await add(page,'Invoice-B',[{name:'handoff.pdf',buffer:await pdf('REVIEWED SUPPORT',2)}]);
- await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
+ await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await page.getByRole('textbox',{name:'Output filename 3',exact:true}).fill('ใบแจ้งหนี้ B');await page.getByRole('textbox',{name:'Output filename 3',exact:true}).press('Enter');await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();
  const preview=page.getByRole('dialog',{name:'Final PDF preview',exact:true});await expect(preview.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');
  await preview.getByRole('button',{name:action,exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).pdfTest.continued)).toBe(action==='Continue to email'?'email':'download');
- const result=await page.evaluate(async()=>{const api=(window as any).pdfTest,files=api.reviewed.files;return {length:files.length,pages:await Promise.all(files.map(async(f:any)=>(await api.PDFDocument.load(f.bytes)).getPageCount()))};});
- expect(result).toEqual({length:3,pages:[1,2,3]});
+ const result=await page.evaluate(async()=>{const api=(window as any).pdfTest,files=api.reviewed.files;return {length:files.length,names:files.map((f:any)=>f.name),pages:await Promise.all(files.map(async(f:any)=>(await api.PDFDocument.load(f.bytes)).getPageCount()))};});
+ expect(result).toEqual({length:3,names:['01-Statement.pdf','02-Invoice-A.pdf','ใบแจ้งหนี้ B.pdf'],pages:[1,2,3]});
+});
+
+test('filename editing validates, follows Undo and keeps imported source identity and bytes',async({page})=>{
+ await open(page);await add(page,'Invoice-A',[{name:'original-scan.pdf',buffer:await pdf('SOURCE BYTES KEPT')}]);
+ const scan=page.getByRole('textbox',{name:'Scan filename for original-scan.pdf',exact:true});await scan.fill('Renamed scan');await scan.press('Enter');await expect(scan).toHaveValue('Renamed scan.pdf');await expect(page.getByRole('combobox',{name:'Invoice for Renamed scan.pdf',exact:true})).toHaveValue('Invoice-A');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(scan).toHaveValue('original-scan.pdf');await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(scan).toHaveValue('Renamed scan.pdf');
+ await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();const output=page.getByRole('textbox',{name:'Output filename 2',exact:true});await output.fill('../bad.pdf');await output.press('Enter');await expect(page.getByRole('alert')).toContainText('without paths');await expect(page.getByRole('button',{name:'Preview PDFs',exact:true})).toBeDisabled();await output.press('Escape');await expect(output).toHaveValue('02-Invoice-A.pdf');
+ await output.fill('03-Invoice-B.pdf');await output.press('Enter');await expect(page.getByRole('alert')).toContainText('different filename');await output.fill('Final Invoice A.pdf');await output.press('Enter');await expect(output).toHaveValue('Final Invoice A.pdf');
+ await page.getByRole('button',{name:'One combined PDF',exact:true}).click();await expect(page.getByRole('textbox',{name:'Output filename 1',exact:true})).toHaveValue('01-Documents.pdf');await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await expect(output).toHaveValue('Final Invoice A.pdf');
+ await page.locator('.pdf-package').evaluate(element=>element.scrollTop=element.scrollHeight);await page.screenshot({path:'.tmp/invoice-pdfs/filename-editor.png',fullPage:true});
+ const files=await save(page);expect(files[1].name).toBe('Final Invoice A.pdf');expect(files[1].text[2]).toContain('SOURCE BYTES KEPT');
+ await page.getByRole('button',{name:'Close final preview',exact:true}).click();await output.fill('Latest Invoice.pdf');await output.press('Enter');await expect(page.getByRole('dialog',{name:'Final PDF preview',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(output).toHaveValue('Final Invoice A.pdf');
+});
+
+test('Undo and Redo clear pending filename drafts when the applied value changes',async({page})=>{
+ await open(page);const output=page.getByRole('textbox',{name:'Output filename 1',exact:true}),preview=page.getByRole('button',{name:'Preview PDFs',exact:true});
+ await output.fill('Applied.pdf');await output.press('Enter');await output.fill('Pending.pdf');await expect(preview).toBeDisabled();await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(output).toHaveValue('01-Documents.pdf');await expect(page.getByRole('button',{name:'Apply name',exact:true})).toHaveCount(0);await expect(preview).toBeEnabled();
+ await output.fill('Pending redo.pdf');await expect(preview).toBeDisabled();await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(output).toHaveValue('Applied.pdf');await expect(page.getByRole('button',{name:'Apply name',exact:true})).toHaveCount(0);await expect(preview).toBeEnabled();
+ const files=await save(page);expect(files[0].name).toBe('Applied.pdf');
+});
+
+test('initial separate delivery opens valid source PDFs with punctuation in their original names',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await open(page);
+ for(const name of ['Invoice123..45.pdf','Invoice.pdf.pdf','Invoice. .pdf']){
+  await page.evaluate(name=>{const api=(window as any).pdfTest;api.mount(undefined,[{...api.sources[1],name}],'separate');},name);
+  await expect(page.getByRole('textbox',{name:'Output filename 1',exact:true})).toHaveValue(name==='Invoice123..45.pdf'?'01-Invoice123.45.pdf':'01-Invoice.pdf');await expect(page.getByRole('button',{name:'Preview PDFs',exact:true})).toBeEnabled();await expect(page.locator('.pdf-workspace')).toHaveCount(1);
+ }
+ const files=await save(page);expect(files[0].name).toBe('01-Invoice.pdf');expect(files[0].text).toHaveLength(2);expect(errors).toEqual([]);
+});
+
+test('a group deletion that would collide with a chosen output name keeps the previous package',async({page})=>{
+ await open(page);await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();const output=page.getByRole('textbox',{name:'Output filename 1',exact:true});await output.fill('02-Invoice-B.pdf');await output.press('Enter');
+ await page.getByRole('button',{name:'Select page 2',exact:true}).click();await page.getByRole('button',{name:'Delete page',exact:true}).click();await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Select page 2',exact:true}).click();await page.getByRole('button',{name:'Delete page',exact:true}).click();await expect(page.getByRole('alert')).toContainText('different filename');await expect(page.getByRole('button',{name:'Select page 3',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Output filename 3',exact:true})).toHaveValue('03-Invoice-B.pdf');await expect(output).toHaveValue('02-Invoice-B.pdf');await expect(page.getByRole('button',{name:'Preview PDFs',exact:true})).toBeEnabled();
 });

@@ -1,17 +1,17 @@
 import {validateInvoiceAttachments} from './invoice-attachments';
 import {readVoucherFields} from './voucher-metadata';
 import {voucherRuns,type VoucherBindings} from './linked-vouchers';
-import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import type {PDFDocumentProxy} from 'pdfjs-dist';
+import {loadPdf,renderPdfPage} from './pdfjs';
 import { PDFDocument } from 'pdf-lib';
 import type { DetectedText, PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument, PdfExportFile } from './types';
 import { deliveryGroups, wrapText } from './model';
+import {deliveryFilenames} from './filenames';
 import { mapSourceRect, mapSourceTextRect } from './row-layout';
 import { extractSourceText, extractSourceImages } from './source-extraction';
 import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, sourceAppearanceUnchanged, measureLayerText, measureLayerInk, SourceFontError } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
-GlobalWorkerOptions.workerSrc = workerUrl;
 const voucherScopes=new WeakMap<Map<string,PDFDocumentProxy>,VoucherBindings>();
 export const voucherBindings=(documents:Map<string,PDFDocumentProxy>)=>voucherScopes.get(documents)??new Map();
 const documentScopes = new WeakMap<Map<string, PDFDocumentProxy>, string>();
@@ -24,7 +24,7 @@ export async function loadSources(sources: PdfSourceDocument[]): Promise<{ docum
   try {
     for (const source of sources) {
       if (documents.has(source.id)) throw new Error('Duplicate document identity. Reopen this job.');
-      const task = getDocument({ data: source.bytes.slice(), fontExtraProperties: true }); tasks.push(task); const doc = await task.promise;
+      const task = loadPdf(source.bytes.slice(),{fontExtraProperties:true}); tasks.push(task); const doc = await task.promise;
       documents.set(source.id, doc);const metadata=await PDFDocument.load(source.bytes).catch(()=>null);
       for (let n = 1; n <= doc.numPages; n++) {
         const fields=(metadata&&source.kind!=='attachment'?readVoucherFields(metadata.getPage(n-1)):[]).filter(f=>(!source.invoiceId||f.invoiceId===source.invoiceId)&&(!source.invoiceIds||source.invoiceIds.includes(f.invoiceId)));vouchers.set(`${source.id}:${n}`,fields);
@@ -109,7 +109,7 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
 async function sourceRaster(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,scale:number){
  const canvas=document.createElement('canvas');canvas.width=Math.ceil(page.width*scale);canvas.height=Math.ceil(page.height*scale);
  const ctx=canvas.getContext('2d',{alpha:false})!;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
- if(page.sourcePage){const source=await documents.get(page.sourceId)!.getPage(page.sourcePage);await source.render({canvas,canvasContext:ctx,viewport:source.getViewport({scale}),background:'#ffffff'}).promise;}
+ if(page.sourcePage){const source=await documents.get(page.sourceId)!.getPage(page.sourcePage);await renderPdfPage(source,{canvas,canvasContext:ctx,viewport:source.getViewport({scale}),background:'#ffffff'}).promise;}
  return canvas;
 }
 function continuedRules(page:PdfProjectPage,source:HTMLCanvasElement,scale:number):SourceFragment[]{
@@ -185,6 +185,7 @@ export async function renderPage(page: PdfProjectPage, documents: Map<string, PD
 export async function exportProject(project: PdfProject, sources: PdfSourceDocument[], documents: Map<string, PDFDocumentProxy>): Promise<PdfExportFile[]> {
   validateInvoiceAttachments(project,sources,true);
   const groups = deliveryGroups(project, sources);
+  const filenames=deliveryFilenames(project,groups);
   if (!groups.length) throw new Error('No pages selected for export.');
   const native = new Map<string, PDFDocument>();
   const files: PdfExportFile[] = [];
@@ -213,7 +214,7 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         const [copy] = await output.copyPages(native.get(page.sourceId)!, [page.sourcePage - 1]); output.addPage(copy);
       }
     }
-    files.push({ name: `${String(index + 1).padStart(2, '0')}-${group.name.replace(/[^\p{L}\p{N}._ -]/gu, '_').slice(0, 100)}.pdf`, bytes: await output.save() });
+    files.push({ name: filenames[index], bytes: await output.save() });
   }
   return files;
 }
