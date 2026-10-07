@@ -1,5 +1,11 @@
 # Tracker integration — current deployment, usage and validation
 
+## Acceptance complete under the approved synthetic-job scope
+
+On 7 October the owner accepts a self-created simulated job instead of waiting for a real customer send. The accepted joined LOCAL proof uses current production confirmation/event/outbox SQL, unchanged sync service and both production adapters, with explicitly simulated Gmail/Google HTTP boundaries. Eleven current function hashes match production metadata; eight distinct regional R/U/V/W date assertions, exact confirmation-ID replay, sync replay, first-billing/resend, selected/unselected/decoy identity, excluded states and XLSX/GridData fidelity pass. All 109 ordinary public/private table fingerprints match after rollback; Root independently reruns the frozen proof and Astra approves it. The existing actual owned-provider qualification below supplies complementary live Google evidence. No new cloud fixture, original write or email is issued for this composition.
+
+This closes the latest acceptance scope; an actual customer send is no longer a completion requirement. The unperformed customer-mail/writeback boundary remains a truthful limitation, not a waiting gate. The native newer-send-during-unknown control keeps the original intent frozen, the newer job fenced and a visible U review with no second POST. This exceptional own-echo hold is not proven to be an external edit and does not promise automatic reconciliation in every case. Normal checks remain automatic without per-batch human approval.
+
 ## Current enabled release — 7 October 2026
 
 Normal source `10fa10927586c36763bfb4062ac253a5c4bc340b` is effective as Worker `6999143d-51b4-422f-9e28-73de113fc08b`, alone at 100% in deployment `64a7fae9-bcc1-4730-a390-46a5558ea102`. `TRACKER_SYNC_ENABLED`, `TRACKER_BLOB_CAS_ENABLED` and `TRACKER_NATIVE_BEST_EFFORT_ENABLED` are true. The unchanged original Phuket XLSX uses the qualified conditional blob writer; the unchanged Khao Lak native file uses explicitly authorized best-effort date updates. Native writeback does **not** promise CAS or exclusion of concurrent edits. The owner accepts that remaining risk; no human-controlled writer window, per-batch approval or AgingMaster upgrade is required. Known schema, identity, formula and current-value conflicts still stop a write.
@@ -7,6 +13,8 @@ Normal source `10fa10927586c36763bfb4062ac253a5c4bc340b` is effective as Worker 
 The normal release preserves 26 plaintext bindings, ten baseline secret names, three workflows, compatibility settings and the 50,000-subrequest limit, asset headers and cron schedules. Temporary QA variables/routes/UI/capabilities are excluded. Health verifies HTTP 200/status ok, database_verified, OPERA connected and matching source. Both ordinary original-file Check changes operations pass after enablement: Phuket **7 October 05:03:58 ICT** (zero pending writes, 3,625 review items), Khao Lak **05:04:44 ICT** (zero pending writes, 755 review items). No live difference resolver or additional email is used for these checks.
 
 Final actual database readback after both checks confirms zero business Sent, original outbox, test schemas and test facades; outbox definition `e2f89d62dc6815c1d6ea4db716342af3` remains unchanged. These are normal original read/empty-queue checks, not a customer business-send/date-writeback acceptance test.
+
+Latest ordinary status shows both originals connected/enabled with zero pending writes, checked **7 October 11:15:47 ICT**. Health remains HTTP 200 / database_verified / OPERA connected / exact source; [final CI passes](https://github.com/NTHV9/ar-workspace/actions/runs/37540586555). Application source/runtime and AgingMaster 1.0.6 are unchanged by acceptance closure.
 
 ## Staff usage
 
@@ -23,11 +31,11 @@ AgingMaster **1.0.6** remains unchanged. This release adds no required user sett
 - Original inbound connection/bootstrap and subsequent reads are verified. Phuket conditional provider controls and production-patcher fidelity against the original were separately verified; normal original rechecks pass after enabling the writer.
 - The owned native positive test verifies seven admitted alias rows, initial blank four-date targets, S=30 and the expected T formula. Exactly one production-adapter R/U/V/W batch is issued with simulated return loss. Read-only full GridData reconciliation verifies the four desired dates and preservation of formulas, styles, other cells and tabs. Repeated mutation is rejected with 409 before adapter invocation; read-only repeat is a no-op. This proves the bounded synthetic best-effort route, not a native no-overwrite guarantee or four actual customer reminder sends.
 - Positive and earlier failed-run objects are recoverably Trashed by their exact private journals, with terminal revisions 16 and 17 respectively. The failed guard-control history remains failed; it is not merged into the positive result. Both private SQL facades/schemas are guardedly removed, ten normal fingerprints match, and actual cleanup readback has zero test schemas, zero business Sent and zero original outbox. Private object IDs, customer data, capabilities and recipients remain outside Git.
-- **Not performed:** an actual customer business Sent → writeback on either original. No additional email was sent. Synthetic provider qualification, deployed/enabled flags and successful empty-queue rechecks do not fabricate that original-business acceptance result. The single earlier approved diagnostic remains a TEST receipt.
+- **Not performed, and no longer a completion gate:** an actual customer business Sent → writeback on either original. No additional email was sent. The accepted joined simulation and prior live provider proofs do not fabricate such a customer-send result. The single earlier approved diagnostic remains a TEST receipt.
 
 ## Historical checkpoints — current state above supersedes earlier holds
 
-The sections below preserve the investigation as it happened. Statements about held writers, missing grants, pending native implementation or proposed writer coordination describe those earlier dates. They are not current deployment requirements; the owner's later native waiver and the enabled normal release above supersede them. Their failures, limitations and withdrawn proof claims remain historical evidence.
+The sections below preserve the investigation as it happened. Statements about held writers, missing grants, pending native implementation, proposed writer coordination or waiting for a real customer send describe those earlier scopes. They are not current completion/deployment requirements; the owner's later native waiver, enabled release and accepted synthetic-job scope above supersede them. Their failures, limitations and withdrawn proof claims remain historical evidence.
 
 ## Historical read-only conflict visibility deployment — 7 October 2026
 
