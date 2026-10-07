@@ -1,5 +1,15 @@
 # Dashboard: outstanding billing and Account-first detail
 
+## Full figures and explicit Hotel detail groups — 7 October follow-up
+
+Owner requests full monetary figures instead of compact millions and clearer Hotel separation in the lower details. Summary amounts now use the exact existing THB formatter once, without abbreviated figures or a duplicate caption. Desktop figures scale within their cards; narrow mobile cards form one readable column.
+
+Both the Account drill and expanded Accounts over 60 days table now have explicit Hotel row-group headings, containing the Hotel code/full name, filtered Account count and full filtered group amount. Other column sorts apply within each Hotel; Hotel sort moves entire groups. Same-name/same-ID Accounts across hotels remain separate. Group headings are excluded from the 200-Account rendering budget, with partial display labeled explicitly; search, scroll, selected-ledger routes and Back remain unchanged. Search footer counts reflect the filtered population.
+
+The owner clarifies that this applies to every table in Dashboard, not other pages. Invoice/payment/sent detail records also receive Hotel row-group headings before pagination. Existing hotel comparison tables retain their row/column orientation with full Hotel names; the status breakdown now has explicit Hotel columns instead of a combined hotel cell. Source measures and exact identities remain unchanged.
+
+Verification: **48 browser cases**, **64 affected unit cases**, TypeScript and the browser build pass. Cases cover exact million-scale amounts at desktop/mobile, same-name Hotel groups after sorting, grouped aged/Invoice/payment/sent details, 250 Accounts/search-reset scrolling, comparison columns, retained drill filters and progressive loading. Root inspected the full desktop table and exact-number desktop/mobile captures; Astra gives GO for both Account groups and the remaining Dashboard tables. Impeccable reports advisory palette/type differences only, with no quality warnings. Captures are private under `.tmp/dashboard-hotel-groups/visual/`; no original visual reference is replaced. No backend, schema or financial-data change is part of this follow-up. Deployment pending at this checkpoint.
+
 Status: implemented, tested and deployed; migrations 103–104 applied and verified. Signed-in production flows verified in both regions.
 
 ## Owner decisions

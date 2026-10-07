@@ -106,3 +106,16 @@
 .management-secondary-panels .management-type-list{grid-template-columns:repeat(4,minmax(0,1fr));max-height:none}
 @media(max-width:1050px){.management-secondary-panels .management-type-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:750px){.management-secondary-panels>.management-priority{grid-template-columns:1fr}.management-secondary-panels .management-type-list{grid-template-columns:1fr}}
+
+/* Exact financial values and explicit Hotel sections in Dashboard account tables. */
+#root .management-layered .management-total{grid-template-rows:auto minmax(40px,auto) auto;align-content:start;gap:8px;min-height:142px}
+#root .management-layered .management-total>strong{font-size:clamp(22px,1.9vw,27px);white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+#root .management-layered .management-total>small:last-child{grid-row:3;align-self:end}
+.dashboard-detail-panel .dashboard-hotel-group-heading>th,#root .management-layered .dashboard-hotel-group-heading>th{background:#edf3fa;border-top:1px solid #d6e2ee;border-bottom:1px solid #d6e2ee;padding:12px 14px;text-align:left;font-weight:400;white-space:normal}
+.dashboard-hotel-group-heading>th>strong{display:block;font-size:14px;font-weight:700;color:#173e68}
+.dashboard-hotel-group-heading>th>strong>small{display:inline;font-size:12px;margin-left:8px;font-weight:400;color:#526982}
+.dashboard-hotel-group-heading>th>span{display:block;font-size:12px;margin-top:4px;color:#526982}
+@media(max-width:480px){.management-summary-grid{grid-template-columns:1fr;gap:12px}#root .management-layered .management-total{min-height:120px;padding:16px;grid-template-rows:auto minmax(38px,auto) auto}#root .management-layered .management-total>strong{font-size:28px}#root .management-layered .management-total>span{font-size:12px}#root .management-layered .management-total>small{font-size:11px}.dashboard-hotel-group-heading>th>strong>small{display:block;margin:4px 0 0}}
+
+.dashboard-page .dashboard-hotel-full-name{display:block;max-width:24ch;white-space:normal;overflow-wrap:normal;font-size:11px;font-weight:400;line-height:1.6;margin-top:4px;color:#526982}
+#root .period-analysis .period-hotel-matrix th:first-child{width:200px}

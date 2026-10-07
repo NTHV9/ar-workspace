@@ -1,3 +1,8 @@
+## 2026-10-07 — Full Dashboard figures and explicit Hotel details verified locally
+
+- Owner follow-up removes compact monetary values and clarifies that every Dashboard table should distinguish Hotel groups. Full exact amounts appear once, with responsive cards; Hotel code/full name, filtered count and full filtered amount head Account and Invoice/payment/sent record groups. Comparison tables retain separate Hotel rows/columns and explicit full names. Sorting/search/continuous scrolling and exact Account → Invoice routes remain intact; no backend/schema/financial change or other-page change.
+- Local verification passes **48 browser cases**, **64 affected unit cases**, TypeScript and browser build. Root inspects desktop/mobile exact figures and grouped detail bands; Astra gives scoped GO. Actual Impeccable detector has advisories only, no quality warning. Original references and unrelated untracked work remain preserved. Deployment pending at this checkpoint; [evidence](DASHBOARD_ACCOUNT_FIRST_20261007.md).
+
 ## 2026-10-07 — Account-first Dashboard deployed; migrations 103–104 verified
 
 - Owner confirms Billing progress should summarize outstanding invoices from all issue dates. The new view uses existing open billed/unbilled metrics, displays not-required and signed credits, separates overlapping setup notices and preserves as-of history. Account-first detail is searchable/sortable, preserves exact age and Hotel + Account scope, and returns from matching Invoices. Needs attention now has explicit Hotel groups; compact Account types and disclosures remove redundant first-view detail. Other pages and global visual references remain unchanged.

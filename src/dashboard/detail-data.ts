@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {hotelInRegion,resolveRegion} from '../domain/hotels';
+import {hotelInRegion,resolveRegion,regionHotels,type RegionId} from '../domain/hotels';
 import {checkedSummary} from './data';
 import {balancesResult,paidInvoicesResult} from './period-data';
 import {decimal,count,addAmounts} from './model';
@@ -7,6 +7,11 @@ import type {PeriodDetail} from './PeriodBalances';
 import {compareValues,type SortValue} from '../table-sort';
 
 export type DetailKind=PeriodDetail['kind']|'balance_accounts';
+/** Keep canonical Hotel sections while preserving the requested order inside each ledger. */
+export function dashboardHotelGroups<T>(rows:T[],region:RegionId,hotelOf:(row:T)=>unknown,descending=false){
+ const hotels=regionHotels(region);
+ return (descending?[...hotels].reverse():hotels).map(hotel=>({hotel,rows:rows.filter(row=>hotelOf(row)===hotel)})).filter(group=>group.rows.length>0);
+}
 export type DetailRow=Record<string,unknown>;
 export interface DetailData {rows:DetailRow[];total:number;complete:boolean}
 export type DetailSortKey='hotel'|'account'|'invoice'|'folio'|'guest'|'date'|'amount'|'original'|'due'|'billing'|'latest';

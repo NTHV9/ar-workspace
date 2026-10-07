@@ -7,6 +7,10 @@ related_targets: ["src/dashboard/ManagementDashboard.tsx","src/dashboard/Managem
 
 # Dashboard management summary
 
+## Full figures and Hotel detail bands — 7 October refinement
+
+Display every Dashboard monetary figure in full with the established two-decimal THB formatter; no compact K/M figure or duplicate exact caption. Summary figures use a scoped responsive 22–27px desktop scale and 28px narrow-mobile figures; cards become one column at 480px and below for readable exact amounts. Both lower Account lists and Invoice/payment/sent record tables use explicit Hotel row-group bands with code, full property name, filtered count and full filtered amount. Sorting stays inside each Hotel except the Hotel control, which moves entire groups. Group headings do not consume the continuous record-rendering budget. Comparison tables retain distinct Hotel rows/columns with full property names, including separate Hotel columns in status breakdown. This applies to Dashboard only; original references, other pages and global tokens remain unchanged.
+
 ## Owner-confirmed Account-first refinement — 7 October 2026
 
 This section supersedes the earlier period-cohort billing and interleaved priority-list presentation below. Billing progress summarizes outstanding invoices from all issue dates as of the report date, using billed/unbilled open value. The selected issue-period cohort remains in separately labeled supporting figures. Not-required balances and signed credits are visible; Setup is an overlapping notice, never an extra slice or part of the required-value denominator. Zero and unknown remain distinct.
