@@ -1,8 +1,9 @@
-## 2026-10-07 — Horizontal Account comparison and 61+ labels verified locally
+## 2026-10-07 — Horizontal Account comparison and 61+ labels deployed
 
 - Owner selects a shared Account-name row with separate Hotel columns in both Account lists. Exact ledger identities, full amounts, scoped Invoice drills, valid counterpart cells during search and selected-Hotel sorting are preserved. Ambiguous/blank names remain independent; missing and unknown values stay distinct. Dynamic details grow by 200 comparison rows; the expanded aged list retains all rows. Other pages/backend/schema are unchanged.
 - Owner explicitly confirms day 61 is included. Visible labels become **61+ days**, while existing integer `age > 60` membership remains. An actual repeatable-read comparison confirms Dashboard totals equal verified positive `age >= 61` Invoice counts/amounts in both regions, including exactly-day-61 rows.
-- Verification: 70 affected units, TypeScript, 48/49 initial related browser cases plus the corrected locator rerun, and the additional mobile geometry/drill case pass. Root verifies desktop and final mobile captures after repairing sticky-column occlusion; Impeccable has advisories only and Astra gives functional GO. Deployment pending; [evidence](DASHBOARD_ACCOUNT_FIRST_20261007.md).
+- Verification: 70 affected units, TypeScript, 48/49 initial related browser cases plus the corrected locator rerun, and the additional mobile geometry/drill case pass. Root verifies desktop and final mobile captures after repairing sticky-column occlusion; Impeccable has advisories only and Astra gives functional GO; [evidence](DASHBOARD_ACCOUNT_FIRST_20261007.md).
+- Source `5a66ba63d1f91795779159760f3da448834008ca` is deployed as Worker `1303e63a-00c2-41c5-ba70-0002319b5a95`. Health verifies source/database/OPERA, and readback preserves 26 plaintext bindings, ten secret names and three workflows. Signed-in production verifies horizontal KAT/TSK cells in one Account-name row, the TSK-only Invoice drill and return. [Application CI passes](https://github.com/NTHV9/ar-workspace/actions/runs/37605730602). PR 118 remains unmerged; no financial-data or other-page change.
 
 ## 2026-10-07 — Full Dashboard figures and explicit Hotel tables deployed
 
