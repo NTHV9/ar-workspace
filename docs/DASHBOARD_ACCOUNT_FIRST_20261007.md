@@ -1,6 +1,6 @@
 # Dashboard: outstanding billing and Account-first detail
 
-Status: frontend implemented and locally verified; migrations 103–104 applied and verified; Worker release pending.
+Status: implemented, tested and deployed; migrations 103–104 applied and verified. Signed-in production flows verified in both regions.
 
 ## Owner decisions
 
@@ -55,3 +55,11 @@ Actual production full-RPC samples after 104:
 | Khao Lak | 1,094.868 ms | 208.772 ms | 35,573 → 16,751 |
 
 No shared-block read or temporary spill was recorded in these samples. These single diagnostic executions support improvement in this Database path, not a browser latency SLA or peak-load guarantee. Production source updates continued during the broader investigation; exact equivalence was separately tested inside repeatable-read transactions.
+
+## Deployment and actual use
+
+- Application source `b8c64d4e12d190da83c3ffb30ba6ed35b0241807` is deployed as Worker `fd07c723-535a-4e16-862b-a4e9387a09ee`. Health reports status ok, database_verified, OPERA connected and the exact source. Twenty-six plaintext bindings, ten secret names and three workflows remain, with no unintended variable changes or new QA routes.
+- Signed-in Phuket shows populated outstanding billing figures and separate not-required/credits. Outstanding opens 71 Accounts; selecting one exact Hotel + Account opens its 578 matching Invoice records, with continuous rendering and a working return to Accounts. These are point-in-time UI observations, not static fixtures or permanent counts.
+- Signed-in Khao Lak shows its four Hotel headings. Its positive balances currently require billing-rule setup, rather than containing verified required-billing membership. The empty progress message therefore explicitly reads **Billing rules need setup**, preserving actual zero billed/unbilled figures and visible setup totals. A 909-invoice synthetic regression, zero-setup and unknown cases pass; no actual settings or dates are fabricated. Actual counts continue changing with normal source refresh.
+- [PR 118](https://github.com/NTHV9/ar-workspace/pull/118) is attached and stacked on the tracker integration branch; it is not merged. The main implementation [CI run 37585973933](https://github.com/NTHV9/ar-workspace/actions/runs/37585973933) passes. The final small setup-copy correction has five passing affected unit cases, TypeScript and a fresh production build; its new CI run was pending at this recording.
+- The normal production Dashboard tab is left available. No new emails or customer-file mutations were required for verification.
