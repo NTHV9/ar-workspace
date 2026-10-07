@@ -1,6 +1,6 @@
 # PDF Workspace: filenames, scanned images and address lines
 
-Status: implemented and tested locally; production deployment pending.
+Status: implemented, tested and deployed. Production health and decoder asset delivery verified.
 
 ## Owner scope
 
@@ -32,3 +32,11 @@ Output names are keyed by stable delivery identity. Scan display names are keyed
 ## Boundaries
 
 No database migration, storage deletion/retention change, OPERA action, Google Sheet update or email send is needed. Local Download/Email callbacks test filename/byte handoff without sending mail. Actual deployed decoder URLs, MIME types and source health must be checked separately before reporting production completion.
+
+## Deployment
+
+Source `567b871683012620c21b0d1969d9f6b5559ffa68` is deployed as Worker `4f25d0e9-2b92-405e-a3a3-09ebd3c9f469`. Actual health returns that exact source, database_verified and OPERA connected. Readback retains 26 plaintext bindings, ten secret names and three workflows with no unintended variable changes; the Worker code hash remains unchanged because this repair changes frontend/build assets.
+
+The deployed JBIG2/CCITT WASM, its JS fallback, OpenJPEG WASM/fallback and QCMS WASM URLs each return HTTP 200, the expected JavaScript/WASM MIME type and bytes matching the prepared artifact. The actual customer sample stayed local throughout; no production document job or email was created for this verification. Owned diagnostic servers are stopped; private evidence remains ignored.
+
+[PR 119](https://github.com/NTHV9/ar-workspace/pull/119) is attached and stacked on the Dashboard branch, not merged. [Application CI run 37611609245 passes](https://github.com/NTHV9/ar-workspace/actions/runs/37611609245). Existing open browser work must load the new frontend before using the repaired decoder/filename controls; no forced refresh of an unsaved preparation was performed.
