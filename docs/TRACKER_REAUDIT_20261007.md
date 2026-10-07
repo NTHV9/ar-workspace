@@ -2,13 +2,15 @@
 
 The deployed tracker core has passed its accepted synthetic full-flow and actual owned-provider qualification. The requested review confirmed five P2 findings; it did not itself apply fixes. The owner subsequently authorized correcting all five. The findings below retain their pre-fix source/evidence; the corrective checkpoint distinguishes implementation, testing and deployment without a bug-free claim.
 
-## Corrective checkpoint — implementation tested; SQL applied; Worker release pending
+## Corrective checkpoint — implemented, tested, SQL applied and Worker deployed
 
 All five corrections are implemented and reviewed: XLSX boolean/unsupported types are rejected or held; verified identity recovery releases only enumerated old holds after the existing matching/binding/preview guards; Register history receives exact command-linked Sheet provenance; status UI separates stored check failure, last attempt and last success; the CFO test verifies every complete request scope rather than requiring one read.
 
 Migration 102 (`20261007130000_ar_tracker_identity_and_history_provenance.sql`, SHA-256 `8c0f028b637f199fa2c8d62f52f5b83f91643a4be6c49a4fff07496a2d2b9472`) is applied after independent local 5/5 qualification and actual PostgreSQL 17.6 DDL rollback/persistent checks. Six installed function hashes match the reviewed definitions; migration 101 outbox/result definitions are unchanged. Ten business fingerprints and the original-column history projection remain equal. Existing history has no guessed command backfill: null-command rows display `legacy_unclassified` / “Source not recorded · recorded by [staff]”; stored actors/values are unchanged. Exact future Sheet mappings display editor-unavailable/importer provenance; new manual edits and explicit raw-Y history retain their respective sources. Private RLS/ACL, index validity, caller settings and full body validation pass.
 
-Full units pass **1,674 tests / 175 files**, build passes and the full smoke run passes **187 tests**. A subsequently added history-render compatibility case passes **1/1**, covering Sheet/legacy/manual labels, order/count, escaping and no writes; the upcoming smoke/CI includes 188 cases. The corrected UI/parser Worker is **not yet deployed**, and new CI is pending. No original master, permission/updater or additional email changes accompany these fixes. Current normal runtime remains the earlier source `10fa109` pending the corrective release.
+Full units pass **1,674 tests / 175 files** and build passes. [CI run 37578695186 succeeds](https://github.com/NTHV9/ar-workspace/actions/runs/37578695186) with **188 smoke, three performance and 15 audit tests**, including the history-render compatibility case for Sheet/legacy/manual labels, order/count, escaping and no writes.
+
+Source `fbe7e329af9eea739761c8ad8c09eed9ce0f1361` is effective as Worker `c0115a80-2996-403f-96ca-4e7f3f11e275`, alone at 100% in deployment `6a4f3714-879e-4f90-bafb-a29f8af8687b`. Actual remote bindings preserve 26 plaintext values, ten secret names, three workflows, compatibility/50,000 limit and headers, with only the commit value changed; original inbound and both writers stay enabled. Signed-in Reports verifies separate last attempt/last success, zero pending writes and zero alerts in both regions. Scheduled successes are **7 October 13:01:02 ICT (Khao Lak)** and **13:01:08 ICT (Phuket)**, with null errors. An actual read-only five-row history sample correctly labels all three legacy rows; exact new Sheet mapping count remains zero, without a manufactured import. No original master, permission/updater or additional email changes accompany delivery. The pre-fix findings and review-time source-data counts below remain historical evidence.
 
 ## Standards review
 
@@ -27,7 +29,7 @@ Full units pass **1,674 tests / 175 files**, build passes and the full smoke run
 
 ## Live state and correctly held data
 
-Read-only live checks report HTTP 200 / database_verified / OPERA connected / source `10fa109`. Both regions have zero pending writes and null `last_error`; last successful checks are **7 October 11:40:53 ICT (Khao Lak)** and **11:40:56 ICT (Phuket)**. Original targets/formats and AgingMaster 1.0.6 are unchanged.
+At the pre-fix review, read-only live checks report HTTP 200 / database_verified / OPERA connected / source `10fa109`. Both regions have zero pending writes and null `last_error`; last successful checks are **7 October 11:40:53 ICT (Khao Lak)** and **11:40:56 ICT (Phuket)**. Original targets/formats and AgingMaster 1.0.6 are unchanged.
 
 At review time Phuket has 4,222 review items: 4,221 S/T reference differences and one Z difference. Khao Lak has 761: 686 S/T reference differences, 54 unmapped identities and 21 invalid-date holds (20 future R dates and one W value mixing a date with note text). The invalid dates are correctly held; reference differences are informational comparisons, not automatically evidence of incorrect financial policy or required edits. Counts include past source rows and should not all be described as current action requirements. No actual notes, customer rows, account/file IDs or email addresses are included here.
 
