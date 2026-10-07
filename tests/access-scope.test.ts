@@ -8,7 +8,7 @@ it('admits only strictly scoped read-only tracker conflict paging',async()=>{
  for(const query of ['region=phuket&other=x','region=phuket&category=bad','region=phuket&category=dates&category=dates','region=phuket&cursor=opaque.'+'a'.repeat(64)+'&cursor=opaque.'+'b'.repeat(64),'region=phuket&cursor=','region=phuket&cursor='+'x'.repeat(801),'region=phuket&region=phuket','category=dates'])await expect(requestAccessIntent(request('/api/reports/tracker-conflicts?'+query))).rejects.toThrow('access_forbidden');
  await expect(requestAccessIntent(request('/api/reports/tracker-conflicts?region=phuket','POST'))).rejects.toThrow('access_forbidden');
 });
-it.each(['/api/portfolio','/api/collection-queue','/api/refresh','/api/dashboard/management','/api/dashboard/balances','/api/dashboard/aging-invoices','/api/remittances','/api/external-billing','/api/financial/status'])('binds regional reads independently of client UI: %s',async path=>{
+it.each(['/api/portfolio','/api/collection-queue','/api/refresh','/api/dashboard/management','/api/dashboard/balances','/api/dashboard/balance-accounts','/api/dashboard/aging-invoices','/api/remittances','/api/external-billing','/api/financial/status'])('binds regional reads independently of client UI: %s',async path=>{
  expect(await requestAccessIntent(request(path+'?region=khao-lak'))).toMatchObject({kind:'region',region:'khao-lak'});
  expect(await requestAccessIntent(request(path))).toMatchObject({kind:'region',region:'phuket'});
  await expect(requestAccessIntent(request(path+'?region=khao-lak&hotel=KAT'))).rejects.toThrow('access_forbidden');

@@ -13,7 +13,7 @@ import {googleSession} from './access/session';
 import {accessApi,accessError,authorizeRegionalRequest,containRegionalResponse,scopedRows,type AccessGrant} from './access/api';
 import {dashboardInvoiceEntriesApi} from './dashboard/invoice-entries-api';
 import {managementDashboardApi} from './dashboard/management-api';
-import {dashboardBalancesApi,dashboardPaymentInvoicesApi} from './dashboard/api';
+import {dashboardBalancesApi,dashboardBalanceAccountsApi,dashboardPaymentInvoicesApi} from './dashboard/api';
 import {agingInvoicesApi} from './dashboard/aging-api';
 import {sweepTransientDocuments} from './operations/retention-sweep';
 import {sweepFinancialLogs,type FinancialLogRetentionEnv} from './operations/financial-log-retention';
@@ -146,7 +146,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(exceptionRequest){if(!user.id)return json({error:'unauthorized'},401);return invoiceExceptionsApi(request,env,user.id);}
     if(accountWorkspaceRequest){if(!user.id)return json({error:'unauthorized'},401);return accountWorkspaceApi(request,env,user.id);}
     if(remittanceRequest){if(!user.id)return json({error:'unauthorized'},401);return remittanceApi(request,env,user.id);}
-    if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/management'?managementDashboardApi(request,env,user.id):path==='/api/dashboard/invoice-entries'?dashboardInvoiceEntriesApi(request,env,user.id):path==='/api/dashboard/aging-invoices'?agingInvoicesApi(request,env,user.id):path==='/api/dashboard/hotel-overview'?dashboardHotelOverviewApi(request,env,user.id):path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
+    if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/management'?managementDashboardApi(request,env,user.id):path==='/api/dashboard/balance-accounts'?dashboardBalanceAccountsApi(request,env,user.id):path==='/api/dashboard/invoice-entries'?dashboardInvoiceEntriesApi(request,env,user.id):path==='/api/dashboard/aging-invoices'?agingInvoicesApi(request,env,user.id):path==='/api/dashboard/hotel-overview'?dashboardHotelOverviewApi(request,env,user.id):path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
     if(registerRequest)return invoiceRegisterApi(request,env,user.id!);
     if(path==='/api/reports/sheets')return reportSheetLinks(request,env,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']);
     if(path==='/api/reports/tracker-revisions'){if(request.method!=='GET'||requestUrl.search)return json({error:'tracker_invalid'},400);if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return json(await backendRpc(env,'ar_tracker_revisions',{p_actor:env.REQUEST_ACTOR??user.id!}));}

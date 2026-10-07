@@ -63,7 +63,7 @@
 .management-age-range>strong{font-size:13px;font-weight:600;text-align:right;overflow-wrap:anywhere}
 .management-range-track{display:block;grid-column:1/3;position:relative;height:6px;background:#edf2f7;border-radius:3px;overflow:hidden}
 .management-range-track:after{content:'';position:absolute;left:var(--zero);top:0;bottom:0;width:1px;background:#8196ad}
-.management-range-track>i{position:absolute;height:100%;border-radius:3px;transition:width 180ms ease}
+.management-range-track>i{position:absolute;height:100%;border-radius:3px}
 .management-layered .management-chart-selection{font-size:11px;min-height:26px;padding-top:9px;border-top:1px solid #e5edf3;gap:8px;flex-wrap:wrap;line-height:1.6;margin-top:auto}
 .management-layered .management-chart-selection button{font-size:11px}
 .management-layered .management-priority li+li{border-top:1px solid #e5edf3}
@@ -82,3 +82,27 @@
 @media(max-width:750px){#root .management-report-mode:has(.management-layered) .dashboard-title{flex-wrap:wrap}#root .management-report-mode:has(.management-layered) .management-filter-toggle{order:3;flex-basis:100%;max-width:none;width:100%}#root .management-layered .management-total{padding:16px;min-height:160px}#root .management-layered .management-total>strong{font-size:27px}.management-layered :is(.management-types,.management-aging-chart,.management-priority,.management-billing-visual){padding:20px}#root .management-layered .management-billing-body{grid-template-columns:128px minmax(0,1fr)}#root .management-layered .management-ring-group,#root .management-layered .management-donut{width:128px}}
 @media(max-width:480px){#root .management-layered .management-total{padding:14px;gap:5px}#root .management-layered .management-total>span{font-size:10px}#root .management-layered .management-total>strong{font-size:22px}#root .management-layered .management-total>small{font-size:10px}.management-layered :is(.management-types,.management-aging-chart,.management-priority,.management-billing-visual){padding:16px}.management-layered .management-type-list{grid-template-columns:1fr;max-height:280px}#root .management-layered .management-billing-body{grid-template-columns:104px minmax(0,1fr);gap:16px}#root .management-layered .management-ring-group,#root .management-layered .management-donut{width:104px}#root .management-layered .management-donut strong{font-size:28px}#root .management-layered .management-donut>div>span{max-width:70px;font-size:11px}#root .management-layered .management-billing-visual dl{grid-template-columns:1fr;gap:14px}#root .management-layered .management-billing-visual .billing-legend-issued{grid-column:1}#root .management-layered .management-billing-visual dd,#root .management-layered .management-billing-visual .billing-legend-issued dd{font-size:15px}.management-age-label{font-size:11px}.management-age-label>small{display:none}.management-age-range>strong{font-size:12px}.management-layered .management-priority li strong{font-size:13px}}
 @media(prefers-reduced-motion:reduce){.management-layered *{transition:none!important;animation:none!important}}
+/* Outstanding billing and Hotel-led attention, scoped to the executive Dashboard. */
+#root .management-layered .management-total{min-height:148px;grid-template-rows:30px 36px minmax(16px,auto) minmax(16px,auto);padding:16px}
+.management-layered :is(.management-types,.management-aging-chart,.management-priority,.management-billing-visual){padding:20px}
+#root .management-layered .management-billing-body{flex:none;min-height:166px;gap:20px}
+#root .management-layered .management-billing-visual dl{gap:20px}
+.management-setup-notice{margin-top:10px;padding-top:12px;border-top:1px solid #e5edf3;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.management-setup-notice>span{font-weight:600;color:#294867}
+.management-setup-notice small{display:block;font-weight:400;font-size:11px;margin-top:4px;color:#526982}
+.management-priority-hotel{margin:4px 0 16px}
+.management-priority-hotel h4{display:flex;justify-content:space-between;align-items:center;margin:0;padding:9px 0;border-bottom:1px solid #dce5ef;font-size:13px;color:#294867}
+.management-priority-hotel h4 small{font-weight:400;font-size:11px;color:#526982}
+.management-priority-hotel ol{margin:0;padding:0;list-style:none}
+.management-account-disclosure{margin:20px 0}
+.management-account-disclosure>summary{padding:14px 0;cursor:pointer;font-size:13px;color:#294867}
+.management-account-disclosure .management-accounts{margin-top:10px}
+.dashboard-detail-panel>header>div:last-child{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:480px){#root .management-layered .management-billing-body{grid-template-columns:1fr;gap:14px;min-height:0}#root .management-layered .management-ring-group{margin:auto}#root .management-layered .management-billing-visual dl{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}#root .management-layered .management-billing-visual dt{font-size:12px}#root .management-layered .management-billing-visual dd{font-size:15px}.management-layered .management-priority li>button{flex-wrap:wrap;gap:6px}.management-layered .management-priority li strong{align-self:flex-start}.management-setup-notice{display:block}.management-setup-notice button{margin-top:8px}}
+
+.management-secondary-panels{display:block}
+.management-secondary-panels>.management-priority{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px;margin-bottom:18px}
+.management-secondary-panels>.management-priority>header,.management-secondary-panels>.management-priority>.management-chart-empty,.management-secondary-panels>.management-priority>.management-priority-more{grid-column:1/-1}
+.management-secondary-panels .management-type-list{grid-template-columns:repeat(4,minmax(0,1fr));max-height:none}
+@media(max-width:1050px){.management-secondary-panels .management-type-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.management-secondary-panels>.management-priority{grid-template-columns:1fr}.management-secondary-panels .management-type-list{grid-template-columns:1fr}}

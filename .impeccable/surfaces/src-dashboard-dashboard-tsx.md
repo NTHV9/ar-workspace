@@ -7,6 +7,16 @@ related_targets: ["src/dashboard/ManagementDashboard.tsx","src/dashboard/Managem
 
 # Dashboard management summary
 
+## Owner-confirmed Account-first refinement — 7 October 2026
+
+This section supersedes the earlier period-cohort billing and interleaved priority-list presentation below. Billing progress summarizes outstanding invoices from all issue dates as of the report date, using billed/unbilled open value. The selected issue-period cohort remains in separately labeled supporting figures. Not-required balances and signed credits are visible; Setup is an overlapping notice, never an extra slice or part of the required-value denominator. Zero and unknown remain distinct.
+
+Keep four aligned metric cards and the Billing/Aging pair in the existing navy, cool-white and teal theme. Needs attention is a full-width section with one clearly named Hotel column per ledger group (two desktop columns, stacked on compact screens); matching Account names never merge ledgers. Account types occupy a compact supporting row instead of stretching beside a tall priority pane. The full aged table is a searchable/sortable disclosure.
+
+Summary clicks open sortable/searchable Accounts first; choosing an Account opens its matching Invoices with a return control. Retain Hotel + Account identity, report filters and exact selected age bounds across the path. The all-account view must not fetch every Invoice merely to build its summary. No changes to global tokens, other pages or original visual references are authorized by this surface refinement.
+
+Local verification: 37 browser cases pass across desktop and compact widths, including long lists/search reset, same-name ledgers, preserved age scope, credits, unknown coverage and exact money. Two batched visual rounds resolve the stretched Account-type pane and confirm the final layout. Impeccable context runs successfully with skill 4.5.0/engine 0.1.11; the detector's width-transition warning is repaired. Deployment status and database timings are recorded in `docs/DASHBOARD_ACCOUNT_FIRST_20261007.md` and PROJECT_STATUS rather than inferred from these captures.
+
 MODE: Operate / Read. Extend the established Dashboard in the Luminous AR system; code-led implementation. No new visual world or comp round.
 SCOPE: CFO/supervisor summary for Phuket and Khao Lak, followed by sortable/searchable Accounts with OPERA Invoice age strictly over 60 days. Keep existing period activity and drill-downs available.
 CONTENT: User-supplied Sheets show hotel/type aging comparisons, period-entry billing progress, and 61+ day Agent totals. Read both actual Sheets on 1 October; use their structure, never copy customer values or connect Sheet balances to the app.

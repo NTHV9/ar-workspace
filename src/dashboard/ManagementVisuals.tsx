@@ -9,33 +9,24 @@ import {agingPlot,attentionAccounts,billingCompletion} from './management-visual
 const bands=['Up to 30','31–60','61–90','91–120','121–150','151+'];
 const colors=['#298f91','#629ed1','#6574ce','#9473b8','#c28d27','#c56573'];
 type Props={data:ManagementDashboardData|undefined;scope:DashboardScope;onDetail:(detail:PeriodDetail)=>void};
-export function BillingProgress({data,scope}:Pick<Props,'data'|'scope'>){
- const progress=billingCompletion(data),[billingFocus,setBillingFocus]=useState<'billed'|'unbilled'>('billed');
- const cohort=(key:string)=>data?.cohort.find(c=>c.key===key);
+export function BillingProgress({data,scope,onDetail}:Props){
+ const progress=billingCompletion(data),metric=(key:string)=>data?.complete?(key==='credit'?(data.openBalanceBreakdown?.creditCoverageComplete?data.openBalanceBreakdown.credit:undefined):data.metrics.find(c=>c.key===key)):undefined;
  const percentage=progress?.percent??null;
- const focusPercent=percentage===null?null:billingFocus==='billed'?percentage:100-percentage;
- return <section className="management-period-glance management-billing-visual" aria-label="Period billing at a glance">
-   <header><div><h3>Billing progress</h3><span>{scope.from} → {scope.to} · Original value</span></div><span className="management-chart-unit">THB</span></header>
-   {data&&!data.cohortComplete&&<p role="status" className="management-notice">Period coverage is incomplete.</p>}
-   <div className="management-billing-body">
-    <div className="management-ring-group"><div className={'management-donut focus-'+billingFocus} role="img" aria-label={progress===null?'Billing progress unavailable':percentage===null?'No billing-required value in this period':`${focusPercent!.toFixed(1)}% of billing-required invoice value ${billingFocus==='billed'?'billed':'not billed'}`}>
-     <svg viewBox="0 0 200 200" aria-hidden="true"><circle className="billing-ring-base" cx="100" cy="100" r="80"/>{percentage!=null&&<>{percentage<100&&<circle className="billing-ring-unbilled" cx="100" cy="100" r="80" pathLength="100" strokeDasharray={`${100-percentage} 100`} transform={`rotate(${-90+percentage*3.6} 100 100)`}/>}{percentage>0&&<circle className="billing-ring-done" cx="100" cy="100" r="80" pathLength="100" strokeDasharray={`${percentage} 100`} transform="rotate(-90 100 100)"/>}</>}</svg>
-     <div><strong>{percentage==null?'—':`${Math.round(focusPercent!)}%`}</strong><span>{percentage==null?progress?'No billing due':'Unavailable':billingFocus==='billed'?'Billed':'Not billed'}</span></div>
-    </div><small>Billing-required value</small></div>
-    <dl><div className="billing-legend-issued"><dt>New invoices</dt><dd>{amount(cohort('issued')?.amount)}<small>{number(cohort('issued')?.count)} invoices</small></dd></div>{(['billed','unbilled'] as const).map(key=><div key={key} className={'billing-legend-'+key}><dt><button className="management-billing-focus" aria-label={key==='billed'?'Show billed share':'Show not billed share'} aria-pressed={billingFocus===key} onClick={()=>setBillingFocus(key)} onFocus={()=>setBillingFocus(key)} onMouseEnter={()=>setBillingFocus(key)}><i/>{key==='billed'?'Billed':'Not billed'}</button></dt><dd>{amount(cohort(key)?.amount)}<small>{number(cohort(key)?.count)} invoices</small></dd></div>)}</dl>
-   </div>
-   <footer className="management-billing-other">
-    <details><summary>Other invoice totals<ChevronDown size={14}/></summary>{(['not_required','setup','credit'] as const).map(key=>{const row=cohort(key);return key==='credit'&&!row?.count?null:<div className="billing-other-row" key={key}><span>{key==='setup'?'Setup needed':key==='credit'?'Credits':'Billing not required'}<small>{number(row?.count)} invoices</small></span><strong>{amount(row?.amount)}</strong></div>;})}</details>
-   </footer>
-  </section>;
+ return <section className="management-period-glance management-billing-visual" aria-label="Outstanding billing progress">
+  <header><div><h3>Billing progress</h3><span>Outstanding as of {scope.to} · THB</span></div></header>
+  <div className="management-billing-body">
+   {percentage!==null?<div className="management-ring-group"><div className="management-donut focus-billed" role="img" aria-label={`${percentage.toFixed(1)}% of outstanding billing-required value billed`}><svg viewBox="0 0 200 200" aria-hidden="true"><circle className="billing-ring-base" cx="100" cy="100" r="80"/>{percentage<100&&<circle className="billing-ring-unbilled" cx="100" cy="100" r="80" pathLength="100" strokeDasharray={`${100-percentage} 100`} transform={`rotate(${-90+percentage*3.6} 100 100)`}/>}<circle className="billing-ring-done" cx="100" cy="100" r="80" pathLength="100" strokeDasharray={`${percentage} 100`} transform="rotate(-90 100 100)"/></svg><div><strong>{Math.round(percentage)}%</strong><span>Billed</span></div></div><small>Billing-required open value</small></div>:<p className="management-chart-empty">{progress?'No outstanding billing-required value':'Billing progress unavailable'}</p>}
+   <dl>{(['billed','unbilled'] as const).map(key=><div key={key} className={'billing-legend-'+key}><dt><button className="management-billing-focus" disabled={!metric(key)} onClick={()=>onDetail({kind:'balance',metric:key})}><i/>{key==='billed'?'Billed':'Not billed'}<ArrowUpRight size={13}/></button></dt><dd>{amount(metric(key)?.amount)}<small>{number(metric(key)?.count)} invoices</small></dd></div>)}</dl>
+  </div>
+  <footer className="management-billing-other">{(['not_required','credit'] as const).map(key=><div className="billing-other-row" key={key}><span>{key==='credit'?'Credits':<button className="dashboard-text-link" disabled={!metric(key)} onClick={()=>onDetail({kind:'balance',metric:key})}>Billing not required</button>}<small>{number(metric(key)?.count)} {key==='credit'?'items':'invoices'}</small></span><strong>{amount(metric(key)?.amount)}</strong></div>)}<div className="management-setup-notice"><span>Setup needed <small>Included in outstanding; may overlap billing categories.</small></span><button className="dashboard-text-link" disabled={!metric('setup')} onClick={()=>onDetail({kind:'balance',metric:'setup'})}>{number(metric('setup')?.count)} invoices · {amount(metric('setup')?.amount)}</button></div></footer>
+ </section>;
 }
 export function PriorityAccounts({data,onDetail}:Pick<Props,'data'|'onDetail'>){
  const ranked=attentionAccounts(data),[expanded,setExpanded]=useState(false);
- return <section className="management-priority" aria-label="Priority accounts">
-   <header><div><h3>Needs attention</h3><span>Invoice age over 60 days</span></div><button aria-label="View all accounts over 60 days" disabled={!data?.agesComplete} onClick={()=>document.querySelector('.management-accounts')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}><ArrowUpRight size={18}/></button></header>
-   {!data?.agesComplete?<p className="management-chart-empty">Account verification pending</p>:!ranked.length?<p className="management-chart-empty">No open invoices over 60 days</p>:<ol>{ranked.slice(0,expanded?ranked.length:3).map(a=><li key={a.hotel+':'+a.accountId}><button onClick={()=>onDetail({kind:'balance',metric:'over60',hotel:a.hotel,accountId:a.accountId})}><span><b>{a.accountName}</b><small><em className="management-hotel-tag">{a.hotel}</em> {a.oldest} days · {number(a.count)} invoices</small></span><strong>{amount(a.amount)}<ArrowUpRight size={13}/></strong></button></li>)}</ol>}
-   {ranked.length>3&&<button className="management-priority-more" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Show less':`Show all ${ranked.length} accounts`}<ChevronDown size={14}/></button>}
-  </section>;
+ return <section className="management-priority" aria-label="Priority accounts"><header><div><h3>Needs attention</h3><span>Invoice age over 60 days · grouped by hotel</span></div><button disabled={!data?.agesComplete} onClick={()=>onDetail({kind:'balance',metric:'over60'})}>View all accounts<ArrowUpRight size={14}/></button></header>
+  {!data?.agesComplete?<p className="management-chart-empty">Account verification pending</p>:!ranked.length?<p className="management-chart-empty">No open invoices over 60 days</p>:(data?.hotels??[]).map(h=>{const accounts=ranked.filter(a=>a.hotel===h.hotel);return !accounts.length?null:<section className="management-priority-hotel" key={h.hotel} aria-label={h.hotel+' accounts needing attention'}><h4>{h.hotel}<small>{accounts.length} accounts</small></h4><ol>{accounts.slice(0,expanded?accounts.length:3).map(a=><li key={JSON.stringify([a.hotel,a.accountId])}><button onClick={()=>onDetail({kind:'balance',metric:'over60',hotel:a.hotel,accountId:a.accountId})}><span><b>{a.accountName}</b><small>{a.accountNo??a.accountId} · {a.accountType}</small><small>{number(a.count)} invoices · Oldest {number(a.oldest)} days</small></span><strong>{amount(a.amount)}<ArrowUpRight size={13}/></strong></button></li>)}</ol></section>;})}
+  {(data?.hotels??[]).some(h=>ranked.filter(a=>a.hotel===h.hotel).length>3)&&<button className="management-priority-more" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Show fewer accounts':'Show all priority accounts'}<ChevronDown size={14}/></button>}
+ </section>;
 }
 
 export function HotelAgingChart({data,onDetail}:Pick<Props,'data'|'onDetail'>){
@@ -52,6 +43,6 @@ export function HotelAgingChart({data,onDetail}:Pick<Props,'data'|'onDetail'>){
    <span className="management-age-label"><i style={{background:colors[b.key]}}/>{b.label}<small>days</small></span><strong>{amount(b.amount)}</strong>
    <span className="management-range-track" style={{'--zero':zero+'%'} as CSSProperties}><i className={Number(b.amount)<0?'is-credit':''} style={{left:(Number(b.amount)<0?zero-Math.abs(Number(b.amount))/scale*100:zero)+'%',width:(scale?Math.abs(Number(b.amount))/scale*100:0)+'%',background:colors[b.key]}}/></span>
   </button>)}</div>}
-  <footer className="management-chart-selection" aria-live="polite">{active?<><span><b>{activeHotel==='All'?'All hotels':activeHotel} · {active.label} days</b> {amount(active.amount)} THB · {number(active.count)} items</span><button onClick={()=>onDetail({kind:'balance',metric:'open',...(activeHotel==='All'?{}:{hotel:activeHotel})})}>{activeHotel==='All'?'View invoices':'View hotel invoices'}<ArrowUpRight size={14}/></button></>:<span>{plot?'Select an age range for details':'Amounts are unavailable until verified'}</span>}</footer>
+  <footer className="management-chart-selection" aria-live="polite">{active?<><span><b>{activeHotel==='All'?'All hotels':activeHotel} · {active.label} days</b> {amount(active.amount)} THB · {number(active.count)} items</span><button onClick={()=>onDetail({kind:'balance',metric:'open',...(active.key>0?{ageMin:[0,31,61,91,121,151][active.key]}:{}),...(active.key<5?{ageMax:[30,60,90,120,150][active.key]}:{}),...(activeHotel==='All'?{}:{hotel:activeHotel})})}>{activeHotel==='All'?'View accounts':'View hotel accounts'}<ArrowUpRight size={14}/></button></>:<span>{plot?'Select an age range for details':'Amounts are unavailable until verified'}</span>}</footer>
  </section>;
 }

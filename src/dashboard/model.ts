@@ -77,3 +77,8 @@ export function historyChunks(from:string,to:string){
  while(day<=to){const end=new Date(Date.parse(day)+364*86400000).toISOString().slice(0,10),last=end<to?end:to;result.push({from:day,to:last});day=new Date(Date.parse(last)+86400000).toISOString().slice(0,10);}
  return result;
 }
+/** A hotel drill narrows the existing Account unless the user explicitly selects another. */
+export function dashboardDetailScope(scope:DashboardScope,hotel:string|null,accountId:string|null):DashboardScope{
+ if(!hotel)return scope;
+ return {...scope,hotel,account:accountId?JSON.stringify([hotel,accountId]):accountIdentity(scope.account)?.[0]===hotel?scope.account:''};
+}

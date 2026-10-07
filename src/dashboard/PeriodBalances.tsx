@@ -11,7 +11,7 @@ import {BillingStatusOverview} from './BillingStatusOverview';
 import {accountIdentity,scopeQuery,type DashboardScope,validPeriod} from './model';
 import {balancesResult,balanceLabels,amount,number,percent,stamp} from './period-data';
 import {useCollectionPolicy} from '../collection/PolicyContext';
-export interface PeriodDetail {kind:'balance'|'sent'|'invoice_entries'|'payments'|'payment_invoices';metric?:string;stage?:string;hotel?:HotelId;accountId?:string}
+export interface PeriodDetail {kind:'balance'|'sent'|'invoice_entries'|'payments'|'payment_invoices';metric?:string;stage?:string;hotel?:HotelId;accountId?:string;ageMin?:number;ageMax?:number}
 export function PeriodBalances({scope,token,revision,onDetail,overview,children}:{children?:ReactNode;overview?:Source<DashboardHotelOverviewResponse>;scope:DashboardScope;token:string;revision:number;onDetail:(detail:PeriodDetail)=>void}){
  const id=useId(),scopeHotel=accountIdentity(scope.account)?.[0]??scope.hotel;
  const q=scopeQuery(scope);q.set('asOf',scope.to);q.set('limit','1');
