@@ -7,6 +7,10 @@ related_targets: ["src/pdf/pdf-workspace.css", "src/pdf/use-native-editing.tsx",
 
 # PDF and email preparation — audit refinement, 28 September 2026
 
+## Email generated filenames — 7 October 2026
+
+Generated package cards expose filename inputs and a separate Download PDF action; do not nest inputs in a download button. Save message commits names with the message. Pending/invalid names keep handoff unavailable and prevent downloading under an old displayed name. Preserve the Reviewed PDF indicator because contents remain unchanged. Claimed Gmail handoffs lock names. Keep the existing three-column layout and compact mobile stacking, accessible input labels, local validation feedback and complete filenames in confirmation.
+
 ## Filenames and independent address lines — 7 October 2026
 
 Package adds labeled output filename fields and editable imported-scan display names. Enter/Apply name commits; Escape cancels. Pending/invalid names keep Preview unavailable with local feedback, and reviewed filenames match Download/Email. Preserve the existing three-pane layout, font and tools rather than adding another dialog. Names are preparation metadata, not filesystem renames or financial identifiers.

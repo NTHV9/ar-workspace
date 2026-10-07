@@ -1,3 +1,9 @@
+## 2026-10-07 — Email generated filenames verified; migration 105 applied
+
+- Generated package filename inputs save with the message and retain typed values on errors. Saved names propagate through reopen, confirmation, download, MIME and exact Sent verification. Only draft export names change; PDF bytes/hash/key/order, original job exports, retention and existing delivery records remain unchanged.
+- Migration 105 adds a service-only atomic v3 writer delegating the unchanged content writer after full name/key/revision/package/staff/handoff validation. Actual PostgreSQL guarded DDL/synthetic rollback passes with draft/job/delivery/auth/Sent/current-writer preservation; the exact migration is applied. No customer filename or provider state is changed by installation.
+- Full units **1,717 / 181 files**, 16 parent-run focused unit/API cases, TypeScript and **27 browser cases** pass. Email Composer scenarios are now enrolled in CI smoke. Astra reviews GO after the staff-header fix; desktop/mobile captures are inspected and original evidence preserved. No email sent. Worker deployment pending; [evidence](EMAIL_GENERATED_FILENAMES_20261007.md).
+
 ## 2026-10-07 — PDF filenames, scan decoding and local address lines deployed
 
 - Owner requests output and imported-scan name editing, repair of white scanned pages and independent address-line insertion. Output names now follow reviewed Download/Email handoff; scan names remain display metadata within the preparation. Validation, Undo/Redo, dirty state, collision protection and reviewed-project invalidation are covered.
