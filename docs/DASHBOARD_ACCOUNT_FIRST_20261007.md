@@ -1,5 +1,17 @@
 # Dashboard: outstanding billing and Account-first detail
 
+## Horizontal Hotel comparison and 61+ labels — latest owner refinement
+
+The owner selects one Account-name comparison row with separate Hotel columns, superseding vertical Hotel groups in the two Account tables. Full THB figures remain. Each Hotel cell retains its exact Hotel + Account ID, number/type, amount/count and Invoice drill. Existing single-ledger Invoice/payment/sent details and other Hotel comparison matrices keep their scope.
+
+Alignment is presentation-only: NFC, whitespace and case normalization of names. If any Hotel has duplicate matching names, the entire name group remains independent ledger rows; blank names never align. Alignment/ambiguity is established from the full authorized response before search, and search preserves valid counterpart cells. Missing cells and unknown amounts have different labels; confirmed zero remains zero. No cross-Hotel row-total balance is created. Sorting values uses the selected Hotel, with unavailable/missing values last.
+
+Dynamic details render 200 complete comparison rows per increment (up to 800 Hotel cells in Khao Lak), and distinguish comparison rows from underlying Account counts. The expanded aged list retains its previous all-rows behavior; it is not claimed to share the 200-row limit. Mobile comparison scrolls horizontally with sticky Account names and consistent responsive column widths.
+
+The owner explicitly confirms **61 days and above**, rather than 62 and above. Only visible labels change from over 60 to 61+; internal keys and the existing integer-age `age > 60` membership stay unchanged. An actual repeatable-read check confirms management totals exactly equal positive verified Invoice rows with `age >= 61` in both regions. Each region had one exactly-61-day Invoice in that sample, and those rows were included.
+
+Verification: 70 affected unit cases and TypeScript pass. The 49-case related browser suite had 48 passes and one ambiguous test locator; the exact-locator correction passes its scoped rerun. A further mobile test passes with geometric assertions that the last Hotel heading and amount remain outside the sticky name column and inside the viewport. Root caught and verified correction of the initial mobile occlusion from the actual capture; desktop Phuket/Khao Lak and final mobile captures are inspected. Impeccable reports ten advisories and no quality warning. Astra gives functional GO; no financial/schema/backend changes accompany this refinement. Deployment pending at this checkpoint.
+
 ## Full figures and explicit Hotel detail groups — 7 October follow-up
 
 Owner requests full monetary figures instead of compact millions and clearer Hotel separation in the lower details. Summary amounts now use the exact existing THB formatter once, without abbreviated figures or a duplicate caption. Desktop figures scale within their cards; narrow mobile cards form one readable column.

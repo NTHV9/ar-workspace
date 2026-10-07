@@ -21,13 +21,14 @@ it('searches across fields and sorts all exact Account identities without combin
  expect(managementAccounts(rows,'','amount',false).map(r=>r.amount)).toEqual(['20.00','20.00','200.00','200.00']);
  expect(managementAccounts(rows,'','oldest',true)[0].oldest).toBe(91);
 });
-it('renders a full exact monetary value once and explicit Hotel sections for identically named accounts',()=>{
+it('renders a full exact monetary value once and explicit Hotel columns for identically named accounts',()=>{
  const data=syntheticManagement();data.metrics.find(m=>m.key==='open')!.amount='200000000.00';
  const scope={hotel:'All',day:data.to,from:data.from,to:data.to,type:'',account:''};
  const markup=renderToStaticMarkup(createElement(ManagementDashboard,{source:{state:'ready',data},scope,onDetail:()=>{},onReload:()=>{}}));
  expect(markup.match(/200,000,000\.00/g)).toHaveLength(1);expect(markup).not.toContain('management-exact-total');expect(markup).not.toMatch(/200M|200m|200K|200k/);
- expect(markup).toContain('aria-label="KAT aged accounts"');expect(markup).toContain('aria-label="TSK aged accounts"');expect(markup).toContain('Katathani Phuket Beach Resort');expect(markup).toContain('The Shore at Katathani');
+ expect(markup).toContain('data-hotel="KAT"');expect(markup).toContain('data-hotel="TSK"');expect(markup).toContain('Katathani Phuket Beach Resort');expect(markup).toContain('The Shore at Katathani');
  expect(markup.match(/data-dashboard-account="true"/g)).toHaveLength(4);
+ expect(markup).toContain('aria-label="View invoices 61+ days old"');expect(markup).not.toContain('over 60 days');
 });
 it('Account sorting stays inside canonical Hotel groups and Hotel sorting reverses whole groups',()=>{
  const rows=syntheticManagement().accountsOver60!;

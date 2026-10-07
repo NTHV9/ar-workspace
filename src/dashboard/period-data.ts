@@ -22,7 +22,7 @@ export function paidInvoicesResult(value:unknown):DashboardPaymentInvoicesRespon
  if(!object(value)||!Array.isArray(value.rows)||!object(value.summary)||typeof value.complete!=='boolean'||count(value.total)===null||count(value.unknownMappings)===null||!metric(value.summary)||value.rows.some(r=>!object(r)||typeof r.hotel!=='string'||typeof r.invoiceId!=='string'||typeof r.accountId!=='string'||count(r.paymentCount)===null||r.amount!==null&&decimal(r.amount)===null))throw Error('dashboard_payments_invalid');
  return value as unknown as DashboardPaymentInvoicesResponse;
 }
-export const balanceLabels:Record<string,string>={open:'All outstanding invoices',billed:'Billing required · billed',unbilled:'Billing required · not billed',not_required:'Billing not required',setup:'Billing setup needed',past_due:'Past Due date',over60:'Invoice age over 60 days',over60_unbilled:'Over 60 days · not billed'};
+export const balanceLabels:Record<string,string>={open:'All outstanding invoices',billed:'Billing required · billed',unbilled:'Billing required · not billed',not_required:'Billing not required',setup:'Billing setup needed',past_due:'Past Due date',over60:'Invoice age 61+ days',over60_unbilled:'61+ days · not billed'};
 export const rangeLabel=(from:string,to:string)=>from===to?from:from+' → '+to;
 
 export function financialMembershipKnown(summary:{unknownAmounts?:number;notObserved?:number;unknownSourceDates?:number}){return [summary.unknownAmounts,summary.notObserved,summary.unknownSourceDates].every(v=>v===0);}

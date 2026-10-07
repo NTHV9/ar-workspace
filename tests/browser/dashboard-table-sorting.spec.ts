@@ -7,7 +7,7 @@ test('Dashboard recovers a failed later page without exposing a partial sorted l
  await page.route('**/api/dashboard/balances**',r=>{const q=new URL(r.request().url()).searchParams;return fail&&q.get('page')==='1'?r.fulfill({status:503,json:{error:'synthetic_failure'}}):r.fallback();});
  await openDashboard(page,'/?dashboard=1&dashboardDetail=balance&dashboardMetric=open');
  const panel=page.getByRole('region',{name:'Dashboard invoice details'});
- await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)')).toHaveCount(2);await panel.getByRole('button',{name:'Azure Travel · Synthetic',exact:true}).click();
+ await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)')).toHaveCount(2);await panel.getByRole('button',{name:/^Open Azure Travel · Synthetic · KAT · Account /}).click();
  await expect(panel.getByRole('alert')).toContainText('full list could not be verified');await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)')).toHaveCount(0);
  fail=false;await panel.getByRole('button',{name:'Retry details'}).click();await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)')).toHaveCount(61);
 });
@@ -15,7 +15,7 @@ test('Dashboard recovers a failed later page without exposing a partial sorted l
 test('Dashboard appends long lists on scroll and sorts across rows not rendered yet',async({page})=>{
  await setupDashboard(page,{large:240});await openDashboard(page,'/?dashboard=1&dashboardDetail=balance&dashboardMetric=open');
  const panel=page.getByRole('region',{name:'Dashboard invoice details'});
- await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)')).toHaveCount(2);await panel.getByRole('button',{name:'Azure Travel · Synthetic',exact:true}).click();
+ await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)')).toHaveCount(2);await panel.getByRole('button',{name:/^Open Azure Travel · Synthetic · KAT · Account /}).click();
  await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)')).toHaveCount(200);await expect(panel.locator('tbody[aria-label="KAT detail records"] .dashboard-hotel-group-heading')).toContainText('240 invoices');await expect(panel.locator('.dashboard-hotel-group-heading')).toContainText('Showing 200');
  await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();
  await expect(panel.locator('tbody tr:not(.dashboard-hotel-group-heading)').first()).toContainText('SYN-239');
@@ -28,12 +28,12 @@ for(const width of [1440,390])test('Dashboard all records sort across source pag
  await openDashboard(page,'/?dashboard=1&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
  await page.getByRole('button',{name:'View invoices',exact:true}).click();
  const panel=page.getByRole('region',{name:'Dashboard invoice details'}),rows=panel.locator('tbody tr:not(.dashboard-hotel-group-heading)');
- await expect(rows).toHaveCount(2);await panel.getByRole('button',{name:'Azure Travel · Synthetic',exact:true}).click();await expect(rows).toHaveCount(61);await expect(panel.getByRole('button',{name:'Next',exact:true})).toHaveCount(0);
+ await expect(rows).toHaveCount(2);await panel.getByRole('button',{name:/^Open Azure Travel · Synthetic · KAT · Account /}).click();await expect(rows).toHaveCount(61);await expect(panel.getByRole('button',{name:'Next',exact:true})).toHaveCount(0);
  await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();await expect(rows.first()).toContainText('SYN-0');
  await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();await expect(rows.first()).toContainText('SYN-60');
  await expect(panel.locator('th[aria-sort="descending"]')).toContainText('Invoice');
  for(const label of ['Account','Hotel','Guest','Entry date','Open · THB','Original','Billing','Due date','Latest Follow-Up'])await panel.getByRole('button',{name:'Sort by '+label,exact:true}).click();
- await panel.scrollIntoViewIfNeeded();await page.screenshot({path:`.tmp/dashboard-hotel-groups/visual/dashboard-continuous-sort-${width}.png`});
+ await panel.scrollIntoViewIfNeeded();await page.screenshot({path:`.tmp/dashboard-hotel-comparison/visual/dashboard-continuous-sort-${width}.png`});
  expect(await page.locator('.dashboard-page').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
 
@@ -51,7 +51,7 @@ for(const width of [1440,390])test('signed Aging retains the ring and marks cred
  await expect(overview).toHaveAttribute('data-chart-mode','signed');await expect(overview.locator('.aging-v4-ring')).toHaveCount(1);
  await expect(overview).toContainText('−<0.1%');await expect(overview).toContainText('-10.00');await expect(overview).not.toContainText('Ring: positive ranges');await expect(overview.locator('.aging-v4-ring-label')).not.toContainText('of positive ranges');await expect(overview.locator('.aging-v4-ring circle[stroke-dasharray]')).toHaveCount(1);
  await overview.getByRole('button',{name:'Compare 31–60 days',exact:true}).click();await expect(overview.getByRole('button',{name:'Compare 31–60 days',exact:true})).toHaveAttribute('aria-pressed','true');
- await expect(overview.locator('.aging-v4-ring-label')).toContainText('Credit');await overview.scrollIntoViewIfNeeded();await page.screenshot({path:`.tmp/dashboard-hotel-groups/visual/aging-signed-readable-${width}.png`});
+ await expect(overview.locator('.aging-v4-ring-label')).toContainText('Credit');await overview.scrollIntoViewIfNeeded();await page.screenshot({path:`.tmp/dashboard-hotel-comparison/visual/aging-signed-readable-${width}.png`});
  expect(await overview.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
  await page.getByRole('button',{name:'KAT',exact:true}).click();
  // KAT's original synthetic data also contains credits; select a positive account type instead.

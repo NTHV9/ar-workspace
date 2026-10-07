@@ -7,6 +7,12 @@ related_targets: ["src/dashboard/ManagementDashboard.tsx","src/dashboard/Managem
 
 # Dashboard management summary
 
+## Horizontal Account comparison — latest 7 October choice
+
+The owner replaces vertical Hotel groups in both Account tables with one display-name row and separate Hotel columns. This section supersedes the Account-list geometry below. Preserve exact Hotel + Account identities in cell drills and never create a cross-Hotel ledger total. Align names only for display after NFC/whitespace/case normalization; ambiguous same-Hotel names and blank names stay separate ledgers. Search retains valid counterpart cells, and monetary sorting uses the selected Hotel. Missing and unknown cells remain distinct. Keep full amounts, contained horizontal scrolling and a sticky Account column; responsive column variables and explicit columns must keep the last Hotel amount fully visible at maximum scroll. Record tables after selecting an Account retain their existing Hotel scope.
+
+Visible age wording is **61+ days**. The owner confirms inclusion of day 61; existing `age > 60` arithmetic and internal metric keys are unchanged. The dynamic comparison window grows by 200 complete rows; the expanded aged comparison retains all its rows.
+
 ## Full figures and Hotel detail bands — 7 October refinement
 
 Display every Dashboard monetary figure in full with the established two-decimal THB formatter; no compact K/M figure or duplicate exact caption. Summary figures use a scoped responsive 22–27px desktop scale and 28px narrow-mobile figures; cards become one column at 480px and below for readable exact amounts. Both lower Account lists and Invoice/payment/sent record tables use explicit Hotel row-group bands with code, full property name, filtered count and full filtered amount. Sorting stays inside each Hotel except the Hotel control, which moves entire groups. Group headings do not consume the continuous record-rendering budget. Comparison tables retain distinct Hotel rows/columns with full property names, including separate Hotel columns in status breakdown. This applies to Dashboard only; original references, other pages and global tokens remain unchanged.

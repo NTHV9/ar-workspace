@@ -22,7 +22,7 @@ test('modern charts retain billing basis and exact details',async({page})=>{
  await page.goto('/?dashboard=1');await expect(page.getByRole('img',{name:'50% of billing-required invoices billed'})).toBeVisible();
  await expect(page.getByRole('region',{name:'Closing-date follow-up stages'}).getByRole('button',{name:/^Final · All hotels/})).toContainText('66.7% of open');
  await page.getByRole('button',{name:'View not yet billed',exact:true}).click();await expect(page.getByRole('region',{name:'Dashboard invoice details'})).toContainText('INV-kat-parent');
- await page.getByText('All status counts, amounts & percentages',{exact:true}).click();await expect(page.getByRole('region',{name:'Closing-date status breakdown'})).toContainText('Over 60 days · not billed');
+ await page.getByText('All status counts, amounts & percentages',{exact:true}).click();await expect(page.getByRole('region',{name:'Closing-date status breakdown'})).toContainText('61+ days · not billed');
 });
 
 for(const status of ['running','failed'] as const)test('verified totals remain readable with '+status+' OPERA freshness',async({page})=>{

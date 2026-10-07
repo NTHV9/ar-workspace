@@ -1,3 +1,9 @@
+## 2026-10-07 — Horizontal Account comparison and 61+ labels verified locally
+
+- Owner selects a shared Account-name row with separate Hotel columns in both Account lists. Exact ledger identities, full amounts, scoped Invoice drills, valid counterpart cells during search and selected-Hotel sorting are preserved. Ambiguous/blank names remain independent; missing and unknown values stay distinct. Dynamic details grow by 200 comparison rows; the expanded aged list retains all rows. Other pages/backend/schema are unchanged.
+- Owner explicitly confirms day 61 is included. Visible labels become **61+ days**, while existing integer `age > 60` membership remains. An actual repeatable-read comparison confirms Dashboard totals equal verified positive `age >= 61` Invoice counts/amounts in both regions, including exactly-day-61 rows.
+- Verification: 70 affected units, TypeScript, 48/49 initial related browser cases plus the corrected locator rerun, and the additional mobile geometry/drill case pass. Root verifies desktop and final mobile captures after repairing sticky-column occlusion; Impeccable has advisories only and Astra gives functional GO. Deployment pending; [evidence](DASHBOARD_ACCOUNT_FIRST_20261007.md).
+
 ## 2026-10-07 — Full Dashboard figures and explicit Hotel tables deployed
 
 - Owner follow-up removes compact monetary values and clarifies that every Dashboard table should distinguish Hotel groups. Full exact amounts appear once, with responsive cards; Hotel code/full name, filtered count and full filtered amount head Account and Invoice/payment/sent record groups. Comparison tables retain separate Hotel rows/columns and explicit full names. Sorting/search/continuous scrolling and exact Account → Invoice routes remain intact; no backend/schema/financial change or other-page change.
