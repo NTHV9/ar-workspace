@@ -1,0 +1,25 @@
+.dashboard-account-comparison{min-width:0;width:100%}
+.dashboard-comparison-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:12px 0}
+.dashboard-comparison-controls label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#526982}
+.dashboard-comparison-controls select{max-width:280px;min-height:38px;padding:7px 9px;border:1px solid #d6e2ee;border-radius:6px;background:#fff;color:#183551;font:inherit;font-size:12px}
+.dashboard-comparison-controls>button{min-height:38px;font-size:12px}
+.dashboard-comparison-controls>span{font-size:12px;color:#526982;margin-left:auto;align-self:center}
+.dashboard-comparison-basis{font-size:12px;color:#526982;margin:8px 0 12px;line-height:1.6}
+.dashboard-comparison-note{font-size:12px;color:#526982;margin:8px 0 12px;line-height:1.6}
+.dashboard-comparison-scroll{--comparison-account-width:240px;--comparison-hotel-width:220px;max-width:100%;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#a6bacd #f4f7fa;overscroll-behavior-x:contain;border:1px solid #dce5ef;border-radius:8px}
+#root .dashboard-account-comparison table{width:max(100%,calc(var(--comparison-account-width) + var(--comparison-hotel-count)*var(--comparison-hotel-width)));min-width:calc(var(--comparison-account-width) + var(--comparison-hotel-count)*var(--comparison-hotel-width));border-collapse:separate;border-spacing:0;table-layout:fixed;font-variant-numeric:tabular-nums;margin:0}
+#root .dashboard-account-comparison th,#root .dashboard-account-comparison td{box-sizing:border-box;padding:12px 14px;vertical-align:top;border:0;border-bottom:1px solid #e5edf3;text-align:left;white-space:normal}
+#root .dashboard-account-comparison thead th{background:#edf3fa;color:#173e68;font-size:13px;font-weight:700}
+#root .dashboard-account-comparison th:first-child{position:sticky;left:0;z-index:1;background:#f5f8fc;border-right:1px solid #dce5ef}
+#root .dashboard-account-comparison thead th:first-child{z-index:2;background:#edf3fa}
+#root .dashboard-account-comparison tbody th>strong{display:block;font-size:13px;line-height:1.6;color:#183551;overflow-wrap:anywhere}
+#root .dashboard-account-comparison :is(th,td) small{display:block;font-size:11px;font-weight:400;color:#526982;line-height:1.6;white-space:normal;margin:4px 0 0;overflow-wrap:anywhere}
+#root .dashboard-account-comparison td>button{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:72px;padding:0;margin:0;border:0;border-radius:4px;background:transparent;color:#183551;box-shadow:none;text-align:left;line-height:1.6}
+#root .dashboard-account-comparison td>button>strong{font-size:15px;font-weight:600;white-space:normal;overflow-wrap:anywhere}
+#root .dashboard-account-comparison td>button>span{font-size:12px;color:#526982}
+#root .dashboard-account-comparison td>button:hover{background:#eaf2f9}
+.dashboard-account-comparison :is(button,select):focus-visible,.dashboard-comparison-scroll:focus-visible{outline:2px solid #298f91;outline-offset:2px}
+#root .dashboard-account-comparison .dashboard-comparison-account-col{width:var(--comparison-account-width)}
+#root .dashboard-account-comparison .dashboard-comparison-hotel-col{width:var(--comparison-hotel-width)}
+.dashboard-comparison-missing{display:block;color:#526982;padding-top:4px}
+@media(max-width:750px){.dashboard-comparison-controls>span{flex-basis:100%;margin:0}.dashboard-comparison-controls select{max-width:220px}.dashboard-comparison-scroll{--comparison-account-width:120px;--comparison-hotel-width:210px}#root .dashboard-account-comparison th,#root .dashboard-account-comparison td{padding:10px 12px}.dashboard-comparison-controls label{max-width:100%}}

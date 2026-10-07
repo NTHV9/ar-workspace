@@ -17,6 +17,11 @@ export interface DashboardBalancesResponse {
  complete:boolean;missingHotels:HotelId[];reason?:string;metrics:DashboardBalanceMetric[];stages:DashboardBalanceStage[];
  rows:DashboardBalanceRow[];total:number;unverified:number;
 }
+export interface DashboardBalanceAccountRow {
+ hotel:HotelId;accountId:string;accountNo:string|null;accountName:string;accountType:string;
+ count:number;amount:string|null;oldest:number|null;verified:boolean;
+}
+export interface DashboardBalanceAccountsResponse extends Omit<DashboardBalancesResponse,'rows'> {rows:DashboardBalanceAccountRow[]}
 export interface DashboardPaymentInvoiceRow {
  hotel:HotelId;accountId:string;accountName:string;accountType:string;invoiceId:string;invoiceNo:string|null;folioNo:string|null;
  amount:string|null;paymentCount:number;verified:boolean;

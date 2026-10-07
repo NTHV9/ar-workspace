@@ -2,8 +2,8 @@ import type {ManagementDashboardData} from '../../worker/dashboard/management-mo
 
 /** Ratios are presentation-only; exact source amounts remain visible alongside. */
 export function billingCompletion(data:ManagementDashboardData|undefined){
- const billed=data?.cohort.find(c=>c.key==='billed'),unbilled=data?.cohort.find(c=>c.key==='unbilled');
- if(!data?.cohortComplete||billed?.amount==null||unbilled?.amount==null)return null;
+ const billed=data?.metrics.find(c=>c.key==='billed'),unbilled=data?.metrics.find(c=>c.key==='unbilled');
+ if(!data?.complete||billed?.amount==null||unbilled?.amount==null)return null;
  const done=Number(billed.amount),remaining=Number(unbilled.amount);
  if(!Number.isFinite(done+remaining)||done<0||remaining<0)return null;
  return {done,remaining,total:done+remaining,percent:done+remaining>0?done/(done+remaining)*100:null};

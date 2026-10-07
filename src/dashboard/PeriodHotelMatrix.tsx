@@ -1,5 +1,5 @@
 import type {CSSProperties} from 'react';
-import type {HotelId} from '../domain/hotels';
+import {hotelName,type HotelId} from '../domain/hotels';
 import {HotelSplit,type HotelMeasure} from './HotelSplit';
 import {amount,number} from './period-data';
 import './period-hotel-matrix.css';
@@ -17,7 +17,7 @@ export function PeriodHotelMatrix({title,description,hotels,columns,showTotals=f
  return <section className={'period-hotel-matrix '+className}>
   <header className="period-hotel-matrix-heading"><h3>{title}</h3>{description&&<p>{description}</p>}</header>
   <div className="period-hotel-matrix-scroll" tabIndex={0} role="region" aria-label={title+' comparison'}>
-   <table aria-label={title} style={{'--matrix-min-width':96+columns.length*160+'px'} as CSSProperties}>
+   <table aria-label={title} style={{'--matrix-min-width':200+columns.length*160+'px'} as CSSProperties}>
     <thead><tr><th scope="col">Hotel</th>{columns.map(column=><th key={column.key} scope="col">{column.label}</th>)}</tr></thead>
     <tbody>
      {showTotals&&<tr className="period-hotel-matrix-total"><th scope="row">All hotels</th>{columns.map(column=>{
@@ -26,7 +26,7 @@ export function PeriodHotelMatrix({title,description,hotels,columns,showTotals=f
       return <td key={column.key} data-label={column.label}>{total?.onOpen?<button className="period-hotel-matrix-value" type="button" disabled={total.disabled} onClick={total.onOpen} aria-label={column.label+' · All hotels'+(total.count!==undefined?' · '+number(total.count)+' '+unit:'')+' · '+amount(total.amount)+(total.note?' · '+total.note:'')}>{contents}</button>:<div className="period-hotel-matrix-value">{contents}</div>}</td>;
      })}</tr>}
      {hotels.map(hotel=><tr key={hotel} data-hotel={hotel}>
-      <th scope="row"><span className={'period-hotel-matrix-hotel '+hotel.toLowerCase()}><i aria-hidden="true"/>{hotel}</span></th>
+      <th scope="row"><span className={'period-hotel-matrix-hotel '+hotel.toLowerCase()}><i aria-hidden="true"/>{hotel}</span><small className="dashboard-hotel-full-name">{hotelName(hotel)}</small></th>
       {columns.map(column=>{
        const measure=column.measures.find(row=>row.hotel===hotel)??{hotel,count:column.measures.some(row=>row.count!==undefined)?null:undefined,amount:null,disabled:true};
        return <td key={column.key} data-label={column.label}><HotelSplit rows={[measure]} id={column.id} label={column.label} unit={column.unit}/></td>;

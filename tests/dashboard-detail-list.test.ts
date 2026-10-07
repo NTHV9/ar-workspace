@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {readDetailPages,sortDetailRows} from '../src/dashboard/detail-data';
+import {readDetailPages,sortDetailRows,groupDetailAccounts} from '../src/dashboard/detail-data';
 import {compareValues} from '../src/table-sort';
 const row=(i:number)=>({hotel:'KAT',accountId:'synthetic',accountName:'Account '+i,transactionId:String(i),invoiceNo:String(i),originalAmount:String(i),transactionDate:'2026-09-29'});
 const payload=(rows:unknown[],total:number)=>({rows,total,summary:{invoiceCount:total,amount:'500.00'},coverage:{complete:true,lastSuccessAt:'2026-09-29T00:00:00Z'}});
@@ -36,5 +36,26 @@ describe('continuous Dashboard detail list',()=>{
  it('keeps separate sent deliveries for the same invoice',async()=>{
   const transport=vi.fn<typeof fetch>(async()=>Response.json(payload([{...row(1),delivery_id:'a'},{...row(1),delivery_id:'b'}],2)));
   const data=await readDetailPages('/api/reports/activity?hotel=KAT','sent','synthetic',new AbortController().signal,()=>{},transport);expect(data.rows).toHaveLength(2);
+ });
+});
+describe('account-first Dashboard detail data',()=>{
+ it('groups a fully read activity population by exact hotel and account with signed exact amounts',()=>{
+  const rows=[{...row(1),accountName:'Same name',originalAmount:'0.10'}, {...row(2),accountName:'Same name',originalAmount:'0.20'}, {...row(3),hotel:'TSK',accountName:'Same name',originalAmount:'-2.00'}, {...row(4),accountId:'different',accountName:'Same name',originalAmount:null}];
+  const grouped=groupDetailAccounts(rows,'invoice_entries');expect(grouped).toHaveLength(3);
+  expect(grouped[0]).toMatchObject({hotel:'KAT',accountId:'synthetic',count:2,amount:'0.30'});expect(grouped[1]).toMatchObject({hotel:'TSK',count:1,amount:'-2.00'});expect(grouped[2].amount).toBeNull();
+ });
+ const account=(i:number)=>({hotel:'KAT',accountId:String(i),accountName:'Same name',accountType:'OTA',accountNo:null,count:2,amount:'100.00',oldest:-2,verified:true});
+ const accountPayload=(rows:unknown[],total:number)=>({asOfDate:'2026-09-29',mode:'snapshot',complete:true,rows,total,unverified:0,metrics:[],stages:[],missingHotels:[]});
+ it('reads all balance accounts with stable date and exact aging selection and permits future-base ages',async()=>{
+  const transport=vi.fn<typeof fetch>(async input=>{const q=new URL(String(input),'https://synthetic.invalid').searchParams;expect(q.get('asOf')).toBe('2026-09-29');expect(q.get('ageMax')).toBe('30');expect(q.has('ageMin')).toBe(false);const page=Number(q.get('page'));return Response.json(accountPayload(page===0?Array.from({length:50},(_,i)=>account(i)):[account(50)],51));});
+  const data=await readDetailPages('/api/dashboard/balance-accounts?hotel=KAT&asOf=2026-09-29&ageMax=30','balance_accounts','synthetic',new AbortController().signal,()=>{},transport);expect(data.rows).toHaveLength(51);expect(transport).toHaveBeenCalledTimes(2);expect(data.rows[0].oldest).toBe(-2);
+ });
+ for(const problem of ['duplicate','scope','amount','short','total'])it('fails the complete account read for '+problem,async()=>{
+  const transport=vi.fn<typeof fetch>(async input=>{const page=Number(new URL(String(input),'https://synthetic.invalid').searchParams.get('page'));if(page===0)return Response.json(accountPayload(Array.from({length:50},(_,i)=>account(i)),51));return Response.json(accountPayload(problem==='short'?[]:[{...account(problem==='duplicate'?0:50),...problem==='scope'?{hotel:'TSK'}:{},...problem==='amount'?{amount:'broken'}:{}}],problem==='total'?52:51));});
+  await expect(readDetailPages('/api/dashboard/balance-accounts?hotel=KAT','balance_accounts','synthetic',new AbortController().signal,()=>{},transport)).rejects.toThrow();
+ });
+ it('rejects a balance invoice outside the exact requested age range',async()=>{
+  const transport=vi.fn<typeof fetch>(async()=>Response.json({asOfDate:'2026-09-29',mode:'snapshot',complete:true,total:1,unverified:0,metrics:[],stages:[],missingHotels:[],rows:[{hotel:'KAT',accountId:'synthetic',invoiceId:'outside',open:'100.00',age:91,verified:true}]}));
+  await expect(readDetailPages('/api/dashboard/balances?hotel=KAT&account=synthetic&ageMin=61&ageMax=90','balance','synthetic',new AbortController().signal,()=>{},transport)).rejects.toThrow('dashboard_detail_scope');
  });
 });

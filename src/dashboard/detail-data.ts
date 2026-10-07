@@ -1,21 +1,29 @@
 import {useEffect,useState} from 'react';
-import {hotelInRegion,resolveRegion} from '../domain/hotels';
+import {hotelInRegion,resolveRegion,regionHotels,type RegionId} from '../domain/hotels';
 import {checkedSummary} from './data';
 import {balancesResult,paidInvoicesResult} from './period-data';
-import {decimal} from './model';
+import {decimal,count,addAmounts} from './model';
 import type {PeriodDetail} from './PeriodBalances';
 import {compareValues,type SortValue} from '../table-sort';
 
+export type DetailKind=PeriodDetail['kind']|'balance_accounts';
+/** Keep canonical Hotel sections while preserving the requested order inside each ledger. */
+export function dashboardHotelGroups<T>(rows:T[],region:RegionId,hotelOf:(row:T)=>unknown,descending=false){
+ const hotels=regionHotels(region);
+ return (descending?[...hotels].reverse():hotels).map(hotel=>({hotel,rows:rows.filter(row=>hotelOf(row)===hotel)})).filter(group=>group.rows.length>0);
+}
 export type DetailRow=Record<string,unknown>;
 export interface DetailData {rows:DetailRow[];total:number;complete:boolean}
 export type DetailSortKey='hotel'|'account'|'invoice'|'folio'|'guest'|'date'|'amount'|'original'|'due'|'billing'|'latest';
-export function detailIdentity(row:DetailRow,kind:PeriodDetail['kind']){
+export function detailIdentity(row:DetailRow,kind:DetailKind){
  const hotel=row.hotel,account=row.accountId??row.account_id,id=row.invoiceId??row.invoice_id??row.transactionId??row.id;
- if(typeof hotel!=='string'||typeof account!=='string'||!account||typeof id!=='string'||!id)throw Error('dashboard_detail_identity');
+ if(typeof hotel!=='string'||typeof account!=='string'||!account||kind!=='balance_accounts'&&(typeof id!=='string'||!id))throw Error('dashboard_detail_identity');
+ if(kind==='balance_accounts')return JSON.stringify([hotel,account]);
  if(kind==='sent'&&(typeof row.delivery_id!=='string'||!row.delivery_id))throw Error('dashboard_detail_identity');
  return JSON.stringify([hotel,account,id,...kind==='sent'?[row.delivery_id]:[]]);
 }
-function decode(value:unknown,kind:PeriodDetail['kind']):DetailData{
+function decode(value:unknown,kind:DetailKind):DetailData{
+ if(kind==='balance_accounts'){const raw=value as Record<string,unknown>;const v=balancesResult({...raw,rows:[]});if(!Array.isArray(raw.rows)||raw.rows.some(r=>!r||typeof r!=='object'||typeof r.hotel!=='string'||typeof r.accountId!=='string'||!r.accountId||typeof r.accountName!=='string'||typeof r.accountType!=='string'||count(r.count)===null||r.amount!==null&&decimal(r.amount)===null||r.oldest!==null&&(!Number.isSafeInteger(r.oldest))||typeof r.verified!=='boolean'))throw Error('dashboard_accounts_invalid');return {rows:raw.rows,total:v.total,complete:v.complete};}
  if(kind==='balance'){const v=balancesResult(value);return {rows:v.rows as unknown as DetailRow[],total:v.total,complete:v.complete};}
  if(kind==='payment_invoices'){const v=paidInvoicesResult(value);return {rows:v.rows as unknown as DetailRow[],total:v.total,complete:v.complete};}
  const v=checkedSummary(value),coverage=(value as {coverage?:{complete?:boolean}}).coverage;
@@ -23,7 +31,7 @@ function decode(value:unknown,kind:PeriodDetail['kind']):DetailData{
  return {rows:v.rows as DetailRow[],total:v.total,complete:kind==='sent'||coverage?.complete===true};
 }
 /** Fetch bounded API pages into a single view. Never silently deduplicate changed membership. */
-export async function readDetailPages(path:string,kind:PeriodDetail['kind'],token:string,signal:AbortSignal,onProgress:(count:number,total:number)=>void,transport:typeof fetch=fetch):Promise<DetailData>{
+export async function readDetailPages(path:string,kind:DetailKind,token:string,signal:AbortSignal,onProgress:(count:number,total:number)=>void,transport:typeof fetch=fetch):Promise<DetailData>{
  const [endpoint,search]=path.split('?'),query=new URLSearchParams(search),seen=new Set<string>(),rows:DetailRow[]=[];
  let total:number|undefined,fingerprint:string|undefined,complete=true;
  for(let page=0;;page++){
@@ -37,6 +45,7 @@ export async function readDetailPages(path:string,kind:PeriodDetail['kind'],toke
   total=data.total;fingerprint=nextFingerprint;complete&&=data.complete;
   for(const row of data.rows){
    if(!hotelInRegion(row.hotel,resolveRegion(query))||query.has('hotel')&&row.hotel!==query.get('hotel')||query.has('account')&&(row.accountId??row.account_id)!==query.get('account')||query.has('type')&&(row.accountType??row.account_type)!==query.get('type'))throw Error('dashboard_detail_scope');
+   if(kind==='balance'&&(query.has('ageMin')||query.has('ageMax'))&&(!Number.isSafeInteger(row.age)||query.has('ageMin')&&Number(row.age)<Number(query.get('ageMin'))||query.has('ageMax')&&Number(row.age)>Number(query.get('ageMax'))))throw Error('dashboard_detail_scope');
    const key=detailIdentity(row,kind);if(seen.has(key))throw Error('dashboard_detail_changed');seen.add(key);rows.push(row);
   }
   if(rows.length>total||rows.length<total&&data.rows.length!==50)throw Error('dashboard_detail_changed');
@@ -44,7 +53,7 @@ export async function readDetailPages(path:string,kind:PeriodDetail['kind'],toke
   if(rows.length===total)return {rows,total,complete};
  }
 }
-export function useDetailRows(path:string|null,kind:PeriodDetail['kind'],token:string,revision:number){
+export function useDetailRows(path:string|null,kind:DetailKind,token:string,revision:number){
  const key=JSON.stringify([path,kind,token,revision]);
  type State={key:string;state:'loading'|'ready'|'error';data?:DetailData;loaded:number;total?:number};
  const [stored,setStored]=useState<State>({key,state:'loading',loaded:0});
@@ -55,7 +64,7 @@ export function useDetailRows(path:string|null,kind:PeriodDetail['kind'],token:s
  },[key,path,kind,token]);
  return stored.key===key?stored:{key,state:'loading' as const,loaded:0};
 }
-export function sortDetailRows(rows:DetailRow[],kind:PeriodDetail['kind'],key:DetailSortKey,descending:boolean){
+export function sortDetailRows(rows:DetailRow[],kind:DetailKind,key:DetailSortKey,descending:boolean){
  const numeric=(v:unknown)=>decimal(v)===null?null:Number(v);
  const text=(v:unknown):SortValue=>typeof v==='string'||typeof v==='number'?v:null;
  const value=(r:DetailRow):SortValue=>{
@@ -74,4 +83,11 @@ export function sortDetailRows(rows:DetailRow[],kind:PeriodDetail['kind'],key:De
   }
  };
  return [...rows].sort((a,b)=>compareValues(value(a),value(b),descending)||compareValues(detailIdentity(a,kind),detailIdentity(b,kind)));
+}
+
+/** Group only a fully fetched population, always preserving each hotel ledger. */
+export function groupDetailAccounts(rows:DetailRow[],kind:PeriodDetail['kind']):DetailRow[]{
+ const groups=new Map<string,DetailRow[]>();
+ for(const row of rows){const key=JSON.stringify([row.hotel,row.accountId??row.account_id]);const group=groups.get(key);if(group)group.push(row);else groups.set(key,[row]);}
+ return [...groups.values()].map(items=>{const r=items[0],values=items.map(i=>kind==='balance'?i.open:kind==='invoice_entries'?i.originalAmount:i.amount);return {hotel:r.hotel,accountId:r.accountId??r.account_id,accountName:r.accountName??r.account_name,accountNo:r.accountNo??r.account_no,accountType:r.accountType??r.account_type,count:items.length,amount:addAmounts(values.map(v=>decimal(v))),oldest:items.every(i=>Number.isSafeInteger(i.age))?Math.max(...items.map(i=>Number(i.age))):null};});
 }

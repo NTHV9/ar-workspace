@@ -1,8 +1,15 @@
 import {describe,expect,it} from 'vitest';
-import {activityTotals,addAmounts,dashboardScope,queueTotals,scopeQuery,validDay,validPeriod,periodPreset,historyChunks,type DashboardQueueRow} from '../src/dashboard/model';
+import {activityTotals,addAmounts,dashboardScope,dashboardDetailScope,queueTotals,scopeQuery,validDay,validPeriod,periodPreset,historyChunks,type DashboardQueueRow} from '../src/dashboard/model';
 import {dashboardLink,dashboardReturn,dashboardReportContext,normalizedDashboardParams} from '../src/dashboard/links';
 import {defaultCollectionPolicy} from '../src/domain/collection-policy';
 const scope={hotel:'All',day:'2026-09-10',from:'2026-09-10',to:'2026-09-10',type:'Agent',account:''};
+it('hotel aging drills preserve the selected Account ledger unless explicitly overridden',()=>{
+ const selected={...scope,account:JSON.stringify(['KAT','same-id'])};
+ expect(dashboardDetailScope(selected,'KAT',null).account).toBe(selected.account);
+ expect(dashboardDetailScope(selected,'TSK',null).account).toBe('');
+ expect(dashboardDetailScope(selected,'TSK','same-id').account).toBe(JSON.stringify(['TSK','same-id']));
+ expect(dashboardDetailScope(selected,null,null)).toBe(selected);
+});
 const row:DashboardQueueRow={hotel:'KAT',account_id:'synthetic',id:'1',account_name:'Synthetic account',account_type:'Agent',guest:'Synthetic guest',invoice_no:'1',folio_no:'2',open:100,collection_role:'standalone',collection_selectable:true,verification_state:'verified',transaction_date:'2026-08-01',workflow:{revision:0,billing_required:false,credit_term:30,first_billing_date:null,last_reminder_stage:'Final',last_reminder_date:'2026-09-11',due_date:'2026-09-01'}};
 describe('dashboard scope and dates',()=>{
  it('uses a Thai-day default and leaves an invalid selected day visible for correction',()=>{expect(dashboardScope(new URLSearchParams(),'All','2026-09-11').day).toBe('2026-09-11');expect(dashboardScope(new URLSearchParams('dashboardDay='),'All').day).toBe('');expect(validDay('2026-02-30')).toBe(false);});
