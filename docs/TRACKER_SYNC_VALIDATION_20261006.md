@@ -1,5 +1,11 @@
 # Tracker integration — current deployment, usage and validation
 
+## Post-audit corrections — SQL applied; UI/parser release pending
+
+The five review findings are corrected in source and tested. Migration 102 is applied after local 5/5 and actual PostgreSQL 17.6 guarded qualification, with six exact function hashes, unchanged migration 101 queue/result definitions and preserved business/original-history fingerprints. Identity recovery only releases supported prior holds after unique eligible matching and the existing identity/revision fences. Register history uses exact command links for future Sheet imports; old null-command history is honestly source-unclassified, without changing its stored actor/values or guessing a backfill. New manual and raw-Y provenance remain distinct.
+
+Type validation, stored-error/last-success UI and complete-scope CFO assertions pass the affected checks; full units are 1,674/175 files, build passes, full smoke is 187/187 and the subsequently added history-render compatibility case is 1/1. New CI includes 188 smoke cases and is pending. The corrected UI/parser Worker is not yet deployed; the enabled release described below remains the actual runtime until Root records the new deployment. No original mutation, new email, permission change or AgingMaster upgrade is required. [Full corrective checkpoint](TRACKER_REAUDIT_20261007.md).
+
 ## Acceptance complete under the approved synthetic-job scope
 
 On 7 October the owner accepts a self-created simulated job instead of waiting for a real customer send. The accepted joined LOCAL proof uses current production confirmation/event/outbox SQL, unchanged sync service and both production adapters, with explicitly simulated Gmail/Google HTTP boundaries. Eleven current function hashes match production metadata; eight distinct regional R/U/V/W date assertions, exact confirmation-ID replay, sync replay, first-billing/resend, selected/unselected/decoy identity, excluded states and XLSX/GridData fidelity pass. All 109 ordinary public/private table fingerprints match after rollback; Root independently reruns the frozen proof and Astra approves it. The existing actual owned-provider qualification below supplies complementary live Google evidence. No new cloud fixture, original write or email is issued for this composition.

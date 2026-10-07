@@ -59,6 +59,7 @@ function cells(value:string,shared:string[],sharedRich:readonly boolean[]=[]):Ce
   const a=attrs(match[0].slice(0,match[0].indexOf('>')+1)),ref=/^([A-Z]{1,3})([1-9]\d{0,6})$/.exec(a.r??'');if(!ref||seen.has(a.r))fail();seen.add(a.r);
   const v=/<(?:\w+:)?v\b[^>]*>([\s\S]*?)<\/(?:\w+:)?v\s*>/.exec(match[0]);let raw=v?entities(v[1]):'';
   let richText=/<(?:\w+:)?r(?:\s|>)/.test(match[0]);if(a.t==='s'){if(!/^\d+$/.test(raw)||Number(raw)>=shared.length)fail();richText=sharedRich[Number(raw)]??false;raw=shared[Number(raw)];}else if(a.t==='inlineStr')raw=texts(match[0]);
+  if(a.t==='b')raw=raw==='1'?'TRUE':raw==='0'?'FALSE':raw;
   result.push({column:ref[1],row:Number(ref[2]),type:a.t??'n',style:Number(a.s??0),raw,formula:/<(?:\w+:)?f(?:\s|\/|>)/.test(match[0]),richText,start:match.index!,end:match.index!+match[0].length,xml:match[0]});
  }return result;
 }
@@ -71,9 +72,14 @@ function dateString(value:string,date1904:boolean):string|null {
 }
 export {dateString as trackerDateValue};
 const dateFields=new Set<TrackerField>(['R','T','U','V','W','X']);
-function value(cell:Cell|undefined,field:TrackerField,date1904:boolean):string|null {if(!cell||cell.raw==='')return null;if(cell.type==='e')throw Error('tracker_cell_error');return dateFields.has(field)?dateString(cell.raw,date1904):cell.raw;}
+const scalarTypes=new Set(['n','s','inlineStr','str']),dateTypes=new Set([...scalarTypes,'d']);
+function value(cell:Cell|undefined,field:TrackerField,date1904:boolean):string|null {
+ if(!cell)return null;const numeric=field==='S'||field==='Z'||field==='AA';
+ if(!(dateFields.has(field)?dateTypes:scalarTypes).has(cell.type)&&!(cell.type==='b'&&!dateFields.has(field)&&!numeric&&['TRUE','FALSE'].includes(cell.raw)))throw Error('tracker_cell_type_unsupported');
+ if(cell.raw==='')return null;return dateFields.has(field)?dateString(cell.raw,date1904):cell.raw;
+}
 function blockedDateCell(cell:Cell|undefined):boolean {
- if(!cell||cell.formula||cell.richText)return true;
+ if(!cell||cell.formula||cell.richText||!dateTypes.has(cell.type))return true;
  const inner=cell.xml.endsWith('/>')?'':cell.xml.slice(cell.xml.indexOf('>')+1,cell.xml.lastIndexOf('</'));
  return !!inner.replace(/<(?:\w+:)?v\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?v\s*>)/g,'').replace(/<(?:\w+:)?is\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?is\s*>)/g,'').trim();
 }
@@ -84,7 +90,7 @@ function load(bytes:Uint8Array,region:RegionId){
  const formats=new Map<number,string>(),styleFormats:number[]=[];
  if(entries.some(e=>e.name==='xl/styles.xml')){const styles=xml(entries,'xl/styles.xml');for(const m of styles.matchAll(/<(?:\w+:)?numFmt\b[^>]*\/?\s*>/g)){const a=attrs(m[0]);formats.set(Number(a.numFmtId),a.formatCode);}
   const xfs=/<(?:\w+:)?cellXfs\b[^>]*>([\s\S]*?)<\/(?:\w+:)?cellXfs\s*>/.exec(styles)?.[1]??'';for(const m of xfs.matchAll(/<(?:\w+:)?xf\b[^>]*\/?\s*>/g))styleFormats.push(Number(attrs(m[0]).numFmtId??0));}
- const identityValue=(cell:Cell|undefined):string=>{if(!cell)return '';if(cell.formula||cell.type==='e')throw Error('tracker_row_identity_invalid');const raw=cell.raw.trim(),format=formats.get(styleFormats[cell.style]);if(cell.type==='n'&&/^\d+$/.test(raw)&&format&&/^0{2,20}$/.test(format))return raw.padStart(format.length,'0');return raw;};
+ const identityValue=(cell:Cell|undefined):string=>{if(!cell)return '';if(cell.formula||!scalarTypes.has(cell.type))throw Error('tracker_row_identity_invalid');const raw=cell.raw.trim(),format=formats.get(styleFormats[cell.style]);if(cell.type==='n'&&/^\d+$/.test(raw)&&format&&/^0{2,20}$/.test(format))return raw.padStart(format.length,'0');return raw;};
  const rels=new Map<string,string>();for(const match of relationships.matchAll(/<(?:\w+:)?Relationship\b[^>]*\/?\s*>/g)){const a=attrs(match[0]);if(a.TargetMode==='External')continue;let target=a.Target??'';if(target.startsWith('/'))target=target.slice(1);else target='xl/'+target;if(target.includes('..')||target.includes('\\'))fail();rels.set(a.Id,target);}
  const choices:{name:string;path:string}[]=[];
  for(const match of workbook.matchAll(/<(?:\w+:)?sheet\b[^>]*\/?\s*>/g)){
@@ -96,9 +102,10 @@ function load(bytes:Uint8Array,region:RegionId){
  for(const key of chosen.cells.filter(c=>c.column==='AG'&&c.row>2&&c.raw)){
   const get=(col:string)=>chosen.map.get(col+key.row);const hotel=trackerHotel(get('A')?.raw??'',region);if(!hotel)continue;
   const issues:string[]=[];let accountNo='',invoiceNo='',folio:string|null=null;
+  if(!scalarTypes.has(key.type))issues.push('identity_invalid');
   try{accountNo=identityValue(get('C'));invoiceNo=identityValue(get('E'));folio=identityValue(get('F'))||null;}catch{issues.push('identity_invalid');}
   if(!accountNo)issues.push('account_missing');if(!invoiceNo)issues.push('invoice_missing');
-  let transactionDate:string|null=null;try{const posting=get('G');if(posting?.formula)throw Error('tracker_row_identity_invalid');transactionDate=dateString(posting?.raw??'',date1904);}catch{issues.push('transaction_date_invalid');}
+  let transactionDate:string|null=null;try{const posting=get('G');if(posting&&(posting.formula||!dateTypes.has(posting.type)))throw Error('tracker_row_identity_invalid');transactionDate=dateString(posting?.raw??'',date1904);}catch{issues.push('transaction_date_invalid');}
   if(keys.has(key.raw))throw Error('tracker_row_key_ambiguous');keys.add(key.raw);
   if(accountNo&&invoiceNo){const identityKey=JSON.stringify([hotel,accountNo,invoiceNo,folio]);if(identities.has(identityKey))throw Error('tracker_row_identity_ambiguous');identities.add(identityKey);}
   const fields:TrackerValues={};for(const field of trackerFields){try{fields[field]=value(get(field),field,date1904);}catch{fields[field]=get(field)?.raw??null;issues.push(field+'_invalid');}}

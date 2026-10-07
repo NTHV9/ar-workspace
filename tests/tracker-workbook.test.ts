@@ -9,6 +9,22 @@ function localParts(bytes:Uint8Array){const view=new DataView(bytes.buffer,bytes
  const central=view.getUint32(end+16,true);offsets.sort((a,b)=>a.offset-b.offset);return new Map(offsets.map((part,index)=>[part.name,bytes.slice(part.offset,index+1<offsets.length?offsets[index+1].offset:central)]));
 }
 describe('tracker OOXML boundaries',()=>{
+ it('holds boolean identity, dates and financial values without treating them as 1 or 0',()=>{
+  for(const raw of ['1','0'])for(const field of ['C','E','F','AG','G','R','T','U','V','W','X','S','Z','AA']){
+   const parts=unzipSync(fixture());let sheet=strFromU8(parts['xl/worksheets/sheet1.xml']);
+   const cell=`<c r="${field}3" t="b"><v>${raw}</v></c>`,pattern=new RegExp(`<c r="${field}3"[^>]*(?:/>|>[\\s\\S]*?</c>)`);
+   sheet=['G','X','Z','AA'].includes(field)?sheet.replace('<row r="3">','<row r="3">'+cell):sheet.replace(pattern,cell);
+   parts['xl/worksheets/sheet1.xml']=strToU8(sheet);const bytes=zipSync(parts),row=parseTrackerWorkbook(bytes,'phuket').rows[0];
+   expect(row.issues,field+raw).toContain(['C','E','F','AG'].includes(field)?'identity_invalid':field==='G'?'transaction_date_invalid':field+'_invalid');
+   if(['R','T','U','V','W','X','S','Z','AA'].includes(field))expect(row.fields[field as 'R']).toBe(raw==='1'?'TRUE':'FALSE');
+   if(['C','E','F','AG','G','R','U'].includes(field))expect(()=>patchTrackerWorkbook(bytes,'phuket',row.rowKey,{hotel:row.hotel,accountNo:row.accountNo,invoiceNo:row.invoiceNo,folioNo:row.folio},[{field:field==='U'?'U':'R',value:'2026-10-06',expected:row.fields[field==='U'?'U':'R']??null}])).toThrow('tracker_identity_conflict');
+  }
+ });
+ it('retains literal booleans in text fields and blocks unsupported blank date cell types',()=>{
+  const parts=unzipSync(fixture());parts['xl/worksheets/sheet1.xml']=strToU8(strFromU8(parts['xl/worksheets/sheet1.xml']).replace(/<c r="AB3"[\s\S]*?<\/c>/,'<c r="AB3" t="b"><v>1</v></c>').replace('<c r="R3" s="1"/>','<c r="R3" t="b"/>'));
+  const bytes=zipSync(parts),row=parseTrackerWorkbook(bytes,'phuket').rows[0];expect(row.fields.AB).toBe('TRUE');expect(row.blockedWriteFields).toContain('R');
+  expect(()=>patchTrackerWorkbook(bytes,'phuket',row.rowKey,identity,[{field:'R',value:'2026-10-06',expected:null}])).toThrow();
+ });
  it('reads the exact schema, self-closing blanks and identifiers without losing zeros',()=>{const rows=parseTrackerWorkbook(fixture(),'phuket').rows;expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({...identity,folio:'003',formulaFields:['T'],fields:{R:null,S:'30',T:null,U:null,AB:'SYNTHETIC note & preserved'}});});
  it('preserves numeric identifiers formatted with explicit leading zeros',()=>{expect(parseTrackerWorkbook(fixture({numericId:true}),'phuket').rows[0].invoiceNo).toBe('00017');});
  it('rejects ambiguous hidden keys, excludes LFS and holds a wrong regional tab',()=>{expect(()=>parseTrackerWorkbook(fixture({duplicate:true}),'phuket')).toThrow('tracker_row_key_ambiguous');expect(parseTrackerWorkbook(fixture({hotel:'LFS'}),'khao-lak').rows).toEqual([]);expect(()=>parseTrackerWorkbook(fixture(),'khao-lak')).toThrow('tracker_schema_ambiguous');});

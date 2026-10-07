@@ -1,5 +1,39 @@
 import {test,expect} from '@playwright/test';
 import {auditWorkspace,auditLogin,auditRoute} from './fixtures/audit-workspace';
+
+test('healthy periodic status reads preserve an unconfirmed tracker command alert',async({page})=>{
+ await page.clock.install();await auditWorkspace(page);let pending=0;const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>{
+  if(r.request().method()==='POST'){commands.push(r.request().postDataJSON());return r.fulfill({status:503,json:{error:'tracker_unavailable'}});}
+  return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,lastSuccessAt:null,error:null,pending,conflictCount:0,conflicts:[]}});
+ });
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await page.getByRole('button',{name:'Check changes',exact:true}).click();
+ const alert=page.getByRole('alert');await expect(alert).toContainText('Tracker update could not be confirmed');
+ pending=1;await page.clock.fastForward(61000);await expect(page.getByRole('status')).toContainText('1 pending writes');await expect(alert).toContainText('Tracker update could not be confirmed');
+ pending=2;await alert.getByRole('button',{name:'Retry status'}).click();await expect(page.getByRole('status')).toContainText('2 pending writes');await expect(alert).toContainText('Tracker update could not be confirmed');expect(commands).toEqual([{action:'sync'}]);
+});
+
+test('stored scheduled failure shows last success and polling clears stored and request errors',async({page})=>{
+ await page.clock.install();await auditWorkspace(page);let mode='stored';const authorizations:string[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>{
+  authorizations.push(r.request().headers().authorization);if(mode==='request')return r.fulfill({status:503,json:{error:'synthetic_private_error'}});
+  return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:'2026-10-07T04:00:00Z',lastSuccessAt:'2026-10-06T04:00:00Z',error:mode==='stored'?'synthetic_private_error':null,pending:0,conflictCount:0,conflicts:[]}});
+ });
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');
+ await expect(page.getByRole('alert')).toContainText('The latest tracker synchronization failed');await expect(page.getByText(/Last successful synchronization/)).toBeVisible();await expect(page.getByText(/Last attempt/)).toBeVisible();await expect(page.getByText('synthetic_private_error',{exact:false})).toHaveCount(0);
+ await page.screenshot({path:'.tmp/tracker-sync/stored-failure-fixed.png',fullPage:false});
+ mode='healthy';await page.clock.fastForward(61000);await expect(page.getByRole('alert')).toHaveCount(0);
+ mode='request';await page.clock.fastForward(61000);await expect(page.getByRole('alert')).toContainText('Tracker status could not be loaded');
+ mode='healthy';await page.clock.fastForward(61000);await expect(page.getByRole('alert')).toHaveCount(0);expect(new Set(authorizations).size).toBe(1);
+});
+for(const malformed of [{error:{message:'private'}},{lastSuccessAt:17},{lastSuccessAt:'invalid-date'}])test(`tracker status rejects malformed optional fields ${JSON.stringify(malformed)}`,async({page})=>{
+ await auditWorkspace(page);await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>r.fulfill({json:{connected:true,enabled:true,available:true,revision:1,lastCheckedAt:null,pending:0,conflictCount:0,conflicts:[],...malformed}}));
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('alert')).toContainText('Tracker status could not be loaded');await expect(page.getByText('0 pending writes',{exact:false})).toHaveCount(0);
+});
+
 test('native best-effort status is explicit and never claims conditional safety',async({page})=>{
  await auditWorkspace(page);const commands:unknown[]=[];
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'khao-lak',url:'https://docs.google.com/spreadsheets/d/synthetic_native_original_123456/edit'}]}}));
@@ -49,6 +83,20 @@ test('Register keeps raw Sheet status visible and separate from canonical status
  await page.getByRole('button',{name:'History invoice KAT 00001',exact:true}).click();const history=page.getByRole('region',{name:'Register edit history'});await expect(history).toContainText('editor unavailable');await expect(history).toContainText('Read-only sheet status: Blank → ติดตามชำระ');
  expect(writes.filter(w=>w.path.includes('invoice-register'))).toHaveLength(0);
 });
+test('Register history renders imported, legacy and manual provenance in returned order with escaped actor text',async({page})=>{
+ const {writes}=await auditWorkspace(page);
+ const row={hotel:'KAT',account_id:'A',id:'I1',account_name:'Synthetic Travel',account_no:'0002',account_type:'Agent',guest:'Synthetic guest',invoice_no:'00001',folio_no:'7',transaction_date:'2026-09-01',original:100,open:100,age:30,aging:'Up to 30',verification_state:'verified',collection_role:'standalone',collection_selectable:true,workflow:null,workflow_revision:1,tracking_revision:1,exception_revision:0,billing_required:true,credit_term:30,first_billing_date:null,due_date:null,last_reminder_stage:null,last_reminder_date:null,promised_date:null,tracking_status:'Promised payment',owner_name:'',reported_received:null,note:'',edited_at:null,hidden:false};
+ const actors=['Sheet record · editor unavailable; imported by Synthetic Staff','Source not recorded · recorded by Synthetic Staff','Synthetic Staff','Synthetic Staff <img src="invalid" onerror="window.syntheticActorInjected=true">'];
+ const sources=['sheet_import','legacy_unclassified','register','register'];
+ const rows=actors.map((actor,index)=>({id:4-index,actor,source:sources[index],recorded_at:`2026-10-0${4-index}T00:00:00Z`,before_value:{note:`Before ${index}`},after_value:{note:`After ${index}`}}));
+ await page.route('**/api/invoice-register?*',r=>r.fulfill({json:{rows:[row],total:1,hiddenTotal:0,snapshot:'a'.repeat(32),summary:{invoices:1,open:100,unverified:0}}}));
+ await page.route('**/api/invoice-register/KAT/A/I1/history*',r=>r.fulfill({json:{total:4,rows}}));
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=register');await page.getByRole('button',{name:'History invoice KAT 00001',exact:true}).click();
+ const history=page.getByRole('region',{name:'Register edit history'}),entries=history.locator('article');await expect(entries).toHaveCount(4);await expect(entries.locator(':scope>span')).toHaveText(actors);
+ for(let i=0;i<4;i++)await expect(entries.nth(i).locator('li')).toHaveText(`Invoice note: Before ${i} → After ${i}`);
+ await expect(history.getByRole('button',{name:'Previous history'})).toBeDisabled();await expect(history.getByRole('button',{name:'Next history'})).toBeDisabled();await expect(history.locator('img')).toHaveCount(0);expect(await page.evaluate(()=>Reflect.get(window,'syntheticActorInjected'))).toBeUndefined();expect(writes.filter(w=>w.path.includes('invoice-register'))).toHaveLength(0);
+});
+
 test('committed tracker revisions refresh a clean Register and preserve a dirty editor without an OPERA publication',async({page})=>{
  await page.clock.install();await auditWorkspace(page);let revision=1,revisionReads=0,registerReads=0;
  const row=()=>({hotel:'KAT',account_id:'A',id:'I1',account_name:'Synthetic Travel',account_no:'0002',account_type:'Agent',guest:'Synthetic guest',invoice_no:'00001',folio_no:'7',transaction_date:'2026-09-01',original:100,open:100,age:30,aging:'Up to 30',verification_state:'verified',collection_role:'standalone',collection_selectable:true,workflow:null,workflow_revision:1,tracking_revision:1,exception_revision:0,billing_required:true,credit_term:30,first_billing_date:null,due_date:null,last_reminder_stage:null,last_reminder_date:null,promised_date:null,tracking_status:'Promised payment',owner_name:'',reported_received:null,note:'',edited_at:null,hidden:false,sourceTrackingStatusRaw:`Reported source ${revision}`,sourceTrackingStatusProvenance:'Sheet record; editor unavailable'});

@@ -4,18 +4,18 @@ import {notifyRegisterChanged} from '../register/model';
 import {DRIVE_SCOPE,openDriveFilePicker,prepareDrivePicker,type DriveFilePickerConfig,type PickerRuntime} from '../drive/picker';
 import {trackerConflictCategories,trackerConflictCategoryLabels,trackerConflictFieldLabels,validConflictPage,type TrackerConflictPage,type TrackerConflictCategory} from '../domain/tracker-conflicts';
 interface Conflict {id:string;rowKey:string;field:string;reason:string;sheetValue:unknown;webValue:unknown;revision:number}
-interface Status {connected:boolean;enabled:boolean;available:boolean;heldWrites?:number;writebackAvailable?:boolean;writeAssurance?:'cas'|'best-effort'|'held';bootstrapConfirmed?:boolean;revision:number;lastCheckedAt:string|null;pending:number;conflictCount:number;conflicts:Conflict[];sheetActivity?:{actualDate:string;field:string;invoices:number}[]}
+interface Status {connected:boolean;enabled:boolean;available:boolean;heldWrites?:number;writebackAvailable?:boolean;writeAssurance?:'cas'|'best-effort'|'held';bootstrapConfirmed?:boolean;revision:number;lastCheckedAt:string|null;lastSuccessAt?:string|null;error?:string|null;pending:number;conflictCount:number;conflicts:Conflict[];sheetActivity?:{actualDate:string;field:string;invoices:number}[]}
 interface Preview {previewId:string;snapshotHash:string;rowCount:number;matchedRows:number;heldRows:number;eligibleFields:number;reportedStatuses?:number;conflictingFields:number;details:{rowKey:string;field:string;sheetValue:unknown;webValue:unknown;decision:string}[]}
 const value=(v:unknown)=>v===null||v===undefined?'Blank':String(v).slice(0,300);
 const canAccept=(c:Conflict)=>c.reason!=='invalid_source_field'&&!['S','T','AA'].includes(c.field)&&!(c.field==='Y'&&c.sheetValue!==null&&!['','Contacted','Awaiting reply','Promised payment','Remittance received','Disputed','Other'].includes(String(c.sheetValue)));
 export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}){
- const [result,setResult]=useState<{owner:string;status:Status}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[review,setReview]=useState(false);
+ const [result,setResult]=useState<{owner:string;status:Status}|null>(null),[error,setError]=useState(''),[readError,setReadError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[review,setReview]=useState(false);
  const owner=token+region,status=result?.owner===owner?result.status:null;
  const actorRef=useRef(owner);actorRef.current=owner;const pickerOperation=useRef<AbortController|null>(null);
  const [navigation,setNavigation]=useState<{owner:string;reload:number;category:TrackerConflictCategory;cursors:(string|null)[]}>({owner,reload:0,category:'all',cursors:[null]});
  const category=navigation.owner===owner?navigation.category:'all',cursors=navigation.owner===owner&&navigation.reload===revision?navigation.cursors:[null],cursor=cursors.at(-1)??null;
  const pageKey=JSON.stringify([owner,revision,category,cursor]),[pageResult,setPageResult]=useState<{key:string;page:TrackerConflictPage}|null>(null),[pageError,setPageError]=useState<{key:string;message:string}|null>(null),[pageRetry,setPageRetry]=useState(0),page=pageResult?.key===pageKey?pageResult.page:null;
- useEffect(()=>{setReview(false);setBusy(false);},[owner]);
+ useEffect(()=>{setReview(false);setBusy(false);setError('');setReadError('');},[owner]);
  useEffect(()=>{
   if(!review)return;const controller=new AbortController();setPageError(null);setPageResult(null);
   const query=new URLSearchParams({region,category});if(cursor)query.set('cursor',cursor);
@@ -36,13 +36,15 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
  },[needsAuthorization,status?.available,token,region,owner,pickerAttempt]);
  const [previewResult,setPreviewResult]=useState<{owner:string;value:Preview}|null>(null),preview=previewResult?.owner===owner?previewResult.value:null;
  useEffect(()=>{
-  const controller=new AbortController();setResult(null);setError('');
+  const controller=new AbortController();setResult(null);setReadError('');
   const read=async()=>{try{
    const response=await fetch(`/api/reports/tracker?region=${region}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal});
    if(!response.ok)throw Error();const data=await response.json() as Status;
+   const validTimestamp=(v:unknown)=>v===null||typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(v)&&Number.isFinite(Date.parse(v));
+   if(!data||typeof data!=='object'||(data.error!==undefined&&data.error!==null&&typeof data.error!=='string')||(data.lastSuccessAt!==undefined&&!validTimestamp(data.lastSuccessAt)))throw Error();
    if(typeof data.connected!=='boolean'||typeof data.available!=='boolean'||!Array.isArray(data.conflicts)||!Number.isSafeInteger(data.pending)||!Number.isSafeInteger(data.conflictCount))throw Error();
-   if(!controller.signal.aborted)setResult({owner,status:data});
-  }catch{if(!controller.signal.aborted)setError('Tracker status could not be loaded. Retry to check the connection.');}};
+   if(!controller.signal.aborted){setResult({owner,status:data});setReadError('');}
+  }catch{if(!controller.signal.aborted)setReadError('Tracker status could not be loaded. Retry to check the connection.');}};
   void read();const timer=setInterval(()=>void read(),60000);return()=>{controller.abort();clearInterval(timer);};
  },[token,region,owner,revision]);
  const command=async(input:Record<string,unknown>)=>{
@@ -64,9 +66,12 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
   finally{if(actorRef.current===owner)setBusy(false);if(pickerOperation.current===controller)pickerOperation.current=null;}
  };
  return <div className="report-tracker" aria-label={`${region} tracker synchronization`}>
+  {readError&&<p role="alert">{readError} <button disabled={busy} onClick={()=>setRevision(n=>n+1)}>Retry status</button></p>}
   {error&&<p role="alert">{error} <button disabled={busy} onClick={()=>setRevision(n=>n+1)}>Retry status</button></p>}
   {!status?<p role="status">Checking tracker connection…</p>:<>
-   <p role="status">{!status.available?'Synchronization is awaiting activation.':!status.connected?'Tracker is ready to connect.':`${status.pending} pending writes · ${status.conflictCount} items to review`}{status.lastCheckedAt&&<> · Checked {new Date(status.lastCheckedAt).toLocaleString()}</>}</p>
+   <p role="status">{!status.available?'Synchronization is awaiting activation.':!status.connected?'Tracker is ready to connect.':`${status.pending} pending writes · ${status.conflictCount} items to review`}{status.lastCheckedAt&&<> · Last attempt {new Date(status.lastCheckedAt).toLocaleString()}</>}</p>
+   {status.error&&<p role="alert">The latest tracker synchronization failed. The last attempt did not confirm a successful synchronization. Retry status or use Check changes to check again. <button disabled={busy} onClick={()=>setRevision(n=>n+1)}>Retry status</button></p>}
+   {status.connected&&<p>Last successful synchronization: {status.lastSuccessAt?new Date(status.lastSuccessAt).toLocaleString():'No successful synchronization recorded.'}</p>}
    {status.connected&&status.writeAssurance==='best-effort'&&<p>Automatic date writeback uses best-effort updates. Concurrent edits may be overwritten. Uncertain writes are checked without another write attempt.</p>}
    {status.connected&&(status.writebackAvailable===false||!!status.heldWrites)&&<p>{status.writebackAvailable===false?'Writeback to this file is held until a safe update method is verified.':'Some date cells require source-field review before writeback.'} {status.heldWrites??0} confirmed Sent dates are retained for future writeback.</p>}
    {status.available&&<div className="report-tracker-actions">

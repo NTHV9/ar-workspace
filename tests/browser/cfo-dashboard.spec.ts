@@ -36,11 +36,12 @@ for(const region of ['phuket','khao-lak'] as const)for(const width of [1440,1280
 test('CFO Account search/sort and scoped invoice drill preserve report selection',async({page})=>{
  const {queries}=await managementFixture(page);await openDashboard(page,'/?dashboard=1&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
  const list=page.getByRole('region',{name:'Accounts over 60 days',exact:true});await expect(list.locator('tbody tr')).toHaveCount(4);
+ const firstScope=[...queries[0].entries()].sort(([a],[b])=>a.localeCompare(b));
  await list.getByRole('button',{name:'Sort by Oldest · days',exact:true}).click();await expect(list.locator('tbody tr').first()).toContainText('Synthetic Lake Travel');
  const search=page.getByRole('searchbox',{name:'Search accounts over 60 days',exact:true});await search.fill('KAT tour');await expect(list.locator('tbody tr')).toHaveCount(1);
  await list.getByRole('button',{name:'Synthetic Tour Company',exact:true}).click();const details=page.getByRole('region',{name:'Dashboard invoice details',exact:true});await expect(details).toContainText('SYN-61');
  expect(new URL(page.url()).searchParams.get('dashboardDetailAccount')).toBe('tour');expect(new URL(page.url()).searchParams.get('dashboardDetailHotel')).toBe('KAT');
- await details.getByRole('button',{name:'Close details',exact:true}).click();await expect(search).toHaveValue('KAT tour');await expect(list.locator('tbody tr')).toHaveCount(1);expect(queries).toHaveLength(1);
+ await details.getByRole('button',{name:'Close details',exact:true}).click();await expect(search).toHaveValue('KAT tour');await expect(list.locator('tbody tr')).toHaveCount(1);expect(queries.length).toBeGreaterThan(0);for(const query of queries)expect([...query.entries()].sort(([a],[b])=>a.localeCompare(b))).toEqual(firstScope);
 });
 test('unknown aged coverage is visible and never becomes an empty verified list',async({page})=>{
  await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.agesComplete=false;data.accountsOver60=null;data.hotels.forEach(h=>{h.over60=null;h.over90=null;h.unbilled61=null;h.bands.forEach(b=>{b.amount=null;b.count=null;});});await route.fulfill({json:data});});
