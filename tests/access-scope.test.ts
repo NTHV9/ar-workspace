@@ -2,6 +2,12 @@ import {expect,it} from 'vitest';
 import {containsOutsideHotel,requestAccessIntent} from '../worker/access/scope';
 const id='00000000-0000-4000-8000-000000000021';
 const request=(path:string,method='GET',body?:unknown)=>new Request('https://app.test'+path,{method,...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
+it('admits only strictly scoped read-only tracker conflict paging',async()=>{
+ expect(await requestAccessIntent(request('/api/reports/tracker-conflicts?region=khao-lak&category=dates'))).toEqual({kind:'region',region:'khao-lak'});
+ expect(await requestAccessIntent(request('/api/reports/tracker-conflicts?region=phuket&cursor=opaque.'+'a'.repeat(64)))).toEqual({kind:'region',region:'phuket'});
+ for(const query of ['region=phuket&other=x','region=phuket&category=bad','region=phuket&category=dates&category=dates','region=phuket&cursor=opaque.'+'a'.repeat(64)+'&cursor=opaque.'+'b'.repeat(64),'region=phuket&cursor=','region=phuket&cursor='+'x'.repeat(801),'region=phuket&region=phuket','category=dates'])await expect(requestAccessIntent(request('/api/reports/tracker-conflicts?'+query))).rejects.toThrow('access_forbidden');
+ await expect(requestAccessIntent(request('/api/reports/tracker-conflicts?region=phuket','POST'))).rejects.toThrow('access_forbidden');
+});
 it.each(['/api/portfolio','/api/collection-queue','/api/refresh','/api/dashboard/management','/api/dashboard/balances','/api/dashboard/aging-invoices','/api/remittances','/api/external-billing','/api/financial/status'])('binds regional reads independently of client UI: %s',async path=>{
  expect(await requestAccessIntent(request(path+'?region=khao-lak'))).toMatchObject({kind:'region',region:'khao-lak'});
  expect(await requestAccessIntent(request(path))).toMatchObject({kind:'region',region:'phuket'});

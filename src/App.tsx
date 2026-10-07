@@ -1,4 +1,5 @@
 import {OperaStatusMenu} from './OperaStatusMenu';
+import {useTrackerRevision} from './reports/use-tracker-revision';
 import {clearPeriodPreview} from './dashboard/period-preview-cache';
 import {SignInScreen} from './access/SignInScreen';
 import './regional.css';
@@ -74,6 +75,7 @@ export function App() {
   const paramsRef=useRef(params); const review=params.get('mode')==='review';
   const [client,setClient]=useState<SupabaseClient|null>(null), [session,setSession]=useState<Session|null>(null);
   const {access:workspaceAccess,error:accessError}=useWorkspaceAccess(session);
+  useTrackerRevision(!review&&workspaceAccess?session?.access_token:undefined,workspaceAccess?JSON.stringify([session?.user.id,workspaceAccess.regions,workspaceAccess.revision]):'');
   useEffect(()=>{if(!authReady||!session||!loginCallback.current)return;loginCallback.current=false;const next=initialWorkspaceParams(new URLSearchParams());paramsRef.current=next;history.replaceState(null,'','?'+next);setParams(next);},[authReady,session]);
   const [accounts,setAccounts]=useState<Account[]>([]), [invoices,setInvoices]=useState<Invoice[]>([]);
   const [accountsOwner,setAccountsOwner]=useState<string|null>(null);

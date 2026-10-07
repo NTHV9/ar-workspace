@@ -1,6 +1,7 @@
 import {hotelRegion,isHotelId,type HotelId} from '../../src/domain/hotels';
 import {regionalHotelScope} from '../hotels';
 import {boundedBody} from '../email/shared';
+import {parseTrackerConflictQuery} from '../tracker-sync/conflict-query';
 export type AccessKind='hotel'|'region'|'document'|'email'|'delivery'|'remittance'|'remittance_save'|'remittance_command'|'exception_command'|'billing'|'global';
 export interface AccessIntent {kind:AccessKind;hotel?:HotelId;region?:string;ref?:string;mail?:boolean}
 const denied=():never=>{throw Error('access_forbidden');};
@@ -18,6 +19,13 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  for(const key of ['region','hotel'])if(q.getAll(key).length>1)return denied();
  if((p==='/api/account-settings/bulk'&&m==='GET'||['/api/account-settings/bulk/preview','/api/account-settings/bulk/apply'].includes(p)&&m==='POST')&&!q.size)return {kind:'global'};
  if(p==='/api/reports/sheets')return m==='GET'&&!q.size?{kind:'global'}:denied();
+ if(p==='/api/reports/tracker-revisions')return m==='GET'&&!q.size?{kind:'global'}:denied();
+ if(p==='/api/reports/tracker-conflicts'){
+  if(m!=='GET')return denied();try{return {kind:'region',region:parseTrackerConflictQuery(u).region};}catch{return denied();}
+ }
+ if(p==='/api/reports/tracker'||p==='/api/reports/tracker-picker'){
+  const region=q.get('region');return (m==='GET'||p==='/api/reports/tracker'&&m==='POST')&&q.size===1&&(region==='phuket'||region==='khao-lak')?{kind:'region',region}:denied();
+ }
  const regional=():AccessIntent=>{try{const s=regionalHotelScope(q);return s.hotel?hotel(s.hotel):{kind:'region',region:s.region};}catch{return denied();}};
  if(p==='/api/invoice-register'&&m==='GET'||p==='/api/invoice-register/visibility'&&m==='POST')return regional();
  const register=/^\/api\/invoice-register\/([^/]+)\/[^/]+\/[^/]+(\/history)?$/.exec(p);if(register&&(m==='GET'||m==='PUT'&&!register[2]))return hotel(decodeURIComponent(register[1]));

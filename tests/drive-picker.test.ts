@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
-import {DRIVE_SCOPE, openDriveFolderPicker, type PickerRuntime, type PickerTokenRequest} from '../src/drive/picker';
+import {DRIVE_SCOPE, openDriveFolderPicker,openDriveFilePicker,type DriveFilePickerConfig, type PickerRuntime, type PickerTokenRequest} from '../src/drive/picker';
 import {driveFolderReady, safeDriveUrl} from '../src/drive/model';
 
 const config={clientId:'synthetic-client',browserKey:'synthetic-key',projectNumber:'123456',scope:DRIVE_SCOPE,folderId:'synthetic-confirmed-folder'};
@@ -40,6 +40,26 @@ describe('Drive Picker consent boundary',()=>{
  it('ignores duplicate token callbacks instead of opening another Picker',async()=>{
   const r=runtime(),result=openDriveFolderPicker(config,r.api,new AbortController().signal);
   r.token();r.token();expect(r.show).toHaveBeenCalledOnce();r.cancel();await expect(result).resolves.toBeNull();
+ });
+});
+describe('Original tracker Picker consent boundary',()=>{
+ const file:DriveFilePickerConfig={clientId:'synthetic-client',browserKey:'synthetic-key',projectNumber:'123456',scope:DRIVE_SCOPE,fileId:'synthetic_original_tracker_12345',fileName:'Synthetic original.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',accountEmail:'ar@katathani.com'};
+ function fileRuntime(){
+  const base=runtime();let selection:Parameters<NonNullable<PickerRuntime['createFilePicker']>>[0]|undefined;
+  const create=vi.fn((options:Parameters<NonNullable<PickerRuntime['createFilePicker']>>[0])=>{selection=options;return {show:base.show,dispose:base.dispose};});
+  base.api.createFilePicker=create;return {api:base.api,show:base.show,dispose:base.dispose,requestAccessToken:base.requestAccessToken,token:base.token,create,pickFile:(id:string)=>selection!.onPicked(id),cancelFile:()=>selection!.onCancel(),get request(){return base.request;}};
+ }
+ it('opens only the configured original and hints the AR provider account with drive.file only',async()=>{
+  const r=fileRuntime(),result=openDriveFilePicker(file,r.api,new AbortController().signal);
+  expect(r.request).toMatchObject({scope:DRIVE_SCOPE,include_granted_scopes:false,login_hint:'ar@katathani.com'});
+  expect(r.requestAccessToken).toHaveBeenCalledWith({prompt:'consent'});r.token();expect(r.create).toHaveBeenCalledWith(expect.objectContaining({fileId:file.fileId,mimeType:file.mimeType,fileName:file.fileName}));r.pickFile(file.fileId);await expect(result).resolves.toBe(file.fileId);expect(r.dispose).toHaveBeenCalledOnce();
+ });
+ it('rejects other files and broader token scopes without returning them to the backend',async()=>{
+  const r=fileRuntime(),result=openDriveFilePicker(file,r.api,new AbortController().signal);r.token();r.pickFile('synthetic_other_file_12345');await expect(result).rejects.toThrow('drive_file_mismatch');
+  const next=fileRuntime(),denied=openDriveFilePicker(file,next.api,new AbortController().signal);next.token(DRIVE_SCOPE+' https://www.googleapis.com/auth/drive');await expect(denied).rejects.toThrow('drive_picker_scope_invalid');expect(next.create).not.toHaveBeenCalled();
+ });
+ it('cancels file authorization without a selection and ignores late callbacks',async()=>{
+  const r=fileRuntime(),controller=new AbortController(),result=openDriveFilePicker(file,r.api,controller.signal);r.token();controller.abort();r.pickFile(file.fileId);await expect(result).resolves.toBeNull();expect(r.dispose).toHaveBeenCalledOnce();
  });
 });
 describe('Drive display safety',()=>{
