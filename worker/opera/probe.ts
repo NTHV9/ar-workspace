@@ -23,7 +23,17 @@ function shape(value:unknown,depth=0):unknown {
   if(typeof value==='object')return Object.fromEntries(Object.entries(value as Record<string,unknown>).filter(([k])=>!['links','warnings'].includes(k)).map(([k,v])=>[k,shape(v,depth+1)]));
   return typeof value;
 }
-/** Categorical private diagnostics only: no customer names, amounts, IDs or raw responses. */
+function diagnosticDate(value:unknown):string|null {
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return null;
+  const parsed=new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value?value:null;
+}
+function diagnosticInteger(value:unknown):number|null {return typeof value==='number'&&Number.isSafeInteger(value)?value:null;}
+function diagnosticAgingDate(value:unknown) {
+  const range=value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
+  return {start:diagnosticDate(range.start),end:diagnosticDate(range.end)};
+}
+/** Private diagnostics only: categories, numeric ranges and validated calendar dates; no customer names, amounts, IDs or raw responses. */
 export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:string,savePdf?:(bytes:Uint8Array,expected:Record<string,string>)=>Promise<void>) {
   const reader=makeReader(env,hotel);
   const checked=async(stage:string,read:()=>Promise<unknown>)=>{try{return await read();}catch(e){throw e instanceof OperaError?new OperaError(e.code,e.upstreamStatus,e.stage??stage,e.providerMessage):new OperaError('provider_unavailable',undefined,stage);}};
@@ -87,7 +97,7 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){
     const a=object(object(raw).accountDetails);const summary=a.summary?object(a.summary):{};
     let normalized='passed';try{normalizeAccount(raw,hotel,String(date));}catch(e){normalized=e instanceof OperaError?e.stage??e.code:'failed';}
-    normalizationChecks.push({sample,normalized,balanceDiagnostic:balanceReconciliationDiagnostic(raw),invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:r.agingStartDay,end:r.agingEndDay,sequence:r.sequence};}):null});
+    normalizationChecks.push({sample,normalized,businessDate:diagnosticDate(date),balanceDiagnostic:balanceReconciliationDiagnostic(raw),invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:diagnosticInteger(r.agingStartDay),end:diagnosticInteger(r.agingEndDay),sequence:diagnosticInteger(r.sequence),agingDate:diagnosticAgingDate(r.agingDate)};}):null});
   }
   return {hotel,status:'read_verified',statementSelection,nativeFolio,reservationFolioLookup,normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }

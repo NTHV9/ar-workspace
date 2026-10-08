@@ -13,16 +13,52 @@ function current(summary=triple(100,20,80)){
   payments:[{hotelId:'TLFO',transactionNo:2,amount:money(-20),amountUsed:money(0),balance:money(-20)}],
  }};
 }
-async function probe(raw:unknown){
+async function probe(raw:unknown,businessDate='2026-09-15'){
  vi.spyOn(OperaReader.prototype,'accounts').mockResolvedValue({accountsDetails:[{hotelId:'TLFO',accountId:{id:'PRIVATE-ACCOUNT-ID'},balance:money(80)}],totalResults:1,hasMore:false});
  vi.spyOn(OperaReader.prototype,'account').mockResolvedValue(raw);
  vi.spyOn(OperaReader.prototype,'history').mockResolvedValue({details:[],offset:0,limit:20,totalResults:0,hasMore:false});
- vi.spyOn(OperaReader.prototype,'businessDate').mockResolvedValue({hotels:[{hotelId:'TLFO',businessDate:'2026-09-15'}]});
+ vi.spyOn(OperaReader.prototype,'businessDate').mockResolvedValue({hotels:[{hotelId:'TLFO',businessDate}]});
  const result=await probeOpera(env,'TLFO');
  if(!('normalizationChecks' in result)||!result.normalizationChecks?.[0])throw Error('synthetic_probe_missing');
  return result.normalizationChecks[0];
 }
 afterEach(()=>vi.restoreAllMocks());
+
+it('reports exact source Aging dates and business date without customer fields',async()=>{
+ const raw=current();
+ Object.assign(raw.accountDetails.agingInfo.aging[0],{agingDate:{start:'2026-08-16',end:'2026-09-15',accountId:'PRIVATE-DATE-ID'}});
+ const check=await probe(raw);
+ expect(check.businessDate).toBe('2026-09-15');
+ expect(check.agingRanges).toEqual([{start:0,end:30,sequence:1,agingDate:{start:'2026-08-16',end:'2026-09-15'}}]);
+ expect(JSON.stringify(check.agingRanges)).not.toMatch(/PRIVATE|Synthetic|amount|accountId/);
+});
+
+it.each([
+ {start:'2026-02-29',end:'PRIVATE-DATE'},
+ {start:'2026-09-01T00:00:00Z',end:{id:'PRIVATE-DATE'}},
+ {start:'2026-09-01',end:undefined},
+ {start:'2024-02-29',end:'2026-09-15'},
+ undefined,
+ 'PRIVATE-DATE',
+])('only exposes valid calendar dates, allowing an unavailable open-tail end: %j',async(agingDate)=>{
+ const raw=current();
+ Object.assign(raw.accountDetails.agingInfo.aging[0],{agingDate});
+ const check=await probe(raw);
+ const expectedStart=agingDate&&typeof agingDate==='object'&&['2026-09-01','2024-02-29'].includes(agingDate.start)?agingDate.start:null;
+ const expectedEnd=agingDate&&typeof agingDate==='object'&&agingDate.end==='2026-09-15'?'2026-09-15':null;
+ expect(check.agingRanges?.[0].agingDate).toEqual({start:expectedStart,end:expectedEnd});
+ expect(check.normalized).toBe('passed');
+ expect(JSON.stringify(check.agingRanges)).not.toContain('PRIVATE');
+});
+
+it('redacts malformed numeric ranges and business date in diagnostics',async()=>{
+ const raw=current();
+ Object.assign(raw.accountDetails.agingInfo.aging[0],{agingStartDay:'PRIVATE-RANGE',agingEndDay:{id:'PRIVATE-ID'},sequence:'PRIVATE-SEQUENCE'});
+ const check=await probe(raw,'PRIVATE-BUSINESS-DATE');
+ expect(check.businessDate).toBeNull();
+ expect(check.agingRanges).toEqual([{start:null,end:null,sequence:null,agingDate:{start:null,end:null}}]);
+ expect(JSON.stringify(check.agingRanges)).not.toContain('PRIVATE');
+});
 
 it('classifies a reconciled signed-credit sample without returning any amounts or identities',async()=>{
  const check=await probe(current());
