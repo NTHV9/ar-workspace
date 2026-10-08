@@ -1,3 +1,4 @@
+import {cleanupTransientDocument} from '../operations/retention-sweep';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {writeManagedStorage} from '../operations/storage';
 import {workspaceStatement} from '../statement/generate';
@@ -11,7 +12,7 @@ import {getNativeInvoicePdf,type DocumentInvoice} from './native-invoice';
 import {documentResources} from './resources';
 export interface DocumentFile {id:string;kind:'statement'|'invoice';invoice_id:string|null;ordinal:number;state:string;storage_key:string|null;error_code:string|null;byte_count:number|null;sha256:string|null}
 export interface DocumentExport {name:string;storage_key:string;byte_count:number;sha256:string}
-export interface DocumentJob {invoice_source?:'native'|'workspace';invoice_template_version?:string|null;lifecycle?:'legacy'|'transient';closed_at?:string|null;closed_reason?:'sent'|'discarded'|null;execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
+export interface DocumentJob {invoice_source?:'native'|'workspace';invoice_template_version?:string|null;lifecycle?:'legacy'|'transient';closed_at?:string|null;discard_requested_at?:string|null;closed_reason?:'sent'|'discarded'|null;execution_queue?:'refresh'|'documents';statement_source?:string;template_version?:string|null;id:string;owner:string;hotel:string;account_id:string;account_name:string;content:string;layout:string;purpose:string;invoice_ids:string[];manifest:DocumentInvoice[];state:string;revision:number;project_key:string|null;exports:DocumentExport[];acknowledged:boolean;files:DocumentFile[];created_at:string}
 export interface DocumentCreateInput {statementSource?:string;commandKey:string;hotel:string;accountId:string;ids:string[];content:string;layout:string;purpose:string}
 export const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export async function documentJob(env:RefreshEnv,id:string){return backendRpc<DocumentJob|null>(env,'ar_document_get',{p_job_id:id});}
@@ -74,5 +75,11 @@ export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowSt
   // Drain admitted peers before a workflow error can trigger reconciliation.
   const failure=outcomes.find(result=>result.status==='rejected');if(failure?.status==='rejected')throw failure.reason;
  }
- const result=await documentJob(env,job.id);return {state:result?.state??'unavailable',files:result?.files.length??0};
+ let result=await documentJob(env,job.id);
+ if(result?.discard_requested_at&&!result.closed_at){
+  // All admitted workflow peers have drained; SQL still fences unknown outcomes.
+  const abandoned=await backendRpc<{outcome:string}>(env,'ar_document_abandon',{p_actor:job.owner,p_job_id:job.id});
+  if(abandoned.outcome==='discarded'){await cleanupTransientDocument(env,job.owner,job.id).catch(()=>{});result=await documentJob(env,job.id);}
+ }
+ return {state:result?.state??'unavailable',files:result?.files.length??0};
 }

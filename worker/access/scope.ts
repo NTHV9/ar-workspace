@@ -43,7 +43,7 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  if(m==='POST'&&['/api/documents','/api/remittances','/api/financial/refresh','/api/collection/validate-selection'].includes(p))return hotel((await body(request)).hotel);
  if(m==='POST'&&['/api/external-billing/preview','/api/external-billing/confirm'].includes(p)){const v=(await body(request)).input;if(!v||typeof v!=='object')return denied();const input=v as Record<string,unknown>;const scope=hotel(input.hotel);return input.recordId===undefined?scope:{...resource('billing',String(input.recordId)),hotel:scope.hotel};}
  if(p==='/api/email/open'&&m==='POST')return resource('document',String((await body(request)).jobId),true);
- match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(?:project|save|upload|files|exports|dispatch|review|discard)(?:\/[^/]+)?)?$/.exec(p);if(match)return resource('document',match[1]);
+ match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(?:project|save|upload|files|exports|dispatch|review|discard|abandon)(?:\/[^/]+)?)?$/.exec(p);if(match)return resource('document',match[1]);
  match=/^\/api\/email\/deliveries\/([0-9a-f-]{36})\/(check|candidates|reviewed-match)$/.exec(p);if(match)return resource('delivery',match[1],true);
  match=/^\/api\/email\/([0-9a-f-]{36})(?:\/(send|gmail-draft|thread|threads|exports|attachments)(?:\/[^/]+)?)?$/.exec(p);if(match)return resource('email',match[1],true);
  match=/^\/api\/remittances\/commands\/([0-9a-f-]{36})$/.exec(p);if(match&&m==='GET'&&!q.size)return resource('remittance_command',match[1]);

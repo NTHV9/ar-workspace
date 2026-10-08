@@ -46,8 +46,20 @@ export async function sweepTransientDocuments(env:RetentionProviderEnv){
    else await backendRpc(env,'ar_document_register_upload',{p_job_id:upload.job_id,p_storage_key:upload.storage_key,p_bytes:upload.byte_count,p_sha256:digest,p_mime:'application/pdf'});
   }
  }catch{/* Preserve unknown receipts; never re-upload or guess absence. */}
+ await backendRpc(env,'ar_document_finalize_abandoned',{p_actor:actor,p_limit:10});
  const rows=await backendRpc<{objectId:string;itemId:string|null}[]>(env,'ar_document_cleanup_candidates',{p_actor:actor,p_limit:10});
  if(!Array.isArray(rows)||rows.length>10)throw Error('retention_unavailable');
+ return runTransientCleanupRows(env,actor,rows);
+}
+
+/** Cleanup is bounded to this exact owned closed job; it never starts a global sweep. */
+export async function cleanupTransientDocument(env:RetentionProviderEnv,actor:string,jobId:string){
+ if(writesHeld(env)||env.RETENTION_ENABLED!=='true')return {enabled:false};
+ const rows=await backendRpc<{objectId:string;itemId:string|null}[]>(env,'ar_document_cleanup_job_candidates',{p_actor:actor,p_job_id:jobId,p_limit:10});
+ if(!Array.isArray(rows)||rows.length>10)throw Error('retention_unavailable');
+ return runTransientCleanupRows(env,actor,rows);
+}
+async function runTransientCleanupRows(env:RetentionProviderEnv,actor:string,rows:{objectId:string;itemId:string|null}[]){
  const counts={checked:0,deleted:0,errors:0};
  for(const row of rows){try{
   let item=row.itemId?await retentionStatus(env,actor,row.itemId):await enrollRetention(env,actor,'supabase',row.objectId);

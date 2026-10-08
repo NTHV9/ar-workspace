@@ -7,6 +7,10 @@ related_targets: ["src/pdf/pdf-workspace.css", "src/pdf/use-native-editing.tsx",
 
 # PDF and email preparation — audit refinement, 28 September 2026
 
+## Explicit preparation departure — 8 October 2026
+
+Closing unused transient PDF work requests deletion of its temporary files, with existing unsaved-edit confirmation explaining that consequence. Cleanup failures keep edits visible and offer retry. Pending discard is read-only; protected Gmail work remains available. Internal PDF-to-email progression and refresh do not request abandonment. Keep the existing editor layout and show scoped status/error text rather than introducing a saved-document workflow.
+
 ## Continue without a separate Save click — 8 October 2026
 
 Review & send now and Create Gmail draft save pending edits before continuing. Attachment actions save when required and use the returned revision. Save message remains optional for saving without continuing. Failed saves retain edits and block the requested next action; final send remains explicitly confirmed. Do not show a Save prerequisite beside an available action. Keep the incumbent layout and report only the operation actually in progress.

@@ -18,7 +18,7 @@ it('acceptance cleanup also visits transient preparations through the same isola
   if(path.endsWith('ar_financial_service_actor'))return Response.json(actor);
   if(!path.endsWith('ar_acceptance_rpc')||args.p_actor!==actor||args.p_id!==id)throw Error('Unexpected unscoped cleanup');
   visited.push(args.p_name);
-  if(args.p_name==='ar_document_pending_uploads'||args.p_name==='ar_document_cleanup_candidates')return Response.json([]);
+  if(args.p_name==='ar_document_finalize_abandoned'||args.p_name==='ar_document_pending_uploads'||args.p_name==='ar_document_cleanup_candidates')return Response.json([]);
   if(args.p_name==='ar_retention_candidates')return Response.json({total:0,rows:[]});
   throw Error('Unexpected cleanup call');
  });
