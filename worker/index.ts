@@ -158,7 +158,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(path==='/api/account-settings/bulk'||path==='/api/account-settings/bulk/preview'||path==='/api/account-settings/bulk/apply')return bulkSettingsApi(request,env,env.REQUEST_ACTOR!);
     if(settingsRequest){if(!user.id)return json({error:'unauthorized'},401);return settingsApi(request,env,user.id);}
     if(rendererCheck)return new Response(new Uint8Array(await rendererProof()).buffer,{headers:{'Content-Type':'application/pdf','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
-    if(documentRequest){if(!user.id)return json({error:'unauthorized'},401);return documentApi(request,env,user.id,headers);}
+    if(documentRequest){if(!user.id)return json({error:'unauthorized'},401);return documentApi(request,env,user.id,headers,background);}
     if(pdfValidation){
       const [,runId,hotel,extension]=pdfValidation;
       const response=await readManagedStorage(env,`validation/${runId}/${hotel}.${extension}`,extension==='pdf'?20971520:1048576,{headers});

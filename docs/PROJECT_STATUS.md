@@ -1,3 +1,9 @@
+## 2026-10-08 — Explicit PDF departure starts scoped cleanup
+
+- Leaving an unused transient preparation now requests discard; settled jobs close and begin exact-job original/export cleanup. Running generation and uploads retain a durable request until settled. Draft/uncertain mail stays protected without an automatic discard marker. Marked work is read-only; admitted receipts can finish. Closed preparations leave the Operations document queue.
+- No 24-hour waiting period, no age-based purge of existing ready jobs, and no cleanup from React unmount, refresh, tab invisibility or internal PDF-to-email transitions. Abrupt tab closure without acknowledged departure is not guaranteed cleanup. Immediate passes are bounded to ten objects with scheduled retries; business history and legacy/Drive/remittance policies remain intact.
+- Migration 106 and behavior pass locally with full table/catalog rollback and on actual PostgreSQL under synthetic rollback, preserving document/email/storage fingerprints. Exact tested migration applied. Backend 56 cases, frontend 13 browser cases, TypeScript, visual inspection and scoped Astra review pass. No actual customer file deletion is used as a test; [evidence](PDF_ABANDONMENT_20261008.md). Application deployment pending.
+
 ## 2026-10-08 — Reviewed email package without live OPERA recheck
 
 - Owner explicitly accepts sending the reviewed PDF without another live OPERA Account/history read. Removed those reads from shared mail preparation for Send Now and Gmail draft creation. Normal refresh and source document generation remain unchanged.

@@ -1,3 +1,4 @@
+import {cleanupTransientDocument} from '../operations/retention-sweep';
 import {acceptanceRows} from '../acceptance/context';
 import {acceptanceRpc} from '../acceptance/routing';
 import {readManagedStorage,StorageWriteNotDispatched} from '../operations/storage';
@@ -18,10 +19,10 @@ async function bodyJson(request:Request,max=65536):Promise<Record<string,unknown
  const value:unknown=JSON.parse(new TextDecoder().decode(await bodyBytes(request,max)));if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('document_request_invalid');return value as Record<string,unknown>;
 }
 async function rpc(env:RefreshEnv,name:string,args:Record<string,unknown>){const routed=acceptanceRpc(env,name,args);
- const response=await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY!,'Content-Type':'application/json'},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
+ const response=await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY!,'Content-Type':'application/json',...(env.REQUEST_ACTOR?{'X-Ar-Actor':env.REQUEST_ACTOR}:{})},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
  const value:unknown=await response.json();if(!response.ok){const message=value&&typeof value==='object'&&'message'in value?value.message:null;throw new Error(typeof message==='string'&&/^(document|storage|budget|retention)_[a-z_]+$/.test(message)?message:'document_service_unavailable');}return value;
 }
-export async function documentApi(request:Request,env:RefreshEnv,owner:string,headers:Record<string,string>):Promise<Response>{
+export async function documentApi(request:Request,env:RefreshEnv,owner:string,headers:Record<string,string>,background?:{waitUntil(promise:Promise<unknown>):void}):Promise<Response>{
  try{
   if(!uuidPattern.test(owner)||!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)return json({error:'document_service_unavailable'},503);
   const url=new URL(request.url);const origin=request.headers.get('Origin');if(request.method!=='GET'&&origin&&origin!==url.origin)return json({error:'forbidden'},403);
@@ -37,12 +38,18 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    input.statementSource=documentSource({content:String(input.content),statementSource:input.statementSource,ids:input.ids});
    return json(await createDocumentJob(env,owner,input as unknown as DocumentCreateInput),202);
   }
-  const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch|review|discard)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
+  const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch|review|discard|abandon)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
   if(!match||!uuidPattern.test(match[1]))return json({error:'not_found'},404);
   const [,id,action,child]=match,job=await documentJob(env,id);if(!job)return json({error:'document_job_missing'},404);if(job.owner!==owner)return json({error:'forbidden'},403);
   if(!action&&request.method==='GET')return json(await reconcileDocumentStatus(env,job));
-  if(action==='discard'&&request.method==='POST')return json(await rpc(env,'ar_document_discard',{p_actor:owner,p_job_id:id}));
+  if(['discard','abandon'].includes(action)&&request.method==='POST'){
+   const result=await rpc(env,action==='abandon'?'ar_document_abandon':'ar_document_discard',{p_actor:owner,p_job_id:id});
+   const closed=action==='discard'||(result as {outcome?:string}).outcome==='discarded';
+   if(closed&&background){try{background.waitUntil(cleanupTransientDocument(env,owner,id).catch(()=>{}));}catch{/* Scheduled maintenance retains the durable retry. */}}
+   return json(result);
+  }
   if(job.closed_at)return json({error:'document_closed'},410);
+  if(job.discard_requested_at)return json({error:'document_discard_pending'},409);
   if(job.lifecycle==='transient'&&(['project','save'].includes(action)||action==='upload'&&url.searchParams.get('kind')==='project'))return json({error:'document_project_retired'},409);
   if(action==='review'&&request.method==='POST'){
    const input=await bodyJson(request,4*1024*1024);if(!Number.isSafeInteger(input.revision)||Number(input.revision)<0||!Array.isArray(input.exports)||input.acknowledged!==true||Object.keys(input).some(k=>!['revision','exports','acknowledged'].includes(k)))return json({error:'document_request_invalid'},400);
