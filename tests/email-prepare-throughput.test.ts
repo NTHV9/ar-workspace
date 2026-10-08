@@ -1,10 +1,10 @@
 import {createHash} from 'node:crypto';
 import {afterEach,expect,it,vi} from 'vitest';
-const dependencies=vi.hoisted(()=>({storage:vi.fn(),job:vi.fn(),snapshot:vi.fn(),thread:vi.fn()}));
+const dependencies=vi.hoisted(()=>({storage:vi.fn(),job:vi.fn(),reader:vi.fn(),businessDate:vi.fn(),snapshot:vi.fn(),thread:vi.fn()}));
 vi.mock('../worker/operations/storage',()=>({readManagedStorage:dependencies.storage}));
 vi.mock('../worker/documents/jobs',()=>({documentJob:dependencies.job}));
-vi.mock('../worker/opera/probe',()=>({makeReader:()=>({})}));
-vi.mock('../worker/refresh/read-snapshot',()=>({readBusinessDate:async()=> '2026-10-08',readVerifiedAccount:dependencies.snapshot}));
+vi.mock('../worker/opera/probe',()=>({makeReader:dependencies.reader}));
+vi.mock('../worker/refresh/read-snapshot',()=>({readBusinessDate:dependencies.businessDate,readVerifiedAccount:dependencies.snapshot}));
 vi.mock('../worker/email/threads',()=>({revalidateThread:dependencies.thread,validateThreadChoice:vi.fn()}));
 // Keep the exact SHA algorithm, synchronously resolved for deterministic virtual network time.
 vi.mock('../worker/email/crypto',async importOriginal=>({...await importOriginal<object>(),hash:async(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex')}));
@@ -21,7 +21,7 @@ function setup(count=6){
  const draft:EmailDraft={id,owner,hotel:'KAT',document_job_id:id,document_revision:1,revision:1,account_id:'synthetic-account',account_name:'Synthetic',invoice_ids:['synthetic-invoice'],purpose:'billing',recipients:{to:['synthetic@example.invalid'],cc:[],bcc:[]},subject:'Synthetic',body:'Synthetic message',exports:files,attachments:[],package_changed:false};
  const invoice={id:'synthetic-invoice',open:100,invoice_no:'synthetic-invoice',folio_no:'synthetic-folio',collection_role:'standalone'};
  dependencies.job.mockResolvedValue({id,owner,hotel:'KAT',account_id:draft.account_id,revision:1,acknowledged:true,manifest:[invoice]});
- dependencies.snapshot.mockResolvedValue({invoices:[invoice]});dependencies.thread.mockResolvedValue(null);
+ dependencies.reader.mockReturnValue({});dependencies.businessDate.mockResolvedValue('2026-10-08');dependencies.snapshot.mockResolvedValue({invoices:[invoice]});dependencies.thread.mockResolvedValue(null);
  const activity={active:0,peak:0,calls:[] as string[]};
  dependencies.storage.mockImplementation(async(_env:unknown,key:string)=>{
   activity.calls.push(key);activity.active++;activity.peak=Math.max(activity.peak,activity.active);
@@ -93,7 +93,25 @@ it('still rejects changed bytes and size before MIME creation',async()=>{
  }
  expect(dependencies.thread).not.toHaveBeenCalled();
 });
-it('completes the fresh full invoice check before any storage read',async()=>{
- const state=setup();dependencies.snapshot.mockResolvedValue({invoices:[]});
- await expect(prepareMail(env,owner,state.draft,messageId)).rejects.toThrow('email_source_changed');expect(dependencies.storage).not.toHaveBeenCalled();
+it('prepares the reviewed bytes without calling OPERA even when OPERA is unavailable',async()=>{
+ const state=setup(1);
+ dependencies.reader.mockImplementation(()=>{throw Error('opera_unavailable');});
+ dependencies.businessDate.mockRejectedValue(Error('opera_unavailable'));dependencies.snapshot.mockRejectedValue(Error('opera_unavailable'));
+ dependencies.storage.mockResolvedValue(new Response(state.contents[0]));
+ const prepared=await prepareMail(env,owner,state.draft,messageId);
+ expect(prepared.expected.files).toEqual(state.files.map(({name,byte_count,sha256})=>({name,byte_count,sha256})));
+ expect(new TextDecoder().decode(decodeUrl64(prepared.raw))).toContain(btoa(String.fromCharCode(...state.contents[0])));
+ expect(dependencies.reader).not.toHaveBeenCalled();expect(dependencies.businessDate).not.toHaveBeenCalled();expect(dependencies.snapshot).not.toHaveBeenCalled();
+});
+it('rejects missing, wrong-owner, revised, unreviewed and closed document jobs before reading bytes',async()=>{
+ for(const mutation of ['missing','owner','revision','review','closed'] as const){
+  const state=setup(1),job={id,owner,revision:1,acknowledged:true,closed_at:null as string|null};
+  if(mutation==='owner')job.owner=id;
+  if(mutation==='revision')job.revision=2;
+  if(mutation==='review')job.acknowledged=false;
+  if(mutation==='closed')job.closed_at='2026-10-08T00:00:00Z';
+  dependencies.job.mockResolvedValue(mutation==='missing'?null:job);
+  await expect(prepareMail(env,owner,state.draft,messageId)).rejects.toThrow(mutation==='closed'?'document_closed':'email_package_changed');
+  expect(dependencies.storage).not.toHaveBeenCalled();expect(dependencies.thread).not.toHaveBeenCalled();
+ }
 });

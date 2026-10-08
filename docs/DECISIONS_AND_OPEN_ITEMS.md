@@ -1,3 +1,7 @@
+## Send the reviewed PDF without another OPERA request — 8 October 2026
+
+The owner explicitly removes the live OPERA recheck during email preparation/submission after accepting that a payment or reference change made after PDF preparation may not be reflected in the reviewed document. Send Now and Gmail draft creation use the reviewed package without another live Account/history request. Normal OPERA refresh and document generation remain unchanged. Retain recipient validation, package ownership/revision/review/lifecycle checks, exact attachment byte/hash checks, thread validation, human confirmation, duplicate-command claims and verified-Sent recording. This supersedes earlier requirements to re-read OPERA immediately before email handoff; it does not authorize accounting writes or remove backend access checks.
+
 ## Synthetic full-flow acceptance approved — 7 October 2026
 
 The owner accepts a self-created simulated job instead of waiting for a real customer send to close tracker integration acceptance. The accepted proof joins current confirmation/outbox SQL, the unchanged production sync service and both production adapters with simulated Gmail/Google boundaries, complemented by the previously completed actual owned-provider tests and cleanup. This supersedes the real-customer-job waiting gate only; it creates no new product requirement and does not relabel a TEST receipt or simulated event as a real customer email.
