@@ -8,8 +8,6 @@ import {gmailToken} from './oauth';
 import {hash,url64} from './crypto';
 import {buildMime,type MailFile} from './mime';
 import {documentJob} from '../documents/jobs';
-import {makeReader} from '../opera/probe';
-import {readBusinessDate,readVerifiedAccount} from '../refresh/read-snapshot';
 import {revalidateThread} from './threads';
 interface Attempt {id:string;state:string;claimed?:boolean;gmail_draft_id?:string;error?:string}
 export function draftBudget(env:EmailEnv){const n=Number(env.GMAIL_DRAFT_MAX_BYTES??10485760);return Number.isSafeInteger(n)&&n>0&&n<=12582912?n:10485760;}
@@ -59,9 +57,6 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
  const logo=draft.rich_body?.signature?signatureLogoFile():null;
  const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,logo?.bytes.length??0)>draftBudget(env))throw Error('email_too_large');
  const job=await documentJob(env,draft.document_job_id);if(job?.closed_at)throw Error('document_closed');if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
- const reader=makeReader(env,job.hotel),businessDate=await readBusinessDate(reader,job.hotel);
- const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
- for(const invoice of job.manifest){const current=snapshot.invoices.find(i=>i.id===invoice.id);if(!current||current.open<=0||!['standalone','parent'].includes(current.collection_role)||current.open!==invoice.open||current.invoice_no!==invoice.invoice_no||current.folio_no!==invoice.folio_no)throw Error('email_source_changed');}
  // Validate the whole package before reads; its existing total-byte budget bounds memory.
  for(const file of files)validateMailFile(env,draft,file);
  const loaded:MailFile[]=[];
