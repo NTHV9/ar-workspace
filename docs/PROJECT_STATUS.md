@@ -1,8 +1,9 @@
-## 2026-10-07 — Email generated filenames verified; migration 105 applied
+## 2026-10-07 — Email generated filenames deployed; record finalized 2026-10-08
 
 - Generated package filename inputs save with the message and retain typed values on errors. Saved names propagate through reopen, confirmation, download, MIME and exact Sent verification. Only draft export names change; PDF bytes/hash/key/order, original job exports, retention and existing delivery records remain unchanged.
 - Migration 105 adds a service-only atomic v3 writer delegating the unchanged content writer after full name/key/revision/package/staff/handoff validation. Actual PostgreSQL guarded DDL/synthetic rollback passes with draft/job/delivery/auth/Sent/current-writer preservation; the exact migration is applied. No customer filename or provider state is changed by installation.
-- Full units **1,717 / 181 files**, 16 parent-run focused unit/API cases, TypeScript and **27 browser cases** pass. Email Composer scenarios are now enrolled in CI smoke. Astra reviews GO after the staff-header fix; desktop/mobile captures are inspected and original evidence preserved. No email sent. Worker deployment pending; [evidence](EMAIL_GENERATED_FILENAMES_20261007.md).
+- Full units **1,717 / 181 files**, 16 parent-run focused unit/API cases, TypeScript and **27 browser cases** pass. Email Composer scenarios are now enrolled in CI smoke. Astra reviews GO after the staff-header fix; desktop/mobile captures are inspected and original evidence preserved. No email sent; [evidence](EMAIL_GENERATED_FILENAMES_20261007.md).
+- Source `a0b5194a2bde2c3693b0599b4ad7138afcbd012b` deployed as Worker `866eba29-0e82-4b84-9f38-e0c13e510d71`. Post-deployment health verifies exact source/database/OPERA. Readback preserves 26 plaintext bindings, ten secret names, three workflows and schedules, apart from the expected commit value. [CI passes](https://github.com/NTHV9/ar-workspace/actions/runs/37617188652); [PR 120](https://github.com/NTHV9/ar-workspace/pull/120) remains unmerged. Filename editing is enabled through Save message; no real customer rename or email send was performed by verification.
 
 ## 2026-10-07 — PDF filenames, scan decoding and local address lines deployed
 

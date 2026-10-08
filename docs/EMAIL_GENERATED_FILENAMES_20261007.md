@@ -1,6 +1,13 @@
 # Generated PDF filenames in Email preparation
 
-Status: implemented and tested; migration 105 applied. Worker deployment pending.
+Status: implemented, tested and deployed on 2026-10-07; migration 105 applied. Deployment record finalized on 2026-10-08.
+
+## Deployment
+
+- Application source `a0b5194a2bde2c3693b0599b4ad7138afcbd012b` deployed as Worker `866eba29-0e82-4b84-9f38-e0c13e510d71` at https://ar-workspace.ar-c82.workers.dev.
+- Post-deployment health confirms the exact source, `database_verified` and OPERA connected. Readback preserves 26 plaintext bindings, ten secret names and three workflows, with only the expected commit binding changed; schedules remain unchanged.
+- [Application CI passes](https://github.com/NTHV9/ar-workspace/actions/runs/37617188652). [PR 120](https://github.com/NTHV9/ar-workspace/pull/120) remains unmerged, based on the PDF Workspace repair branch.
+- The capability is enabled through ordinary user Save message. Verification uses synthetic data and does not send a real email or rename a real customer attachment.
 
 ## Behavior
 
