@@ -203,9 +203,12 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(operaProbe){
       const origin=request.headers.get('Origin');
       if(origin&&origin!==new URL(request.url).origin)return json({error:'forbidden'},403);
-      const hotel=new URL(request.url).searchParams.get('hotel');
+      const params=new URL(request.url).searchParams;
+      if([...params.keys()].some(key=>!['hotel','account'].includes(key)||params.getAll(key).length!==1))return json({error:'invalid_request'},400);
+      const hotel=params.get('hotel'),account=params.get('account');
       if(!isHotelId(hotel))return json({error:'invalid_hotel'},400);
-      try{return json(await probeOpera(env,hotel));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined,...(e instanceof OperaError?safeAuthenticationDiagnostic(e):{})},503);}
+      if(account!==null&&!/^[A-Za-z0-9_-]{1,100}$/.test(account))return json({error:'invalid_request'},400);
+      try{return json(await probeOpera(env,hotel,account??undefined));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined,...(e instanceof OperaError?safeAuthenticationDiagnostic(e):{})},503);}
     }
     const allRows = async (table: string, query: string) => {
       const result: unknown[] = [];

@@ -29,6 +29,26 @@ function diagnosticDate(value:unknown):string|null {
   return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value?value:null;
 }
 function diagnosticInteger(value:unknown):number|null {return typeof value==='number'&&Number.isSafeInteger(value)?value:null;}
+export function agingBasisDiagnostic(value:unknown,hotel:string):{status:'verified';basis:'ART'|'INC'|'COD'|'ING'}|{status:'unavailable';reason:'invalid_response'|'missing_or_ambiguous'} {
+  try{
+    const root=object(value);
+    if(!Array.isArray(root.groups))return {status:'unavailable',reason:'invalid_response'};
+    const rows=root.groups.flatMap(raw=>{
+      const group=object(raw);
+      if(!Array.isArray(group.appSettings))throw new OperaError('invalid_response');
+      return group.appSettings.flatMap(rawSetting=>{
+        const setting=object(rawSetting);
+        if(setting.settings!==undefined&&!Array.isArray(setting.settings))throw new OperaError('invalid_response');
+        return [setting,...Array.isArray(setting.settings)?setting.settings.map(object):[]];
+      });
+    });
+    const matches=rows.filter(row=>row.name==='DATE_FOR_AGING'&&row.hotelId===hotel);
+    if(matches.length!==1)return {status:'unavailable',reason:'missing_or_ambiguous'};
+    const basis=matches[0].value;
+    if(basis!=='ART'&&basis!=='INC'&&basis!=='COD'&&basis!=='ING')return {status:'unavailable',reason:'invalid_response'};
+    return {status:'verified',basis};
+  }catch{return {status:'unavailable',reason:'invalid_response'};}
+}
 function diagnosticAgingDate(value:unknown) {
   const range=value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
   return {start:diagnosticDate(range.start),end:diagnosticDate(range.end)};
@@ -57,6 +77,7 @@ function diagnosticInvoiceDatePatterns(value:unknown,businessDate:unknown) {
 /** Private diagnostics only: categories, numeric ranges and validated calendar dates; no customer names, amounts, IDs or raw responses. */
 export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:string,savePdf?:(bytes:Uint8Array,expected:Record<string,string>)=>Promise<void>) {
   const reader=makeReader(env,hotel);
+  const agingBasisSettings=await reader.agingBasisSettings().then(raw=>agingBasisDiagnostic(raw,hotel)).catch(()=>({status:'unavailable' as const,reason:'provider_unavailable' as const}));
   const checked=async(stage:string,read:()=>Promise<unknown>)=>{try{return await read();}catch(e){throw e instanceof OperaError?new OperaError(e.code,e.upstreamStatus,e.stage??stage,e.providerMessage):new OperaError('provider_unavailable',undefined,stage);}};
   const discovery=object(await checked('account_discovery',()=>reader.accounts(0,20)));
   if(!Array.isArray(discovery.accountsDetails))throw new OperaError('invalid_response');
@@ -72,7 +93,18 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
   const accountId=object(selected.accountId).id;
   if(typeof accountId!=='string')throw new OperaError('invalid_response');
   const [current,history,businessDate]=await Promise.all([checked('current_account',()=>reader.account(accountId)),checked('invoice_history',()=>reader.history(accountId,0,20)),checked('business_date',()=>reader.businessDate())]);
+  const currentAccount=object(object(current).accountDetails);
+  if(currentAccount.hotelId!==hotel||object(currentAccount.accountId).id!==accountId)throw new OperaError('invalid_response',undefined,'account_scope');
   const dates=object(businessDate).hotels;const date=Array.isArray(dates)?object(dates[0]).businessDate:null;
+  const historyDetails=object(history).details;
+  if(!Array.isArray(historyDetails))throw new OperaError('invalid_response',undefined,'history_shape');
+  const historyInvoices=historyDetails.flatMap(raw=>{
+    const group=object(raw);
+    if(group.hotelId!==hotel||object(group.accountId).id!==accountId)throw new OperaError('invalid_response',undefined,'history_scope');
+    if(group.invoices===undefined)return [];
+    if(!Array.isArray(group.invoices))throw new OperaError('invalid_response',undefined,'history_shape');
+    return group.invoices;
+  });
   const statementSelection={status:'retired',source:'workspace'};
   const currentInvoices=object(object(current).accountDetails).invoices;
   const eligibleInvoices=Array.isArray(currentInvoices)?currentInvoices.map(object).filter(i=>i.balance&&Number(object(i.balance).amount)>0&&!i.parentInvoiceNo):[];
@@ -120,5 +152,5 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
     let normalized='passed';try{normalizeAccount(raw,hotel,String(date));}catch(e){normalized=e instanceof OperaError?e.stage??e.code:'failed';}
     normalizationChecks.push({sample,normalized,businessDate:diagnosticDate(date),balanceDiagnostic:balanceReconciliationDiagnostic(raw),invoiceDatePatterns:diagnosticInvoiceDatePatterns(a.invoices,date),invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:diagnosticInteger(r.agingStartDay),end:diagnosticInteger(r.agingEndDay),sequence:diagnosticInteger(r.sequence),agingDate:diagnosticAgingDate(r.agingDate)};}):null});
   }
-  return {hotel,status:'read_verified',statementSelection,nativeFolio,reservationFolioLookup,normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
+  return {hotel,status:'read_verified',agingBasisSettings,statementSelection,nativeFolio,reservationFolioLookup,normalizationChecks,historyInvoiceDatePatterns:diagnosticInvoiceDatePatterns(historyInvoices,date),discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }

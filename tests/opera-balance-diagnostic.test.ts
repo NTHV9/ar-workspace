@@ -14,6 +14,7 @@ function current(summary=triple(100,20,80)){
  }};
 }
 async function probe(raw:unknown,businessDate='2026-09-15'){
+ vi.spyOn(OperaReader.prototype,'agingBasisSettings').mockRejectedValue(new Error('PRIVATE-PROVIDER-ERROR'));
  vi.spyOn(OperaReader.prototype,'accounts').mockResolvedValue({accountsDetails:[{hotelId:'TLFO',accountId:{id:'PRIVATE-ACCOUNT-ID'},balance:money(80)}],totalResults:1,hasMore:false});
  vi.spyOn(OperaReader.prototype,'account').mockResolvedValue(raw);
  vi.spyOn(OperaReader.prototype,'history').mockResolvedValue({details:[],offset:0,limit:20,totalResults:0,hasMore:false});
