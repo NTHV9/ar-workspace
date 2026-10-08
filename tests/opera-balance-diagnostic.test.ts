@@ -58,7 +58,7 @@ it('redacts malformed numeric ranges and business date in diagnostics',async()=>
  const check=await probe(raw,'PRIVATE-BUSINESS-DATE');
  expect(check.businessDate).toBeNull();
  expect(check.agingRanges).toEqual([{start:null,end:null,sequence:null,agingDate:{start:null,end:null}}]);
- expect(check.invoiceDatePatterns?.groups[0].dateDeltas).toEqual({transactionDate:null,transferDate:null,postingDate:null,revenueDate:null,folioDate:null,closeDate:null});
+ expect(check.invoiceDatePatterns?.groups[0].dateDeltas).toEqual({transactionDate:null,transferDate:null,postingDate:null,revenueDate:null,folioDate:null,closeDate:null,departureDate:null});
  expect(JSON.stringify(check.agingRanges)).not.toContain('PRIVATE');
 });
 
@@ -67,7 +67,7 @@ it('groups source invoice date deltas without returning dates, amounts or identi
  const first={...raw.accountDetails.invoices[0],age:13,compressed:false,parentInvoiceNo:'PRIVATE-PARENT',transferDate:'2026-09-02',postingDate:'2026-09-01',revenueDate:'2026-08-31',folioDate:'2026-09-03',closeDate:'2026-09-04'};
  raw.accountDetails.invoices=[first,{...first,transactionNo:3}];
  const check=await probe(raw);
- expect(check.invoiceDatePatterns).toEqual({groups:[{age:13,compressed:false,parentReferencePresent:true,dateDeltas:{transactionDate:14,transferDate:13,postingDate:14,revenueDate:15,folioDate:12,closeDate:11},count:2}],omittedGroups:0,omittedInvoices:0});
+ expect(check.invoiceDatePatterns).toEqual({groups:[{age:13,compressed:false,parentReferencePresent:true,dateDeltas:{transactionDate:14,transferDate:13,postingDate:14,revenueDate:15,folioDate:12,closeDate:11,departureDate:null},count:2}],omittedGroups:0,omittedInvoices:0});
  expect(JSON.stringify(check.invoiceDatePatterns)).not.toMatch(/PRIVATE|amount|transactionNo|2026-/);
 });
 
@@ -75,7 +75,7 @@ it('keeps missing and invalid date deltas unknown instead of manufacturing zero'
  const raw=current();
  Object.assign(raw.accountDetails.invoices[0],{age:'PRIVATE-AGE',compressed:'PRIVATE-COMPRESSED',transactionDate:'2026-02-29',transferDate:'PRIVATE-DATE',postingDate:'2026-09-15',parentInvoiceNo:null});
  const check=await probe(raw);
- expect(check.invoiceDatePatterns?.groups).toEqual([{age:null,compressed:null,parentReferencePresent:false,dateDeltas:{transactionDate:null,transferDate:null,postingDate:0,revenueDate:null,folioDate:null,closeDate:null},count:1}]);
+ expect(check.invoiceDatePatterns?.groups).toEqual([{age:null,compressed:null,parentReferencePresent:false,dateDeltas:{transactionDate:null,transferDate:null,postingDate:0,revenueDate:null,folioDate:null,closeDate:null,departureDate:null},count:1}]);
  expect(JSON.stringify(check.invoiceDatePatterns)).not.toContain('PRIVATE');
 });
 
@@ -85,6 +85,12 @@ it('caps date pattern output at 100 groups and reports omitted counts',async()=>
  const check=await probe(raw);
  expect(check.invoiceDatePatterns?.groups).toHaveLength(100);
  expect(check.invoiceDatePatterns).toMatchObject({omittedGroups:2,omittedInvoices:3});
+});
+it.each(['2026-08-11','2026-02-29','PRIVATE-DATE'])('validates nested room-stay departure dates without leaking source values: %s',async(departureDate)=>{
+ const raw=current();Object.assign(raw.accountDetails.invoices[0],{reservationInfo:{roomStay:{departureDate},guestName:'PRIVATE'}});
+ const check=await probe(raw);
+ expect(check.invoiceDatePatterns?.groups[0].dateDeltas.departureDate).toBe(departureDate==='2026-08-11'?35:null);
+ expect(JSON.stringify(check.invoiceDatePatterns)).not.toMatch(/PRIVATE|2026-/);
 });
 
 it('classifies a reconciled signed-credit sample without returning any amounts or identities',async()=>{

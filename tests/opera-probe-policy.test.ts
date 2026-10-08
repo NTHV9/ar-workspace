@@ -24,7 +24,7 @@ function scopedMocks(currentId='target',currentHotel='KAT',historyId='target'){
 it('reads the targeted current account and existing scoped history date patterns',async()=>{
  scopedMocks();const result=await probeOpera(env,'KAT','target');
  expect(OperaReader.prototype.account).toHaveBeenCalledWith('target');
- expect(result.historyInvoiceDatePatterns?.groups).toEqual([{age:30,compressed:null,parentReferencePresent:false,dateDeltas:{transactionDate:30,transferDate:29,postingDate:null,revenueDate:null,folioDate:null,closeDate:null},count:1}]);
+ expect(result.historyInvoiceDatePatterns?.groups).toEqual([{age:30,compressed:null,parentReferencePresent:false,dateDeltas:{transactionDate:30,transferDate:29,postingDate:null,revenueDate:null,folioDate:null,closeDate:null,departureDate:null},count:1}]);
  expect(result.historyPaging?.hasMore).toBe(true);
  expect(result.agingBasisSettings).toEqual({status:'unavailable',reason:'provider_unavailable'});
  expect(JSON.stringify(result.agingBasisSettings)).not.toContain('PRIVATE');
@@ -33,4 +33,16 @@ it('reads the targeted current account and existing scoped history date patterns
 it.each([['other','KAT','target','account_scope'],['target','TSK','target','account_scope'],['target','KAT','other','history_scope']])('rejects mismatched account/hotel history before diagnostic output',async(currentId,currentHotel,historyId,stage)=>{
  scopedMocks(currentId,currentHotel,historyId);
  await expect(probeOpera(env,'KAT','target')).rejects.toMatchObject({code:'invalid_response',stage});
+});
+it.each([true,false])('prefers a boundary invoice and exposes checkout comparison only after reservation identity matches: %s',async(identityMatches)=>{
+ scopedMocks();
+ const invoice=(age:number,id:string)=>({age,transactionDate:'2026-08-10',balance:{amount:100},reservationId:{id},folioNo:200,invoiceNo:100,folioDate:'2026-08-10',reservationInfo:{roomStay:{departureDate:'2026-08-11'},guestName:'PRIVATE'}});
+ vi.mocked(OperaReader.prototype.account).mockImplementation(async id=>({accountDetails:{hotelId:'KAT',accountId:{id},invoices:[invoice(9,'PRIVATE-FIRST'),invoice(31,'PRIVATE-BOUNDARY')],summary:{}}}));
+ vi.spyOn(OperaReader.prototype,'folioHistory').mockResolvedValue({folioHistory:[],hasMore:false});
+ const reservation=vi.spyOn(OperaReader.prototype,'reservationFolios').mockResolvedValue({reservationFolioInformation:{reservationInfo:{hotelId:identityMatches?'KAT':'TSK',reservationIdList:[{id:'PRIVATE-BOUNDARY',type:'Reservation'}],roomStay:{departureDate:'2026-08-11'},guestName:'PRIVATE'},folioHistory:[]}});
+ const result=await probeOpera(env,'KAT','target');
+ expect(reservation).toHaveBeenCalledOnce();expect(reservation).toHaveBeenCalledWith('PRIVATE-BOUNDARY','2026-08-10');
+ expect(result.reservationFolioLookup).toMatchObject({identityMatches,ageComparison:identityMatches?{checkoutAge:30,postAge:31,invoiceAge:31}:null});
+ expect(result.normalizationChecks?.[0].invoiceDatePatterns?.groups[1].dateDeltas.departureDate).toBe(30);
+ expect(JSON.stringify(result.reservationFolioLookup)).not.toMatch(/PRIVATE|2026-/);
 });

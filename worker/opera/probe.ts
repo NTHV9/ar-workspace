@@ -53,18 +53,23 @@ function diagnosticAgingDate(value:unknown) {
   const range=value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
   return {start:diagnosticDate(range.start),end:diagnosticDate(range.end)};
 }
+function diagnosticDepartureDate(value:unknown):string|null {
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const reservation=value as Record<string,unknown>,stay=reservation.roomStay;
+  return stay&&typeof stay==='object'&&!Array.isArray(stay)?diagnosticDate((stay as Record<string,unknown>).departureDate):null;
+}
+function diagnosticDayDelta(businessDate:unknown,sourceDate:unknown):number|null {
+  const business=diagnosticDate(businessDate),source=diagnosticDate(sourceDate);
+  return business&&source?(Date.parse(`${business}T00:00:00Z`)-Date.parse(`${source}T00:00:00Z`))/86400000:null;
+}
 function diagnosticInvoiceDatePatterns(value:unknown,businessDate:unknown) {
   if(!Array.isArray(value))return null;
-  const business=diagnosticDate(businessDate);
-  const dayDelta=(candidate:unknown)=>{
-    const source=diagnosticDate(candidate);
-    return business&&source?(Date.parse(`${business}T00:00:00Z`)-Date.parse(`${source}T00:00:00Z`))/86400000:null;
-  };
+  const dayDelta=(candidate:unknown)=>diagnosticDayDelta(businessDate,candidate);
   const patterns=value.map(raw=>{
     const invoice=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
     return {age:diagnosticInteger(invoice.age),compressed:typeof invoice.compressed==='boolean'?invoice.compressed:null,
       parentReferencePresent:typeof invoice.parentInvoiceNo==='string'?invoice.parentInvoiceNo.trim().length>0:typeof invoice.parentInvoiceNo==='number'&&Number.isSafeInteger(invoice.parentInvoiceNo)&&invoice.parentInvoiceNo>=0,
-      dateDeltas:{transactionDate:dayDelta(invoice.transactionDate),transferDate:dayDelta(invoice.transferDate),postingDate:dayDelta(invoice.postingDate),revenueDate:dayDelta(invoice.revenueDate),folioDate:dayDelta(invoice.folioDate),closeDate:dayDelta(invoice.closeDate)}};
+      dateDeltas:{transactionDate:dayDelta(invoice.transactionDate),transferDate:dayDelta(invoice.transferDate),postingDate:dayDelta(invoice.postingDate),revenueDate:dayDelta(invoice.revenueDate),folioDate:dayDelta(invoice.folioDate),closeDate:dayDelta(invoice.closeDate),departureDate:dayDelta(diagnosticDepartureDate(invoice.reservationInfo))}};
   });
   const grouped=new Map<string,typeof patterns[number]&{count:number}>();
   for(const pattern of patterns){
@@ -108,7 +113,7 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
   const statementSelection={status:'retired',source:'workspace'};
   const currentInvoices=object(object(current).accountDetails).invoices;
   const eligibleInvoices=Array.isArray(currentInvoices)?currentInvoices.map(object).filter(i=>i.balance&&Number(object(i.balance).amount)>0&&!i.parentInvoiceNo):[];
-  const selectedInvoice=eligibleInvoices.find(i=>i.reservationId&&i.folioNo!==undefined)??eligibleInvoices[0];
+  const selectedInvoice=eligibleInvoices.find(i=>[31,61].includes(diagnosticInteger(i.age)??-1)&&i.reservationId&&i.folioNo!==undefined&&diagnosticDate(i.folioDate))??eligibleInvoices.find(i=>i.reservationId&&i.folioNo!==undefined)??eligibleInvoices[0];
   let nativeFolio:unknown={status:'selector_not_available'};
   if(selectedInvoice?.reservationId&&typeof selectedInvoice.folioDate==='string'&&selectedInvoice.folioNo!==undefined){
     try{
@@ -135,14 +140,15 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
       const windows=Array.isArray(info.folioHistory)?info.folioHistory.map(object):[];
       const all=windows.flatMap(w=>Array.isArray(w.folios)?w.folios.map(object).map(f=>({window:w.folioWindowNo,folio:f})):[]);
       const matches=all.filter(r=>String(r.folio.invoiceNo)===String(selectedInvoice.invoiceNo)&&String(r.folio.folioNo)===String(selectedInvoice.folioNo));
-      reservationFolioLookup={status:'read',identityMatches,returned:all.length,matching:matches.length};
+      const ageComparison=identityMatches?{checkoutAge:diagnosticDayDelta(date,diagnosticDepartureDate(reservation)),postAge:diagnosticDayDelta(date,selectedInvoice.transactionDate),invoiceAge:diagnosticInteger(selectedInvoice.age)}:null;
+      reservationFolioLookup={status:'read',identityMatches,returned:all.length,matching:matches.length,ageComparison};
       if(savePdf&&identityMatches&&matches.length===1&&all.length===1&&typeof matches[0].window==='number'){
         const report=object(await checked('reservation_folio_report',()=>reader.folioReport(reservationId,matches[0].window as number,selectedInvoice.folioDate as string)));
         const folio=object(report.folio);const bytes=typeof folio.folio==='string'?atob(folio.folio):'';
         const reportScopeMatches=folio.hotelId===hotel&&!!folio.reservationId&&String(object(folio.reservationId).id)===reservationId;
         let stored=false;
         if(bytes.startsWith('%PDF-')&&reportScopeMatches&&savePdf){await savePdf(Uint8Array.from(bytes,c=>c.charCodeAt(0)),{hotel,accountId,reservationId,invoiceNo:String(selectedInvoice.invoiceNo),folioNo:String(selectedInvoice.folioNo)});stored=true;}
-        reservationFolioLookup={status:bytes.startsWith('%PDF-')?'native_pdf_received':'invalid_pdf',byteCount:bytes.length,identityMatches,reportScopeMatches,returned:all.length,matching:matches.length,selectedInvoiceTextVerified:false,stored};
+        reservationFolioLookup={status:bytes.startsWith('%PDF-')?'native_pdf_received':'invalid_pdf',byteCount:bytes.length,identityMatches,reportScopeMatches,returned:all.length,matching:matches.length,selectedInvoiceTextVerified:false,stored,ageComparison};
       }
     }
     catch(e){reservationFolioLookup={status:'unavailable',code:e instanceof OperaError?e.code:'invalid_response',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined};}
