@@ -1,6 +1,6 @@
 # Source-reconciled Aging membership
 
-Status: implemented and tested; migration 107 applied; application deployment pending.
+Status: implemented, tested and deployed on 2026-10-08; migration 107 applied.
 
 The owner wants Current Aging totals and both Invoice drill paths to agree with OPERA Detailed Aging, excluding Accruals. The prior invoice-derived projection kept internal totals consistent but disagreed with native range allocations at boundary ages. The supplied KAT report confirms the discrepancy for twelve boundary invoices; its A/R Ledger total agrees with the saved account net. Its additional Accruals are outside this scope.
 
@@ -25,3 +25,9 @@ OPERA's native debit component is the signed invoice ledger balance, including n
 - Actual PostgreSQL rollback qualification resolves all 412 accounts across six hotels. A report-boundary scoped read returns twelve boundary invoices with zero mismatched report ranges; invoice-row fingerprints remain unchanged. Synthetic behavior also passes on actual PostgreSQL under rollback.
 - Private customer PDF, extracts and provider values remain outside tracked evidence. Diagnostic additions expose only scoped configuration enums, validated dates and aggregate numeric patterns; no customer identifiers or amounts are added to diagnostic output.
 - Final verification: 33 backend API/access cases, 62 frontend unit cases, 13 desktop/mobile browser cases, TypeScript and production build pass. Both detail paths, filters, publication races, signed credit semantics, independently verified native-summary fallback and explicit unknown membership are covered. Parent inspected new synthetic captures; originals remain unchanged. Impeccable reports no findings for the changed component.
+
+## Deployment
+
+Source `132f99c8df7d667d187fc41a107906bfafa0c3ea` deployed as Worker `ae4a4226-13fa-4df0-a03d-5961ec528803`. Exact-source health/database/OPERA checks pass; bindings and schedules remain unchanged apart from source commit. Final fractional-satang validation passes 19 focused tests and TypeScript after the broader checks above.
+
+Signed-in production verifies KAT summary ranges against the supplied report, and both amount-click and count/status drill paths show the same three-invoice example and amount, including the report-boundary invoice. Raw age remains visible unchanged. Screenshots/customer values stay private. [PR 124](https://github.com/NTHV9/ar-workspace/pull/124) is attached and unmerged; [application CI](https://github.com/NTHV9/ar-workspace/actions/runs/37802308237) was still running when this record was written.
