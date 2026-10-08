@@ -2,7 +2,8 @@
 
 - Owner explicitly accepts sending the reviewed PDF without another live OPERA Account/history read. Removed those reads from shared mail preparation for Send Now and Gmail draft creation. Normal refresh and source document generation remain unchanged.
 - Recipient syntax/duplicate checks, document ownership/revision/review/lifecycle, file size/hash checks, thread validation, access controls, human confirmation, atomic claims and verified Sent recording remain. Changes in OPERA after document preparation may not appear in the reviewed PDF, as accepted by the owner.
-- Regression first fails with a throwing OPERA mock, then passes with zero OPERA calls. Related 120 tests / 20 files and TypeScript pass; Astra independently verifies 36 cases and gives GO. Missing/wrong-owner/revised/unreviewed/closed jobs and altered attachments remain rejected. No schema change or real email sent. Deployment pending.
+- Regression first fails with a throwing OPERA mock, then passes with zero OPERA calls. Related 120 tests / 20 files and TypeScript pass; Astra independently verifies 36 cases and gives GO. Missing/wrong-owner/revised/unreviewed/closed jobs and altered attachments remain rejected. No schema change or real email sent.
+- Deployed source `e2b70797ab3e57eedeb984fde58c84141b02297b` as Worker `87ef494f-f229-4ab9-a27f-5edc4b68a893`; actual health confirms exact source/database/OPERA, with no unexpected binding changes and schedules retained. [PR 122](https://github.com/NTHV9/ar-workspace/pull/122) is attached and unmerged. No production send-time measurement is claimed for this change.
 
 ## 2026-10-08 — Email continuation and attachment throughput deployed
 
