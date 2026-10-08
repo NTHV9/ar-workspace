@@ -1,5 +1,5 @@
 import {HOTEL_IDS,hotelRegion,isHotelId,regionHotels,type HotelId,type RegionId} from '../domain/hotels';
-import {aggregateAccounts,sourceAging,validSourceBucket,type Account,type InvoiceWorkflow,type AgingBucket} from '../domain/portfolio';
+import {aggregateAccounts,sourceAging,validSourceBucket,type Account,type AgingMembership,type InvoiceWorkflow,type AgingBucket} from '../domain/portfolio';
 
 export type AgingHotel=HotelId|'Total';
 export const agingRegion=(members:Account[]):RegionId=>{const h=members.find(a=>isHotelId(a.hotel));return h&&isHotelId(h.hotel)?hotelRegion(h.hotel):'phuket';};
@@ -7,7 +7,7 @@ export const comparisonHotels=(members:Account[],region:RegionId=agingRegion(mem
 export const agingHotels:AgingHotel[]=['KAT','TSK','Total'];
 export interface AgingCell {state:'verified'|'absent'|'outside'|'unavailable';amount:number|null;debit:number|null;credit:number|null}
 export interface AgingComparisonRow {key:string;name:string;members:Account[];cells:Record<AgingHotel,AgingCell>[];net:Record<AgingHotel,AgingCell>}
-export interface AgingInvoice {workflow?:InvoiceWorkflow|null;statusAvailable?:boolean;exceptionsAvailable?:boolean;held?:boolean;needsReview?:boolean;status?:string;id:string;hotel:string;accountId:string;invoiceNo:string;folioNo:string;guest:string;date:string;open:number|null;age:number|null;role:string;verified:boolean;parentId:string|null}
+export interface AgingInvoice {workflow?:InvoiceWorkflow|null;statusAvailable?:boolean;exceptionsAvailable?:boolean;held?:boolean;needsReview?:boolean;status?:string;syncedAt?:string|null;bucketKey?:string|null;bucketLabel?:string|null;id:string;hotel:string;accountId:string;invoiceNo:string;folioNo:string;guest:string;date:string;open:number|null;age:number|null;role:string;verified:boolean;parentId:string|null}
 const unavailable=(state:AgingCell['state']='unavailable'):AgingCell=>({state,amount:null,debit:null,credit:null});
 const cents=(n:number)=>Math.round(n*100);
 const sum=(values:number[])=>{const total=values.reduce((s,n)=>s+cents(n),0);return Number.isSafeInteger(total)?total/100:null;};
@@ -81,19 +81,47 @@ export function parseAgingInvoices(value:unknown,account:Account):AgingInvoice[]
   const text=(key:string)=>typeof row[key]==='string'?row[key] as string:'';
   const w=row.workflow&&typeof row.workflow==='object'&&!Array.isArray(row.workflow)?row.workflow as InvoiceWorkflow:null;
   const exceptions=row.exceptions&&typeof row.exceptions==='object'?row.exceptions as {held?:boolean;needsReview?:boolean}:undefined;
-  return {workflow:w,statusAvailable:workflowAvailable&&Object.hasOwn(row,'workflow'),exceptionsAvailable:row.exception_status!=='unavailable',held:exceptions?.held===true,needsReview:exceptions?.needsReview===true,id:row.id,hotel:account.hotel,accountId:account.id,invoiceNo:text('invoice_no'),folioNo:text('folio_no'),guest:text('guest'),date:text('transaction_date'),open:decimal(row.open),age:typeof row.age==='number'&&Number.isSafeInteger(row.age)&&row.age>=0?row.age:null,role:text('collection_role'),verified:row.verification_state==='verified'||row.verification_state==='cleared'&&decimal(row.open)===0,parentId:typeof row.parent_invoice_id==='string'?row.parent_invoice_id:null};
+  return {syncedAt:typeof row.synced_at==='string'?row.synced_at:null,workflow:w,statusAvailable:workflowAvailable&&Object.hasOwn(row,'workflow'),exceptionsAvailable:row.exception_status!=='unavailable',held:exceptions?.held===true,needsReview:exceptions?.needsReview===true,id:row.id,hotel:account.hotel,accountId:account.id,invoiceNo:text('invoice_no'),folioNo:text('folio_no'),guest:text('guest'),date:text('transaction_date'),open:decimal(row.open),age:typeof row.age==='number'&&Number.isSafeInteger(row.age)&&row.age>=0?row.age:null,role:text('collection_role'),verified:row.verification_state==='verified'||row.verification_state==='cleared'&&decimal(row.open)===0,parentId:typeof row.parent_invoice_id==='string'?row.parent_invoice_id:null};
  });
 }
-export function agingInvoiceEvidence(invoices:AgingInvoice[],bucket:AgingBucket,sourceBuckets?:AgingBucket[],accountCredit=0){
+export function invoiceAgingBucket(age:number|null,buckets:AgingBucket[],membership:AgingMembership|undefined):AgingBucket|null{
+ if(age===null||!Number.isSafeInteger(age)||age<0||membership?.contract!=='opera_reconciled_v1'||membership.state!=='resolved'||![0,-1].includes(membership.offsetDays as number))return null;
+ const projected=Math.max(age+membership.offsetDays!,0),matches=buckets.filter(b=>validSourceBucket(b)&&b.start!==null&&projected>=b.start&&(b.end===null||projected<=b.end));
+ return matches.length===1?matches[0]:null;
+}
+export function agingInvoiceEvidence(invoices:AgingInvoice[],bucket:AgingBucket,sourceBuckets?:AgingBucket[],accountCredit=0,membership?:AgingMembership){
  const roots=invoices.filter(i=>i.verified&&i.open!==null&&['parent','standalone'].includes(i.role)&&!i.parentId);
  const rootIds=new Set(roots.filter(i=>i.role==='parent').map(i=>i.id));
  const children=invoices.filter(i=>i.verified&&i.open!==null&&i.role==='child'&&i.parentId&&rootIds.has(i.parentId));
  const excluded=new Set(children);
- const contains=(b:AgingBucket,i:AgingInvoice)=>i.age!==null&&b.start!==null&&i.age>=b.start&&(b.end===null||i.age<=b.end);
+ const contains=(b:AgingBucket,i:AgingInvoice)=>membership?agingBucketKey(b)===i.bucketKey:i.age!==null&&b.start!==null&&i.age>=b.start&&(b.end===null||i.age<=b.end);
  const bucketKnown=sourceBuckets===undefined||sourceBuckets.some(b=>validSourceBucket(b)&&agingBucketKey(b)===agingBucketKey(bucket));
  const unknownAge=(i:AgingInvoice)=>!bucketKnown||i.age===null||sourceBuckets!==undefined&&sourceBuckets.filter(b=>validSourceBucket(b)&&contains(b,i)).length!==1;
  const unassigned=invoices.filter(i=>!excluded.has(i)&&(!roots.includes(i)||unknownAge(i)));
  const rows=roots.filter(i=>!unknownAge(i)&&contains(bucket,i));
  const amount=bucketKnown?sum(rows.map(i=>i.open!)):null;
  return {rows,amount,accountCredit,unassigned,excludedChildren:children.length,complete:bucketKnown&&unassigned.length===0,difference:amount===null?null:sum([bucket.amount,-amount,accountCredit])};
+}
+
+/** The account drill is a full inventory read; never qualify a partial or stale set. */
+export function reconcileAgingInventory(value:unknown,account:Account,expected:{count:number|null;amount:string|null;creditAmount:string|null}):AgingInvoice[]{
+ const response=value as {synced_at?:unknown;account?:{synced_at?:unknown}};
+ const at=response?.synced_at??response?.account?.synced_at;
+ if(!account.synced_at||typeof at!=='string'||Date.parse(at)!==Date.parse(account.synced_at))throw Error('Invoice publication does not match');
+ const invoices=parseAgingInvoices(value,account),roots=invoices.filter(i=>i.verified&&i.open!==null&&i.open!==0&&['parent','standalone'].includes(i.role)&&!i.parentId);
+ if(roots.some(i=>!i.syncedAt||Date.parse(i.syncedAt)!==Date.parse(account.synced_at!)))throw Error('Invoice row publication does not match');
+ const parents=new Set(roots.filter(i=>i.role==='parent').map(i=>i.id));
+ if(invoices.some(i=>i.open!==0&&!roots.includes(i)&&!(i.verified&&i.role==='child'&&i.parentId&&parents.has(i.parentId))))throw Error('Invoice coverage is incomplete');
+ const net=sum(roots.map(i=>i.open!)),credit=sum(roots.map(i=>Math.max(0,-i.open!)));
+ if(expected.count!==roots.length||expected.amount===null||expected.creditAmount===null||net===null||credit===null||cents(net)!==cents(Number(expected.amount))||cents(credit)!==cents(Number(expected.creditAmount)))throw Error('Invoice inventory does not reconcile');
+ const projected=invoices.map(i=>{const bucket=invoiceAgingBucket(i.age,account.agingBuckets??[],account.membership);return {...i,bucketKey:bucket?agingBucketKey(bucket):null,bucketLabel:bucket?.label??null};});
+ if(account.membership?.state==='resolved'){
+  if(roots.some(i=>!projected.find(r=>r.id===i.id)?.bucketKey))throw Error('Invoice aging membership is incomplete');
+  for(const b of account.agingBuckets??[]){
+   const selected=projected.filter(i=>roots.some(r=>r.id===i.id)&&i.bucketKey===agingBucketKey(b));
+   const debit=sum(selected.map(i=>i.open!)),invoiceCredit=sum(selected.map(i=>Math.max(0,-i.open!))),accountCredit=account.agingAccountCredits?.find(c=>c.bucketKey===agingBucketKey(b))?.amount??0;
+   if(debit===null||invoiceCredit===null||cents(debit)!==cents(b.debit)||cents(accountCredit)!==cents(b.credit)||cents(debit)-cents(accountCredit)!==cents(b.amount)||(accountCredit>0&&invoiceCredit>0))throw Error('Invoice bucket does not reconcile');
+  }
+ }
+ return projected;
 }

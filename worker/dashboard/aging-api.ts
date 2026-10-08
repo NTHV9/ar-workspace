@@ -3,6 +3,12 @@ import {hotelBelongsToRegion,regionalHotelScope,resultMatchesHotelScope} from '.
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import {agingStatusKeys,type AgingInvoicesResponse} from './aging-model';
 const invalid=():never=>{throw Error('aging_invalid');};
+function canonicalBucketKey(value:unknown):string{
+ if(typeof value!=='string')throw Error('aging_unavailable');
+ const b:unknown=JSON.parse(value);
+ if(!Array.isArray(b)||b.length!==4||typeof b[0]!=='string'||!b[0].trim()||b[0].length>200||!Number.isSafeInteger(b[1])||b[1]<0||b[2]!==null&&(!Number.isSafeInteger(b[2])||b[2]<b[1])||!Number.isSafeInteger(b[3])||b[3]<0)throw Error('aging_unavailable');
+ return JSON.stringify(b);
+}
 export function parseAgingInvoicesQuery(url:URL){
  const q=url.searchParams;if(url.pathname!=='/api/dashboard/aging-invoices')invalid();
  const allowed=['region','hotel','type','katAccount','tskAccount','bucket','dimension','status','page','limit','details','flag','accounts'];
@@ -27,7 +33,16 @@ export async function agingInvoicesApi(request:Request,env:RefreshEnv,actor:stri
  try{const url=new URL(request.url),args=parseAgingInvoicesQuery(url),regional=regionalHotelScope(url.searchParams);const r=await backendRpc<AgingInvoicesResponse&{error?:string}>(env,'ar_aging_invoice_status',{p_actor:actor,...args});
  if(r?.error==='aging_forbidden')return json({error:r.error},403);if(r?.error==='aging_invalid')invalid();
  if(!r||r.error||!Array.isArray(r.accounts)||r.accounts.length>2000||!Array.isArray(r.rows)||r.rows.length>args.p_limit||!Array.isArray(r.publications)||!r.summary||typeof r.complete!=='boolean'||!Number.isSafeInteger(r.total)||r.total<0||!resultMatchesHotelScope(r,regional.region,regional.hotel))throw Error('aging_unavailable');
- for(const a of r.accounts){if(!Array.isArray(a.buckets))throw Error('aging_unavailable');for(const b of a.buckets)if(b.key!==null)b.key=JSON.stringify(JSON.parse(b.key));}
+ const members=new Map<string,{resolved:boolean;keys:Set<string>}>();
+ for(const a of r.accounts){const m=a.membership,id=JSON.stringify([a.hotel,a.accountId]);
+  if(members.has(id)||!Array.isArray(a.buckets)||!m||m.contract!=='opera_reconciled_v1'||!['resolved','unavailable'].includes(m.state)||m.state==='resolved'&&m.offsetDays!==0&&m.offsetDays!==-1||m.state==='unavailable'&&m.offsetDays!==null)throw Error('aging_unavailable');
+  const keys=new Set<string>();for(const b of a.buckets)if(b.key!==null){b.key=canonicalBucketKey(b.key);if(keys.has(b.key)||m.state==='unavailable'&&b.complete)throw Error('aging_unavailable');keys.add(b.key);}
+  members.set(id,{resolved:m.state==='resolved',keys});
+ }
+ for(const row of r.rows){const a=members.get(JSON.stringify([row.hotel,row.accountId]));if(!a||row.bucketKey===undefined)throw Error('aging_unavailable');
+  if(row.bucketKey!==null){row.bucketKey=canonicalBucketKey(row.bucketKey);if(!a.resolved||!a.keys.has(row.bucketKey)||args.p_bucket!==null&&row.bucketKey!==JSON.stringify(args.p_bucket))throw Error('aging_unavailable');}
+  else if(a.resolved||args.p_bucket!==null)throw Error('aging_unavailable');
+ }
  return json(r);
  }catch(e){const code=e instanceof Error&&e.message==='aging_invalid'?'aging_invalid':'aging_unavailable';return json({error:code},code==='aging_invalid'?400:503);}
 }

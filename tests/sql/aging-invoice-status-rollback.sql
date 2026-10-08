@@ -4,7 +4,7 @@ do $$
 declare actor uuid;a text:='SYNTHETIC-AGING-'||gen_random_uuid();d date:=(now() at time zone 'Asia/Bangkok')::date;r jsonb;b jsonb:='["91 - 120",91,120,4]';p timestamptz:=now()-interval '1 hour';dimension text;page_ids text[]:='{}';page_index integer;
 begin
  select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
- insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state,synced_at,"agingBuckets") values('KAT',a,'Synthetic Aging','SYNTHETIC_AGING',550,550,3,'verified',p,'[{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":550,"debit":600,"credit":50}]');
+ insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state,synced_at,"agingBuckets") values('KAT',a,'Synthetic Aging','SYNTHETIC_AGING',550,550,3,'verified',p,'[{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":550,"debit":550,"credit":0}]');
  update public.ar_refresh_state set last_success_at=p,status='running' where hotel='KAT';
  insert into public.ar_invoices(hotel,account_id,id,transaction_date,original,open,age,verification_state,collection_role,compressed,synced_at) values
  ('KAT',a,'A',d-100,100,100,100,'verified','standalone',false,p),('KAT',a,'B',d-100,200,200,100,'verified','standalone',false,p),('KAT',a,'P',d-100,300,300,100,'verified','parent',true,p),('KAT',a,'CREDIT',d-100,-50,-50,100,'verified','standalone',false,p),('KAT',a,'ZERO',d-100,10,0,100,'verified','standalone',false,p);
@@ -105,9 +105,9 @@ declare actor uuid;a text:='SYNTHETIC-SIGNED-AGING-'||gen_random_uuid();d date:=
 begin
  select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
  insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state,synced_at,"agingBuckets") values
- ('KAT',a,'Synthetic credit-only','SYNTHETIC_CREDIT_ONLY',-60,-50,2,'verified',p,'[{"label":"0 - 30","start":0,"end":30,"sequence":1,"amount":-10,"debit":0,"credit":10},{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":-50,"debit":0,"credit":50}]'),
- ('TSK',a,'Synthetic same identity other hotel','SYNTHETIC_CREDIT_ONLY',-20,-20,1,'verified',p,'[{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":-20,"debit":0,"credit":20}]'),
- ('KAT',a||'-NETZERO','Synthetic net zero','SYNTHETIC_NET_ZERO',0,0,2,'verified',p,'[{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":0,"debit":100,"credit":100}]');
+ ('KAT',a,'Synthetic credit-only','SYNTHETIC_CREDIT_ONLY',-60,-50,2,'verified',p,'[{"label":"0 - 30","start":0,"end":30,"sequence":1,"amount":-10,"debit":-10,"credit":0},{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":-50,"debit":-50,"credit":0}]'),
+ ('TSK',a,'Synthetic same identity other hotel','SYNTHETIC_CREDIT_ONLY',-20,-20,1,'verified',p,'[{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":-20,"debit":-20,"credit":0}]'),
+ ('KAT',a||'-NETZERO','Synthetic net zero','SYNTHETIC_NET_ZERO',0,0,2,'verified',p,'[{"label":"91 - 120","start":91,"end":120,"sequence":4,"amount":0,"debit":0,"credit":0}]');
  update public.ar_refresh_state set last_success_at=p,status='running' where hotel in('KAT','TSK');
  insert into public.ar_invoices(hotel,account_id,id,transaction_date,original,open,age,verification_state,collection_role,compressed,synced_at) values
  ('KAT',a,'CREDIT-PARENT',d-100,-50,-50,100,'verified','parent',true,p),
@@ -162,5 +162,3 @@ begin
   or has_function_privilege('authenticated','public.ar_aging_invoice_status(uuid,text,text,text,text,jsonb,text,text,boolean,integer,integer,text,jsonb)','execute') then raise exception 'signed RPC service-only privilege changed';end if;
 end$$;
 rollback;
-
-

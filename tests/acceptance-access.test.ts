@@ -34,6 +34,7 @@ it('the current Account route sends the exact isolated child-exclusion filter an
   const args=JSON.parse(String(init.body));
   if(path.endsWith('ar_acceptance_context'))return Response.json({id,owner:actor,sourceSha:'synthetic',recipientHash:'a'.repeat(64),clockOffsetDays:0});
   if(!path.endsWith('ar_acceptance_read')||args.p_actor!==actor||args.p_id!==id)throw Error('Unexpected unscoped account read');
+  if(args.p_table==='ar_accounts')return Response.json([{hotel:'KAT',id:account,synced_at:'2026-10-08T00:00:00Z'}]);
   if(args.p_table==='ar_invoices'){
    invoiceQueries.push(args.p_query);
    if(args.p_query.collection_role!=='neq.child')throw Error('Missing child exclusion');

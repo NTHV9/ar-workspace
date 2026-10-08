@@ -1,8 +1,10 @@
 import {hotelRegion,isHotelId,type HotelId} from './hotels';
 import type {StageSnapshot} from './collection-policy';
+export interface AgingMembership {contract:'opera_reconciled_v1';state:'resolved'|'unavailable';offsetDays:0|-1|null}
 export interface Account {
+  membership?:AgingMembership;
   agingAccountCredits?:{bucketKey:string;amount:number}[];
-  agingBasis?:'invoices'|'unavailable';
+  agingBasis?:'invoices'|'source'|'unavailable';
   hotel: string; id: string; name: string; type: string; open: number; over90: number; items: number;
   group?: string; aging?: number[]; creditLimit?: number | null; oldest?: number;
   account_no?: string | null; verification_state?: string; agingBuckets?: AgingBucket[]; synced_at?: string | null;

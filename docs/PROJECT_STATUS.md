@@ -1,3 +1,9 @@
+## 2026-10-08 — Source-reconciled Current Aging verified
+
+- Owner confirms Accruals stay excluded and approves matching OPERA report ranges in both summary and Invoice details. New read-only account/publication membership qualifies current/prior-day boundary mappings only when all signed native components and net reconcile with unique invoice assignments. Raw stored ages, dates, balances, Collections and Dashboard age thresholds remain unchanged.
+- Both amount and count/status drill paths use qualified membership. Each root and account header must share the expected publication. Financially valid native amounts stay visible when membership is unknown; counts/details never invent a mapping. OPERA native debit is signed invoice net; native account credits remain separate from negative-invoice facets.
+- Actual PostgreSQL rollback qualifies 412/412 accounts across six hotels and matches all twelve supplied-report boundary cases. Synthetic SQL tests pass locally and on actual PostgreSQL with unchanged invoice fingerprints. Exact migration 107 applied; no OPERA write or customer mail. Backend 33, frontend unit 62 and browser 13 cases pass, plus TypeScript/build/visual review; [evidence](AGING_SOURCE_MEMBERSHIP_20261008.md). Application deployment pending.
+
 ## 2026-10-08 — Explicit PDF departure starts scoped cleanup
 
 - Leaving an unused transient preparation now requests discard; settled jobs close and begin exact-job original/export cleanup. Running generation and uploads retain a durable request until settled. Draft/uncertain mail stays protected without an automatic discard marker. Marked work is read-only; admitted receipts can finish. Closed preparations leave the Operations document queue.
