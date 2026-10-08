@@ -33,6 +33,27 @@ function diagnosticAgingDate(value:unknown) {
   const range=value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
   return {start:diagnosticDate(range.start),end:diagnosticDate(range.end)};
 }
+function diagnosticInvoiceDatePatterns(value:unknown,businessDate:unknown) {
+  if(!Array.isArray(value))return null;
+  const business=diagnosticDate(businessDate);
+  const dayDelta=(candidate:unknown)=>{
+    const source=diagnosticDate(candidate);
+    return business&&source?(Date.parse(`${business}T00:00:00Z`)-Date.parse(`${source}T00:00:00Z`))/86400000:null;
+  };
+  const patterns=value.map(raw=>{
+    const invoice=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
+    return {age:diagnosticInteger(invoice.age),compressed:typeof invoice.compressed==='boolean'?invoice.compressed:null,
+      parentReferencePresent:typeof invoice.parentInvoiceNo==='string'?invoice.parentInvoiceNo.trim().length>0:typeof invoice.parentInvoiceNo==='number'&&Number.isSafeInteger(invoice.parentInvoiceNo)&&invoice.parentInvoiceNo>=0,
+      dateDeltas:{transactionDate:dayDelta(invoice.transactionDate),transferDate:dayDelta(invoice.transferDate),postingDate:dayDelta(invoice.postingDate),revenueDate:dayDelta(invoice.revenueDate),folioDate:dayDelta(invoice.folioDate),closeDate:dayDelta(invoice.closeDate)}};
+  });
+  const grouped=new Map<string,typeof patterns[number]&{count:number}>();
+  for(const pattern of patterns){
+    const key=JSON.stringify(pattern),existing=grouped.get(key);
+    if(existing)existing.count++;else grouped.set(key,{...pattern,count:1});
+  }
+  const all=[...grouped.values()],omitted=all.slice(100);
+  return {groups:all.slice(0,100),omittedGroups:omitted.length,omittedInvoices:omitted.reduce((count,group)=>count+group.count,0)};
+}
 /** Private diagnostics only: categories, numeric ranges and validated calendar dates; no customer names, amounts, IDs or raw responses. */
 export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:string,savePdf?:(bytes:Uint8Array,expected:Record<string,string>)=>Promise<void>) {
   const reader=makeReader(env,hotel);
@@ -97,7 +118,7 @@ export async function probeOpera(env:OperaEnv,hotel:string,requestedAccountId?:s
   for(const [sample,raw]of [['selected',current],['first',await reader.account(String(object(accounts[0].accountId).id))]] as const){
     const a=object(object(raw).accountDetails);const summary=a.summary?object(a.summary):{};
     let normalized='passed';try{normalizeAccount(raw,hotel,String(date));}catch(e){normalized=e instanceof OperaError?e.stage??e.code:'failed';}
-    normalizationChecks.push({sample,normalized,businessDate:diagnosticDate(date),balanceDiagnostic:balanceReconciliationDiagnostic(raw),invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:diagnosticInteger(r.agingStartDay),end:diagnosticInteger(r.agingEndDay),sequence:diagnosticInteger(r.sequence),agingDate:diagnosticAgingDate(r.agingDate)};}):null});
+    normalizationChecks.push({sample,normalized,businessDate:diagnosticDate(date),balanceDiagnostic:balanceReconciliationDiagnostic(raw),invoiceDatePatterns:diagnosticInvoiceDatePatterns(a.invoices,date),invoiceArrayPresent:Array.isArray(a.invoices),invoiceCount:Array.isArray(a.invoices)?a.invoices.length:null,summaryShape:shape(summary),agingRanges:Array.isArray(a.agingInfo&&object(a.agingInfo).aging)?(object(a.agingInfo).aging as unknown[]).map(b=>{const r=object(b);return {start:diagnosticInteger(r.agingStartDay),end:diagnosticInteger(r.agingEndDay),sequence:diagnosticInteger(r.sequence),agingDate:diagnosticAgingDate(r.agingDate)};}):null});
   }
   return {hotel,status:'read_verified',statementSelection,nativeFolio,reservationFolioLookup,normalizationChecks,discoveryCount:accounts.length,hasMore:discovery.hasMore??false,discoveryPaging:{offset:discovery.offset,limit:discovery.limit,totalResults:discovery.totalResults},pagingChecks:paging,historyPaging:{offset:object(history).offset,limit:object(history).limit,totalResults:object(history).totalResults,hasMore:object(history).hasMore},discoveryShape:shape(discovery),currentShape:shape(current),historyShape:shape(history),businessDateShape:shape(businessDate),sampleAccount:true};
 }
