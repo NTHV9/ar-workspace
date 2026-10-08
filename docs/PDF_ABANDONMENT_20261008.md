@@ -1,6 +1,6 @@
 # Discard unused PDF preparations
 
-Status: implemented and tested; database migration applied; application deployment pending.
+Status: implemented, tested and deployed on 2026-10-08; migration 106 applied.
 
 Explicit departure from a transient PDF preparation requests abandonment instead of merely hiding the editor. A settled, unprotected job closes immediately and starts exact-job temporary-file cleanup in the Worker background. Pending generation or admitted uploads keep a durable discard request until they settle; scheduled cleanup retries when necessary. Moving from PDF review to email is continued work and does not abandon the preparation.
 
@@ -15,3 +15,7 @@ Cleanup only selects exact owned original/export receipts for the selected close
 - Actual PostgreSQL migration and synthetic behavior execute under repeatable-read rollback. Document jobs/files, email drafts/deliveries/Sent events and storage-object fingerprints are unchanged after removing synthetic fixtures. The tested migration is then applied. No real provider file is deleted by this verification.
 - Astra reviews the scoped implementation, including pending-discard read-only protection and navigation interception. No broad purge of existing preparations is performed.
 - Thirteen focused browser cases pass: explicit exit and retry, navigation/Back/sign-out waiting for abandonment, read-only pending state, preserved email transitions, reload, failed identity-read escape, reprepare and existing download/edit behavior. TypeScript and browser build pass. Parent inspects the new synthetic retry screenshot; original evidence remains unchanged. Impeccable returns nine advisories and no warnings for the changed surfaces.
+
+## Deployment
+
+Source `625729f7611ee838b737d75918856ed09d3e44fb` deployed as Worker `d5d1fcbc-abac-425a-b1c5-76bc8994a3c1`. Health verifies the exact source, database and OPERA connectivity; bindings are unchanged apart from the source commit, retention stays enabled, and schedules are retained. New RPCs are service-only and use empty search paths. [PR 123](https://github.com/NTHV9/ar-workspace/pull/123) is attached and unmerged. This deployment enables cleanup upon future explicit departure; it does not certify that all previously abandoned files have been purged.
