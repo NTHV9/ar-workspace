@@ -7,9 +7,13 @@ related_targets: ["src/pdf/pdf-workspace.css", "src/pdf/use-native-editing.tsx",
 
 # PDF and email preparation — audit refinement, 28 September 2026
 
+## Continue without a separate Save click — 8 October 2026
+
+Review & send now and Create Gmail draft save pending edits before continuing. Attachment actions save when required and use the returned revision. Save message remains optional for saving without continuing. Failed saves retain edits and block the requested next action; final send remains explicitly confirmed. Do not show a Save prerequisite beside an available action. Keep the incumbent layout and report only the operation actually in progress.
+
 ## Email generated filenames — 7 October 2026
 
-Generated package cards expose filename inputs and a separate Download PDF action; do not nest inputs in a download button. Save message commits names with the message. Pending/invalid names keep handoff unavailable and prevent downloading under an old displayed name. Preserve the Reviewed PDF indicator because contents remain unchanged. Claimed Gmail handoffs lock names. Keep the existing three-column layout and compact mobile stacking, accessible input labels, local validation feedback and complete filenames in confirmation.
+Generated package cards expose filename inputs and a separate Download PDF action; do not nest inputs in a download button. Names commit with the message, either through Save message or the continuation actions above. Invalid names block continuation; pending valid names are saved before a download or handoff, never downloaded under an old displayed name. Preserve the Reviewed PDF indicator because contents remain unchanged. Claimed Gmail handoffs lock names. Keep the existing three-column layout and compact mobile stacking, accessible input labels, local validation feedback and complete filenames in confirmation.
 
 ## Filenames and independent address lines — 7 October 2026
 

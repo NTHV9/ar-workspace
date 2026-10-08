@@ -13,10 +13,15 @@ import {readBusinessDate,readVerifiedAccount} from '../refresh/read-snapshot';
 import {revalidateThread} from './threads';
 interface Attempt {id:string;state:string;claimed?:boolean;gmail_draft_id?:string;error?:string}
 export function draftBudget(env:EmailEnv){const n=Number(env.GMAIL_DRAFT_MAX_BYTES??10485760);return Number.isSafeInteger(n)&&n>0&&n<=12582912?n:10485760;}
-export async function readMailFile(env:EmailEnv,draft:EmailDraft,file:{name:string;storage_key:string;byte_count:number;sha256:string;mime?:string}):Promise<MailFile>{
+interface MailFileManifest {name:string;storage_key:string;byte_count:number;sha256:string;mime?:string}
+function validateMailFile(env:EmailEnv,draft:EmailDraft,file:MailFileManifest){
  if(draft.document_closed_at)throw Error('document_closed');
  if(!file.storage_key.startsWith(`jobs/${draft.document_job_id}/`)||!/^jobs\/[0-9a-f-]{36}\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(file.storage_key)||/(^|\/)\.\.?($|\/)/.test(file.storage_key)||!Number.isSafeInteger(file.byte_count)||file.byte_count<1||file.byte_count>draftBudget(env))throw Error('email_attachment_invalid');
+ if(!file.name||file.name.length>200||/[\r\n\x00-\x1f/\\]/.test(file.name)||!['application/pdf','image/png','image/jpeg'].includes(file.mime??'application/pdf'))throw Error('email_attachment_invalid');
  if(!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)throw Error('email_unavailable');
+}
+export async function readMailFile(env:EmailEnv,draft:EmailDraft,file:MailFileManifest):Promise<MailFile>{
+ validateMailFile(env,draft,file);
  const r=await readManagedStorage(env,file.storage_key,file.byte_count);
  if(!r.ok){await r.body?.cancel();throw Error('email_attachment_unavailable');}
  const bytes=await boundedBody(r,file.byte_count);if(bytes.length!==file.byte_count||await hash(bytes)!==file.sha256)throw Error('email_attachment_changed');
@@ -57,7 +62,14 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
  const reader=makeReader(env,job.hotel),businessDate=await readBusinessDate(reader,job.hotel);
  const snapshot=await readVerifiedAccount(reader,job.hotel,job.account_id,businessDate);
  for(const invoice of job.manifest){const current=snapshot.invoices.find(i=>i.id===invoice.id);if(!current||current.open<=0||!['standalone','parent'].includes(current.collection_role)||current.open!==invoice.open||current.invoice_no!==invoice.invoice_no||current.folio_no!==invoice.folio_no)throw Error('email_source_changed');}
- const loaded:MailFile[]=[];for(const file of files)loaded.push(await readMailFile(env,draft,file));
+ // Validate the whole package before reads; its existing total-byte budget bounds memory.
+ for(const file of files)validateMailFile(env,draft,file);
+ const loaded:MailFile[]=[];
+ for(let offset=0;offset<files.length;offset+=3){
+  // Drain every started read before failing, and never start a later batch on failure.
+  const batch=await Promise.allSettled(files.slice(offset,offset+3).map(file=>readMailFile(env,draft,file)));
+  for(const result of batch){if(result.status==='rejected')throw result.reason;loaded.push(result.value);}
+ }
  const thread=await revalidateThread(env,owner,draft);
  const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null},loaded,messageId,thread));
  return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,...(thread?{thread}:{}),files:[...files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256})),...(logo?[{name:logo.name,byte_count:logo.bytes.length,sha256:await hash(logo.bytes),inlineId:logo.inlineId}]:[])]}};

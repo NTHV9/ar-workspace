@@ -1,3 +1,9 @@
+## 2026-10-08 — Email continuation and attachment throughput verified
+
+- Pending message, signature and filename edits save when the user continues to review/send preparation or explicitly creates a Gmail draft. Attachment operations use the saved revision as needed. Save remains available without continuing; failed saves retain input, and final sending still requires explicit human confirmation. No automatic send or relaxation of duplicate-command protection.
+- Stored attachments load in ordered batches of three under existing total-byte and individual hash checks. Fresh OPERA and thread checks remain. Failed batches drain before rejection and do not start later reads. Simulated six-file storage wait is 600 ms serial versus 200 ms batched; this is not production send latency.
+- Relevant backend 172 tests / 27 files, 22 Email Composer browser cases, TypeScript and browser build pass. Astra scoped review and desktop/mobile visual inspection complete; original screenshots preserved. No schema change or real email send. Deployment pending; [evidence](EMAIL_FLOW_SPEED_20261008.md).
+
 ## 2026-10-07 — Email generated filenames deployed; record finalized 2026-10-08
 
 - Generated package filename inputs save with the message and retain typed values on errors. Saved names propagate through reopen, confirmation, download, MIME and exact Sent verification. Only draft export names change; PDF bytes/hash/key/order, original job exports, retention and existing delivery records remain unchanged.
