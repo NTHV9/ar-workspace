@@ -26,7 +26,7 @@ export function agingInvoicesResult(value:unknown):AgingInvoicesResponse{
  const hotels=new Set<string>(),accounts=new Set<string>(),invoices=new Set<string>();
  for(const p of value.publications){if(!object(p)||!isHotelId(p.hotel)||!stamp(p.sourceAt)||hotels.has(String(p.hotel)))return invalid();hotels.add(String(p.hotel));}
  for(const a of value.accounts){
-  if(!object(a)||!isHotelId(a.hotel)||typeof a.accountId!=='string'||!a.accountId||typeof a.accountType!=='string'||!stamp(a.syncedAt)||typeof a.complete!=='boolean'||!integer(a.unverified)||!Array.isArray(a.buckets))return invalid();
+  if(!object(a)||!object(a.membership)||a.membership.contract!=='opera_reconciled_v1'||!['resolved','unavailable'].includes(String(a.membership.state))||(a.membership.state==='resolved'?![0,-1].includes(a.membership.offsetDays as number):a.membership.offsetDays!==null)||!isHotelId(a.hotel)||typeof a.accountId!=='string'||!a.accountId||typeof a.accountType!=='string'||!stamp(a.syncedAt)||typeof a.complete!=='boolean'||!integer(a.unverified)||!Array.isArray(a.buckets))return invalid();
   const id=JSON.stringify([a.hotel,a.accountId]);if(accounts.has(id))return invalid();accounts.add(id);const keys=new Set<string|null>();
   for(const b of a.buckets){if(!object(b)||!nullableCount(b.count)||!nullableAmount(b.amount)||!nullableAmount(b.creditAmount)||typeof b.complete!=='boolean'||b.complete&&(b.count===null||b.amount===null))return invalid();const key=normalizedBucketKey(b.key);if(keys.has(key))return invalid();keys.add(key);}
  }
@@ -37,12 +37,13 @@ export function agingInvoicesResult(value:unknown):AgingInvoicesResponse{
  }
  for(const r of value.rows){
   if(!object(r)||!isHotelId(r.hotel)||!['accountId','accountName','accountType','invoiceId','billingStatus','latestStage','latestStageLabel','dueStatus'].every(k=>typeof r[k]==='string')||!r.invoiceId||!decimal(r.open)||Number(r.open)===0||r.age!==null&&!integer(r.age)||r.dueDate!==null&&(typeof r.dueDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(r.dueDate))||typeof r.held!=='boolean'||typeof r.needsReview!=='boolean'||!['invoiceNo','folioNo','guest'].every(k=>r[k]===null||typeof r[k]==='string'))return invalid();
+  normalizedBucketKey(r.bucketKey);
   if(Number(r.open)<0?['billingStatus','latestStage','dueStatus'].some(key=>r[key]!=='credit')||r.dueDate!==null:['billingStatus','latestStage','dueStatus'].some(key=>r[key]==='credit'))return invalid();
   const id=JSON.stringify([r.hotel,r.accountId,r.invoiceId]);if(invoices.has(id))return invalid();invoices.add(id);
  }
  if(value.rows.length>value.total)return invalid();
  const result=value as unknown as AgingInvoicesResponse;
- return {...result,accounts:result.accounts.map(a=>({...a,buckets:a.buckets.map(b=>({...b,key:normalizedBucketKey(b.key)}))}))};
+ return {...result,rows:result.rows.map(r=>({...r,bucketKey:normalizedBucketKey(r.bucketKey)})),accounts:result.accounts.map(a=>({...a,buckets:a.buckets.map(b=>({...b,key:normalizedBucketKey(b.key)}))}))};
 }
 export function agingPublicationMatches(data:AgingInvoicesResponse,refresh:RefreshState|undefined,hotel:AgingHotel|'All'|readonly HotelId[]){
  const wanted=Array.isArray(hotel)?hotel:isHotelId(hotel)?[hotel]:['KAT','TSK'];
@@ -58,6 +59,7 @@ export function agingCountFor(row:Pick<AgingComparisonRow,'members'>,hotel:Aging
   if(a.verification_state!=='verified'&&!(a.verification_state==='cleared'&&a.open===0))return {count:null,state:'unavailable',reason:'Account source verification is incomplete'};
   const account=source.data.accounts.find(r=>r.hotel===a.hotel&&r.accountId===a.id),cell=account?.buckets.find(b=>b.key===key);
   if(a.synced_at&&(!account?.syncedAt||Date.parse(a.synced_at)!==Date.parse(account.syncedAt)))return {count:null,state:source.state==='loading'?'loading':'unavailable',reason:'Reload counts and saved data to use the same account publication'};
+  if(bucket&&(account?.membership?.state!=='resolved'||account.membership.contract!=='opera_reconciled_v1'||a.agingBasis==='unavailable'||a.agingBasis==='source'))return {count:null,state:'unavailable',reason:'Aging membership is unavailable'};
   if(account?.accountType!==a.type||!cell?.complete||cell.count===null)return {count:null,state:'unavailable',reason:'Invoice verification or aging membership is incomplete'};
   count+=cell.count;
  }
@@ -100,7 +102,7 @@ export function agingDetailsResult(query:URLSearchParams){
   const inScope=(r:{hotel:string;accountId:string;accountType:string})=>hotelInRegion(r.hotel,resolveRegion(query))&&(!hotel||r.hotel===hotel)&&(!type||r.accountType===type)&&(!kat&&!tsk||r.hotel==='KAT'&&r.accountId===kat||r.hotel==='TSK'&&r.accountId===tsk)&&(!members||members.has(JSON.stringify([r.hotel,r.accountId])));
   if(result.accounts.some(r=>!inScope(r))||result.rows.length>Number(query.get('limit')??50))return invalid();
   for(const row of result.rows){
-   if(!inScope(row)||bucket&&(row.age===null||row.age<bucket[1]||bucket[2]!==null&&row.age>bucket[2])||flag==='held'&&!row.held||flag==='needs_review'&&!row.needsReview)return invalid();
+   if(!inScope(row)||bucket&&row.bucketKey!==JSON.stringify(bucket)||flag==='held'&&!row.held||flag==='needs_review'&&!row.needsReview)return invalid();
    const current=dimension==='billing'?row.billingStatus:dimension==='followup'?row.latestStage:dimension==='due'?row.dueStatus:null;
    if(status&&current!==status)return invalid();
   }

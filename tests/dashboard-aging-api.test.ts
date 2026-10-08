@@ -14,7 +14,7 @@ it('rejects missing actor/method before reading and masks provider errors',async
  vi.stubGlobal('fetch',async()=>new Response('private customer error',{status:500}));const r=await agingInvoicesApi(new Request(url()),env,actor);expect(r.status).toBe(503);expect(await r.json()).toEqual({error:'aging_unavailable'});
 });
 it('preserves unknown counts and canonicalizes bucket identity without exposing SQL whitespace',async()=>{
- const body={asOfDate:'2026-09-13',publications:[],accounts:[{hotel:'KAT',accountId:'A',buckets:[{key:'["91 - 120", 91, 120, 4]',count:null,amount:null,creditAmount:null,complete:false}]}],summary:{complete:false},rows:[],total:0,complete:false};
+ const body={asOfDate:'2026-09-13',publications:[],accounts:[{hotel:'KAT',accountId:'A',membership:{contract:'opera_reconciled_v1',state:'unavailable',offsetDays:null},buckets:[{key:'["91 - 120", 91, 120, 4]',count:null,amount:null,creditAmount:null,complete:false}]}],summary:{complete:false},rows:[],total:0,complete:false};
  vi.stubGlobal('fetch',async()=>Response.json(body));const r=await agingInvoicesApi(new Request(url()),env,actor);expect(r.status).toBe(200);expect(r.headers.get('Cache-Control')).toBe('no-store');expect((await r.json() as typeof body).accounts[0].buckets[0]).toMatchObject({key:'["91 - 120",91,120,4]',count:null});
  vi.stubGlobal('fetch',async()=>Response.json({error:'aging_forbidden'}));expect((await agingInvoicesApi(new Request(url()),env,actor)).status).toBe(403);
 });
@@ -25,3 +25,14 @@ it('accepts bounded exact groups and rejects duplicate, foreign and ambiguous me
 });
 
 it('accepts Credit as a display filter in each status view, without making it an attention flag',()=>{for(const dimension of ['billing','followup','due'])expect(parseAgingInvoicesQuery(url('dimension='+dimension+'&status=credit'))).toMatchObject({p_dimension:dimension,p_status:'credit'});expect(()=>parseAgingInvoicesQuery(url('dimension=flags&status=credit'))).toThrow();});
+
+it('uses explicit source membership for raw boundary ages and rejects incoherent row contracts',async()=>{
+ const key='["Up to 30",0,30,1]';
+ const fixture=()=>({asOfDate:'2026-10-08',publications:[],accounts:[{hotel:'KAT',accountId:'A',membership:{contract:'opera_reconciled_v1',state:'resolved',offsetDays:-1 as number|null},buckets:[{key,complete:true,count:1,amount:'100.00',creditAmount:'0.00'}]}],summary:{complete:true},rows:[{hotel:'KAT',accountId:'A',invoiceId:'I',age:31,bucketKey:'["Up to 30", 0, 30, 1]' as string|null}],total:1,complete:true});
+ vi.stubGlobal('fetch',async()=>Response.json(fixture()));
+ const result=await agingInvoicesApi(new Request(url('bucket='+encodeURIComponent(key))),env,actor);
+ expect(result.status).toBe(200);expect((await result.json() as ReturnType<typeof fixture>).rows[0]).toMatchObject({age:31,bucketKey:key});
+ for(const mutate of [(r:ReturnType<typeof fixture>)=>r.accounts[0].membership.offsetDays=-2,(r:ReturnType<typeof fixture>)=>r.rows[0].bucketKey='["31 - 60",31,60,2]',(r:ReturnType<typeof fixture>)=>r.rows[0].bucketKey=null,(r:ReturnType<typeof fixture>)=>r.rows[0].accountId='FOREIGN',(r:ReturnType<typeof fixture>)=>r.accounts.push(r.accounts[0])]){
+  const body=fixture();mutate(body);vi.stubGlobal('fetch',async()=>Response.json(body));expect((await agingInvoicesApi(new Request(url()),env,actor)).status).toBe(503);
+ }
+});

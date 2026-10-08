@@ -10,7 +10,7 @@ function transport(authorize:(body:Record<string,unknown>)=>Response,result:unkn
  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
   const url=new URL(String(input));if(url.pathname==='/auth/v1/user')return Response.json({id:actor,email:'staff@example.invalid',email_confirmed_at:'2026-09-17T00:00:00Z',app_metadata:{administrator:true,regions:['phuket','khao-lak']}});
   const name=url.pathname.split('/').at(-1)!,body=JSON.parse(String(init?.body??'{}'));calls.push({name,body});
-  if(name==='ar_access_authorize')return authorize(body);return Response.json(result);
+  if(name==='ar_access_authorize')return authorize(body);if(name==='ar_access_account_publication'&&Array.isArray(result))return Response.json([{hotel:'TLKL',id:'SYNTHETIC',synced_at:'2026-10-08T00:00:00Z'}]);return Response.json(result);
  }));return calls;
 }
 it('normal dispatcher admits an authorized non-admin conflict page with real actor and region',async()=>{
@@ -40,6 +40,7 @@ it('rejects mismatched response data even after the route was authorized',async(
 it('uses the scoped service reader instead of broadening direct authenticated data access',async()=>{
  const calls=transport(()=>Response.json({...grant,scopeHotels:['TLKL']}),[]);
  const response=await handleApi(request('/api/accounts/TLKL/SYNTHETIC'),env);expect(response.status).toBe(200);
+ expect(calls.find(c=>c.name==='ar_access_account_publication')?.body).toEqual({p_actor:actor,p_hotel:'TLKL',p_account:'SYNTHETIC'});
  expect(calls.filter(c=>c.name==='ar_access_rows').every(c=>c.body.p_actor===actor&&JSON.stringify(c.body.p_hotels)==='["TLKL"]')).toBe(true);
 });
 it('blocks direct requests for the default Phuket view from a Khao Lak member',async()=>{

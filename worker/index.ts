@@ -203,9 +203,12 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(operaProbe){
       const origin=request.headers.get('Origin');
       if(origin&&origin!==new URL(request.url).origin)return json({error:'forbidden'},403);
-      const hotel=new URL(request.url).searchParams.get('hotel');
+      const params=new URL(request.url).searchParams;
+      if([...params.keys()].some(key=>!['hotel','account'].includes(key)||params.getAll(key).length!==1))return json({error:'invalid_request'},400);
+      const hotel=params.get('hotel'),account=params.get('account');
       if(!isHotelId(hotel))return json({error:'invalid_hotel'},400);
-      try{return json(await probeOpera(env,hotel));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined,...(e instanceof OperaError?safeAuthenticationDiagnostic(e):{})},503);}
+      if(account!==null&&!/^[A-Za-z0-9_-]{1,100}$/.test(account))return json({error:'invalid_request'},400);
+      try{return json(await probeOpera(env,hotel,account??undefined));}catch(e){return json({error:e instanceof OperaError?e.code:'opera_unavailable',stage:e instanceof OperaError?e.stage:undefined,upstreamStatus:e instanceof OperaError?e.upstreamStatus:undefined,providerMessage:e instanceof OperaError?e.providerMessage:undefined,...(e instanceof OperaError?safeAuthenticationDiagnostic(e):{})},503);}
     }
     const allRows = async (table: string, query: string) => {
       const result: unknown[] = [];
@@ -245,11 +248,15 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     const [, , , hotel, id] = path.split('/');
     if(!isHotelId(hotel)||!id)return json({error:'not_found'},404);
     const query = `hotel=eq.${encodeURIComponent(decodeURIComponent(hotel))}&account_id=eq.${encodeURIComponent(decodeURIComponent(id))}`;
+    const accountPublication=grant?await backendRpc<unknown[]>(env,'ar_access_account_publication',{p_actor:grant.actorId,p_hotel:hotel,p_account:decodeURIComponent(id)}):await allRows('ar_accounts',`select=hotel,id,synced_at&hotel=eq.${encodeURIComponent(decodeURIComponent(hotel))}&id=eq.${encodeURIComponent(decodeURIComponent(id))}`);
+    if(!Array.isArray(accountPublication)||accountPublication.length!==1)return json({error:'account_unavailable'},503);
+    const publication=accountPublication[0] as {hotel?:unknown;id?:unknown;synced_at?:unknown};
+    if(!publication||publication.hotel!==hotel||publication.id!==decodeURIComponent(id)||publication.synced_at!==null&&typeof publication.synced_at!=='string')return json({error:'account_unavailable'},503);
     const invoices=await allRows('ar_invoices',`select=*&${query}&open=neq.0&collection_role=neq.child&order=id`);
     let workflows:unknown[]=[];let workflowStatus='available';
     if(invoices.length)try{workflows=await allRows('ar_invoice_workflow',`select=*&${query}&order=invoice_id`);}catch{workflowStatus='unavailable';}
     const byId=new Map(workflows.map(w=>{const row=w as {invoice_id:string};return [row.invoice_id,row];}));
-    return json({invoices:await attachExceptions(invoices.map(v=>{const row=v as {id:string};return {...row,workflow:byId.get(row.id)??null};}),'&'+query),source:'opera',workflow_source:'ar_workspace',workflow_status:workflowStatus,status:'connected'});
+    return json({invoices:await attachExceptions(invoices.map(v=>{const row=v as {id:string};return {...row,workflow:byId.get(row.id)??null};}),'&'+query),synced_at:publication.synced_at,source:'opera',workflow_source:'ar_workspace',workflow_status:workflowStatus,status:'connected'});
     };
     const result=await dispatch();
     if(background&&result.ok&&request.method!=='GET'&&(settingsRequest||emailRequest||billingRequest||policyRequest||registerRequest||accountWorkspaceRequest||exceptionRequest)){try{background.waitUntil(warmPeriodSummaries(env));}catch{/* A cache scheduling failure must not turn a committed write into an error. */}}
