@@ -1,8 +1,9 @@
-## 2026-10-08 — Email continuation and attachment throughput verified
+## 2026-10-08 — Email continuation and attachment throughput deployed
 
 - Pending message, signature and filename edits save when the user continues to review/send preparation or explicitly creates a Gmail draft. Attachment operations use the saved revision as needed. Save remains available without continuing; failed saves retain input, and final sending still requires explicit human confirmation. No automatic send or relaxation of duplicate-command protection.
 - Stored attachments load in ordered batches of three under existing total-byte and individual hash checks. Fresh OPERA and thread checks remain. Failed batches drain before rejection and do not start later reads. Simulated six-file storage wait is 600 ms serial versus 200 ms batched; this is not production send latency.
-- Relevant backend 172 tests / 27 files, 22 Email Composer browser cases, TypeScript and browser build pass. Astra scoped review and desktop/mobile visual inspection complete; original screenshots preserved. No schema change or real email send. Deployment pending; [evidence](EMAIL_FLOW_SPEED_20261008.md).
+- Relevant backend 172 tests / 27 files, 22 Email Composer browser cases plus eight focused cases after the final copy change, TypeScript and production build pass. Astra scoped review and desktop/mobile visual inspection complete; original screenshots preserved. No schema change or real email send; [evidence](EMAIL_FLOW_SPEED_20261008.md).
+- Source `0c27388da21bdddea8ecfa0764d249756cd6e7b7` deployed as Worker `74810134-1fbf-459f-96c8-51d0f1db5ce1`. Actual health verifies source/database/OPERA. Readback preserves 26 plaintext bindings except COMMIT_SHA, secret names, three workflows and schedules. [PR 121](https://github.com/NTHV9/ar-workspace/pull/121) is attached and unmerged. Production end-to-end send latency has not been measured; the speed result above is the isolated synthetic storage stage.
 
 ## 2026-10-07 — Email generated filenames deployed; record finalized 2026-10-08
 

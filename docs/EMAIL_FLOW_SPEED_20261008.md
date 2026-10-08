@@ -1,6 +1,6 @@
 # Email preparation flow and attachment loading
 
-Status: implemented and locally verified; deployment pending.
+Status: implemented, tested and deployed on 2026-10-08.
 
 The user reports repeated Save message requirements between PDF preparation and sending, plus slow sends. The existing composer blocks actions for any dirty field, including automatically loaded signatures. The change saves current edits when the user requests review/send preparation, Gmail draft creation or an attachment operation, then uses the returned draft revision. Save message remains available for saving without continuing. The final human send confirmation, exact reviewed PDF package, revision conflicts, uncertain-result handling and no-duplicate delivery claims remain in place.
 
@@ -15,3 +15,7 @@ No database migration, retention change or real email send is part of this chang
 - The initial browser regression fails because review is disabled after edits. Final Email Composer suite: 22 cases pass, covering auto-save before review/draft/download/upload/removal, saved revision propagation, retained inputs after save conflicts, rapid repeated actions and explicit final send acknowledgment. Desktop and mobile synthetic review captures show the current body and renamed attachment. Original tracked evidence is preserved.
 - Relevant backend regression: 172 tests across 27 files pass, including the eight new preparation tests. Astra independently checks 22 related cases and reviews the scoped product changes. Manifest prevalidation, out-of-order completion, drained failures, byte/hash mismatch, unchanged single-file timing and fresh-source rejection are covered.
 - TypeScript and browser asset build pass. Impeccable detector reports no findings on the changed UI file. Captures and timing evidence are synthetic; actual provider delivery timing is not claimed.
+
+## Deployment
+
+Source `0c27388da21bdddea8ecfa0764d249756cd6e7b7` is deployed as Worker `74810134-1fbf-459f-96c8-51d0f1db5ce1`. Actual health confirms that source, database verification and OPERA connected. Readback preserves all 26 plaintext bindings except the expected source commit change, secret names, three workflows and existing schedules. [PR 121](https://github.com/NTHV9/ar-workspace/pull/121) is attached and remains unmerged. The final footer-copy change passed an additional eight focused browser cases and TypeScript/build. No real customer email was sent for validation.
