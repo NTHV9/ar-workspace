@@ -25,6 +25,19 @@ test('failed Gmail callback returns to connection recovery without assuming succ
  await setupDepth(page);await seedTabSession(page);await mailboxStatuses(page,false);await page.goto('/?settings=1&region=khao-lak&gmail=failed');
  await expect(page.getByRole('heading',{name:'Gmail connections',exact:true})).toBeVisible();await expect(page.getByRole('alert')).toContainText('Gmail authorization failed');await expect(page.getByRole('region',{name:'Khao Lak Gmail connection'})).toContainText('Not connected');
 });
+test('intentional Gmail authorization leaves without the unsaved-change guard',async({page})=>{
+ await setupDepth(page);await seedTabSession(page);await mailboxStatuses(page,false);
+ let release!:()=>void;const response=new Promise<void>(resolve=>{release=resolve;}),unloads:boolean[]=[];
+ await page.exposeFunction('recordGmailUnload',(prevented:boolean)=>unloads.push(prevented));
+ await page.route('**/api/gmail/connect',async route=>{await response;await route.fulfill({json:{url:'https://accounts.google.com/o/oauth2/v2/auth?synthetic=1'}});});
+ await page.route('https://accounts.google.com/**',route=>route.abort());page.on('dialog',dialog=>void dialog.dismiss());
+ await page.goto('/?settings=1&region=khao-lak&gmail=connected');const khao=page.getByRole('region',{name:'Khao Lak Gmail connection'});
+ await expect(khao.getByRole('button',{name:'Connect Gmail',exact:true})).toBeEnabled();
+ await page.evaluate(()=>addEventListener('beforeunload',event=>{void (window as unknown as {recordGmailUnload:(prevented:boolean)=>Promise<void>}).recordGmailUnload(event.defaultPrevented);}));
+ await khao.getByRole('button',{name:'Connect Gmail',exact:true}).click();await expect(khao.getByRole('button',{name:'Opening Google authorization…',exact:true})).toBeDisabled();
+ const prevented=await page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});dispatchEvent(event);return event.defaultPrevented;});expect(prevented).toBe(false);
+ release();await expect.poll(()=>unloads.length).toBeGreaterThan(1);expect(unloads).toEqual([false,false]);
+});
 async function regionalComposer(page:Page){
  const c=await setupDepth(page,{compose:true});await seedTabSession(page);const queries=await mailboxStatuses(page),exports=[{name:'Synthetic.pdf',storage_key:`jobs/${depthJobId}/exports/synthetic.pdf`,byte_count:100,sha256:'a'.repeat(64)}];
  const job={id:depthJobId,hotel:'TLKL',account_id:'SYNTHETIC',account_name:'Synthetic Khao Lak',invoice_ids:['SYNTHETIC'],state:'ready',revision:1,acknowledged:true,files:[],exports,manifest:[]};
