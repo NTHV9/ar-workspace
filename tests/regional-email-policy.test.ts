@@ -7,7 +7,7 @@ import {verifySentEvidence} from '../worker/email/sent-evidence';
 import {url64} from '../worker/email/crypto';
 const id='00000000-0000-4000-8000-000000000021';
 afterEach(()=>vi.unstubAllGlobals());
-it.each(['TLKL','WAKL','TLFO','TSAN'])('routes approved Khao Lak hotel %s without a provider write',async hotel=>{const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);await requireRegionalDelivery({}, {id,hotel});expect(hotelMailbox(hotel)).toBe('khao-lak');expect(mailboxSender(hotelMailbox(hotel))).toBe('ar@thesandskhaolak.com');expect(fetcher).not.toHaveBeenCalled();});
+it.each(['TLKL','WAKL','TLFO','TSAN'])('routes approved Khao Lak hotel %s without a provider write',async hotel=>{const fetcher=vi.fn(async(_input:RequestInfo|URL)=>Response.json({allowed:true}));vi.stubGlobal('fetch',fetcher);await requireRegionalDelivery({SUPABASE_URL:'https://synthetic.invalid',SUPABASE_SECRET_KEY:'synthetic'}, {id,hotel,owner:id});expect(hotelMailbox(hotel)).toBe('khao-lak');expect(mailboxSender(hotelMailbox(hotel))).toBe('ar@thesandskhaolak.com');expect(fetcher).toHaveBeenCalledTimes(1);expect(String(fetcher.mock.calls[0][0])).toContain('/ar_email_business_preflight');});
 it.each(['KAT','TSK'])('preserves Phuket sender for %s',hotel=>expect(mailboxSender(hotelMailbox(hotel))).toBe('ar@katathani.com'));
 it('rejects unknown hotels and mixed frozen identities',()=>{expect(()=>hotelMailbox('UNKNOWN')).toThrow('email_invalid');expect(()=>frozenMailIdentity({mailbox:'khao-lak',sender:'ar@katathani.com'})).toThrow('email_forbidden');expect(frozenMailIdentity({})).toEqual({mailbox:'phuket',sender:'ar@katathani.com'});});
 it('uses the frozen sender in MIME and requires it in SENT evidence',async()=>{

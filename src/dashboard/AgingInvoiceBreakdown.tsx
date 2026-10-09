@@ -10,8 +10,8 @@ import './aging-invoice-breakdown.css';
 
 interface Props {initialFilters?:AgingStatusFilters;onFiltersChange?:(filters:AgingStatusFilters)=>void;target:AgingStatusTarget;token:string;revision:number;refresh?:RefreshState;onClose:()=>void;onOpenInvoice:(hotel:HotelId,accountId:string,invoiceId:string)=>void}
 const tabs:{key:AgingStatusDimension;label:string}[]=[{key:'billing',label:'Billing'},{key:'followup',label:'Latest Follow-Up'},{key:'due',label:'Due date'}];
-const billingLabels:Record<string,string>={unbilled:'Not billed',billed:'Billed',not_required:'Billing not required',setup:'Billing setup needed',credit:'Credit'};
-const dueLabels:Record<string,string>={not_due:'Not yet due',due_today:'Due today',past_due:'Past Due date',awaiting_billing:'Awaiting billing',unknown:'Due date unavailable',credit:'Credit'};
+const billingLabels:Record<string,string>={balance_only:'Balance only',unbilled:'Not billed',billed:'Billed',not_required:'Billing not required',setup:'Billing setup needed',credit:'Credit'};
+const dueLabels:Record<string,string>={balance_only:'Balance only',not_due:'Not yet due',due_today:'Due today',past_due:'Past Due date',awaiting_billing:'Awaiting billing',unknown:'Due date unavailable',credit:'Credit'};
 export function AgingInvoiceBreakdown({target,token,revision,refresh,onClose,onOpenInvoice,initialFilters,onFiltersChange}:Props){
  const heading=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{heading.current?.focus({preventScroll:true});heading.current?.scrollIntoView({block:'start'});},[]);

@@ -1,3 +1,9 @@
+## 2026-10-09 — Account defaults and Khao Lak agent import; DRF verified
+
+- Applied 30 type defaults across six hotels: CCR Not required / 3 days; CON/EMP/NMK/REN Not required / 30 days. Latest owner clarification preserves explicit Account settings; verified all 22 pre-existing explicit settings unchanged. Type-derived settings retain Setup needed visibility.
+- Refreshed all four Khao Lak hotels from OPERA, then matched workbook numbers/names to hotel-scoped identities. Imported 176 Accounts from 53 source rows and verified every intended recipient/channel/term/instruction field. REN billing-email exceptions are explicitly Required. Three Accounts on the contradictory DEDUCT DEPOSIT row remain pending owner clarification; blank reminder recipients remain blank. Money, business Sent and Phuket settings preserved. [Configuration evidence](ACCOUNT_TYPE_DEFAULTS_20261009.md).
+- DRF balance-only implemented and reviewed; full 1,823 tests, TypeScript, 49 final focused tests and three browser cases pass. Exact migration 109 passed local and actual rollback and is applied; 12 DRF Accounts / 53 Invoices remain, no DRF collection work. Current reports, Aging and actual historical send labels remain intact; new business actions blocked, historical reconciliation preserved. Worker deployment pending at this checkpoint. No email sent.
+
 ## 2026-10-09 — Regional Gmail deployed and both mailboxes authorized
 
 - Separate owner authorization then permitted one synthetic email from the Khao Lak mailbox to the one-time recipient supplied in chat. Sent at 11:44:52 ICT; HTTP 200 and verified `sent` in 2,506 ms. Readback confirms exact Khao Lak sender, one synthetic 1,038-byte PDF and zero business Sent events. This verifies the real regional send/Sent-check path, not recipient inbox delivery. Recipient is not stored in repository/configuration; private command evidence prevents duplicate sending. No customer invoice or financial state changed.

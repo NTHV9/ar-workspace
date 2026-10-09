@@ -37,6 +37,7 @@ export async function dispatchDocumentJob(env:RefreshEnv,job:DocumentJob){
 export async function createDocumentJob(env:RefreshEnv,owner:string,input:DocumentCreateInput){
  const source=documentSource(input);
  const job=await backendRpc<DocumentJob>(env,'ar_document_create_v5',{p_owner:owner,p_command_key:input.commandKey,p_hotel:input.hotel,p_account_id:input.accountId,p_ids:input.ids,p_content:input.content,p_layout:input.layout,p_purpose:input.purpose,p_statement_source:source});
+ if((job as unknown as {error?:string})?.error==='account_balance_only')throw Error('account_balance_only');
  return dispatchDocumentJob(env,job);
 }
 export async function uploadPrivate(env:RefreshEnv,path:string,bytes:Uint8Array,type:string){

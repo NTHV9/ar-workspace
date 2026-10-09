@@ -90,7 +90,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
   }
   return json({error:'method_not_allowed'},405);
  }catch(error){
-  const code=error instanceof Error&&/^(document|storage|budget|retention)_[a-z_]+$/.test(error.message)?error.message:'document_service_unavailable';
-  const status=code==='document_forbidden'?403:code==='storage_file_expired'||code==='document_closed'?410:code==='document_upload_too_large'?413:/conflict|selection_invalid|sources_unavailable|pending|project_retired|archive_retired|busy/.test(code)?409:/invalid|source_retired/.test(code)?400:503;return json({error:code},status);
+  const code=error instanceof Error&&(/^(document|storage|budget|retention)_[a-z_]+$/.test(error.message)||error.message==='account_balance_only')?error.message:'document_service_unavailable';
+  const status=code==='document_forbidden'?403:code==='storage_file_expired'||code==='document_closed'?410:code==='document_upload_too_large'?413:/balance_only|conflict|selection_invalid|sources_unavailable|pending|project_retired|archive_retired|busy/.test(code)?409:/invalid|source_retired/.test(code)?400:503;return json({error:code},status);
  }
 }

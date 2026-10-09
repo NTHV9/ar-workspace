@@ -16,6 +16,7 @@ const messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`;
 const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic'};
 const digest=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
 function setup(count=6){
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({allowed:true})));
  const contents=Array.from({length:count},(_,index)=>new Uint8Array([1,2,index+3]));
  const files=contents.map((bytes,index)=>({name:`Synthetic-${index}.pdf`,storage_key:`jobs/${id}/${index}.pdf`,byte_count:bytes.length,sha256:digest(bytes)}));
  const draft:EmailDraft={id,owner,hotel:'KAT',document_job_id:id,document_revision:1,revision:1,account_id:'synthetic-account',account_name:'Synthetic',invoice_ids:['synthetic-invoice'],purpose:'billing',recipients:{to:['synthetic@example.invalid'],cc:[],bcc:[]},subject:'Synthetic',body:'Synthetic message',exports:files,attachments:[],package_changed:false};

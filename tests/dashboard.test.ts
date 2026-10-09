@@ -37,3 +37,9 @@ describe('inclusive ranges and retired report routes',()=>{
 });
 
 it('splits long OPERA refresh periods into bounded nonoverlapping calendar requests',()=>{const chunks=historyChunks('2024-01-01','2026-09-12');expect(chunks[0].from).toBe('2024-01-01');expect(chunks.at(-1)?.to).toBe('2026-09-12');for(const [i,c]of chunks.entries()){expect((Date.parse(c.to)-Date.parse(c.from))/86400000).toBeLessThan(366);if(i)expect(Date.parse(c.from)-Date.parse(chunks[i-1].to)).toBe(86400000);}expect(historyChunks('2026-02-30','2026-03-01')).toEqual([]);});
+
+it('excludes DRF balances from every work counter while retaining other accounts',()=>{
+ const totals=queueTotals([{...row,id:'drf',account_type:'DRF'},row],{...scope,type:''},defaultCollectionPolicy,'2026-09-11');
+ expect(totals?.urgent).toEqual({count:1,amount:'100.00'});
+ expect(queueTotals([{...row,account_type:'DRF'}],{...scope,type:''},defaultCollectionPolicy,'2026-09-11')).toEqual(Object.fromEntries(['urgent','billing','collection','review','held','setup'].map(k=>[k,{count:0,amount:'0.00'}])));
+});

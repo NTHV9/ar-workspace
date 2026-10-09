@@ -4,6 +4,10 @@ import type {AgingInvoice} from '../src/dashboard/aging-model';
 import type {InvoiceWorkflow} from '../src/domain/portfolio';
 const workflow:InvoiceWorkflow={revision:1,billing_required:true,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:null};
 const row:AgingInvoice={hotel:'KAT',accountId:'A',id:'I',invoiceNo:'I',folioNo:'F',guest:'Guest',date:'2026-09-01',open:100,age:22,role:'standalone',verified:true,parentId:null,workflow,statusAvailable:true};
+it('shows DRF balance only despite missing rules, overdue, Final, hold or reopened history',()=>{
+ for(const extra of [{workflow:null},{workflow:{...workflow,due_date:'2026-01-01'}},{workflow:{...workflow,last_reminder_stage:'Final',last_reminder_date:'2026-09-20'}},{held:true},{needsReview:true},{statusAvailable:false}])expect(invoiceProgress({...row,...extra,accountType:'DRF'},'2026-09-23')).toBe('Balance only');
+ expect(invoiceProgress({...row,accountType:'DRF',open:-100},'2026-09-23')).toBe('Credit');
+});
 const status=(w:Partial<InvoiceWorkflow>,extra:Partial<AgingInvoice>={})=>invoiceProgress({...row,...extra,workflow:{...workflow,...w}},'2026-09-23');
 it('distinguishes billing, no-follow-up and actual reminder states',()=>{
  expect(status({})).toBe('Not billed');

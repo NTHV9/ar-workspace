@@ -1,7 +1,8 @@
+import {isBalanceOnlyAccountType} from './account-policy';
 import type {InvoiceWorkflow} from './portfolio';
 import {latestInvoiceActivity} from './invoice-display';
 import {defaultCollectionPolicy,legacyStageSnapshot,parseStageSnapshot,policyStageLabel,type CollectionPolicy,type CollectionStageKey,type StageSnapshot} from './collection-policy';
-export interface QueueInvoice {hotel:string;account_id:string;id:string;guest:string;invoice_no:string|null;folio_no:string|null;open:number;transaction_date:string;collection_role:string;collection_selectable:boolean;verification_state:string;workflow:(InvoiceWorkflow&{last_reminder_policy_version?:number|null;last_reminder_stage_snapshot?:StageSnapshot|null})|null;exceptions?:{held:boolean;needsReview:boolean;dispute:string;reopenedAt:string|null};exception_status?:'available'|'unavailable'}
+export interface QueueInvoice {account_type?:string;hotel:string;account_id:string;id:string;guest:string;invoice_no:string|null;folio_no:string|null;open:number;transaction_date:string;collection_role:string;collection_selectable:boolean;verification_state:string;workflow:(InvoiceWorkflow&{last_reminder_policy_version?:number|null;last_reminder_stage_snapshot?:StageSnapshot|null})|null;exceptions?:{held:boolean;needsReview:boolean;dispute:string;reopenedAt:string|null};exception_status?:'available'|'unavailable'}
 export type ActionStage=CollectionStageKey|'Billing'|'Urgent'|'Setup needed'|'Needs review'|'On hold';
 export const actionStages:ActionStage[]=['Billing','Friendly','Follow 1','Follow 2','Follow 3','Final','Urgent','Setup needed','Needs review','On hold'];
 export const actionStagesForPolicy=(policy:CollectionPolicy):ActionStage[]=>['Billing',...policy.rounds.filter(r=>r.active).map(r=>r.key),'Urgent','Setup needed','Needs review','On hold'];
@@ -12,7 +13,7 @@ const validDate=(s:string|null|undefined):s is string=>!!s&&/^\d{4}-\d{2}-\d{2}$
 export function calendarAdd(date:string,days:number){const d=new Date(date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 /** Undefined policy preserves the legacy default; null means a failed active-policy read. */
 export function nextCollectionAction(invoice:QueueInvoice,today:string,policy:CollectionPolicy|null=defaultCollectionPolicy,snapshot?:StageSnapshot|null):CollectionAction|null {
- if(invoice.open<=0||invoice.collection_role==='child')return null;
+ if(isBalanceOnlyAccountType(invoice.account_type)||invoice.open<=0||invoice.collection_role==='child')return null;
  const w=invoice.workflow,latest=latestInvoiceActivity(w);let captured:StageSnapshot|null=null,snapshotInvalid=false;
  if(w?.last_reminder_stage){try{const raw=snapshot??w.last_reminder_stage_snapshot;captured=raw?parseStageSnapshot(raw):legacyStageSnapshot(w.last_reminder_stage);if(captured&&captured.key!==w.last_reminder_stage)snapshotInvalid=true;}catch{snapshotInvalid=true;}}
  const urgent=!snapshotInvalid&&!!captured?.terminal&&validDate(w?.last_reminder_date)&&w.last_reminder_date<=today;
