@@ -2,6 +2,7 @@
 
 - Owner requests whole-web explanatory-clutter cleanup. Audited all 78 TSX components and simplified 39 UI files across primary and administrative surfaces. Removed both quoted Invoice Exceptions paragraphs, repeated tutorials, generic reassurance and implementation prose; retained financial meaning, states, errors, controls and action confirmations. Corrected stale Type default badge wording. [Coverage and verification](UI_COPY_CLEANUP_20261009.md).
 - TypeScript and 102 existing unit tests pass, two synthetic Account/settings desktop/mobile browser cases pass, and Email/PDF desktop/mobile captures were inspected. Astra copy review passes. No backend, schema, financial calculation, API handler or actual business action changes. Deployment pending at this checkpoint.
+- Source `c8713e85d10ebd021d2d149c65eb91b1bf8ee5f4` deployed as Worker `39fde717-df35-4dc0-8319-f121b527f386`. Health verifies exact source/database/OPERA; binding comparison changes only COMMIT_SHA and the Worker code bundle is byte-identical to the prior release. Signed-in live TSAN Invoice detail confirms both quoted paragraphs absent and note/dispute/reason fields plus Review hold/Review reopened invoice controls retained. No status change submitted. [PR 128](https://github.com/NTHV9/ar-workspace/pull/128) attached and unmerged.
 
 ## 2026-10-09 — Complete inherited rules no longer force Account confirmation
 
