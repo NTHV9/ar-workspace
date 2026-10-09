@@ -1,3 +1,8 @@
+## 2026-10-09 — Complete inherited rules no longer force Account confirmation
+
+- Owner supersedes the earlier provisional Setup needed gate. Collections now uses complete inherited billing/term values immediately; genuinely missing fields retain setup guidance. Removed the repeated confirmation explanation from both queue reasons and Account settings. Provenance, future default updates and explicit Account precedence remain unchanged; no bulk confirmation or settings rewrite.
+- Migration 110 limits the management Dashboard's inherited Setup classification to genuinely missing rules and advances summary-cache generation. Focused 62 tests and TypeScript pass; local SQL regression/rollback and actual Supabase candidate rollback preserve Account/Invoice/workflow/settings/Sent rows. Exact tested migration applied; readback confirms classification guard and all 145 complete inherited queue rows retained (122 CCR, seven NMK, 16 REN). Astra review reports no blocking findings. Browser/release verification follows below.
+
 ## 2026-10-09 — Account defaults and Khao Lak agent import; DRF verified
 
 - Final owner clarification resolves the remaining three deposit-deduction Accounts: explicit Not required / 30 days, no billing channel, source reminder recipients and deposit instruction retained. Existing bulk preview/apply and exact readback succeeded. Workbook configuration is complete: 54 source rows / 179 hotel-specific Accounts. Earlier pending entries below are historical checkpoints; no source row remains awaiting this decision.

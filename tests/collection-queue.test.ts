@@ -34,8 +34,18 @@ it('does not infer a short term when missing, or rewrite previously sent Friendl
  expect(row.workflow.last_reminder_stage).toBe('Friendly');
 });
 
-it('keeps type-inherited rules in Setup needed until Account confirmation',()=>{
- const inherited={...invoice,workflow:{...invoice.workflow!,billing_required:false,credit_term:30,due_date:'2026-09-01',account_setup_required:true}};
- expect(nextCollectionAction(inherited,'2026-09-10')).toMatchObject({stage:'Setup needed',reason:'Using Account Type defaults; confirm Account settings.'});
- expect(nextCollectionAction({...inherited,workflow:{...inherited.workflow,account_setup_required:false}},'2026-09-10')?.stage).not.toBe('Setup needed');
+it('uses inherited CCR three-day rules immediately and preserves their provenance',()=>{
+ const inherited={...invoice,account_type:'CCR',workflow:{...invoice.workflow!,billing_required:false,credit_term:3,due_date:'2026-09-09',account_setup_required:true}};
+ expect(nextCollectionAction(inherited,'2026-09-10')).toMatchObject({stage:'Follow 1',date:'2026-09-10',ready:true});
+ expect(nextCollectionAction(inherited,'2026-09-08')).toMatchObject({stage:'Follow 1',date:'2026-09-10',ready:false});
+ expect(inherited.workflow.account_setup_required).toBe(true);
+});
+it('uses complete inherited billing rules and retains actual missing-field guidance',()=>{
+ const inherited={...invoice,workflow:{...invoice.workflow!,account_setup_required:true}};
+ expect(nextCollectionAction({...inherited,workflow:{...inherited.workflow,billing_required:true,due_date:null}},'2026-09-10')).toMatchObject({stage:'Billing',ready:true});
+ expect(nextCollectionAction({...inherited,workflow:{...inherited.workflow,billing_required:null}},'2026-09-10')).toMatchObject({stage:'Setup needed',reason:'Set Billing Required / Not Required'});
+ for(const billing_required of [false,true])expect(nextCollectionAction({...inherited,workflow:{...inherited.workflow,billing_required,credit_term:null}},'2026-09-10')).toMatchObject({stage:'Setup needed',reason:'Set the credit term to determine the due date'});
+ // Explicit account rules retain their own term and existing Billing behavior.
+ expect(nextCollectionAction({...inherited,workflow:{...inherited.workflow,account_setup_required:false,credit_term:30}},'2026-09-03')).toMatchObject({stage:'Friendly',ready:true});
+ expect(nextCollectionAction({...inherited,workflow:{...inherited.workflow,account_setup_required:false,billing_required:true,credit_term:null}},'2026-09-10')).toMatchObject({stage:'Billing'});
 });

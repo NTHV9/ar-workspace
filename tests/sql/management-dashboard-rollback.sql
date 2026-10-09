@@ -30,7 +30,11 @@ begin
  r:=public.ar_dashboard_management(actor,d-90,d,null,null,'SYNTHETIC_MANAGEMENT');
  if jsonb_array_length(r->'accountsOver60')<>2 then raise exception 'cross-hotel identical IDs combined';end if;
  update public.ar_invoice_workflow set account_setup_required=true where hotel='KAT' and account_id=scope and invoice_id='F';
- r:=public.ar_dashboard_management(actor,d-90,d,'KAT',scope);select x into row from jsonb_array_elements(r->'cohort')x where x->>'key'='setup';if row->>'count'<>'2' or row->>'amount'<>'350.00' then raise exception 'provisional type rules concealed Account setup needed';end if;
+ r:=public.ar_dashboard_management(actor,d-90,d,'KAT',scope);select x into row from jsonb_array_elements(r->'cohort')x where x->>'key'='setup';if row->>'count'<>'1' or row->>'amount'<>'250.00' then raise exception 'complete inherited rules incorrectly required Account confirmation';end if;
+ select x into row from jsonb_array_elements(r->'cohort')x where x->>'key'='not_required';if row->>'count'<>'1' or row->>'amount'<>'100.00' then raise exception 'inherited billing-not-required cohort unavailable';end if;
+ update public.ar_invoice_workflow set credit_term=null where hotel='KAT' and account_id=scope and invoice_id='F';
+ r:=public.ar_dashboard_management(actor,d-90,d,'KAT',scope);select x into row from jsonb_array_elements(r->'cohort')x where x->>'key'='setup';if row->>'count'<>'2' or row->>'amount'<>'350.00' then raise exception 'incomplete inherited term incorrectly made usable';end if;
+ update public.ar_invoice_workflow set credit_term=30 where hotel='KAT' and account_id=scope and invoice_id='F';
  update public.ar_invoice_workflow set account_setup_required=false where hotel='KAT' and account_id=scope and invoice_id='F';
  update public.ar_invoices set age=null where hotel='KAT' and account_id=scope and id='D';
  r:=public.ar_dashboard_management(actor,d-90,d,'KAT',scope);if r->>'agesComplete'<>'false' or r->'accountsOver60'<>'null'::jsonb or r->'hotels'->0->'bands'->0->'amount'<>'null'::jsonb then raise exception 'missing age became zero';end if;

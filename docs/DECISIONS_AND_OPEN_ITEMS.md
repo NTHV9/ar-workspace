@@ -1,3 +1,7 @@
+## Complete Account Type defaults are usable without confirmation — 9 October 2026
+
+The owner removes the requirement to confirm every Account when complete Account Type defaults exist, and requests removal of the repeated inherited-settings confirmation message. This supersedes the earlier requirement to keep every type-derived Account in Setup needed. Complete inherited rules behave like equivalent explicit rules; genuinely missing billing requirement or credit term retains missing-configuration handling. Keep inheritance provenance, future default propagation and explicit Account precedence; do not bulk-confirm or overwrite Account settings. Collections and management billing classification must agree, with cached classifications invalidated.
+
 ## Account-type defaults and DRF balance-only — 9 October 2026
 
 The owner clarifies all requested CCR/CON/EMP/NMK/REN rules are type defaults, not overrides of existing Account settings. All six hotels: CCR Not required / 3 days; CON/EMP/NMK/REN Not required / 30 days. A REN Account with a billing email must have an explicit Required setting. Preserve the prior precedence and Setup needed indication for provisional type-derived settings. DRF is balance-only with no new billing/collection work; keep its balances, Aging and historical evidence. The Khao Lak workbook authorizes recipient/rule configuration after checking Account numbers and identities against OPERA per hotel; a number is not globally unique and missing addresses are not invented. [Configuration evidence](ACCOUNT_TYPE_DEFAULTS_20261009.md).

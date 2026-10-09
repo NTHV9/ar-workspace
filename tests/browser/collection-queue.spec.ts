@@ -13,6 +13,32 @@ test('Khao Lak can prepare verified invoices before billing setup without email'
  expect(calls.some(c=>c.includes('/send')||c.includes('/gmail-draft')||c==='POST /api/documents')).toBe(false);
 });
 function rows():QueueRow[]{return accountNames.map((name,index)=>({hotel:index%2?'TSK':'KAT',account_id:String(index+1),id:String(index+100),guest:'Synthetic Guest '+(index+1),invoice_no:'INV-'+(index+1),folio_no:'FOL-'+(index+1),open:[740000,510000,390000,310000,280000,190000,140000,95000,85000][index],transaction_date:'2026-08-01',collection_role:'standalone',collection_selectable:index!==8,verification_state:index===8?'unverified':'verified',account_name:name,account_type:index%2?'Corporate':'OTA',workflow:index===5?null:{revision:0,billing_required:index===0,credit_term:30,first_billing_date:null,last_reminder_stage:[null,'Follow 1','Final','Friendly',null,null,'Follow 2','Follow 3',null][index],last_reminder_date:[null,'2026-09-01','2026-09-09','2026-09-03',null,null,'2026-09-04','2026-09-01',null][index],due_date:index===4?'2026-09-25':index===0?null:'2026-09-09'}}));}
+test('complete type defaults are usable in Collections and Account settings without confirmation',async({page})=>{
+ const inherited={...rows()[0],account_type:'CCR',workflow:{...rows()[0].workflow!,billing_required:false,credit_term:3,due_date:'2026-09-09',account_setup_required:true}};
+ const explicit={...rows()[4],workflow:{...rows()[4].workflow!,account_setup_required:false}};
+ const calls=await setup(page,false,[inherited,explicit]);
+ const loginUser={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{providers:['google']},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
+ await page.route('https://example.supabase.co/**',route=>route.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user:loginUser}}));
+ await page.route('**/api/config',route=>route.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}}));
+ await page.route('**/api/access/me',route=>route.fulfill({json:{memberId:loginUser.id,email:loginUser.email,active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}}));
+ await page.route('**/api/account-settings/KAT/1',route=>route.fulfill({json:{from_type_defaults:true,revision:0,billing_required:false,credit_term:3,billing_recipients:{to:[],cc:[],bcc:[]},collection_recipients:{to:[],cc:[],bcc:[]}}}));
+ await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
+ await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const key=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(key+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
+ await page.goto('/?code=synthetic-code');await page.getByRole('button',{name:'Collections',exact:true}).click();
+ await page.getByRole('button',{name:'Collection filters',exact:true}).click();await page.getByLabel('Queue stage',{exact:true}).selectOption('All');await page.getByLabel('Queue timing',{exact:true}).selectOption('All');await page.getByRole('button',{name:'Close collection filters',exact:true}).click();
+ const table=page.getByRole('region',{name:'Prioritized collection work',exact:true});
+ const inheritedRow=table.getByRole('button',{name:/account Azure Travel · Synthetic$/});
+ await expect(inheritedRow).toContainText('Follow-up 1');await expect(inheritedRow).not.toContainText('Setup needed');
+ await expect(table.getByRole('button',{name:/account Bay Travel · Synthetic$/})).toContainText('Friendly');
+ await inheritedRow.click();
+ await expect(page.locator('.queue-detail')).not.toContainText('Using Account Type defaults');
+ await page.getByRole('button',{name:'Open account details',exact:true}).click();
+ await page.getByRole('button',{name:'Account settings',exact:true}).click();
+ await expect(page.getByLabel('Billing requirement')).toHaveValue('not_required');await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('3');
+ await expect(page.getByText(/Using Account Type defaults/)).toHaveCount(0);
+ await expect(page.getByText(/Save these settings to confirm/)).toHaveCount(0);
+ expect(calls.some(c=>c.includes('/send')||c.includes('/gmail-draft')||c==='POST /api/documents')).toBe(false);
+});
 async function setup(page:Page,fail=false,data=rows()){const calls:string[]=[];const user={id:'synthetic-queue-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
  await page.clock.setFixedTime(new Date('2026-09-10T05:00:00Z'));
  await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+86400,token_type:'bearer',user:u})),user);
