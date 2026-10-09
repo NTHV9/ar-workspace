@@ -97,7 +97,7 @@ export default function UserAccounts({token,onDirtyChange}:{token:string;onDirty
   finally{if(lifetime.current===version)setBusy(false);}
  };
  return <main className="page user-access">
-  <header className="access-heading"><div><h1>Users &amp; Access</h1><p>Create staff accounts and choose where they can work.</p></div><span className="access-admin"><ShieldCheck size={17}/> Administrator settings</span></header>
+  <header className="access-heading"><div><h1>Users &amp; Access</h1></div><span className="access-admin"><ShieldCheck size={17}/> Administrator settings</span></header>
   <section className="access-mail-policy" aria-label="Email delivery by region"><p><strong>Phuket</strong><span>Email enabled · ar@katathani.com</span></p><p><strong>Khao Lak</strong><span>Sending mailbox · ar@thesandskhaolak.com</span></p></section>
   <section className="panel access-form">
    <div className="access-form-heading"><h2>{mode==='edit'?'Edit user':'Create user'}</h2></div>

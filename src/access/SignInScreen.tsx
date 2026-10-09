@@ -7,7 +7,6 @@ export function SignInScreen({loading,busy,error,enabled,signedIn,onGoogle,onRet
  return <main className="sign-in-screen"><section className="sign-in-card" aria-labelledby="sign-in-title">
   <img className="sign-in-logo" src="/katathani-collection.svg" alt="Katathani Collection" width="88" height="88"/>
   <h1 id="sign-in-title">Katathani AR</h1>
-  <p className="sign-in-intro">Sign in to your collection workspace.</p>
   {loading?<p className="sign-in-progress" role="status"><LoaderCircle size={20}/>{signedIn?'Verifying your access…':'Preparing sign-in…'}</p>:<>
    {error&&<p className="sign-in-error" role="alert">{error}</p>}
    {signedIn?<div className="sign-in-actions"><button onClick={onSignOut}>Sign in again</button><button onClick={onRetry}>Retry</button></div>:<button className="sign-in-google" disabled={!enabled||busy} onClick={onGoogle}>{busy?<LoaderCircle className="sign-in-spinner" size={20}/>:<GoogleMark/>}{busy?'Opening Google…':'Sign in with Google'}</button>}
