@@ -1,4 +1,6 @@
-## 2026-10-09 — Regional Gmail deployed; Khao Lak authorization pending
+## 2026-10-09 — Regional Gmail deployed and both mailboxes authorized
+
+- Owner completed Khao Lak Google authorization. Fresh live mailbox-status checks validate both exact Google profiles and show sending/Sent-verification authorized. Database readback independently confirms both allowed mailbox identities and required compose/readonly scopes; Khao Lak uses mailbox-bound cipher version 2 and Phuket's existing connection remains intact. Regional sending is enabled; no actual email send was performed in this task, so live delivery is not claimed as tested. Earlier pending entries below describe deployment checkpoints.
 
 - Owner selects Gmail / Google Workspace `ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN; KAT/TSK retain `ar@katathani.com`. Independent credentials, exact hotel-derived sender, frozen receipt identity, scoped provider IDs/threads/recovery and administrator Settings connection flow implemented. Workspace login/staff permissions and Drive/tracker identity unchanged.
 - TypeScript, 1,806 unit tests, six regional browser cases and 22 existing composer cases pass. Desktop/mobile and sender-review screenshots inspected; Astra review fixes verified. Local SQL rollback restores all 110 table/auth fingerprints and full function catalog; actual Supabase candidate rollback preserves credentials/history and removes test effects. [Implementation and evidence](REGIONAL_GMAIL_20261009.md).

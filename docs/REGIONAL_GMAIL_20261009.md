@@ -1,6 +1,6 @@
 # Regional Gmail senders
 
-The owner confirmed Gmail / Google Workspace for the Khao Lak mailbox on 9 October 2026. Implementation and focused verification are complete; migration 108 is applied. Worker deployment and real mailbox authorization are recorded separately in PROJECT_STATUS.
+The owner confirmed Gmail / Google Workspace for the Khao Lak mailbox on 9 October 2026. Implementation, focused verification, migration 108 and Worker deployment are complete. The owner subsequently authorized the Khao Lak mailbox; fresh Google-profile status checks confirm both regional mailboxes connected with compose/readonly scopes. No actual send was performed for this task. Deployment evidence is in PROJECT_STATUS.
 
 | Hotels | Region | Sender |
 | --- | --- | --- |
