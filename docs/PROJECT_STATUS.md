@@ -1,3 +1,10 @@
+## 2026-10-09 — Full invoice-level Aging audit completed
+
+- Owner requested complete comparison against OPERA. For Business Date 2026-10-08, all 1,490 nonzero invoice records match: KAT 667, TSK 111, TLFO 102, TLKL 86, TSAN 387 and WAKL 137. Compare hotel/account identity, Invoice/Folio, posting date, signed open balance and all six Aging buckets. No missing/extra/duplicate/ambiguous invoice identities or monetary/range differences found in the captured set. TLFO's two separate account-credit rows also match; Accruals excluded.
+- KAT uses the owner-supplied Detailed Aging PDF with complete A/R Ledger row and account-subtotal reconciliation. Other hotels use independently generated OPERA Detailed Aging XML through the authenticated report screen. KAT/TSK are joined row-by-row; four remaining hotels additionally compare canonical full-record SHA-256 digests, row/duplicate counts and all signed ledger totals. This is not a comparison of the web's own summary against itself.
+- Website snapshot captured 2026-10-08 23:23:44 ICT; report observations span the owner PDF at 21:11 through 2026-10-09 00:08 ICT, all with confirmed Business Date 2026-10-08. Proof is point-in-time, not a promise about future transactions. Customer data and private report evidence remain in ignored `.tmp/full-aging-audit/`; human-readable result is `AGING_AUDIT_20261009.md` there.
+- Read-only audit: no application/source calculation, ledger, OPERA settings, email or cloud resource changes. Browser report/download instrumentation restored and removed. The documentation checkpoint is the only tracked change.
+
 ## 2026-10-08 — Source-reconciled Current Aging deployed
 
 - Owner confirms Accruals stay excluded and approves matching OPERA report ranges in both summary and Invoice details. New read-only account/publication membership qualifies current/prior-day boundary mappings only when all signed native components and net reconcile with unique invoice assignments. Raw stored ages, dates, balances, Collections and Dashboard age thresholds remain unchanged.
