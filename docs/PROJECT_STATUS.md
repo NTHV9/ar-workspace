@@ -1,6 +1,7 @@
 ## 2026-10-09 — Login appearance restored independently
 
 - Owner requests only the login page return to its pre-cleanup appearance. Restored its original introductory paragraph; SignInScreen.tsx matches the pre-cleanup version exactly. No other screen, style, authentication/session logic or backend changed. TypeScript passes; deployment verification follows below.
+- Source `c3e8fe2f375acec12890f993b0b7c4b35444691c` deployed as Worker `2ab21825-8670-4396-97cf-2fe4ddf8cc97`. Health confirms exact source/database/OPERA; only COMMIT_SHA changes in binding readback. Live anonymous login shows the restored introduction and Google sign-in button. [PR 129](https://github.com/NTHV9/ar-workspace/pull/129) attached and unmerged.
 
 ## 2026-10-09 — Workspace explanatory copy simplified
 
