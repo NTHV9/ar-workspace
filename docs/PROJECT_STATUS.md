@@ -1,5 +1,7 @@
 ## 2026-10-09 — Regional Gmail deployed and both mailboxes authorized
 
+- Separate owner authorization then permitted one synthetic email from the Khao Lak mailbox to the one-time recipient supplied in chat. Sent at 11:44:52 ICT; HTTP 200 and verified `sent` in 2,506 ms. Readback confirms exact Khao Lak sender, one synthetic 1,038-byte PDF and zero business Sent events. This verifies the real regional send/Sent-check path, not recipient inbox delivery. Recipient is not stored in repository/configuration; private command evidence prevents duplicate sending. No customer invoice or financial state changed.
+
 - Owner completed Khao Lak Google authorization. Fresh live mailbox-status checks validate both exact Google profiles and show sending/Sent-verification authorized. Database readback independently confirms both allowed mailbox identities and required compose/readonly scopes; Khao Lak uses mailbox-bound cipher version 2 and Phuket's existing connection remains intact. Regional sending is enabled; no actual email send was performed in this task, so live delivery is not claimed as tested. Earlier pending entries below describe deployment checkpoints.
 
 - Owner selects Gmail / Google Workspace `ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN; KAT/TSK retain `ar@katathani.com`. Independent credentials, exact hotel-derived sender, frozen receipt identity, scoped provider IDs/threads/recovery and administrator Settings connection flow implemented. Workspace login/staff permissions and Drive/tracker identity unchanged.
