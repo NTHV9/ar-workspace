@@ -17,7 +17,7 @@ async function setup(page:Page,conflict=false){
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(p===`/api/documents/${jobId}`)return r.fulfill({json:job});
-  if(p==='/api/gmail/status')return r.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com',maxAttachmentBytes:10485760}});
+  if(p==='/api/gmail/status')return r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com',maxAttachmentBytes:10485760}});
   if(p==='/api/email/open')return r.fulfill({json:draft});
   if(p===`/api/email/${draftId}`&&q.method()==='PUT'){if(conflict)return r.fulfill({status:409,json:{error:'email_revision_conflict'}});draft={...draft,...q.postDataJSON(),exports:q.postDataJSON().generatedNames?draft.exports.map(f=>({...f,name:q.postDataJSON().generatedNames.find((n:{storageKey:string;name:string})=>n.storageKey===f.storage_key).name})):draft.exports,rich_body:q.postDataJSON().richBody??null,template_ref:q.postDataJSON().templateRef??null,revision:draft.revision+1};return r.fulfill({json:draft});}
   if(p.startsWith(`/api/email/${draftId}/attachments/`)){const file={id:p.split('/').at(-1)!,name:'Synthetic.png',mime:'image/png',storage_key:'synthetic',byte_count:12,sha256:'b'.repeat(64)};draft={...draft,attachments:(q.method()==='POST'?[file]:[]) as typeof draft.attachments,revision:draft.revision+1};return r.fulfill({json:draft});}

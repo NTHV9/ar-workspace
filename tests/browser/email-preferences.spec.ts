@@ -47,7 +47,7 @@ async function preferences(context:BrowserContext){
  await context.route('**/api/documents/'+jobId,route=>route.fulfill({json:job}));
  await context.route('**/api/email/open',route=>route.fulfill({json:draft}));
  await context.route('**/api/email/'+draftId,route=>{const input=route.request().postDataJSON();savedMessages.push(input);draft={...draft,...input,rich_body:input.richBody,template_ref:input.templateRef,revision:draft.revision+1};return route.fulfill({json:draft});});
- await context.route('**/api/gmail/status',route=>route.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com'}}));
+ await context.route('**/api/gmail/status*',route=>route.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com'}}));
  return {savedMessages};
 }
 for(const width of [1440,390])test(`signature settings and hotel names at ${width}px`,async({context,page})=>{

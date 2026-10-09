@@ -33,7 +33,7 @@ it('rejects forged CRLF, duplicate RFC references and altered subject before MIM
 });
 const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic'};
 const draftId='00000000-0000-4000-8000-000000000001';
-const draft=()=>({id:draftId,owner:'owner',revision:2,package_changed:false,recipients,subject:input.subject,body:input.body,thread:null});
+const draft=()=>({hotel:'KAT',id:draftId,owner:'owner',revision:2,package_changed:false,recipients,subject:input.subject,body:input.body,thread:null});
 const providerMessage=(n=1)=>({id:'message'+n,threadId:'abc123',labelIds:['INBOX'],internalDate:String(Date.parse('2026-09-10T00:00:00Z')+n),snippet:'Plain synthetic snippet',payload:{headers:[{name:'From',value:'Example <example@example.test>'},{name:'To',value:'ar@katathani.com'},{name:'Subject',value:input.subject},{name:'Message-ID',value:`<parent${n}@example.test>`}]}});
 const conversation=(count=1)=>({id:'abc123',historyId:'12345',messages:Array.from({length:count},(_,n)=>providerMessage(n+1))});
 it('validates exact chosen parent participation even if another message matches the account',()=>{
@@ -72,13 +72,13 @@ it('requires explicit confirmation and routes provider-only selection to atomic 
  const response=await emailApi(request({revision:2,threadId:'abc123',parentMessageId:'message1',confirmed:true}),env,'owner');expect(response.status).toBe(409);expect(await response.json()).toEqual({error:'email_handoff_pending'});expect(calls.find(c=>c.name==='ar_email_thread_select')?.args.p_choice).toMatchObject({rfcMessageId:'<parent1@example.test>',subject:input.subject});
 });
 it('revalidates provider parent before handoff and rejects changed RFC identity',async()=>{
- const c=conversation();const choice=chooseParent(parseConversation(c,'abc123',recipients),recipients,'message1');c.messages[0].payload.headers[3].value='<changed@example.test>';vi.stubGlobal('fetch',async()=>Response.json(c));await expect(revalidateThread(env,'owner',{thread:choice,recipients,subject:choice.subject})).rejects.toThrow('email_thread_changed');
+ const c=conversation();const choice=chooseParent(parseConversation(c,'abc123',recipients),recipients,'message1');c.messages[0].payload.headers[3].value='<changed@example.test>';vi.stubGlobal('fetch',async()=>Response.json(c));await expect(revalidateThread(env,'owner',{hotel:'KAT',thread:choice,recipients,subject:choice.subject})).rejects.toThrow('email_thread_changed');
 });
 it('retains a single In-Reply-To ancestor when the chosen parent has no References',async()=>{
  const c=conversation();c.messages[0].payload.headers.push({name:'In-Reply-To',value:'<ancestor@example.test>'});
  const expected={threadId:'abc123',parentMessageId:'message1',rfcMessageId:'<parent1@example.test>',references:['<ancestor@example.test>','<parent1@example.test>'],subject:input.subject,matchedRecipients:recipients.to,parentDate:new Date(Number(c.messages[0].internalDate)).toISOString()};
  expect(chooseParent(parseConversation(c,'abc123',recipients),recipients,'message1')).toEqual(expected);
- vi.stubGlobal('fetch',async()=>Response.json(c));expect(await revalidateThread(env,'owner',{thread:expected,recipients,subject:input.subject})).toEqual(expected);
+ vi.stubGlobal('fetch',async()=>Response.json(c));expect(await revalidateThread(env,'owner',{hotel:'KAT',thread:expected,recipients,subject:input.subject})).toEqual(expected);
  c.messages[0].payload.headers.push({name:'References',value:'<first@example.test>'});expect(chooseParent(parseConversation(c,'abc123',recipients),recipients,'message1').references).toEqual(['<first@example.test>','<parent1@example.test>']);
  c.messages[0].payload.headers.pop();c.messages[0].payload.headers.at(-1)!.value='<ancestor@example.test> <other@example.test>';expect(chooseParent(parseConversation(c,'abc123',recipients),recipients,'message1').references).toEqual(['<parent1@example.test>']);
 });

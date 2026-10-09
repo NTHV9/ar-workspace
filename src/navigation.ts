@@ -7,6 +7,7 @@ export const hasAuthCallback=(params:URLSearchParams)=>callbackKeys.some(key=>pa
 /** Entry and successful Google sign-in open Aging; in-session bookmarks retain their destination. */
 export function initialWorkspaceParams(input:URLSearchParams){
  const params=normalizedDashboardParams(input.has('code')?new URLSearchParams():input);
+ if(params.get('settings')==='1'){params.delete('settings');params.set('usersAccess','1');}
  if([...params.keys()].every(key=>callbackKeys.includes(key))){
   params.set('dashboard','1');params.set('dashboardView','aging');
  }

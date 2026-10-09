@@ -14,7 +14,7 @@ for(const width of [1440,390])test(`administrator manages future regional access
  const c=await adminSetup(page);await page.setViewportSize({width,height:1000});await page.goto('/?usersAccess=1');
  await expect(page.getByRole('heading',{name:'Users & Access'})).toBeVisible();await expect(page.getByText('Administrator · protected')).toBeVisible();
  await expect(page.getByRole('button',{name:'Edit access for ar@katathani.com'})).toHaveCount(0);
- await expect(page.getByText('Email delivery is not enabled.',{exact:false})).toBeVisible();
+ await expect(page.getByText('Sending mailbox · ar@thesandskhaolak.com',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Approve email only',exact:true}).click();await page.getByLabel('Email',{exact:true}).fill('Synthetic.Future@example.invalid');await page.getByRole('checkbox',{name:'Khao Lak',exact:true}).check();
  await page.getByRole('button',{name:'Approve access'}).click();await expect(page.getByRole('status').filter({hasText:'Access saved.'})).toContainText('Access saved. No invitation email was sent.');
  expect(c.writes).toHaveLength(1);expect(c.writes[0]).toMatchObject({email:'synthetic.future@example.invalid',regions:['phuket','khao-lak'],active:true,revision:0});
@@ -46,10 +46,10 @@ test('revoked staff access clears the visible workspace on focus recheck',async(
  const c=await staffSetup(page,['khao-lak']);await page.goto('/?region=khao-lak');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();c.revoke();await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
  await expect(page.getByRole('heading',{name:'Workspace access unavailable'})).toBeVisible();await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toHaveCount(0);await expect(page.getByText('Regional Travel · Synthetic',{exact:true})).toHaveCount(0);
 });
-test('Khao Lak reviewed documents retain downloads and cannot enter email preparation',async({page})=>{
+test('Khao Lak reviewed documents can continue to email preparation',async({page})=>{
  const c=await setupDepth(page);const original={id:depthJobId,owner:'00000000-0000-4000-8000-000000000001',account_id:'SYNTHETIC',account_name:'Synthetic Khao Lak',content:'invoices',layout:'combined',purpose:'billing',invoice_ids:['SYNTHETIC'],manifest:[{id:'SYNTHETIC',invoice_no:'SYNTHETIC'}],revision:1,lifecycle:'transient',files:[],created_at:'2026-09-12T02:59:00Z'};
  await page.route('**/api/documents/'+depthJobId,route=>route.fulfill({json:{...original,hotel:'TLKL',state:'ready',acknowledged:true,exports:[{name:'Synthetic.pdf',storage_key:`jobs/${depthJobId}/exports/synthetic.pdf`,byte_count:100,sha256:'a'.repeat(64)}]}}));
- await page.goto('/?region=khao-lak&documentJob='+depthJobId+'&compose=1');await expect(page.getByText('Email delivery is not enabled for Khao Lak.',{exact:false})).toBeVisible();await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Synthetic.pdf · Download'})).toBeVisible();
+ await page.goto('/?region=khao-lak&documentJob='+depthJobId);await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Synthetic.pdf · Download'})).toBeVisible();
  expect(c.methods).not.toContain('POST /api/email/open');
 });
 test('approved users can start password enrollment explicitly without automatic invitations',async({page})=>{

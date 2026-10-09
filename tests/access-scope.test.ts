@@ -39,3 +39,10 @@ it('contains nested foreign hotel objects and hotel arrays without rejecting ord
  expect(containsOutsideHotel({rows:[{hotel:'KAT',name:'Synthetic'}],hotels:['KAT','TSK']},['KAT','TSK'])).toBe(false);
  expect(containsOutsideHotel({hotel:'All'},['KAT','TSK'])).toBe(true);
 });
+
+it('scopes Gmail status to an explicit region or server-loaded document while preserving admin-only connection',async()=>{
+ expect(await requestAccessIntent(request('/api/gmail/status?region=khao-lak'))).toEqual({kind:'region',region:'khao-lak',mail:true});
+ expect(await requestAccessIntent(request('/api/gmail/status?jobId='+id))).toEqual({kind:'document',ref:id,mail:true});
+ await expect(requestAccessIntent(request('/api/gmail/connect','POST',{region:'khao-lak',jobId:id}))).rejects.toThrow('access_forbidden');
+ await expect(requestAccessIntent(request('/api/gmail/status?region=phuket&region=khao-lak'))).rejects.toThrow('access_forbidden');
+});

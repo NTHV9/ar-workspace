@@ -1,3 +1,5 @@
+import {parseMailbox,hotelMailbox} from '../../src/domain/mailboxes';
+import {documentJob} from '../documents/jobs';
 import {generatedNames} from '../../src/email/generated-names';
 import {sentCandidates,reviewSentMatch} from './sent-review';
 import {operationMessages} from '../operations/messages';
@@ -14,10 +16,11 @@ import {listThreads,previewThread,selectThread,previewSyntheticConversation,prov
 export async function emailApi(request:Request,env:EmailEnv,actor:string):Promise<Response>{
  try {
   const url=new URL(request.url), path=url.pathname;
+  const requestMailbox=()=>parseMailbox(url.searchParams.get('region')??'phuket');
   if(request.method!=='GET'&&request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin)return emailJson({error:'forbidden'},403);
   if(path==='/api/email/templates'||path.startsWith('/api/email/templates/'))return templateRequest(request,env,actor);
   const integerParam=(name:string,fallback?:number)=>{const s=url.searchParams.get(name);if(s===null&&fallback!==undefined)return fallback;if(s===null||!/^\d+$/.test(s)||!Number.isSafeInteger(Number(s)))throw Error('email_invalid');return Number(s);};
-  if(path==='/api/email/test-conversations'&&request.method==='GET')return emailJson(await emailRpc(env,'ar_mail_test_conversations',{p_actor:actor,p_offset:integerParam('offset',0)}));
+  if(path==='/api/email/test-conversations'&&request.method==='GET')return emailJson(await emailRpc(env,'ar_mail_test_conversations_region',{p_actor:actor,p_offset:integerParam('offset',0),p_mailbox:requestMailbox()}));
   const testPreview=/^\/api\/email\/test-conversations\/([0-9a-f-]{36})$/.exec(path);
   if(testPreview&&request.method==='GET'){if(!uuidPattern.test(testPreview[1]))throw Error('email_invalid');return emailJson(await previewSyntheticConversation(env,actor,testPreview[1],integerParam('offset',0),url.searchParams.get('historyId')??undefined));}
   const threads=/^\/api\/email\/([0-9a-f-]{36})\/threads(?:\/([^/]+))?$/.exec(path);
@@ -29,14 +32,14 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
   }
   const supplemental=/^\/api\/email\/([0-9a-f-]{36})\/attachments\/([0-9a-f-]{36})$/.exec(path);
   if(supplemental){if(!uuidPattern.test(supplemental[1])||!uuidPattern.test(supplemental[2]))throw Error('email_invalid');const r=await supplementalRequest(request,env,actor,supplemental[1],supplemental[2]);return r instanceof Response?r:await draftResponse(r,env,actor);}
-  if(path==='/api/gmail/status'&&request.method==='GET')return emailJson({...await gmailStatus(env,actor),maxAttachmentBytes:draftBudget(env)});
+  if(path==='/api/gmail/status'&&request.method==='GET'){if([...url.searchParams.keys()].some(k=>!['region','jobId'].includes(k)||url.searchParams.getAll(k).length!==1))throw Error('email_invalid');let mailbox=requestMailbox();const jobId=url.searchParams.get('jobId');if(jobId){if(!uuidPattern.test(jobId))throw Error('email_invalid');const job=await documentJob(env,jobId);if(!job||job.owner!==actor)throw Error('email_forbidden');const derived=hotelMailbox(job.hotel);if(url.searchParams.has('region')&&mailbox!==derived)throw Error('email_forbidden');mailbox=derived;}return emailJson({...await gmailStatus(env,actor,mailbox),maxAttachmentBytes:draftBudget(env)});}
   if(path==='/api/email/test-send'&&request.method==='POST'){
    const v=await jsonBody(request);if(v.confirmed!==true||typeof v.commandId!=='string'||!uuidPattern.test(v.commandId)||typeof v.recipient!=='string')return emailJson({error:'email_invalid'},400);
-   if(v.signatureHotel!==undefined){if(v.previewFlow!=='inline-confirm-v1'||typeof v.signatureHotel!=='string'||v.supplemental!==undefined||v.replyToDeliveryId!==undefined)throw Error('email_invalid');return emailJson(await sendSignatureDiagnostic(env,actor,v.commandId,v.recipient,v.signatureHotel));}
+   if(v.signatureHotel!==undefined){if(v.region!==undefined&&parseMailbox(v.region)!==hotelMailbox(v.signatureHotel))throw Error('email_invalid');if(v.previewFlow!=='inline-confirm-v1'||typeof v.signatureHotel!=='string'||v.supplemental!==undefined||v.replyToDeliveryId!==undefined)throw Error('email_invalid');return emailJson(await sendSignatureDiagnostic(env,actor,v.commandId,v.recipient,v.signatureHotel));}
    let supplemental;if(v.supplemental!==undefined){const x=v.supplemental as Record<string,unknown>;if(!x||typeof x!=='object'||typeof x.draftId!=='string'||!uuidPattern.test(x.draftId)||!Number.isSafeInteger(x.revision)||Number(x.revision)<0||!Array.isArray(x.ids)||!x.ids.length||x.ids.length>49||x.ids.some(i=>typeof i!=='string'||!uuidPattern.test(i))||new Set(x.ids).size!==x.ids.length)return emailJson({error:'email_invalid'},400);supplemental={draftId:x.draftId,revision:Number(x.revision),ids:x.ids as string[]};}
    if(v.rich!==undefined&&typeof v.rich!=='boolean')return emailJson({error:'email_invalid'},400);
    if(v.replyToDeliveryId!==undefined&&(typeof v.replyToDeliveryId!=='string'||!uuidPattern.test(v.replyToDeliveryId)||supplemental))return emailJson({error:'email_invalid'},400);
-   return emailJson(await sendDiagnostic(env,actor,v.commandId,v.recipient,supplemental,v.rich===true,v.replyToDeliveryId as string|undefined));
+   return emailJson(await sendDiagnostic(env,actor,v.commandId,v.recipient,supplemental,v.rich===true,v.replyToDeliveryId as string|undefined,v.region===undefined?undefined:parseMailbox(v.region)));
   }
   const candidate=/^\/api\/email\/deliveries\/([0-9a-f-]{36})\/(candidates|reviewed-match)$/.exec(path);
   if(candidate){if(candidate[2]==='candidates'&&request.method==='GET')return emailJson(await sentCandidates(env,actor,candidate[1],new URL(request.url).searchParams.get('pageToken')??''));if(candidate[2]==='reviewed-match'&&request.method==='POST'){const v=await jsonBody(request);return emailJson(await reviewSentMatch(env,actor,candidate[1],{gmailId:String(v.gmailId??''),proof:String(v.proof??''),reason:String(v.reason??''),confirmed:v.confirmed===true}));}return emailJson({error:'method_not_allowed'},405);}
@@ -64,8 +67,9 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
    const file=await readMailFile(env,d,f);return new Response(new Uint8Array(file.bytes).buffer,{headers:{'Content-Type':'application/pdf','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Disposition':disposition}});
   }
   if(path==='/api/gmail/connect'&&request.method==='POST'){
-   const v=await jsonBody(request);if(typeof v.jobId!=='string'||!uuidPattern.test(v.jobId))return emailJson({error:'email_invalid'},400);
-   return gmailConnect(env,actor,v.jobId);
+   const v=await jsonBody(request);if(v.jobId!==undefined&&(typeof v.jobId!=='string'||!uuidPattern.test(v.jobId))||Object.keys(v).some(k=>!['jobId','region'].includes(k)))return emailJson({error:'email_invalid'},400);
+   if(env.REQUEST_ACCESS)throw Error('email_forbidden');
+   return gmailConnect(env,actor,v.jobId as string|undefined,v.region===undefined?undefined:parseMailbox(v.region));
   }
   let result:unknown;
   if(path==='/api/email/open'&&request.method==='POST'){

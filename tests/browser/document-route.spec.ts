@@ -195,7 +195,7 @@ async function mockApplication(page: Page, requestedLayout='combined', lifecycle
     if (url.pathname === `/api/documents/${jobId}`) { controls.documentReads++; return route.fulfill({ json: job }); }
     if (url.pathname === `/api/documents/${jobId}/files/${fileId}`) { controls.sourceReads++; return route.fulfill({ contentType: 'application/pdf', body: bytes }); }
     if (url.pathname === `/api/documents/${jobId}/project`) return route.fulfill({json:controls.uploadRequests.at(-1)?.project});
-    if (url.pathname === '/api/gmail/status')return route.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
+    if (url.pathname === '/api/gmail/status')return route.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
     if (url.pathname === '/api/email/open') {controls.emailOpens.push(request.postDataJSON());return route.fulfill({json:{id:'synthetic-draft',document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic message',body:'Synthetic only',exports:job.exports,attachments:[],revision:0,package_changed:false}});}
     if (url.pathname === `/api/documents/${jobId}/upload`) {
       if (url.searchParams.get('kind') === 'export') controls.exportUploads++;

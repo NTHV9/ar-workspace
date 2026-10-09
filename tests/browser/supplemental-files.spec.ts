@@ -18,7 +18,7 @@ async function setup(page:Page,mode:'normal'|'rejected'|'lost'='normal'){
   if(path==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(path==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(path===`/api/documents/${jobId}`)return r.fulfill({json:{id:jobId,hotel:'KAT',account_id:'example',account_name:draft.account_name,invoice_ids:['1'],state:'ready',revision:2,acknowledged:true,files:[],exports}});
-  if(path==='/api/gmail/status')return r.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com',maxAttachmentBytes:10485760}});
+  if(path==='/api/gmail/status')return r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com',maxAttachmentBytes:10485760}});
   if(path==='/api/email/test-send'){testBodies.push(req.postDataJSON());return r.fulfill({json:{id:'synthetic-test',mode:'test',state:'sent',recorded:false}});}
   if(path==='/api/email/open')return r.fulfill({json:draft});
   if(path===`/api/email/${draftId}`){draft={...draft,...req.postDataJSON(),revision:draft.revision+1};return r.fulfill({json:draft});}

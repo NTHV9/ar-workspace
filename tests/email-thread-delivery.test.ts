@@ -1,3 +1,4 @@
+import {hotelMailbox,mailboxSender} from '../src/domain/mailboxes';
 import {afterEach,expect,it,vi} from 'vitest';
 import {deliverMessage,sendDiagnostic} from '../worker/email/delivery';
 import {hash,url64} from '../worker/email/crypto';
@@ -14,18 +15,18 @@ const draftId='00000000-0000-4000-8000-000000000001',jobId='00000000-0000-4000-8
 const recipients={to:['example@example.test'],cc:[],bcc:[]};
 const provider=()=>({id:'thread1',historyId:'100',messages:[{id:'parent1',threadId:'thread1',internalDate:String(Date.parse('2026-09-10T00:00:00Z')),labelIds:['SENT'],payload:{headers:[{name:'From',value:'ar@katathani.com'},{name:'To',value:recipients.to[0]},{name:'Subject',value:'Synthetic thread'},{name:'Message-ID',value:'<rewritten-parent@mail.gmail.com>'}]}}]});
 async function fixture(){const c=provider(),thread=chooseParent(parseConversation(c,c.id,recipients),recipients,'parent1'),bytes=new TextEncoder().encode('%PDF-synthetic');return {c,bytes,draft:{hotel:'KAT',id:draftId,owner:'owner',document_job_id:jobId,document_revision:4,revision:2,package_changed:false,purpose:'billing',recipients,subject:thread.subject,body:'Synthetic body',thread,exports:[{name:'test.pdf',storage_key:`jobs/${jobId}/exports/test.pdf`,byte_count:bytes.length,sha256:await hash(bytes)}],attachments:[]}};}
-for(const mode of ['draft','send'] as const)it(`threads ${mode} provider request and preserves no-duplicate claim behavior`,async()=>{
- const {c,bytes,draft}=await fixture();let delivery:any=null,posts=0,claims=0,confirmed=0;
+for(const hotel of ['KAT','TSK','TLKL','WAKL','TLFO','TSAN'])for(const mode of ['draft','send'] as const)it(`routes ${hotel} ${mode} through its mailbox and preserves exact bytes and duplicate claims`,async()=>{
+ const {c,bytes,draft}=await fixture();draft.hotel=hotel;const mailbox=hotelMailbox(hotel),sender=mailboxSender(mailbox);c.messages[0].payload.headers[0].value=sender;let delivery:any=null,posts=0,claims=0,confirmed=0;
  vi.stubGlobal('fetch',async(url:string,init:RequestInit={})=>{
   const body=init.body?JSON.parse(String(init.body)):{};
   if(url.endsWith('/ar_mail_for_draft')||url.endsWith('/ar_mail_get'))return Response.json(delivery);
   if(url.endsWith('/ar_email_get'))return Response.json(draft);
   if(url.includes('/storage/'))return new Response(bytes);
   if(url.includes('/threads/thread1?'))return Response.json(c);
-  if(url.endsWith('/ar_mail_claim')){claims++;expect(body.p_expected.thread).toEqual(draft.thread);delivery={id:body.p_id,owner:'owner',mode,state:'pending',created_at:new Date().toISOString(),message_id:body.p_message_id,snapshot:{expected:body.p_expected}};return Response.json({...delivery,claimed:true});}
-  if(url.endsWith('/drafts')||url.endsWith('/messages/send')){posts++;expect(init.redirect).toBe('manual');const message=mode==='draft'?body.message:body;expect(message.threadId).toBe('thread1');expect(new TextDecoder().decode(decodeUrl64(message.raw))).toContain('In-Reply-To: <rewritten-parent@mail.gmail.com>');return Response.json(mode==='draft'?{id:'draft1',message:{id:'sent1',threadId:'thread1'}}:{id:'sent1',threadId:'thread1'});}
+  if(url.endsWith('/ar_mail_claim')){claims++;expect(body.p_expected).toMatchObject({mailbox,sender});expect(body.p_expected.files[0].sha256).toBe(await hash(bytes));expect(body.p_expected.thread).toEqual(draft.thread);delivery={id:body.p_id,owner:'owner',mode,state:'pending',created_at:new Date().toISOString(),message_id:body.p_message_id,snapshot:{expected:body.p_expected}};return Response.json({...delivery,claimed:true});}
+  if(url.endsWith('/drafts')||url.endsWith('/messages/send')){posts++;expect(init.redirect).toBe('manual');const message=mode==='draft'?body.message:body;expect(message.threadId).toBe('thread1');expect(new TextDecoder().decode(decodeUrl64(message.raw))).toContain('From: '+sender);expect(new TextDecoder().decode(decodeUrl64(message.raw))).toContain('In-Reply-To: <rewritten-parent@mail.gmail.com>');return Response.json(mode==='draft'?{id:'draft1',message:{id:'sent1',threadId:'thread1'}}:{id:'sent1',threadId:'thread1'});}
   if(url.endsWith('/ar_mail_record')){delivery.state=body.p_state;delivery.provider_receipt_id=body.p_gmail_id;return Response.json(true);}
-  if(url.includes('/messages/sent1?'))return Response.json({id:'sent1',threadId:'thread1',labelIds:['SENT'],internalDate:String(Date.now()),payload:{headers:[{name:'From',value:'ar@katathani.com'},{name:'To',value:recipients.to[0]},{name:'Subject',value:draft.subject},{name:'In-Reply-To',value:draft.thread.rfcMessageId},{name:'References',value:draft.thread.references.join(' ')}],parts:[{mimeType:'text/plain',body:{data:url64(new TextEncoder().encode(draft.body))}},{mimeType:'application/pdf',filename:'test.pdf',body:{size:bytes.length,data:url64(bytes)}}]}});
+  if(url.includes('/messages/sent1?'))return Response.json({id:'sent1',threadId:'thread1',labelIds:['SENT'],internalDate:String(Date.now()),payload:{headers:[{name:'From',value:sender},{name:'To',value:recipients.to[0]},{name:'Subject',value:draft.subject},{name:'In-Reply-To',value:draft.thread.rfcMessageId},{name:'References',value:draft.thread.references.join(' ')}],parts:[{mimeType:'text/plain',body:{data:url64(new TextEncoder().encode(draft.body))}},{mimeType:'application/pdf',filename:'test.pdf',body:{size:bytes.length,data:url64(bytes)}}]}});
   if(url.endsWith('/ar_mail_confirm_sent')){confirmed++;delivery.state='sent';return Response.json({state:'sent',recorded:true});}
   throw Error('Unexpected request');
  });

@@ -1,10 +1,11 @@
+import {frozenMailIdentity} from '../../src/domain/mailboxes';
 import {emailRpc,googleJson,boundedBody,type EmailEnv} from './shared';
 import {gmailCanRead,gmailToken} from './oauth';
 import {verifySentEvidence,decodeUrl64} from './sent-evidence';
 import {hash} from './crypto';
 import type {Delivery} from './delivery';
 const safeId=(v:string)=>/^[A-Za-z0-9_-]{1,200}$/.test(v);
-async function source(env:EmailEnv,actor:string,id:string){const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d||d.owner!==actor||d.mode==='test')throw Error('email_missing');if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor),headers={Authorization:'Bearer '+token};const p=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers});if(String(p.emailAddress).toLowerCase()!=='ar@katathani.com')throw Error('email_forbidden');return {d,headers};}
+async function source(env:EmailEnv,actor:string,id:string){const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d||d.owner!==actor||d.mode==='test')throw Error('email_missing');const identity=frozenMailIdentity(d.snapshot.expected);if(!await gmailCanRead(env,actor,identity.mailbox))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor,identity.mailbox),headers={Authorization:'Bearer '+token};const p=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers});if(String(p.emailAddress).toLowerCase()!==identity.sender)throw Error('email_forbidden');return {d,headers};}
 async function inspect(d:Delivery,headers:Record<string,string>,gmailId:string){
  if(!safeId(gmailId))throw Error('email_invalid');const message=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailId}?format=full`,{headers});
  const expected={...d.snapshot.expected,gmailId};const result=await verifySentEvidence(message,expected,async id=>{const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailId}/attachments/${encodeURIComponent(id)}`,{headers,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok){await r.body?.cancel();throw Error('gmail_unavailable');}const data=JSON.parse(new TextDecoder().decode(await boundedBody(r,18*1024*1024))) as {data?:string};if(!data.data)throw Error('gmail_unavailable');return decodeUrl64(data.data);});

@@ -38,7 +38,7 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  match=/^\/api\/invoice-exceptions\/([^/]+)\/[^/]+\/[^/]+(\/history)?$/.exec(p);if(match&&(m==='GET'||m==='POST'&&!match[2]))return hotel(match[1]);
  if(p==='/api/remittances/invoices'&&m==='GET')return hotel(q.get('hotel'));
  if(m==='GET'&&(p==='/api/collection-policy'||p==='/api/email/templates'||/^\/api\/email\/templates\/[0-9a-f-]{36}(?:\/versions\/\d+)?$/.test(p)))return {kind:'global'};
- if(p==='/api/gmail/status'&&m==='GET')return {kind:'region',region:'phuket',mail:true};
+ if(p==='/api/gmail/status'&&m==='GET'){const job=q.get('jobId');if(job)return resource('document',job,true);const region=q.get('region')??'phuket';if(!['phuket','khao-lak'].includes(region)||[...q.keys()].some(k=>k!=='region'))return denied();return {kind:'region',region,mail:true};}
  if(p==='/api/refresh'&&m==='POST'){const v=await body(request);const params=new URLSearchParams();if(typeof v.region==='string')params.set('region',v.region);if(typeof v.hotel==='string')params.set('hotel',v.hotel);try{const s=regionalHotelScope(params,v.accountId,true);return s.hotel?hotel(s.hotel):{kind:'region',region:s.region};}catch{return denied();}}
  if(m==='POST'&&['/api/documents','/api/remittances','/api/financial/refresh','/api/collection/validate-selection'].includes(p))return hotel((await body(request)).hotel);
  if(m==='POST'&&['/api/external-billing/preview','/api/external-billing/confirm'].includes(p)){const v=(await body(request)).input;if(!v||typeof v!=='object')return denied();const input=v as Record<string,unknown>;const scope=hotel(input.hotel);return input.recordId===undefined?scope:{...resource('billing',String(input.recordId)),hotel:scope.hotel};}

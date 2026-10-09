@@ -1,5 +1,9 @@
 import {expect,it} from 'vitest';
 import {hasAuthCallback,initialWorkspaceParams} from '../src/navigation';
+it('returns a jobless regional Gmail callback to Settings while retaining mailbox scope',()=>{
+ const result=initialWorkspaceParams(new URLSearchParams('settings=1&region=khao-lak&gmail=connected'));
+ expect(result.get('usersAccess')).toBe('1');expect(result.get('settings')).toBeNull();expect(result.get('region')).toBe('khao-lak');expect(result.get('gmail')).toBe('connected');
+});
 it('opens bare entry and Google callbacks on Current Aging without retaining callback codes',()=>{
  for(const search of ['', 'code=synthetic-code', 'error=access_denied&error_description=Synthetic']){
   const original=new URLSearchParams(search),result=initialWorkspaceParams(original);

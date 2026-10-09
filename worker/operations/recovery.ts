@@ -1,3 +1,4 @@
+import {parseMailbox,mailboxSender} from '../../src/domain/mailboxes';
 import {gmailToken} from '../email/oauth';
 import {googleJson,type EmailEnv} from '../email/shared';
 import {backendRpc} from '../refresh/backend';
@@ -20,8 +21,8 @@ export function recoveryMarker(raw:unknown):{deliveryId:string|null;gmailId:stri
 }
 /** Metadata-only SENT audit. It never sends, recreates drafts or marks invoices paid. */
 export async function recoverySentPage(env:EmailEnv,actor:string,u:URL){
- const window=recoveryWindow(u),token=await gmailToken(env,actor),headers={Authorization:'Bearer '+token};
- const profile=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers});if(typeof profile.emailAddress!=='string'||profile.emailAddress.toLowerCase()!=='ar@katathani.com')throw Error('recovery_identity_mismatch');
+ const mailbox=parseMailbox(u.searchParams.get('region')??'phuket'),window=recoveryWindow(u),token=await gmailToken(env,actor,mailbox),headers={Authorization:'Bearer '+token};
+ const profile=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers});if(typeof profile.emailAddress!=='string'||profile.emailAddress.toLowerCase()!==mailboxSender(mailbox))throw Error('recovery_identity_mismatch');
  const query=new URLSearchParams({includeSpamTrash:'true',labelIds:'SENT',q:`after:${Math.floor(Date.parse(window.from)/1000)-1} before:${Math.ceil(Date.parse(window.to)/1000)}`,maxResults:'25',...(window.page?{pageToken:window.page}:{})});
  const list=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+query,{headers});
  if(list.messages!==undefined&&!Array.isArray(list.messages)||list.nextPageToken!==undefined&&typeof list.nextPageToken!=='string')throw Error('recovery_unavailable');
@@ -35,6 +36,6 @@ export async function recoverySentPage(env:EmailEnv,actor:string,u:URL){
    return recoveryMarker(raw)??{deliveryId:null,gmailId:String(raw.id),sentAt:new Date(Number(raw.internalDate)).toISOString(),conflict:false};
   }));for(const value of batch)if(value&&Date.parse(value.sentAt)>=Date.parse(window.from)&&Date.parse(value.sentAt)<Date.parse(window.to))matches.push(value);
  }
- const correlated=matches.filter(m=>!m.conflict),known=await backendRpc<unknown>(env,'ar_recovery_sent_match',{p_actor:actor,p_rows:correlated});if(!Array.isArray(known))throw Error('recovery_unavailable');
- return {from:window.from,to:window.to,scanned:ids.length,rows:[...known,...matches.filter(m=>m.conflict).map(m=>({...m,state:'marker_conflict'}))],nextPageToken:list.nextPageToken??null,complete:!list.nextPageToken,scope:'ar_markers_and_saved_provider_receipts',writesPerformed:0};
+ const correlated=matches.filter(m=>!m.conflict),known=await backendRpc<unknown>(env,'ar_recovery_sent_match_region',{p_actor:actor,p_rows:correlated,p_mailbox:mailbox});if(!Array.isArray(known))throw Error('recovery_unavailable');
+ return {region:mailbox,from:window.from,to:window.to,scanned:ids.length,rows:[...known,...matches.filter(m=>m.conflict).map(m=>({...m,state:'marker_conflict'}))],nextPageToken:list.nextPageToken??null,complete:!list.nextPageToken,scope:'ar_markers_and_saved_provider_receipts',writesPerformed:0};
 }

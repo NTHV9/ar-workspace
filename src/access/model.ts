@@ -12,4 +12,3 @@ export function parseAccess(value:unknown):UserAccess {
  return {email:v.email as string|null,...(typeof v.position==='string'?{position:v.position}:{}),...(typeof v.displayName==='string'?{displayName:v.displayName}:{}),administrator:v.administrator,regions:REGION_IDS.filter(r=>(v.regions as unknown[]).includes(r)),revision:Number(v.revision),...(named?{username:String(v.username),accountKind:'username' as const}:{}),...(typeof v.memberId==='string'?{memberId:v.memberId}:{})};
 }
 export const memberLogin=(member:UserAccess)=>member.username??member.email??'';
-export const phuketEmailEnabled=(hotel:string)=>hotel==='KAT'||hotel==='TSK';
