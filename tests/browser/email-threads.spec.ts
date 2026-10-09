@@ -26,7 +26,7 @@ async function setup(page:Page,options:{selected?:boolean;handoff?:boolean;failu
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(p===`/api/documents/${jobId}`)return r.fulfill({json:job});
   if(p==='/api/email/open')return r.fulfill({json:draft});
-  if(p==='/api/gmail/status')return r.fulfill({json:{configured:true,connected:!options.disconnected,canRead:!options.disconnected,email:'ar@katathani.com'}});
+  if(p==='/api/gmail/status')return r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:!options.disconnected,canRead:!options.disconnected,email:'ar@katathani.com'}});
   if(p===`/api/email/${draftId}/threads`)return r.fulfill({json:{threads:url.searchParams.has('pageToken')?[second]:[first],nextPageToken:url.searchParams.has('pageToken')?null:'synthetic-next'}});
   if(p.startsWith(`/api/email/${draftId}/threads/`)){
    if(options.delayPreview)await previewGate;

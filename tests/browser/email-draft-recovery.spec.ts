@@ -14,7 +14,7 @@ async function setup(page:Page,stage='Friendly',stageLabel='Friendly',missingRec
   if(path==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(path==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(path===`/api/documents/${jobId}`)return r.fulfill({json:job});
-  if(path==='/api/gmail/status')return r.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
+  if(path==='/api/gmail/status')return r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
   if(path==='/api/email/open')return r.fulfill({json:{id:draftId,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:'example',account_name:job.account_name,invoice_ids:['1'],purpose:'collection',recipients:{to:['recipient@example.test'],cc:[],bcc:[]},subject:'Synthetic collection subject',body:'Synthetic saved collection body',exports,attachments:[],revision:1,package_changed:false,gmail_handoff:delivery.state,delivery}});
   if(path===`/api/email/deliveries/${deliveryId}/check`){delivery={...delivery,state:'review_required',reason:'gmail_receipt_missing'};return r.fulfill({json:delivery});}
   return r.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});

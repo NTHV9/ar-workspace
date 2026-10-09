@@ -1,3 +1,9 @@
+## 2026-10-09 — Regional Gmail implementation tested; authorization pending
+
+- Owner selects Gmail / Google Workspace `ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN; KAT/TSK retain `ar@katathani.com`. Independent credentials, exact hotel-derived sender, frozen receipt identity, scoped provider IDs/threads/recovery and administrator Settings connection flow implemented. Workspace login/staff permissions and Drive/tracker identity unchanged.
+- TypeScript, 1,806 unit tests, six regional browser cases and 22 existing composer cases pass. Desktop/mobile and sender-review screenshots inspected; Astra review fixes verified. Local SQL rollback restores all 110 table/auth fingerprints and full function catalog; actual Supabase candidate rollback preserves credentials/history and removes test effects. [Implementation and evidence](REGIONAL_GMAIL_20261009.md).
+- Exact tested migration 108 applied; actual readback confirms one Phuket connection, zero Khao Lak connections, 23 preserved historical Phuket receipts, enabled Sent-manifest trigger and service-only credential API. Worker deployment and Google authorization still pending at this checkpoint. No real email sent.
+
 ## 2026-10-09 — Full invoice-level Aging audit completed
 
 - Owner requested complete comparison against OPERA. For Business Date 2026-10-08, all 1,490 nonzero invoice records match: KAT 667, TSK 111, TLFO 102, TLKL 86, TSAN 387 and WAKL 137. Compare hotel/account identity, Invoice/Folio, posting date, signed open balance and all six Aging buckets. No missing/extra/duplicate/ambiguous invoice identities or monetary/range differences found in the captured set. TLFO's two separate account-credit rows also match; Accruals excluded.

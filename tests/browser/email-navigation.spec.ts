@@ -21,7 +21,7 @@ async function setup(page:Page,{withDelivery=false,view='email'}:{withDelivery?:
   if(path==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(path==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(path===`/api/documents/${jobId}`)return r.fulfill({json:job});
-  if(path==='/api/gmail/status')return r.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
+  if(path==='/api/gmail/status')return r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
   if(path==='/api/email/open')return r.fulfill({json:draft});
   if(path==='/api/email/templates')return r.fulfill({json:{items:[],nextOffset:null}});
   if(path.startsWith('/api/email/templates/')&&request.method()==='PUT'){controls.templateSave=r;return;}

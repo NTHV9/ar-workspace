@@ -1,3 +1,4 @@
+import {hotelMailbox,mailboxSender} from '../../src/domain/mailboxes';
 import {signatureLogoFile} from './signature-logo';
 import {assertAcceptanceRecipient} from '../acceptance/recipient';
 import {requireRegionalDelivery} from './regional-delivery';
@@ -29,11 +30,11 @@ export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revis
  assertWritesEnabled(env);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:owner,p_id:id});
  if(!draft)throw Error('email_missing');await assertAcceptanceRecipient(env,draft.recipients);if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
- await requireRegionalDelivery(env,draft);
+ await requireRegionalDelivery(env,draft);if(hotelMailbox(draft.hotel)!=='phuket')throw Error('email_region_disabled');
  const existing=await emailRpc<Attempt|null>(env,'ar_gmail_attempt_get',{p_owner:owner,p_draft:id,p_revision:revision});
  if(existing)return {state:existing.state,created:existing.state==='created',alreadyRequested:true};
  // Retained legacy helper has no expected-choice claim. Thread handoffs use deliverMessage.
- if(draft.thread)throw Error('email_thread_invalid');
+ if(draft.thread||hotelMailbox(draft.hotel)!=='phuket')throw Error('email_thread_invalid');
  const token=await gmailToken(env,owner);const messageId=`<${crypto.randomUUID()}@ar-workspace.ar-c82.workers.dev>`;const {raw}=await prepareMail(env,owner,draft,messageId);
  const attempt=await emailRpc<Attempt>(env,'ar_gmail_attempt_claim',{p_owner:owner,p_draft:id,p_revision:revision,p_message_id:messageId});
  if(attempt.error)throw Error(attempt.error);if(!attempt.claimed)return {state:attempt.state,created:attempt.state==='created',alreadyRequested:true};
@@ -66,6 +67,7 @@ export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,mes
   for(const result of batch){if(result.status==='rejected')throw result.reason;loaded.push(result.value);}
  }
  const thread=await revalidateThread(env,owner,draft);
- const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null},loaded,messageId,thread));
- return {raw,expected:{messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,...(thread?{thread}:{}),files:[...files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256})),...(logo?[{name:logo.name,byte_count:logo.bytes.length,sha256:await hash(logo.bytes),inlineId:logo.inlineId}]:[])]}};
+ const identity={mailbox:hotelMailbox(draft.hotel),sender:mailboxSender(hotelMailbox(draft.hotel))};
+ const raw=url64(buildMime({revision:draft.revision,purpose:draft.purpose,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null},loaded,messageId,thread,identity));
+ return {raw,expected:{...identity,messageId,recipients:draft.recipients,subject:draft.subject,body:draft.body,richBody:draft.rich_body??null,...(thread?{thread}:{}),files:[...files.map(f=>({name:f.name,byte_count:f.byte_count,sha256:f.sha256})),...(logo?[{name:logo.name,byte_count:logo.bytes.length,sha256:await hash(logo.bytes),inlineId:logo.inlineId}]:[])]}};
 }

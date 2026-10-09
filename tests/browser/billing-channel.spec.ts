@@ -28,7 +28,7 @@ async function setup(page:Page,options:{legacy?:boolean;portal?:string;rejectHan
    return r.fulfill({json:settings});
   }
   if(p===`/api/documents/${jobId}`)return r.fulfill({json:job});
-  if(p==='/api/gmail/status')return r.fulfill({json:{configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
+  if(p==='/api/gmail/status')return r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
   if(p==='/api/email/open')return r.fulfill({json:draft});
   if(p===`/api/email/${draftId}`&&q.method()==='PUT'){draft={...draft,...q.postDataJSON(),revision:draft.revision+1};return r.fulfill({json:draft});}
   if(p===`/api/email/${draftId}/gmail-draft`||p===`/api/email/${draftId}/send`){

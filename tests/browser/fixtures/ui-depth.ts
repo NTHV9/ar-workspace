@@ -80,7 +80,7 @@ export async function setupDepth(page: Page, options: { anonymous?: boolean; com
     if (path === '/api/operations/status') return route.fulfill({ json: { enabled: true, activatedAt: observedAt, active: 0, unresolved: 0, chargedEgress: 10485760, limits: { storedBytes: 1073741824, egressBytes: 2147483648, databaseBytes: 268435456, safetyPercent: 20 }, measurement: { periodStart: '2026-08-31T17:00:00Z', periodEnd: '2026-09-30T17:00:00Z', used: { storedBytes: 12582912, databaseBytes: 41943040 }, observedAt: { storedBytes: observedAt, databaseBytes: observedAt } }, pendingUploads: [] } });
     if (path === '/api/operations/retention') return route.fulfill({ json: { enabled: true, total: 0, summary: { waiting: 0, blocked: 0, uncertain: 0, deleted: 0, deletedBytes: 0 }, rows: [] } });
     if (path === '/api/operations/queue') return route.fulfill({ json: { total: 0, writeHold: false, rows: [] } });
-    if (path === '/api/gmail/status') return route.fulfill({ json: { configured: true, connected: true, canRead: true, email: 'ar@katathani.com', maxAttachmentBytes: 10485760 } });
+    if (path === '/api/gmail/status') return route.fulfill({ json: { region: 'phuket', expectedEmail: 'ar@katathani.com', configured: true, connected: true, canRead: true, email: 'ar@katathani.com', maxAttachmentBytes: 10485760 } });
     if (path === `/api/documents/${depthJobId}`) return route.fulfill({ json: job });
     if (path === `/api/documents/${depthJobId}/files/${fileId}`) return route.fulfill({ contentType: 'application/pdf', body: bytes });
     return route.fallback();

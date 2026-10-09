@@ -1,3 +1,4 @@
+import {hotelMailbox,mailboxSender,frozenMailIdentity,type MailboxId} from '../../src/domain/mailboxes';
 import {signatureLogoFile} from './signature-logo';
 import {signatureWorkplace,parseSignatureProfile} from '../../src/email/signature';
 import {isHotelId} from '../../src/domain/hotels';
@@ -40,17 +41,17 @@ async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,tok
 }
 export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,revision:number,mode:'send'|'draft',stage:string|null,policyVersion?:number){
  assertWritesEnabled(env);
- if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return deliveryView(existing);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  await requireRegionalDelivery(env,draft);
+ const mailbox=hotelMailbox(draft.hotel);if(!await gmailCanRead(env,actor,mailbox))throw Error('gmail_read_permission_required');
  if(draft.rich_body?.signature&&(draft.rich_body.signature.staffId!==(env.REQUEST_ACTOR??actor)||draft.rich_body.signature.workplace!==(isHotelId(draft.hotel)?signatureWorkplace(draft.hotel):'')))throw Error('email_signature_changed');
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  parseRecipients(draft.recipients);if(mode==='send'&&(!draft.recipients.to.length||!draft.subject.trim()||!draft.body.trim()))throw Error('email_incomplete');
  if(draft.purpose==='collection'&&!isCollectionStageKey(stage))throw Error('email_stage_required');
  const stagePolicy=draft.purpose==='collection'?await readPolicyForHandoff(env,actor,stage!,policyVersion):null;
  if(draft.purpose==='billing')stage=null;
- const id=crypto.randomUUID(),messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,token=await gmailToken(env,actor);
+ const id=crypto.randomUUID(),messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`,token=await gmailToken(env,actor,mailbox);
  const {raw,expected}=await prepareMail(env,actor,draft,messageId);
  await requireRegionalDelivery(env,draft);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:draftId,p_revision:revision,p_mode:mode,p_stage:stage,p_message_id:messageId,p_expected:{...expected,...(stagePolicy?{policyVersion:stagePolicy.policyVersion}:{})}});
@@ -58,13 +59,15 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
 }
 export interface TestSupplementals {draftId:string;revision:number;ids:string[]}
 const testSourceKey=(s?:TestSupplementals)=>JSON.stringify(s?[s.draftId,s.revision,s.ids]:null);
-export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false,replyToDeliveryId?:string){
+export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false,replyToDeliveryId?:string,region?:MailboxId){
  await assertAcceptanceRecipient(env,{to:[recipient],cc:[],bcc:[]});
  assertWritesEnabled(env);
  if(replyToDeliveryId&&supplementals)throw Error('email_invalid');
- const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
+ let mailbox:MailboxId=region??'phuket';if(replyToDeliveryId){const source=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:replyToDeliveryId});if(!source||source.owner!==actor||source.mode!=='test'||source.state!=='sent'||source.draft_id!==null)throw Error('email_test_command_conflict');const identity=frozenMailIdentity(source.snapshot.expected);if(region&&region!==identity.mailbox)throw Error('email_test_command_conflict');mailbox=identity.mailbox;}
+ if(supplementals){const source=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:supplementals.draftId});if(!source)throw Error('email_missing');const derived=hotelMailbox(source.hotel);if(region&&region!==derived)throw Error('email_forbidden');mailbox=derived;}
+ const identity={mailbox,sender:mailboxSender(mailbox)};const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});if(!await gmailCanRead(env,actor,mailbox))throw Error('gmail_read_permission_required');
  const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));
- const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals)||!!existing.snapshot.expected.richBody!==rich||existing.snapshot.expected.replyToDeliveryId!==replyToDeliveryId)throw Error('email_test_command_conflict');return deliveryView(existing);}
+ const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(existing){if(existing.mode!=='test'||frozenMailIdentity(existing.snapshot.expected).mailbox!==mailbox||existing.snapshot.expected.recipientHash!==recipientHash||testSourceKey(existing.snapshot.expected.supplementalSource)!==testSourceKey(supplementals)||!!existing.snapshot.expected.richBody!==rich||existing.snapshot.expected.replyToDeliveryId!==replyToDeliveryId)throw Error('email_test_command_conflict');return deliveryView(existing);}
  const extraFiles:MailFile[]=[];if(supplementals){const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:supplementals.draftId});if(!draft)throw Error('email_missing');await requireRegionalDelivery(env,draft);if(draft.revision!==supplementals.revision)throw Error('email_revision_conflict');const selected=supplementals.ids.map(fileId=>{const file=draft.attachments.find(a=>a.id===fileId);if(!file)throw Error('email_attachment_missing');return file;});if(selected.reduce((n,f)=>n+f.byte_count,0)>draftBudget(env))throw Error('email_too_large');for(const file of selected)extraFiles.push(await readMailFile(env,draft,file));}
  const reply=replyToDeliveryId?(await syntheticConversation(env,actor,replyToDeliveryId,recipientHash)).choice:null;
  const thread:ThreadProof|null=reply?{threadId:reply.threadId,parentMessageId:reply.parentMessageId,rfcMessageId:reply.rfcMessageId,references:reply.references,subject:reply.subject,parentDate:reply.parentDate}:null;
@@ -73,33 +76,33 @@ export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipie
  const richBody=rich?plainMessage(body):null;if(richBody)richBody.blocks[0].runs[0].bold=true;
  const pdf=await PDFDocument.create(),page=pdf.addPage([595,842]),font=await pdf.embedFont(StandardFonts.Helvetica);page.drawText('AR Workspace - Email integration test',{x:45,y:775,size:18,font});page.drawText('Synthetic document only. No customer or invoice data.',{x:45,y:735,size:11,font});page.drawText('No billing or collection activity will be recorded.',{x:45,y:710,size:11,font});const bytes=await pdf.save();
  const files:MailFile[]=[{name:'AR-Workspace-Test.pdf',mime:'application/pdf',bytes},...extraFiles];if(files.length>50||files.reduce((n,f)=>n+f.bytes.length,0)>draftBudget(env))throw Error('email_too_large');
- const expected={messageId,subject,body,...(thread?{thread,replyToDeliveryId}:{}),...(richBody?{richBody}:{}),files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
- const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},files,messageId,reply)),token=await gmailToken(env,actor);
+ const expected={...identity,messageId,subject,body,...(thread?{thread,replyToDeliveryId}:{}),...(richBody?{richBody}:{}),files:await Promise.all(files.map(async f=>({name:f.name,byte_count:f.bytes.length,sha256:await hash(f.bytes)}))),recipientHash,...(supplementals?{supplementalSource:supplementals}:{})};
+ const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},files,messageId,reply,identity)),token=await gmailToken(env,actor,mailbox);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:null,p_revision:null,p_mode:'test',p_stage:null,p_message_id:messageId,p_expected:expected});
  return submit(env,actor,claim,raw,token);
 }
 /** Synthetic signature previews only: no document/Invoice scope or billing events. */
 export async function sendSignatureDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,hotel:string){
  if(!isHotelId(hotel)||env.REQUEST_ACCESS)throw Error('email_invalid');
- assertWritesEnabled(env);const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});await assertAcceptanceRecipient(env,recipients);
+ const mailbox=hotelMailbox(hotel),identity={mailbox,sender:mailboxSender(mailbox)};assertWritesEnabled(env);const recipients=parseRecipients({to:[recipient],cc:[],bcc:[]});await assertAcceptanceRecipient(env,recipients);
  const recipientHash=await hash(new TextEncoder().encode(JSON.stringify({to:recipients.to.map(s=>s.toLowerCase()),cc:[],bcc:[]})));
  const existing=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});
  if(existing){if(existing.mode!=='test'||existing.snapshot.expected.recipientHash!==recipientHash||existing.snapshot.expected.signatureHotel!==hotel)throw Error('email_test_command_conflict');return deliveryView(existing);}
- if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');
+ if(!await gmailCanRead(env,actor,mailbox))throw Error('gmail_read_permission_required');
  const profile=parseSignatureProfile(await emailRpc(env,'ar_access_signature_get',{p_actor:env.REQUEST_ACTOR??actor}));
  const sample=!profile.signature.name||!profile.signature.title;
  const signature={...profile.signature,name:profile.signature.name||'Sample staff name',title:profile.signature.title||'Sample position',workplace:signatureWorkplace(hotel)};
  const subject=`Email signature preview — ${hotel} — ${signatureWorkplace(hotel)}`;
  const richBody={...plainMessage(`This is a test preview of the email signature for ${signatureWorkplace(hotel)}.${sample?' Sample staff details are used for this preview.':''} No customer documents are included.`),signature};
  const body=richText(richBody),logo=signatureLogoFile(),messageId=`<${id}@ar-workspace.ar-c82.workers.dev>`;
- const expected={messageId,subject,body,richBody,signatureHotel:hotel,recipientHash,files:[{name:logo.name,byte_count:logo.bytes.length,sha256:await hash(logo.bytes),inlineId:logo.inlineId}]};
- const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},[],messageId)),token=await gmailToken(env,actor);
+ const expected={...identity,messageId,subject,body,richBody,signatureHotel:hotel,recipientHash,files:[{name:logo.name,byte_count:logo.bytes.length,sha256:await hash(logo.bytes),inlineId:logo.inlineId}]};
+ const raw=url64(buildMime({revision:0,purpose:'billing',recipients,subject,body,richBody},[],messageId,null,identity)),token=await gmailToken(env,actor,mailbox);
  const claim=await emailRpc<Delivery>(env,'ar_mail_claim',{p_actor:actor,p_id:id,p_draft:null,p_revision:null,p_mode:'test',p_stage:null,p_message_id:messageId,p_expected:expected});
  return submit(env,actor,claim,raw,token);
 }
 export async function checkDelivery(env:EmailEnv,actor:string,id:string){
  const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d)throw Error('email_missing');if(d.state==='sent')return deliveryView(d);
- if(!await gmailCanRead(env,actor))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor),headers={Authorization:'Bearer '+token};
+ const identity=frozenMailIdentity(d.snapshot.expected);if(!await gmailCanRead(env,actor,identity.mailbox))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor,identity.mailbox),headers={Authorization:'Bearer '+token};
  let hits:{id:string}[]=[];
  // Gmail's web composer can replace RFC Message-ID and remove custom headers.
  // Its recorded message ID is a candidate identity for either path; the complete
