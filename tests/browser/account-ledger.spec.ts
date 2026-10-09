@@ -13,18 +13,21 @@ const entries=[
  {id:'7',guest:'G Unknown · Synthetic',age:null,aging:'Unknown',workflow:null},
  {id:'8',guest:'H Range · Synthetic',age:null,aging:buckets[3].label,workflow:{...workflow,billing_required:null}},
 ];
-async function setup(page:Page,count=entries.length,crowded=false){
+async function setup(page:Page,count=entries.length,crowded=false,accountType='Agent'){
  const invoiceRows=Array.from({length:count},(_,i)=>i<entries.length?entries[i]:{...entries[0],id:String(i+1),guest:`Extra invoice ${i+1} · Synthetic`});
  const unexpected:string[]=[];
  const user={id:'synthetic-ledger-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-11T00:00:00Z'};
  await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic',refresh_token:'synthetic',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
+ await page.addInitScript(()=>{const synthetic=localStorage.getItem('sb-example-auth-token'),set=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){set.call(this,key,value);if(this===sessionStorage&&key==='ar-google-tab-v1'&&synthetic)set.call(this,value,synthetic);};});
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',r=>{const p=new URL(r.request().url()).pathname;
+  if(p==='/api/access/me')return r.fulfill({json:{memberId:user.id,email:user.email,displayName:'Synthetic Staff',active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}});
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
   if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
+  if(p==='/api/reports/tracker-revisions')return r.fulfill({json:{rows:[]}});
   if(p==='/api/refresh')return r.fulfill({json:{running:false,jobs:[],hotels:[]}});
   if(p==='/api/account-settings/KAT/SYN-A')return r.fulfill({json:{billing_method:'email',billing_portal:null}});
-  if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[{hotel:'KAT',id:'SYN-A',name:'Synthetic Ledger Account',type:'Agent',open:count*100,over90:300,items:count,agingBuckets:buckets}],refresh:{running:false,hotels:[]}}});
+  if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[{hotel:'KAT',id:'SYN-A',name:'Synthetic Ledger Account',type:accountType,open:count*100,over90:300,items:count,agingBuckets:buckets}],refresh:{running:false,hotels:[]}}});
   if(p==='/api/accounts/KAT/SYN-A')return r.fulfill({json:{invoices:invoiceRows.map(e=>({...e,guest:crowded&&e.id==='1'?'A Pending · Synthetic Alexandra Montgomery-Wellington / Christopher Longsurname':e.guest,hotel:'KAT',account_id:'SYN-A',invoice_no:crowded&&e.id==='2'?'1234567890123':'SYN-'+e.id,folio_no:'FOL-'+e.id,transaction_date:'2026-09-01',original:crowded?123456789.12:100,open:crowded?400050:100,collection_role:'standalone',collection_selectable:true,verification_state:'verified'}))}});
   if(p.startsWith('/api/invoice-exceptions/'))return r.fulfill({status:503,json:{error:'synthetic_exception_unavailable'}});
   unexpected.push(r.request().method()+' '+p);return r.fulfill({status:501,json:{error:'unmocked_synthetic_api'}});
@@ -95,4 +98,31 @@ for(const width of [1024,1100,1200])test(`laptop ${width}: details stay beside t
  if(width===1100)await page.screenshot({path:'evidence/account-panel-inline-1100.png',animations:'disabled'});
  await page.setViewportSize({width:900,height:800});await expect(page.getByRole('dialog',{name:'Invoice details'})).toBeVisible();expect(await panel.evaluate(el=>el.matches(':modal'))).toBe(true);
  await page.setViewportSize({width,height:900});await expect(page.getByRole('complementary',{name:'Invoice details'})).toBeVisible();expect(await panel.evaluate(el=>el.matches(':modal'))).toBe(false);await expect(page.getByLabel('Select SYN-2',{exact:true})).toBeChecked();
+});
+
+test('DRF shows ledger amounts and saved history without billing, email or urgent actions',async({page})=>{
+ await setup(page,entries.length,false,'DRF');await page.goto('/?account=SYN-A&property=KAT');
+ await expect(page.locator('.ledger tbody tr')).toHaveCount(8);
+ await expect(page.locator('.account-context')).toContainText('THB 800');
+ await expect(page.locator('.ledger tbody tr').filter({hasText:'SYN-4'})).toContainText('THB 100');
+ await expect(page.locator('.ledger tbody tr').filter({hasText:'SYN-4'}).locator('td').last()).toHaveText('Final');
+ await expect(page.locator('.ledger tbody tr').filter({hasText:'SYN-2'}).locator('td').last()).toHaveText('Billed');
+ await expect(page.locator('.ledger tbody tr').filter({hasText:'SYN-1'}).locator('td').last()).toHaveText('Balance only');
+ await page.getByRole('button',{name:'D Final · Synthetic',exact:true}).click();
+ await expect(page.locator('.detail-fields').getByText('Final',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Prepare documents',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Record external billing',exact:true})).toHaveCount(0);
+ await expect(page.locator('.urgent-note')).toHaveCount(0);
+ await expect(page.locator('.invoice-exceptions')).toHaveCount(0);
+ await expect(page.locator('.history-editor')).toHaveCount(0);
+ await page.screenshot({path:'.tmp/drf-balance-only.png',fullPage:true});
+ await page.route('**/api/account-workspace/KAT/SYN-A/history*',r=>r.fulfill({json:{rows:[],total:0}}));
+ await page.route('**/api/external-billing?*',r=>r.fulfill({json:{rows:[],total:0,summary:{records:0,invoices:0,firstBillingInvoices:0,amount:'0.00',unknownAmounts:0}}}));
+ await page.getByRole('button',{name:'Collection History',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Collection History',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:/Record external billing/})).toHaveCount(0);
+ await page.route('**/api/account-workspace/KAT/SYN-A/documents*',r=>r.fulfill({json:{rows:[{id:'saved-synthetic',created_at:'2026-09-01T00:00:00Z',content:'statement',layout:'separate',purpose:'billing',state:'ready',revision:1,acknowledged:true,statement_source:'system',invoice_count:1,draft_id:'saved-draft-synthetic',subject:'Saved synthetic evidence',delivery_state:'uncertain',has_thread:true,lifecycle:'transient'}],total:1}}));
+ await page.getByRole('button',{name:'Documents & Gmail',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Continue preparation',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Open email & conversation',exact:true})).toBeVisible();
 });

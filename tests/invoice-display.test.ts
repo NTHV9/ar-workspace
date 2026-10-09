@@ -29,3 +29,11 @@ it('uses the hotel source range when age is absent and never alphabetically gues
  expect(sortInvoiceRows(rows,'aging','asc',[{label:'Aged',start:81},{label:'Z-recent',start:0}]).map(r=>r.id)).toEqual(['recent','later','unknown']);
  expect(sortInvoiceRows(rows,'guest','asc',[]).map(r=>r.id)).toEqual(['later','recent','unknown']);
 });
+
+it('retains actual DRF sent history and labels unsent balances only',()=>{
+ const w={...workflow,last_reminder_stage:'Final',last_reminder_date:'2026-09-10'};
+ expect(latestInvoiceActivity(w,'DRF')).toBe('Final');
+ expect(latestInvoiceActivity({...workflow,first_billing_date:'2026-09-01'},'DRF')).toBe('Billed');
+ expect(latestInvoiceActivity(workflow,'DRF')).toBe('Balance only');expect(invoiceBillingStatus(w,'DRF')).toBe('Balance only');
+ expect(latestInvoiceActivity(null,'DRF')).toBe('Balance only');expect(w.last_reminder_stage).toBe('Final');
+});

@@ -9,8 +9,8 @@ const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synth
 const id='00000000-0000-4000-8000-000000000020';
 const draft={id,owner:id,document_job_id:id,document_revision:0,hotel:'KAT',account_id:'synthetic',account_name:'Synthetic',invoice_ids:['A'],purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic',body:'Synthetic',exports:[],attachments:[],revision:0,package_changed:false,billing_method:'system'} satisfies EmailDraft;
 for(const mode of ['send','draft'] as const)it(`blocks System ${mode} in Worker before loading credentials, OPERA or attachments`,async()=>{
- const fetcher=vi.fn().mockResolvedValueOnce(Response.json(null)).mockResolvedValueOnce(Response.json(draft));vi.stubGlobal('fetch',fetcher);
- await expect(deliverMessage(env,id,id,0,mode,null)).rejects.toThrow('email_system_billing_required');expect(fetcher).toHaveBeenCalledTimes(2);expect(fetcher.mock.calls.every(c=>String(c[0]).startsWith(env.SUPABASE_URL))).toBe(true);
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json(null)).mockResolvedValueOnce(Response.json(draft)).mockResolvedValueOnce(Response.json({allowed:true}));vi.stubGlobal('fetch',fetcher);
+ await expect(deliverMessage(env,id,id,0,mode,null)).rejects.toThrow('email_system_billing_required');expect(fetcher).toHaveBeenCalledTimes(3);expect(fetcher.mock.calls.every(c=>String(c[0]).startsWith(env.SUPABASE_URL))).toBe(true);
 });
 it('blocks the older shared MIME preparation path for System billing too',async()=>{const f=vi.fn();vi.stubGlobal('fetch',f);await expect(prepareMail(env,id,draft,'unused')).rejects.toThrow('email_system_billing_required');expect(f).not.toHaveBeenCalled();});
 it('passes the exact optional channel metadata through the authorized settings writer',async()=>{

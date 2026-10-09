@@ -10,7 +10,7 @@ for(const ambiguous of [false,true])it(`new handoff ${ambiguous?'ambiguous failu
  const job='00000000-0000-4000-8000-000000000001',id='00000000-0000-4000-8000-000000000002',bytes=new TextEncoder().encode('%PDF-synthetic');
  const draft={hotel:'KAT',id,document_job_id:job,document_revision:4,revision:0,package_changed:false,purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic test',body:'Test',exports:[{name:'test.pdf',storage_key:`jobs/${job}/exports/test.pdf`,byte_count:bytes.length,sha256:await hash(bytes)}],attachments:[]};let attempt:null|{id:string;state:string}=null;let posts=0;
  vi.stubGlobal('fetch',async(url:string,init:RequestInit={})=>{
-  if(url.includes('/ar_email_get'))return Response.json(draft);
+  if(url.includes('/ar_email_business_preflight'))return Response.json({allowed:true});if(url.includes('/ar_email_get'))return Response.json(draft);
   if(url.includes('/ar_gmail_attempt_get'))return Response.json(attempt);
   if(url.includes('/storage/'))return new Response(bytes);
   if(url.includes('/ar_gmail_attempt_claim')){attempt={id:'attempt',state:'creating'};return Response.json({...attempt,claimed:true});}

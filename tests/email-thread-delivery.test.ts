@@ -20,7 +20,7 @@ for(const hotel of ['KAT','TSK','TLKL','WAKL','TLFO','TSAN'])for(const mode of [
  vi.stubGlobal('fetch',async(url:string,init:RequestInit={})=>{
   const body=init.body?JSON.parse(String(init.body)):{};
   if(url.endsWith('/ar_mail_for_draft')||url.endsWith('/ar_mail_get'))return Response.json(delivery);
-  if(url.endsWith('/ar_email_get'))return Response.json(draft);
+  if(url.endsWith('/ar_email_business_preflight'))return Response.json({allowed:true});if(url.endsWith('/ar_email_get'))return Response.json(draft);
   if(url.includes('/storage/'))return new Response(bytes);
   if(url.includes('/threads/thread1?'))return Response.json(c);
   if(url.endsWith('/ar_mail_claim')){claims++;expect(body.p_expected).toMatchObject({mailbox,sender});expect(body.p_expected.files[0].sha256).toBe(await hash(bytes));expect(body.p_expected.thread).toEqual(draft.thread);delivery={id:body.p_id,owner:'owner',mode,state:'pending',created_at:new Date().toISOString(),message_id:body.p_message_id,snapshot:{expected:body.p_expected}};return Response.json({...delivery,claimed:true});}
@@ -34,7 +34,7 @@ for(const hotel of ['KAT','TSK','TLKL','WAKL','TLFO','TSAN'])for(const mode of [
 });
 it('refuses changed parent before atomic claim or provider send',async()=>{
  const {c,bytes,draft}=await fixture();c.messages[0].payload.headers[3].value='<changed@mail.gmail.com>';const urls:string[]=[];
- vi.stubGlobal('fetch',async(url:string)=>{urls.push(url);if(url.endsWith('/ar_mail_for_draft'))return Response.json(null);if(url.endsWith('/ar_email_get'))return Response.json(draft);if(url.includes('/storage/'))return new Response(bytes);if(url.includes('/threads/'))return Response.json(c);throw Error('Unexpected request');});
+ vi.stubGlobal('fetch',async(url:string)=>{urls.push(url);if(url.endsWith('/ar_mail_for_draft'))return Response.json(null);if(url.endsWith('/ar_email_business_preflight'))return Response.json({allowed:true});if(url.endsWith('/ar_email_get'))return Response.json(draft);if(url.includes('/storage/'))return new Response(bytes);if(url.includes('/threads/'))return Response.json(c);throw Error('Unexpected request');});
  await expect(deliverMessage(env,'owner',draftId,2,'send',null)).rejects.toThrow('email_thread_changed');expect(urls.some(u=>u.includes('/ar_mail_claim')||u.includes('/messages/send'))).toBe(false);
 });
 it('diagnostic reply stores no participant address and never repeats an uncertain provider send',async()=>{

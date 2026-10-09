@@ -1,6 +1,18 @@
 import {expect,it} from 'vitest';
 import {nextCollectionAction,stageLabel,type QueueInvoice} from '../src/domain/collection';
 const invoice:QueueInvoice={hotel:'KAT',account_id:'account',id:'1',guest:'Synthetic guest',invoice_no:'INV-1',folio_no:'FOL-1',open:100,collection_role:'standalone',collection_selectable:true,verification_state:'verified',transaction_date:'2026-08-01',workflow:{revision:0,billing_required:false,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:'2026-09-10'}};
+it.each([
+ {workflow:null},
+ {workflow:{...invoice.workflow!,account_setup_required:true}},
+ {workflow:{...invoice.workflow!,billing_required:true,first_billing_date:null}},
+ {workflow:{...invoice.workflow!,due_date:'2026-01-01'}},
+ {workflow:{...invoice.workflow!,last_reminder_stage:'Final',last_reminder_date:'2026-09-01'}},
+ {exceptions:{held:true,needsReview:false,dispute:'',reopenedAt:null}},
+ {exceptions:{held:false,needsReview:true,dispute:'',reopenedAt:'2026-09-01'}},
+ {verification_state:'unverified',exception_status:'unavailable' as const},
+])('keeps DRF balances outside collection work despite legacy state %j',extra=>{
+ expect(nextCollectionAction({...invoice,...extra,account_type:'DRF'},'2026-09-10')).toBeNull();
+});
 it('uses calendar boundaries: Friendly due-7 and Follow-up 1 the day after due',()=>{expect(nextCollectionAction(invoice,'2026-09-02')).toMatchObject({stage:'Friendly',date:'2026-09-03',ready:false});expect(nextCollectionAction(invoice,'2026-09-03')).toMatchObject({stage:'Friendly',ready:true});expect(nextCollectionAction(invoice,'2026-09-10')).toMatchObject({stage:'Friendly'});expect(nextCollectionAction(invoice,'2026-09-11')).toMatchObject({stage:'Follow 1',ready:true});});
 it('does not repeat Friendly or skip unsent follow-up stages',()=>{const sent={...invoice,workflow:{...invoice.workflow!,last_reminder_stage:'Friendly',last_reminder_date:'2026-09-03'}};expect(nextCollectionAction(sent,'2026-09-08')).toMatchObject({stage:'Follow 1',date:'2026-09-11',ready:false});sent.workflow.last_reminder_stage='Follow 1';sent.workflow.last_reminder_date='2026-09-11';expect(nextCollectionAction(sent,'2026-10-30')).toMatchObject({stage:'Follow 2',date:'2026-09-18',ready:true});});
 it('shows Urgent immediately after Final even when rules are incomplete',()=>{expect(nextCollectionAction({...invoice,workflow:{...invoice.workflow!,credit_term:null,last_reminder_stage:'Final',last_reminder_date:'2026-09-10'}},'2026-09-10')).toMatchObject({stage:'Urgent',ready:true});});

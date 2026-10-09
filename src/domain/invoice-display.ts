@@ -1,14 +1,17 @@
+import {isBalanceOnlyAccountType} from './account-policy';
 import {sortRows,type AgingBucket,type Invoice,type InvoiceWorkflow} from './portfolio';
 
 /** Display the latest recorded action; never turn missing setup into an unsent reminder. */
-export function latestInvoiceActivity(workflow:InvoiceWorkflow|null|undefined):string {
+export function latestInvoiceActivity(workflow:InvoiceWorkflow|null|undefined,accountType?:string):string {
+ if(workflow?.last_reminder_stage)return workflow.last_reminder_stage;
+ if(workflow?.first_billing_date)return 'Billed';
+ if(isBalanceOnlyAccountType(accountType))return 'Balance only';
  if(!workflow)return 'Not available';
- if(workflow.last_reminder_stage)return workflow.last_reminder_stage;
- if(workflow.first_billing_date)return 'Billed';
  if(workflow.billing_required===true)return 'No billing sent';
  return workflow.billing_required===false?'No reminders sent':'Billing setup needed';
 }
-export function invoiceBillingStatus(workflow:InvoiceWorkflow|null|undefined):string {
+export function invoiceBillingStatus(workflow:InvoiceWorkflow|null|undefined,accountType?:string):string {
+ if(isBalanceOnlyAccountType(accountType))return 'Balance only';
  if(!workflow)return 'Not available';
  if(workflow.first_billing_date)return 'Billed';
  return workflow.billing_required===true?'Not billed':workflow.billing_required===false?'Not required':'Setup needed';

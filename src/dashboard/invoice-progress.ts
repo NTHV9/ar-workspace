@@ -1,10 +1,13 @@
+import {isBalanceOnlyAccountType} from '../domain/account-policy';
 import type {AgingInvoice} from './aging-model';
 import {legacyStageSnapshot,parseStageSnapshot,policyStageLabel,type CollectionPolicy} from '../domain/collection-policy';
 const validDate=(value:string|null|undefined):value is string=>!!value&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
 /** Recorded activity only: a planned round or saved draft never advances this status. */
 export function invoiceProgress(invoice:AgingInvoice,today:string,policy?:CollectionPolicy|null):string{
  if(invoice.open!==null&&invoice.open<0)return 'Credit';
- if(!invoice.verified||invoice.open===null||invoice.needsReview||invoice.exceptionsAvailable===false)return 'Needs review';
+ if(!invoice.verified||invoice.open===null)return 'Needs review';
+ if(isBalanceOnlyAccountType(invoice.accountType))return invoice.open===0?'Cleared':'Balance only';
+ if(invoice.needsReview||invoice.exceptionsAvailable===false)return 'Needs review';
  if(invoice.open===0)return 'Cleared';
  if(invoice.held)return 'On hold';
  if(invoice.statusAvailable===false)return 'Status unavailable';

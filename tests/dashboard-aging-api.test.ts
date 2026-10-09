@@ -26,6 +26,16 @@ it('accepts bounded exact groups and rejects duplicate, foreign and ambiguous me
 
 it('accepts Credit as a display filter in each status view, without making it an attention flag',()=>{for(const dimension of ['billing','followup','due'])expect(parseAgingInvoicesQuery(url('dimension='+dimension+'&status=credit'))).toMatchObject({p_dimension:dimension,p_status:'credit'});expect(()=>parseAgingInvoicesQuery(url('dimension=flags&status=credit'))).toThrow();});
 
+it.each(['billing','followup','due'])('routes the DRF balance-only %s facet through the protected API',async dimension=>{
+ const fetcher=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{
+  expect(JSON.parse(String(init?.body))).toMatchObject({p_actor:actor,p_dimension:dimension,p_status:'balance_only'});
+  return Response.json({asOfDate:'2026-10-09',publications:[],accounts:[],summary:{complete:true},rows:[],total:0,complete:true});
+ });vi.stubGlobal('fetch',fetcher);
+ const response=await agingInvoicesApi(new Request(url('dimension='+dimension+'&status=balance_only')),env,actor);
+ expect(response.status).toBe(200);expect(fetcher).toHaveBeenCalledTimes(1);
+ expect(()=>parseAgingInvoicesQuery(url('dimension=flags&status=balance_only'))).toThrow('aging_invalid');
+});
+
 it('uses explicit source membership for raw boundary ages and rejects incoherent row contracts',async()=>{
  const key='["Up to 30",0,30,1]';
  const fixture=()=>({asOfDate:'2026-10-08',publications:[],accounts:[{hotel:'KAT',accountId:'A',membership:{contract:'opera_reconciled_v1',state:'resolved',offsetDays:-1 as number|null},buckets:[{key,complete:true,count:1,amount:'100.00',creditAmount:'0.00'}]}],summary:{complete:true},rows:[{hotel:'KAT',accountId:'A',invoiceId:'I',age:31,bucketKey:'["Up to 30", 0, 30, 1]' as string|null}],total:1,complete:true});
