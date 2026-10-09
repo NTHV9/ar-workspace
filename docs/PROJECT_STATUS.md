@@ -1,3 +1,8 @@
+## 2026-10-09 — Workspace explanatory copy simplified
+
+- Owner requests whole-web explanatory-clutter cleanup. Audited all 78 TSX components and simplified 39 UI files across primary and administrative surfaces. Removed both quoted Invoice Exceptions paragraphs, repeated tutorials, generic reassurance and implementation prose; retained financial meaning, states, errors, controls and action confirmations. Corrected stale Type default badge wording. [Coverage and verification](UI_COPY_CLEANUP_20261009.md).
+- TypeScript and 102 existing unit tests pass, two synthetic Account/settings desktop/mobile browser cases pass, and Email/PDF desktop/mobile captures were inspected. Astra copy review passes. No backend, schema, financial calculation, API handler or actual business action changes. Deployment pending at this checkpoint.
+
 ## 2026-10-09 — Complete inherited rules no longer force Account confirmation
 
 - Owner supersedes the earlier provisional Setup needed gate. Collections now uses complete inherited billing/term values immediately; genuinely missing fields retain setup guidance. Removed the repeated confirmation explanation from both queue reasons and Account settings. Provenance, future default updates and explicit Account precedence remain unchanged; no bulk confirmation or settings rewrite.

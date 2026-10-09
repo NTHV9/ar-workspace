@@ -1,3 +1,7 @@
+## Remove explanatory clutter across the workspace — 9 October 2026
+
+The owner requests a whole-interface cleanup after identifying repetitive paragraphs in Invoice notes/holds/review. Remove the two quoted paragraphs about holds/review dates, repeated tutorials, generic reassurance and implementation explanations across the workspace. Keep necessary controls, field labels, financial basis/date/source distinctions, actionable errors and current states. Consequence-bearing send/delete/discard confirmations and uncertain-result recovery remain explicit and concise. This is UI copy simplification, not permission to remove features, alter accounting/workflow behavior or perform sends/deletions.
+
 ## Complete Account Type defaults are usable without confirmation — 9 October 2026
 
 The owner removes the requirement to confirm every Account when complete Account Type defaults exist, and requests removal of the repeated inherited-settings confirmation message. This supersedes the earlier requirement to keep every type-derived Account in Setup needed. Complete inherited rules behave like equivalent explicit rules; genuinely missing billing requirement or credit term retains missing-configuration handling. Keep inheritance provenance, future default propagation and explicit Account precedence; do not bulk-confirm or overwrite Account settings. Collections and management billing classification must agree, with cached classifications invalidated.

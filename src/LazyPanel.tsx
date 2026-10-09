@@ -13,8 +13,7 @@ export class LazyPanel extends Component<Props,State>{
   if(!this.state.failed)return <Suspense fallback={this.props.fallback}>{this.props.children}</Suspense>;
   return <section className="panel lazy-panel-error" role="alert">
    <h1>This page could not be loaded</h1>
-   <p>The workspace may have been updated, or the connection was interrupted. Use the navigation above to continue, or reload when you are ready.</p>
-   <p>Review any unsaved work before reloading.</p>
+   <p>Use the navigation to continue, or reload after reviewing unsaved work.</p>
    <div className="lazy-panel-actions">
     <button className="primary-button" onClick={()=>window.location.reload()}>Reload workspace</button>
     {this.props.onDismiss&&<button onClick={this.props.onDismiss}>{this.props.dismissLabel??'Close'}</button>}
