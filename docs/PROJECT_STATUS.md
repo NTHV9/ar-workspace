@@ -1,8 +1,9 @@
-## 2026-10-09 — Regional Gmail implementation tested; authorization pending
+## 2026-10-09 — Regional Gmail deployed; Khao Lak authorization pending
 
 - Owner selects Gmail / Google Workspace `ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN; KAT/TSK retain `ar@katathani.com`. Independent credentials, exact hotel-derived sender, frozen receipt identity, scoped provider IDs/threads/recovery and administrator Settings connection flow implemented. Workspace login/staff permissions and Drive/tracker identity unchanged.
 - TypeScript, 1,806 unit tests, six regional browser cases and 22 existing composer cases pass. Desktop/mobile and sender-review screenshots inspected; Astra review fixes verified. Local SQL rollback restores all 110 table/auth fingerprints and full function catalog; actual Supabase candidate rollback preserves credentials/history and removes test effects. [Implementation and evidence](REGIONAL_GMAIL_20261009.md).
-- Exact tested migration 108 applied; actual readback confirms one Phuket connection, zero Khao Lak connections, 23 preserved historical Phuket receipts, enabled Sent-manifest trigger and service-only credential API. Worker deployment and Google authorization still pending at this checkpoint. No real email sent.
+- Exact tested migration 108 applied; actual readback confirms one Phuket connection, zero Khao Lak connections, 23 preserved historical Phuket receipts, enabled Sent-manifest trigger and service-only credential API. No real email sent.
+- Source `e1ca4f3139b94066edc1e528f333ab70691c7598` deployed as Worker `b68fd54a-eb70-4f09-870b-63439e660ca8`; actual health verifies exact source/database/OPERA. Binding readback changes only COMMIT_SHA and preserves ten secrets, three workflows and schedules. Signed-in live Gmail Settings confirms Phuket connected with Sent verification and Khao Lak not connected. New mailbox authorization is the remaining activation step. [PR 125](https://github.com/NTHV9/ar-workspace/pull/125) attached, unmerged; CI running at record time.
 
 ## 2026-10-09 — Full invoice-level Aging audit completed
 
