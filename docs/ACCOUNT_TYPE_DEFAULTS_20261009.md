@@ -2,7 +2,7 @@
 
 ## Owner decisions
 
-Latest clarification: defaults apply at Account Type level; an existing explicit Account setting wins, including CCR. Across all six hotels, CCR defaults to Not required / 3 days. CON, EMP, NMK and REN default to Not required / 30 days. REN with a billing email uses Required as an explicit Account setting. Type-derived settings retain the previously requested Setup needed indication until individually configured.
+Latest clarification: defaults apply at Account Type level; an existing explicit Account setting wins, including CCR. Across all six hotels, CCR defaults to Not required / 3 days. CON, EMP, NMK and REN default to Not required / 30 days. REN with a billing email uses Required as an explicit Account setting. The owner subsequently removes the provisional Setup needed gate when inherited rules are complete, and removes the confirmation explanation. Missing rules remain visible; inherited provenance and explicit overrides remain intact.
 
 DRF is balance-only: retain money, Aging and historical evidence; no new billing or collection work. Queue exclusion does not remove report inventory. Recorded Billed/Final history stays visible while unsent rows show Balance only. New preparation, business email handoff and external billing are rejected from the server-held Account type; existing delivery replay and Sent reconciliation remain available.
 
