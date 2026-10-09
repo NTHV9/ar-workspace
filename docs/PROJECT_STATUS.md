@@ -1,3 +1,7 @@
+## 2026-10-09 — Login appearance restored independently
+
+- Owner requests only the login page return to its pre-cleanup appearance. Restored its original introductory paragraph; SignInScreen.tsx matches the pre-cleanup version exactly. No other screen, style, authentication/session logic or backend changed. TypeScript passes; deployment verification follows below.
+
 ## 2026-10-09 — Workspace explanatory copy simplified
 
 - Owner requests whole-web explanatory-clutter cleanup. Audited all 78 TSX components and simplified 39 UI files across primary and administrative surfaces. Removed both quoted Invoice Exceptions paragraphs, repeated tutorials, generic reassurance and implementation prose; retained financial meaning, states, errors, controls and action confirmations. Corrected stale Type default badge wording. [Coverage and verification](UI_COPY_CLEANUP_20261009.md).
