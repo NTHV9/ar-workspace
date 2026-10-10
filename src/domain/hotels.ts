@@ -12,6 +12,9 @@ export const hotelName=(hotel:HotelId)=>HOTEL_NAMES[hotel];
 export const REGION_IDS = ['phuket','khao-lak'] as const;
 export type RegionId = typeof REGION_IDS[number];
 
+/** Visible catalog only: pre-opening properties do not participate in financial or provider scopes. */
+export const PREOPENING_HOTELS = [{id:'TSUN',name:'The Sun Club Khaolak by Katathani',region:'khao-lak'}] as const;
+
 const hotelsByRegion:Record<RegionId,readonly HotelId[]> = {
  phuket:Object.freeze(['KAT','TSK'] as HotelId[]),
  'khao-lak':Object.freeze(['TLKL','WAKL','TLFO','TSAN'] as HotelId[]),

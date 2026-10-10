@@ -1,0 +1,9 @@
+import {test,expect} from '@playwright/test';
+import {setupRegional} from './fixtures/hotel-regions';
+import {openDashboard} from './fixtures/dashboard-period';
+import {syntheticManagement} from '../fixtures/management-dashboard';
+for(const width of [1440,390])test(`TSUN pre-opening appears disabled only in Khao Lak at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await setupRegional(page);await page.route('**/api/dashboard/management?*',route=>{const q=new URL(route.request().url()).searchParams;return route.fulfill({json:syntheticManagement('khao-lak',q.get('from')!,q.get('to')!)});});
+ await openDashboard(page,'/?dashboard=1&region=khao-lak');const chip=page.getByRole('button',{name:'The Sun Club Khaolak by Katathani · Pre-opening',exact:true});await expect(chip).toBeVisible();await expect(chip).toBeDisabled();await expect(chip).toHaveText('TSUN · Pre-opening');const chipBox=await chip.boundingBox();expect(chipBox!.x+chipBox!.width).toBeLessThanOrEqual(width);expect(chipBox!.x).toBeGreaterThanOrEqual(0);await expect(chip).toHaveAttribute('title','The Sun Club Khaolak by Katathani · Pre-opening');await expect(page.getByRole('button',{name:'View outstanding',exact:true})).toContainText('4,000.00');await page.locator('.management-exact-figures>summary').click();await expect(page.getByRole('region',{name:'Hotel aging summary',exact:true}).locator('tbody tr')).toHaveCount(4);await expect(page.locator('[data-hotel="TSUN"]')).toHaveCount(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await page.locator('.app-header').screenshot({path:`.tmp/tsun-hotel/preopening-${width}.png`,animations:'disabled'});
+ await page.getByLabel('Region',{exact:true}).selectOption('phuket');await expect(chip).toHaveCount(0);await expect(page.locator('.hotel-switch').getByRole('button',{name:'KAT',exact:true})).toBeVisible();
+});

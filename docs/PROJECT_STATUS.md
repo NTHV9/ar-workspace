@@ -1,3 +1,11 @@
+## 2026-10-10 — TSUN pre-opening property
+
+- Deployed source `4c4b53921f7c57e055420506eaf7d618a86ecd71` as Worker `62b9a328-33c1-4da3-a305-8933a1ca26b8`. Exact-source health/database/OPERA checks pass; binding readback changes only COMMIT_SHA and preserves runtime plus all six operational hotel IDs. Temporary `/api/opera/tsun-preflight` returns 404. Signed-in live Khao Lak shows disabled TSUN · Pre-opening and available current outstanding figures; header screenshot inspected. [PR 133](https://github.com/NTHV9/ar-workspace/pull/133) attached and unmerged. This is pre-opening display deployed, not operational TSUN activation.
+
+- Owner confirmed TSUN is preparing to open. OPERA read-only configuration confirms The Sun Club Khaolak by Katathani, code TSUN and THB. Business Date is 2026-11-01, not an approved activation date; empty AR discovery lacks explicit pagination completion and is not represented as a zero ledger.
+- Implemented a disabled TSUN · Pre-opening option in the Khao Lak header only. Six operational hotels/four Khao Lak hotels, report coverage, runtime hotel list, refresh and email scopes remain unchanged. No schema migration, recipient import or email send. Future activation material is private and not enabled. [Scope and activation prerequisites](TSUN_PREOPENING_20261010.md).
+- TypeScript/static build, 22 focused unit tests and two desktop/mobile browser cases pass; screenshots inspected. Existing four-hotel totals remain unchanged and the mobile pre-opening label is fully visible. Production deployment is recorded below when complete. Astra review passes. A temporary administrator-only fixed-property diagnostic uses the immutable prior operational Worker; the normal release will remove it.
+
 ## 2026-10-10 — Dashboard Credits and Settings Account links
 
 - Dashboard Credits label/value now opens Account comparisons and original signed credit-item details. Scope, dates, type and exact Hotel/Account identity carry through. Negative DRF entries are included; unknown/unsigned historical coverage stays unavailable. No credit amount or ledger change. Exact migration 112 passed local and actual rollback and is applied. [Contract/evidence](CREDIT_AND_ACCOUNT_LINKS_20261010.md).
