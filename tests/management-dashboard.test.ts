@@ -29,6 +29,16 @@ it('renders a full exact monetary value once and explicit Hotel columns for iden
  expect(markup).toContain('data-hotel="KAT"');expect(markup).toContain('data-hotel="TSK"');expect(markup).toContain('Katathani Phuket Beach Resort');expect(markup).toContain('The Shore at Katathani');
  expect(markup.match(/data-dashboard-account="true"/g)).toHaveLength(4);
  expect(markup).toContain('aria-label="View invoices 61+ days old"');expect(markup).not.toContain('over 60 days');
+ expect(markup).toContain('aria-label="View unbilled invoices 31+ days old"');
+ expect(markup).not.toContain('Unbilled invoices 61+ days old');
+ expect(markup).toContain('31+ days not billed');
+ expect(markup.match(/management-attention">2<\/td>/g)).toHaveLength(2);
+});
+it('requires the new hotel count and preserves unavailable age coverage',()=>{
+ const data=syntheticManagement();data.hotels[0].unbilled31=-1;expect(()=>managementResult(data,'phuket','All',data.from,data.to)).toThrow();
+ data.hotels[0].unbilled31=null;data.agesComplete=false;data.accountsOver60=null;expect(managementResult(data,'phuket','All',data.from,data.to)).toBe(data);
+ const markup=renderToStaticMarkup(createElement(ManagementDashboard,{source:{state:'ready',data},scope:{hotel:'All',day:data.to,from:data.from,to:data.to,type:'',account:''},onDetail:()=>{},onReload:()=>{}}));
+ expect(markup).toContain('aria-label="View unbilled invoices 31+ days old"');expect(markup).not.toMatch(/management-attention">2<\/td>/);
 });
 it('Account sorting stays inside canonical Hotel groups and Hotel sorting reverses whole groups',()=>{
  const rows=syntheticManagement().accountsOver60!;

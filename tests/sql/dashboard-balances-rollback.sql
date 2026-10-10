@@ -18,7 +18,7 @@ begin
  update public.ar_refresh_state set status='succeeded',last_success_at=clock_timestamp() where hotel='KAT';
  r:=public.ar_dashboard_balances(actor,d,'KAT',scope,null,null,null,0,1);
  if r->>'complete'<>'true' or r->>'total'<>'5' or jsonb_array_length(r->'rows')<>1 or r->'metrics'->0->>'amount'<>'450.00' then raise exception 'full summary or parent/child/partial-payment accounting incorrect';end if;
- if r->'metrics'->1->>'count'<>'2' or r->'metrics'->2->>'count'<>'1' or r->'metrics'->3->>'count'<>'1' or r->'metrics'->4->>'count'<>'1' or r->'metrics'->6->>'count'<>'2' or r->'metrics'->7->>'count'<>'0' then raise exception 'billing/strict age boundary incorrect';end if;
+ if r->'metrics'->1->>'count'<>'2' or r->'metrics'->2->>'count'<>'1' or r->'metrics'->3->>'count'<>'1' or r->'metrics'->4->>'count'<>'1' or r->'metrics'->6->>'count'<>'2' or r->'metrics'->7->>'count'<>'1' then raise exception 'billing/unbilled31/general61 boundaries incorrect';end if;
  if (select x->>'count' from jsonb_array_elements(r->'stages')x where x->>'key'='Final')<>'0' then raise exception 'manual stage treated as actual SENT';end if;
  foreach stage in array array['Friendly','Final'] loop
   delivery:=gen_random_uuid();

@@ -1,3 +1,9 @@
+## 2026-10-10 — Dashboard unbilled threshold changed to 31+ days
+
+- Implemented owner-requested 31+ raw invoice-age threshold for the aged-unbilled card, hotel matrix and Account/Invoice details. General 61+ metrics, Aging, independent observation reports, financial values and recorded history remain unchanged. Existing metric URLs remain compatible. [Contract and evidence](DASHBOARD_UNBILLED31_20261010.md).
+- TypeScript, 39 focused tests, two browser cases, local SQL rollback and actual six-hotel candidate comparison pass. Card counts/amounts match Account drill totals and hotel counts; other metrics and financial/history fingerprints are unchanged. Exact tested migration 111 applied and summary cache generation advanced. Astra review passes. Worker deployment pending at this checkpoint; no email sent.
+- Source `fa914a3c2da18aa7ec5494397fe1afbc9f2c3a44` deployed as Worker `dbb77c13-a96d-4479-9996-1960a5b8ce60`. Health verifies exact source/database/OPERA and binding readback changes only COMMIT_SHA. Signed-in live Khao Lak Dashboard displays the 31+ unbilled card and a matching 31+ Account drill title, while the general 61+ card remains separate. [PR 130](https://github.com/NTHV9/ar-workspace/pull/130) attached and unmerged. No source accounting changes or emails.
+
 ## 2026-10-09 — Login appearance restored independently
 
 - Owner requests only the login page return to its pre-cleanup appearance. Restored its original introductory paragraph; SignInScreen.tsx matches the pre-cleanup version exactly. No other screen, style, authentication/session logic or backend changed. TypeScript passes; deployment verification follows below.
