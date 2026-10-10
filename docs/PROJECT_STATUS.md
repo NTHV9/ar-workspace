@@ -1,3 +1,9 @@
+## 2026-10-10 — Dashboard hotel headers stay visible during table scrolling
+
+- Owner reports hotel identity disappearing while reading long Account comparison tables. Shared Dashboard comparison tables now scroll within a maximum 70% viewport height; opaque hotel headers remain sticky at the top, Account names remain sticky on the left, and the corner stays above both. Covers detail comparisons and the general aged-Account disclosure without adding pagination controls.
+- Moved only the Account-view continuation indicator into its table scroll area and rooted its observer there; Invoice-detail continuation remains unchanged. No data, amounts, sorting/filtering or hotel/account drill identity changes.
+- TypeScript/static build pass; four existing comparison/search/drill browser cases and three targeted desktop/short-height/mobile sticky cases pass. Tests cover vertical/horizontal corner alignment, keyboard PageDown, 260 comparison rows/520 Accounts progressing from 200 to all rows, search/reset, hotel-specific drill and general aged disclosure. Desktop/mobile screenshots inspected; Astra review passes. Deployment verification follows below.
+
 ## 2026-10-10 — Dashboard unbilled threshold changed to 31+ days
 
 - Implemented owner-requested 31+ raw invoice-age threshold for the aged-unbilled card, hotel matrix and Account/Invoice details. General 61+ metrics, Aging, independent observation reports, financial values and recorded history remain unchanged. Existing metric URLs remain compatible. [Contract and evidence](DASHBOARD_UNBILLED31_20261010.md).
