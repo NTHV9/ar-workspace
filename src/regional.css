@@ -17,3 +17,4 @@
 @media(min-width:901px) and (max-width:1500px){.app-shell .app-header{height:auto;min-height:66px;flex-wrap:wrap;gap:10px;padding-top:12px;padding-bottom:12px}.app-shell .main-nav{order:3;width:100%;justify-content:space-between}}
 
 .signed-in-staff{font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#51677e}
+@media(max-width:600px){.header-right .hotel-switch:has(.preopening-hotel){flex-wrap:wrap;max-width:100%;flex-basis:100%}.header-right .hotel-switch .preopening-hotel{flex-basis:100%}}
