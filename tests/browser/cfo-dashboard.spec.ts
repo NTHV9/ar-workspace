@@ -17,6 +17,28 @@ async function managementFixture(page:Page){
  });
  await page.route('**/api/dashboard/balance-accounts?*',async route=>{const q=new URL(route.request().url()).searchParams,hotels=q.get('hotel')?[q.get('hotel')!]:['KAT','TSK'];await route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:true,missingHotels:[],unverified:0,total:hotels.length,metrics:[],stages:[],rows:hotels.map(hotel=>({hotel,accountId:'tour',accountNo:'SYN-TOUR',accountName:'Synthetic Tour Company',accountType:'OTA',count:1,amount:'200.00',oldest:61,verified:true}))}});});return {fixture,queries};
 }
+test('Credits opens signed account comparisons and invoice/folio items without billing actions',async({page})=>{
+ await managementFixture(page);const queries:URLSearchParams[]=[];
+ await page.route('**/api/dashboard/balance-accounts?*',async route=>{const q=new URL(route.request().url()).searchParams;queries.push(q);expect(q.get('metric')).toBe('credit');await route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:true,missingHotels:[],unverified:0,total:2,metrics:[],stages:[],rows:['KAT','TSK'].map(hotel=>({hotel,accountId:'credit',accountNo:'SYN-CREDIT',accountName:'Synthetic Credit Company',accountType:'DRF',count:1,amount:'-20.00',oldest:21,verified:true}))}});});
+ await page.route('**/api/dashboard/balances?*',async route=>{const q=new URL(route.request().url()).searchParams;queries.push(q);expect(q.get('metric')).toBe('credit');await route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:true,missingHotels:[],unverified:0,total:1,metrics:[],stages:[],rows:[{hotel:q.get('hotel')??'KAT',accountId:'credit',accountName:'Synthetic Credit Company',accountType:'DRF',invoiceId:'credit-21',invoiceNo:'SYN-CREDIT21',folioNo:'SYN-FOLCREDIT21',guest:'Synthetic Guest',transactionDate:'2026-09-01',open:'-20.00',original:'-20.00',age:21,billingRequired:true,firstBillingDate:null,dueDate:null,latestStage:null,latestSentAt:null,verified:true}]}});});
+ await openDashboard(page,'/?dashboard=1');
+ await expect(page.getByRole('button',{name:'View credit items',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'View credit amount',exact:true})).toContainText('-฿40.00');
+ await page.getByRole('button',{name:'View credit amount',exact:true}).click();expect(new URL(page.url()).searchParams.get('dashboardMetric')).toBe('credit');
+ const details=page.getByRole('region',{name:'Dashboard invoice details',exact:true});await expect(details.getByRole('heading',{name:'Credits',exact:true})).toBeVisible();
+ await expect(details).toContainText('1 items');await expect(details.getByLabel('Account comparison sort',{exact:true})).toContainText('Items');
+ const account=details.getByRole('button',{name:'Open Synthetic Credit Company · KAT · Account SYN-CREDIT',exact:true});await expect(account).toContainText('-฿20.00');await account.click();
+ await expect(details).toContainText('SYN-CREDIT21');await expect(details).toContainText('Folio SYN-FOLCREDIT21');await expect(details).toContainText('1 items · -฿20.00');
+ await expect(details.getByRole('button',{name:'Billing',exact:true})).toHaveCount(0);await expect(details.getByRole('button',{name:'Latest Follow-Up',exact:true})).toHaveCount(0);await expect(details.getByRole('button',{name:'Prepare documents',exact:true})).toHaveCount(0);
+ await details.getByRole('button',{name:'Close details',exact:true}).click();await page.getByRole('button',{name:'View credit items',exact:true}).click();await expect(details.getByRole('heading',{name:'Credits',exact:true})).toBeVisible();
+ expect(queries.every(q=>q.get('metric')==='credit')).toBe(true);
+});
+test('unsigned credit coverage disables the card and direct credit URL stays unavailable',async({page})=>{
+ await managementFixture(page);
+ await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.openBalanceBreakdown!.creditCoverageComplete=false;data.openBalanceBreakdown!.credit={count:null,amount:null};await route.fulfill({json:data});});
+ await page.route('**/api/dashboard/balance-accounts?*',route=>{const q=new URL(route.request().url()).searchParams;expect(q.get('metric')).toBe('credit');return route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:false,reason:'credit_snapshot_unavailable',missingHotels:[],unverified:0,total:0,metrics:[],stages:[],rows:[]}});});
+ await openDashboard(page,'/?dashboard=1&dashboardDetail=balance&dashboardMetric=credit');await expect(page.getByRole('button',{name:'View credit items',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'View credit amount',exact:true})).toBeDisabled();
+ const details=page.getByRole('region',{name:'Dashboard invoice details',exact:true});await expect(details).toContainText('Credit inventory is unavailable');await expect(details).not.toContainText('No accounts match');await expect(details).not.toContainText('0 comparison rows');
+});
 for(const region of ['phuket','khao-lak'] as const)for(const width of [1440,1280,390])test(`CFO report ${region} at ${width}: signed totals, outstanding billing and continuous aged accounts`,async({page})=>{
  await page.setViewportSize({width,height:900});const {fixture}=await managementFixture(page);
  await openDashboard(page,'/?dashboard=1&region='+region+'&dashboardFrom=2026-09-01&dashboardTo=2026-09-12&dashboardDateMode=range');

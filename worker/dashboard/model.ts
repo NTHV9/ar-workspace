@@ -1,6 +1,6 @@
 import type {HotelId} from '../../src/domain/hotels';
 
-export const dashboardMetricKeys=['open','billed','unbilled','not_required','setup','past_due','over60','over60_unbilled'] as const;
+export const dashboardMetricKeys=['open','billed','unbilled','not_required','setup','past_due','over60','over60_unbilled','credit'] as const;
 export type DashboardMetricKey=typeof dashboardMetricKeys[number];
 export interface DashboardBalanceMetric {key:DashboardMetricKey;count:number|null;amount:string|null}
 export interface DashboardBalanceStage {key:string;label:string;count:number|null;amount:string|null}

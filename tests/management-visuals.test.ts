@@ -4,6 +4,13 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {BillingProgress} from '../src/dashboard/ManagementVisuals';
 import {syntheticManagement} from './fixtures/management-dashboard';
 import {agingPlot,attentionAccounts,billingCompletion} from '../src/dashboard/management-visuals';
+it('makes verified Credits a read-only drill and disables unknown credit coverage',()=>{
+ const data=syntheticManagement(),scope={hotel:'All',day:data.to,from:data.from,to:data.to,type:'',account:''};
+ const html=()=>renderToStaticMarkup(createElement(BillingProgress,{data,scope,onDetail:()=>{}}));
+ expect(html()).toContain('aria-label="View credit items"');expect(html()).toContain('aria-label="View credit amount"');
+ data.openBalanceBreakdown!.creditCoverageComplete=false;expect(html()).toMatch(/disabled=""[^>]*aria-label="View credit items"/);
+ data.openBalanceBreakdown!.creditCoverageComplete=true;data.complete=false;expect(html()).toMatch(/disabled=""[^>]*aria-label="View credit amount"/);
+});
 it('billing progress uses all outstanding values independent of period activity',()=>{
  const data=syntheticManagement();expect(billingCompletion(data)?.percent).toBeCloseTo(120/620*100);
  for(const c of data.cohort)c.amount='0.00';data.cohortComplete=false;expect(billingCompletion(data)?.percent).toBeCloseTo(120/620*100);

@@ -3,6 +3,10 @@ import {dashboardBalancesApi,dashboardPaymentInvoicesApi,parseDashboardBalancesQ
 const actor='00000000-0000-4000-8000-000000000001';
 const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic'};
 afterEach(()=>vi.unstubAllGlobals());
+it('accepts the protected credit filter without combining a reminder stage',()=>{
+ expect(parseDashboardBalancesQuery(new URL('https://app.test/api/dashboard/balances?asOf=2026-10-10&metric=credit'))).toMatchObject({p_metric:'credit'});
+ expect(()=>parseDashboardBalancesQuery(new URL('https://app.test/api/dashboard/balances?asOf=2026-10-10&metric=credit&stage=Final'))).toThrow('dashboard_invalid');
+});
 it('validates dates, identities, stage keys, duplicates and bounded integer paging',()=>{
  expect(parseDashboardBalancesQuery(new URL('https://app.test/api/dashboard/balances?asOf=2026-09-11&hotel=KAT&account=A&stage=Follow+1&page=2&limit=200'))).toMatchObject({p_as_of:'2026-09-11',p_hotel:'KAT',p_account:'A',p_stage:'Follow 1',p_offset:400,p_limit:200});
  for(const q of ['', 'asOf=2026-02-30','asOf=0000-01-01','asOf=2026-09-11&account=A','asOf=2026-09-11&hotel=KAT&hotel=TSK','asOf=2026-09-11&metric=open&stage=Final','asOf=2026-09-11&stage=unknown','asOf=2026-09-11&page=1e2','asOf=2026-09-11&limit=201','asOf=2026-09-11&page=2147483647','asOf=2026-09-11&surprise=1','asOf=2026-09-11&type=%20'])expect(()=>parseDashboardBalancesQuery(new URL('https://app.test/api/dashboard/balances?'+q))).toThrow('dashboard_invalid');

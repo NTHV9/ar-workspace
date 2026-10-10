@@ -29,3 +29,11 @@ export function internalWorkspaceParams(href:string,origin:string,current:URLSea
  if(!url.search){next.set('dashboard','1');next.set('dashboardView','aging');}
  return initialWorkspaceParams(next);
 }
+/** Settings account links always carry an exact hotel/account identity and allowed region. */
+export function settingsAccountParams(current:URLSearchParams,target:{hotel:string;accountId:string},allowedRegions:readonly string[]){
+ if(!isHotelId(target.hotel)||!target.accountId||!allowedRegions.includes(hotelRegion(target.hotel)))return null;
+ const next=new URLSearchParams();next.set('region',hotelRegion(target.hotel));next.set('hotel',target.hotel);next.set('property',target.hotel);next.set('account',target.accountId);next.set('accountSection','Overview');next.set('fromSettings','accounts');next.set('settingsRegion',current.get('region')??'phuket');return next;
+}
+export function settingsAccountReturn(current:URLSearchParams){
+ const next=new URLSearchParams();next.set('region',current.get('settingsRegion')??current.get('region')??'phuket');next.set('usersAccess','1');next.set('settingsTab','accounts');return next;
+}
