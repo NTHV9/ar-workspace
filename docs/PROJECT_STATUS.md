@@ -1,3 +1,9 @@
+## 2026-10-10 — Dashboard Credits and Settings Account links
+
+- Dashboard Credits label/value now opens Account comparisons and original signed credit-item details. Scope, dates, type and exact Hotel/Account identity carry through. Negative DRF entries are included; unknown/unsigned historical coverage stays unavailable. No credit amount or ledger change. Exact migration 112 passed local and actual rollback and is applied. [Contract/evidence](CREDIT_AND_ACCOUNT_LINKS_20261010.md).
+- Settings Account names now open the exact permitted Account on its settings tab. Back restores list-only view context against a fresh catalog; checkbox selection and navigation stay separate. Existing dirty guards remain, with new links blocked during pending/uncertain saves. No settings writes from navigation.
+- TypeScript/static builds, 53 credit-focused plus 19 navigation-focused tests, two Credit browser cases and 15 bulk-settings browser cases pass. Actual six-hotel credit summaries reconcile to both drill levels; financial/settings/history fingerprints unchanged. Desktop/mobile screenshots and Astra review complete. Deployment verification follows below.
+
 ## 2026-10-10 — Dashboard hotel headers stay visible during table scrolling
 
 - Owner reports hotel identity disappearing while reading long Account comparison tables. Shared Dashboard comparison tables now scroll within a maximum 70% viewport height; opaque hotel headers remain sticky at the top, Account names remain sticky on the left, and the corner stays above both. Covers detail comparisons and the general aged-Account disclosure without adding pagination controls.
