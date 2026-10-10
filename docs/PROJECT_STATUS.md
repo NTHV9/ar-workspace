@@ -1,3 +1,8 @@
+## 2026-10-10 — Dashboard unbilled threshold changed to 31+ days
+
+- Implemented owner-requested 31+ raw invoice-age threshold for the aged-unbilled card, hotel matrix and Account/Invoice details. General 61+ metrics, Aging, independent observation reports, financial values and recorded history remain unchanged. Existing metric URLs remain compatible. [Contract and evidence](DASHBOARD_UNBILLED31_20261010.md).
+- TypeScript, 39 focused tests, two browser cases, local SQL rollback and actual six-hotel candidate comparison pass. Card counts/amounts match Account drill totals and hotel counts; other metrics and financial/history fingerprints are unchanged. Exact tested migration 111 applied and summary cache generation advanced. Astra review passes. Worker deployment pending at this checkpoint; no email sent.
+
 ## 2026-10-09 — Login appearance restored independently
 
 - Owner requests only the login page return to its pre-cleanup appearance. Restored its original introductory paragraph; SignInScreen.tsx matches the pre-cleanup version exactly. No other screen, style, authentication/session logic or backend changed. TypeScript passes; deployment verification follows below.

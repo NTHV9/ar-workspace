@@ -1,0 +1,11 @@
+# Unbilled invoice attention from 31 days
+
+The owner changes only the Dashboard's aged-unbilled indicator to OPERA invoice age **31 days or more**. Counts, amounts, hotel comparison and Account/Invoice drilldowns share the same scope. General 61+ invoice metrics, their Account comparison and Aging buckets remain unchanged. The independent Observation Reports feature is outside this change.
+
+The established `over60_unbilled` API/URL key is retained for bookmark compatibility, with its new 31+ meaning documented here. The shared SQL membership predicate now uses `p_age >= 31`; all verified-source, positive-open, billing-required and unbilled-as-of conditions remain. DRF remains excluded. A separate nullable `unbilled31` hotel field supplies the hotel matrix, which previously depended on the general 61+ Account list. The older `unbilled61` field retains its specific 61–90 definition. Summary cache generation advances so old classifications cannot be served.
+
+Migration 111 SHA-256 `3239751a20317dd9ad395608b0a4f06fd60048aa00de3bd1777f5e55d5e75fcf` passed local SQL rollback and actual Supabase candidate rollback. Synthetic boundaries include 30/31/60/61/91, billed/future billing dates, not-required, zero/negative, child, DRF and unknown age. Card, hotel count, Account drill and Invoice drill agree; general 61+ and financial data remain unchanged. Local rollback restores 110 tables plus function/view definitions and permissions.
+
+Actual six-hotel candidate comparison independently verifies card count/amount equals the Account-drill totals and hotel count. All other management metrics, general aged Accounts, hotel financial bands, type totals and period cohorts match their pre-change values. Account/Invoice/workflow/settings/Sent fingerprints remain identical. These are point-in-time checks, not a guarantee that future OPERA publications stay constant. No ledger or actual send history was changed.
+
+TypeScript, 39 focused unit tests and two static browser cases pass. Browser coverage retains the old URL key while showing 31+ card/matrix/detail labels and 31–60-day records; general 61+ remains distinct, and unknown age stays unavailable. Astra review passes; one stale existing browser label assertion was updated. Migration is applied; deployment/live verification is recorded separately in PROJECT_STATUS.

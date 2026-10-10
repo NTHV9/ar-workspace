@@ -1,3 +1,7 @@
+## Unbilled Dashboard attention starts at 31 days — 10 October 2026
+
+The owner changes the Dashboard's aged-unbilled indicator from 61+ to 31+ days of OPERA invoice age (inclusive). Apply the same threshold to count, amount, hotel comparison and Account/Invoice drilldown. Preserve billing-required, positive verified open balance and unbilled-as-of eligibility, including DRF exclusion. General invoices aged 61+ days, Aging ranges and the separate observation report remain unchanged. Keep the existing metric URL/API key for compatibility while updating its meaning and visible labels; invalidate cached old classifications. No ledger, billing history or reminder history changes.
+
 ## Remove explanatory clutter across the workspace — 9 October 2026
 
 The owner requests a whole-interface cleanup after identifying repetitive paragraphs in Invoice notes/holds/review. Remove the two quoted paragraphs about holds/review dates, repeated tutorials, generic reassurance and implementation explanations across the workspace. Keep necessary controls, field labels, financial basis/date/source distinctions, actionable errors and current states. Consequence-bearing send/delete/discard confirmations and uncertain-result recovery remain explicit and concise. This is UI copy simplification, not permission to remove features, alter accounting/workflow behavior or perform sends/deletions.

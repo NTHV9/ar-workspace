@@ -22,13 +22,13 @@ for(const region of ['phuket','khao-lak'] as const)for(const width of [1440,1280
  await openDashboard(page,'/?dashboard=1&region='+region+'&dashboardFrom=2026-09-01&dashboardTo=2026-09-12&dashboardDateMode=range');
  const report=page.getByRole('region',{name:'Management summary',exact:true});await expect(report.getByRole('button',{name:'View outstanding',exact:true})).toContainText(region==='phuket'?'2,000.00':'4,000.00');
  await page.locator('.management-exact-figures>summary').click();
- const aging=page.getByRole('region',{name:'Hotel aging summary',exact:true});await expect(aging).toContainText('180.00');await expect(aging).toContainText('61+ days not billed');
+ const aging=page.getByRole('region',{name:'Hotel aging summary',exact:true});await expect(aging).toContainText('180.00');await expect(aging).toContainText('31+ days not billed');
  const cohort=page.getByRole('region',{name:'Period invoice billing summary',exact:true});await expect(cohort).toContainText(region==='phuket'?'2,400.00':'4,800.00');await expect(cohort).toContainText('Billing not required');
  await page.locator('.management-exact-figures>summary').click();
  await page.locator('.management-account-disclosure>summary').click();
  await expect(page.getByRole('region',{name:'Accounts with invoices 61+ days old',exact:true}).locator('[data-dashboard-account]')).toHaveCount(region==='phuket'?4:8);
  await expect(page.locator('.management-more')).not.toHaveAttribute('open','');
- if(width===390)for(const label of ['View billed · still open','View unbilled invoices 61+ days old','View invoices 61+ days old'])await expect(page.getByRole('button',{name:label,exact:true}).locator('small').last()).toBeVisible();
+ if(width===390)for(const label of ['View billed · still open','View unbilled invoices 31+ days old','View invoices 61+ days old'])await expect(page.getByRole('button',{name:label,exact:true}).locator('small').last()).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(fixture.errors).toEqual([]);
  if(width===390){expect(await page.locator('.management-period-glance dd').evaluateAll(cells=>cells.every(cell=>cell.scrollWidth<=cell.clientWidth+1))).toBe(true);}
  if(width===1440){const glance=page.getByRole('region',{name:'Outstanding billing progress',exact:true});await expect(glance).toContainText(region==='phuket'?'240.00':'480.00');const bounds=await glance.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThan(900);const agingBox=await page.getByRole('region',{name:'Hotel aging chart',exact:true}).boundingBox();expect(Math.abs(bounds!.width-agingBox!.width)).toBeLessThan(2);expect(Math.abs(bounds!.height-agingBox!.height)).toBeLessThan(2);}
@@ -47,7 +47,7 @@ test('CFO Account search/sort and scoped invoice drill preserve report selection
  await details.getByRole('button',{name:'Close details',exact:true}).click();await expect(search).toHaveValue('KAT tour');await expect(list.locator('[data-dashboard-comparison-row]')).toHaveCount(1);await expect(list.locator('[data-dashboard-account]')).toHaveCount(2);expect(queries.length).toBeGreaterThan(0);for(const query of queries)expect([...query.entries()].sort(([a],[b])=>a.localeCompare(b))).toEqual(firstScope);
 });
 test('unknown aged coverage is visible and never becomes an empty verified list',async({page})=>{
- await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.agesComplete=false;data.accountsOver60=null;data.hotels.forEach(h=>{h.over60=null;h.over90=null;h.unbilled61=null;h.bands.forEach(b=>{b.amount=null;b.count=null;});});await route.fulfill({json:data});});
+ await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.agesComplete=false;data.accountsOver60=null;data.hotels.forEach(h=>{h.over60=null;h.over90=null;h.unbilled61=null;h.unbilled31=null;h.bands.forEach(b=>{b.amount=null;b.count=null;});});await route.fulfill({json:data});});
  await openDashboard(page,'/?dashboard=1');await page.locator('.management-account-disclosure>summary').click();await expect(page.getByText('The full aged Account list could not be verified.',{exact:false})).toBeVisible();await expect(page.getByText('No open invoices are 61+ days old.',{exact:true})).toHaveCount(0);
 });
 
@@ -81,7 +81,7 @@ for(const width of [1440,1280,390])test(`million-scale Dashboard has visible exa
  const exactOutstanding=page.getByRole('button',{name:'View outstanding',exact:true});await expect(exactOutstanding.locator('strong')).toHaveText('฿200,000,000.00');await expect(exactOutstanding.locator('.management-exact-total')).toHaveCount(0);expect(await exactOutstanding.locator('strong').evaluate(figure=>figure.scrollWidth<=figure.clientWidth+1&&figure.scrollHeight<=figure.clientHeight+1)).toBe(true);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  // Variant 3 keeps the aged-unbilled measure in the first view; long Account names may extend the priority list.
- if(width>600){const metric=page.getByRole('button',{name:'View unbilled invoices 61+ days old',exact:true});const box=await metric.boundingBox();expect(box!.y+box!.height).toBeLessThan(900);}
+ if(width>600){const metric=page.getByRole('button',{name:'View unbilled invoices 31+ days old',exact:true});const box=await metric.boundingBox();expect(box!.y+box!.height).toBeLessThan(900);}
  const priority=page.getByRole('region',{name:'Priority accounts',exact:true}).locator('li');
  for(const row of await priority.all()){const name=await row.locator('b').boundingBox(),value=await row.locator('strong').boundingBox();expect(name!.x+name!.width<=value!.x+1||name!.y+name!.height<=value!.y+1).toBe(true);}
  await priority.nth(2).scrollIntoViewIfNeeded();await expect(priority.nth(2).getByRole('button')).toBeVisible();
@@ -100,14 +100,20 @@ test('billing values open accounts without changing report scope',async({page})=
 });
 
 test('both aged indicators retain amount/count and unbilled drill scope',async({page})=>{
- await managementFixture(page);await openDashboard(page,'/?dashboard=1');
- const aged=page.getByRole('button',{name:'View invoices 61+ days old',exact:true}),unbilled=page.getByRole('button',{name:'View unbilled invoices 61+ days old',exact:true});
- await expect(aged).toContainText('440.00');await expect(aged).toContainText('4 invoices');await expect(unbilled).toContainText('400.00');await expect(unbilled).toContainText('2 invoices');
- await unbilled.click();expect(new URL(page.url()).searchParams.get('dashboardMetric')).toBe('over60_unbilled');await expect(page.getByRole('region',{name:'Dashboard invoice details',exact:true})).toContainText('Synthetic Tour Company');
+ await managementFixture(page);
+ await page.route('**/api/dashboard/balance-accounts?*',async route=>{const q=new URL(route.request().url()).searchParams;expect(q.get('metric')).toBe('over60_unbilled');await route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:true,missingHotels:[],unverified:0,total:2,metrics:[],stages:[],rows:['KAT','TSK'].map(hotel=>({hotel,accountId:'tour',accountNo:'SYN-TOUR',accountName:'Synthetic Tour Company',accountType:'OTA',count:2,amount:'300.00',oldest:61,verified:true}))}});});
+ await page.route('**/api/dashboard/balances?*',async route=>{const q=new URL(route.request().url()).searchParams;expect(q.get('metric')).toBe('over60_unbilled');await route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:true,missingHotels:[],unverified:0,total:2,metrics:[],stages:[],rows:[31,61].map(age=>({hotel:q.get('hotel')??'KAT',accountId:'tour',accountName:'Synthetic Tour Company',accountType:'OTA',invoiceId:'invoice-'+age,invoiceNo:'SYN-'+age,folioNo:null,guest:'Synthetic Guest',transactionDate:'2026-07-13',open:age===31?'100.00':'200.00',original:age===31?'100.00':'250.00',age,billingRequired:true,firstBillingDate:null,dueDate:null,latestStage:null,latestSentAt:null,verified:true}))}});});
+ await openDashboard(page,'/?dashboard=1');
+ const aged=page.getByRole('button',{name:'View invoices 61+ days old',exact:true}),unbilled=page.getByRole('button',{name:'View unbilled invoices 31+ days old',exact:true});
+ await expect(aged).toContainText('440.00');await expect(aged).toContainText('4 invoices');await expect(unbilled).toContainText('600.00');await expect(unbilled).toContainText('4 invoices');
+ await page.getByText('Hotel & billing figures',{exact:true}).click();
+ const matrix=page.getByRole('region',{name:'Hotel aging summary',exact:true});await expect(matrix.getByRole('columnheader').last()).toContainText('31+ days not billed');await expect(matrix.getByRole('row').filter({hasText:'Total'}).getByRole('cell').last()).toHaveText('4');
+ await unbilled.click();expect(new URL(page.url()).searchParams.get('dashboardMetric')).toBe('over60_unbilled');const details=page.getByRole('region',{name:'Dashboard invoice details',exact:true});await expect(details).toContainText('Synthetic Tour Company');await expect(details).toContainText('300.00');
+ await details.getByRole('button',{name:/Open Synthetic Tour Company · KAT/}).click();await expect(details).toContainText('SYN-31');await expect(details).toContainText('SYN-61');expect(new URL(page.url()).searchParams.get('dashboardMetric')).toBe('over60_unbilled');
 });
 test('unknown age coverage keeps both aged metric amounts unavailable',async({page})=>{
  await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.agesComplete=false;data.accountsOver60=null;await route.fulfill({json:data});});await openDashboard(page,'/?dashboard=1');
- for(const name of ['View invoices 61+ days old','View unbilled invoices 61+ days old']){const metric=page.getByRole('button',{name,exact:true});await expect(metric).toBeDisabled();await expect(metric.locator('strong')).toHaveText('—');}
+ for(const name of ['View invoices 61+ days old','View unbilled invoices 31+ days old']){const metric=page.getByRole('button',{name,exact:true});await expect(metric).toBeDisabled();await expect(metric.locator('strong')).toHaveText('—');}
 });
 test('negative hotel ranges render below zero and retain signed inspection',async({page})=>{
  await managementFixture(page);await page.route('**/api/dashboard/management?*',async route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('phuket',q.get('from')!,q.get('to')!);data.hotels[0].bands[0].amount='-20.00';data.hotels[0].amount='280.00';data.hotels[0].creditAmount='-40.00';data.hotels[1].credits=0;data.hotels[1].creditAmount='0.00';data.types[0].amount='1280.00';for(const m of data.metrics){if(m.key==='open')m.amount='1280.00';if(m.key==='billed'){m.amount='120.00';m.count=4;}if(m.key==='unbilled'){m.amount='400.00';m.count=2;}if(m.key==='not_required')m.count=3;if(m.key==='setup')m.count=4;}data.openBalanceBreakdown!.positive={amount:'1320.00',count:13};data.openBalanceBreakdown!.credit={amount:'-40.00',count:1};await route.fulfill({json:data});});await openDashboard(page,'/?dashboard=1');
