@@ -1,3 +1,4 @@
+import {seedTabSession} from './fixtures/auth-session';
 import {test,expect,type Page} from '@playwright/test';
 import {policyFixture} from './fixtures/collection-policy';
 import {assertButtonVisibility} from './fixtures/button-visibility';
@@ -17,8 +18,7 @@ async function setup(page:Page,count=entries.length,crowded=false,accountType='A
  const invoiceRows=Array.from({length:count},(_,i)=>i<entries.length?entries[i]:{...entries[0],id:String(i+1),guest:`Extra invoice ${i+1} · Synthetic`});
  const unexpected:string[]=[];
  const user={id:'synthetic-ledger-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-11T00:00:00Z'};
- await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic',refresh_token:'synthetic',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
- await page.addInitScript(()=>{const synthetic=localStorage.getItem('sb-example-auth-token'),set=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){set.call(this,key,value);if(this===sessionStorage&&key==='ar-google-tab-v1'&&synthetic)set.call(this,value,synthetic);};});
+ await seedTabSession(page,user);
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',r=>{const p=new URL(r.request().url()).pathname;
   if(p==='/api/access/me')return r.fulfill({json:{memberId:user.id,email:user.email,displayName:'Synthetic Staff',active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}});
@@ -45,16 +45,16 @@ for(const width of [1920,1440,1280,1100,900])test(`ledger trailing columns have 
  expect(geometry.singleLine).toBe(true);
  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.visibleWidth+1);await expect(page.getByRole('region',{name:'Invoice column scrollbar',exact:true})).toHaveCount(0);
  expect(geometry.badgeGap).toBeGreaterThanOrEqual(12);expect(geometry.badgeVisible).toBe(true);await expect(page.locator('.ledger tbody tr').first().locator('td').last()).toContainText('No billing sent');
- if(process.env.AR_LEDGER_COLUMNS_CAPTURE==='1'){await scroll.evaluate(e=>window.scrollTo(0,Math.max(0,e.getBoundingClientRect().top+window.scrollY-160)));await page.screenshot({path:`evidence/ledger-balanced-${width}.png`,animations:'disabled'});}
+ if(process.env.AR_LEDGER_COLUMNS_CAPTURE==='1'){await scroll.evaluate(e=>window.scrollTo(0,Math.max(0,e.getBoundingClientRect().top+window.scrollY-160)));await page.screenshot({path:`.tmp/audit-ui/ledger-balanced-${width}.png`,animations:'disabled'});}
  await page.getByRole('button',{name:'Open',exact:true}).click();await expect(page.locator('.ledger th[aria-sort="ascending"]')).toContainText('Open');await page.getByLabel('Select SYN-1',{exact:true}).check();expect(errors).toEqual([]);
 });
 
 test('Aging uses source days/ranges in both directions and missing ages stay last',async({page})=>{
  const errors=await setup(page);await page.goto('/?account=SYN-A&property=KAT');
- await page.getByRole('button',{name:'Aging',exact:true}).click();
+ await page.locator('.ledger').getByRole('button',{name:'Aging',exact:true}).click();
  const order=()=>page.locator('.ledger tbody tr').evaluateAll(rows=>rows.map(r=>r.querySelectorAll('td')[2].textContent));
  await expect.poll(order,{timeout:1500}).toEqual(['SYN-1','SYN-2','SYN-6','SYN-3','SYN-8','SYN-4','SYN-5','SYN-7']);
- await page.getByRole('button',{name:'Aging',exact:true}).click();await expect.poll(order).toEqual(['SYN-5','SYN-4','SYN-8','SYN-3','SYN-6','SYN-2','SYN-1','SYN-7']);
+ await page.locator('.ledger').getByRole('button',{name:'Aging',exact:true}).click();await expect.poll(order).toEqual(['SYN-5','SYN-4','SYN-8','SYN-3','SYN-6','SYN-2','SYN-1','SYN-7']);
  await page.getByLabel('Select SYN-2',{exact:true}).check();await page.getByPlaceholder('Search guest / invoice / folio').fill('B Billed');await expect(page.locator('.selection-bar')).toContainText('1 items selected');expect(errors).toEqual([]);
 });
 test('invoice action and history buttons stay readable without changing records',async({page})=>{
@@ -68,7 +68,7 @@ for(const [width,height] of [[1440,900],[1100,800],[390,844]])test(`selected act
  expect(await bar.evaluate(el=>!!(el.compareDocumentPosition(document.querySelector('.ledger')!)&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
  await page.evaluate(()=>window.scrollTo(0,1600));await expect(bar).toBeInViewport();const box=await bar.boundingBox();expect(box!.y).toBeGreaterThanOrEqual(0);expect(box!.y).toBeLessThanOrEqual(16);
  await expect(bar).toContainText('3 items selected');await expect(bar).toContainText('THB 300');expect(await bar.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
- await page.screenshot({path:`evidence/selected-actions-sticky-${width}.png`,animations:'disabled'});
+ await page.screenshot({path:`.tmp/audit-ui/selected-actions-sticky-${width}.png`,animations:'disabled'});
   await bar.getByRole('button',{name:'Prepare documents',exact:true}).click();await expect(page.locator('.document-dialog')).toBeVisible();await expect(page.locator('.document-dialog')).toContainText('3 selected invoices');await page.getByRole('button',{name:'Cancel',exact:true}).click();
   await bar.getByRole('button',{name:'Record external billing',exact:true}).click();await expect(page.getByRole('dialog',{name:'Record actual external billing'})).toBeVisible();await page.getByRole('button',{name:'Close external billing'}).click();
  await bar.getByRole('button',{name:'Clear selection',exact:true}).click();await expect(bar).toContainText('0 items selected');await expect(bar.getByRole('button',{name:'Prepare documents',exact:true})).toBeDisabled();expect(errors).toEqual([]);
@@ -83,7 +83,7 @@ for(const width of [900,1000,390])test(`selected item stays against the right ed
  await page.setViewportSize({width,height:800});await setup(page);await page.goto('/?account=SYN-A&property=KAT');
  const trigger=page.getByRole('button',{name:'A Pending · Synthetic',exact:true});await trigger.click();const drawer=page.getByRole('dialog',{name:'Invoice details',exact:true});await expect(drawer).toBeVisible();
  const box=await drawer.boundingBox();expect(box).not.toBeNull();expect(Math.abs(width-box!.x-box!.width-15)).toBeLessThanOrEqual(2);if(width>600)expect(box!.x).toBeGreaterThan(width/2);
- await page.screenshot({path:`evidence/account-ledger-drawer-${width}.png`,animations:'disabled'});
+ await page.screenshot({path:`.tmp/audit-ui/account-ledger-drawer-${width}.png`,animations:'disabled'});
  await page.keyboard.press('Escape');await expect(drawer).not.toBeVisible();await expect(trigger).toBeFocused();
 });
 
@@ -95,7 +95,7 @@ for(const width of [1024,1100,1200])test(`laptop ${width}: details stay beside t
  const side=await panel.boundingBox(),ledger=await page.locator('.ledger-panel').boundingBox();expect(side!.x).toBeGreaterThanOrEqual(ledger!.x+ledger!.width);
  await page.getByLabel('Select SYN-2',{exact:true}).check();await expect(page.locator('.selection-bar')).toContainText('1 items selected');
  expect(await page.locator('.selection-bar').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
- if(width===1100)await page.screenshot({path:'evidence/account-panel-inline-1100.png',animations:'disabled'});
+ if(width===1100)await page.screenshot({path:'.tmp/audit-ui/account-panel-inline-1100.png',animations:'disabled'});
  await page.setViewportSize({width:900,height:800});await expect(page.getByRole('dialog',{name:'Invoice details'})).toBeVisible();expect(await panel.evaluate(el=>el.matches(':modal'))).toBe(true);
  await page.setViewportSize({width,height:900});await expect(page.getByRole('complementary',{name:'Invoice details'})).toBeVisible();expect(await panel.evaluate(el=>el.matches(':modal'))).toBe(false);await expect(page.getByLabel('Select SYN-2',{exact:true})).toBeChecked();
 });

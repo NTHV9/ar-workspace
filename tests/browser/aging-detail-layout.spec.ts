@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 import {setupAgingStatus} from './fixtures/aging-invoice-status';
 
 for(const width of [1440,1280,390])test(`Aging detail columns align and names retain insets at ${width}`,async({page})=>{
- const controls=await setupAgingStatus(page,{longNames:true});await page.setViewportSize({width,height:width===390?844:900});
+ const controls=await setupAgingStatus(page,{tabSession:true,longNames:true});await page.setViewportSize({width,height:width===390?844:900});
  await page.goto('/?dashboard=1&dashboardView=aging');await page.getByRole('button',{name:'View invoice statuses for Agent · KAT · 91–120',exact:true}).click();
  const panel=page.locator('.aging-invoice-breakdown'),table=panel.getByRole('table',{name:'Aging invoice details'});await expect(table.locator('tbody tr')).toHaveCount(25);
  const layout=await table.evaluate(table=>{

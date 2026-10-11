@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 import {setupDashboard} from './fixtures/dashboard-period';
 
 for(const width of [1280,390])test('period reading order and comparisons remain clear '+width,async({page})=>{
- const c=await setupDashboard(page,{balanceLift:10000000,creditAmount:-20,longStageLabel:'Final notice with additional account review'});
+ const c=await setupDashboard(page,{tabSession:true,balanceLift:10000000,creditAmount:-20,longStageLabel:'Final notice with additional account review'});
  await page.setViewportSize({width,height:width===1280?900:844});await page.goto('/?dashboard=1');
  await expect(page.getByTestId('dashboard-closing-count')).toHaveText('3 invoices');await expect(page.getByTestId('activity-invoice_entries-KAT')).toBeVisible();
  const closing=page.getByRole('region',{name:'Outstanding at period end',exact:true}),activity=page.getByRole('region',{name:'Activity in selected period',exact:true}),work=page.getByRole('region',{name:'Closing-date billing and follow-up details',exact:true});
@@ -22,7 +22,7 @@ for(const width of [1280,390])test('period reading order and comparisons remain 
 });
 
 test('reloading the new composition keeps a single overview reader',async({page,baseURL})=>{
- const options={missingHistory:false},c=await setupDashboard(page,options);await page.goto('/?dashboard=1');await expect(page.getByTestId('activity-invoice_entries-KAT')).toBeVisible();
+ const options={missingHistory:false},c=await setupDashboard(page,{...options,tabSession:true});await page.goto('/?dashboard=1');await expect(page.getByTestId('activity-invoice_entries-KAT')).toBeVisible();
  // Activity controls render before the independent closing overview arrives.
  // Establish its completed initial read before counting a user-triggered reload.
  await expect(page.getByTestId('dashboard-closing-count')).toHaveText('2 invoices');

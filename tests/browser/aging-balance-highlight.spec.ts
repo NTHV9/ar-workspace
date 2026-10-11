@@ -1,3 +1,4 @@
+import {agingFixtureInventory,agingFixtureRows,publishedAgingAccounts,agingFixtureStamp} from './fixtures/aging-published';
 import {test,expect,type Locator,type Page} from '@playwright/test';
 import type {Account} from '../../src/domain/portfolio';
 import {setupDashboard} from './fixtures/dashboard-period';
@@ -8,7 +9,7 @@ const aged=/\bhas-aged-balance\b/;
 const ranges=['0–30','31–60','61–90','91–120','121–150','151+'];
 function extra(hotel:'KAT'|'TSK',type:string,values:number[],verified=true):Account{
  const source=currentAgingVisualAccounts[0],id=`highlight-${type.toLowerCase().replaceAll(' ','-')}-${hotel}`;
- return {...source,hotel,id,name:`${type} · Synthetic`,account_no:`SYN-HIGHLIGHT-${type}`,type,open:values.reduce((sum,n)=>sum+n,0),verification_state:verified?'verified':'missing',agingBuckets:source.agingBuckets!.map((b,index)=>({...b,amount:values[index],debit:Math.max(0,values[index]),credit:Math.min(0,values[index])}))};
+ return {...source,hotel,id,name:`${type} · Synthetic`,account_no:`SYN-HIGHLIGHT-${type}`,type,open:values.reduce((sum,n)=>sum+n,0),verification_state:verified?'verified':'missing',agingBuckets:source.agingBuckets!.map((b,index)=>({...b,amount:values[index],debit:Math.max(0,values[index]),credit:Math.max(0,-values[index])}))};
 }
 const accounts=[...currentAgingVisualAccounts,
  extra('KAT','Coverage gap',[0,0,0,0,0,120]),extra('TSK','Coverage gap',[0,0,0,0,0,80],false),
@@ -40,7 +41,7 @@ async function fits(page:Page,table:Locator){
 
 for(const width of [1440,1280,390])test(`positive aging balances above 90 days stay highlighted and drillable at ${width}`,async({page})=>{
  test.setTimeout(60000);
- const controls=await setupDashboard(page),writes:string[]=[],accountReads:string[]=[],openRefreshes:unknown[]=[];
+ const controls=await setupDashboard(page,{tabSession:true}),writes:string[]=[],accountReads:string[]=[],openRefreshes:unknown[]=[];
  await page.route('**/api/**',route=>{
   const request=route.request();
   if(request.method()==='POST'&&new URL(request.url()).pathname==='/api/refresh'){
@@ -56,13 +57,15 @@ for(const width of [1440,1280,390])test(`positive aging balances above 90 days s
  });
  await page.route('**/api/portfolio',route=>{
   if(route.request().method()!=='GET'){writes.push('non-GET synthetic portfolio');return route.fulfill({status:405});}
-  return route.fulfill({json:{status:'connected',accounts,refresh:{running:false,hotels:['KAT','TSK'].map(hotel=>({hotel,status:'succeeded',last_success_at:'2026-09-12T02:59:00Z'}))}}});
+  return route.fulfill({json:{status:'connected',accounts:publishedAgingAccounts(accounts),refresh:{running:false,hotels:['KAT','TSK'].map(hotel=>({hotel,status:'succeeded',last_success_at:'2026-09-12T02:59:00Z'}))}}});
  });
  await page.route('**/api/accounts/TSK/visual-azure-tsk',route=>{
   accountReads.push('/api/accounts/TSK/visual-azure-tsk');
   if(route.request().method()!=='GET'){writes.push('non-GET synthetic account');return route.fulfill({status:405});}
   return route.fulfill({json:{invoices:[{hotel:'TSK',account_id:'visual-azure-tsk',id:'highlight-tsk-old',invoice_no:'SYN-HIGHLIGHT-TSK-151',folio_no:'SYN-FOLIO',guest:'Synthetic guest',transaction_date:'2026-04-01',open:404000,original:404000,age:164,collection_role:'standalone',verification_state:'verified'}]}});
  });
+ await page.route('**/api/dashboard/aging-invoices**',route=>route.fulfill({json:agingFixtureInventory(accounts)}));
+ await page.route('**/api/accounts/**',route=>{const parts=new URL(route.request().url()).pathname.split('/'),account=accounts.find(a=>a.hotel===decodeURIComponent(parts[3])&&a.id===decodeURIComponent(parts[4]));if(!account)return route.fallback();accountReads.push(new URL(route.request().url()).pathname);const invoices=agingFixtureRows(account).map(r=>account.id==='visual-azure-tsk'&&r.age===151?{...r,id:'highlight-tsk-old',invoice_no:'SYN-HIGHLIGHT-TSK-151',age:164}:r);return route.fulfill({json:{synced_at:agingFixtureStamp,invoices}});});
  await page.setViewportSize({width,height:width===1440?900:width===1280?800:844});
  await page.goto('/?dashboard=1&dashboardView=aging');
  const table=page.getByRole('table',{name:'Current source aging comparison'});
@@ -114,7 +117,7 @@ for(const width of [1440,1280,390])test(`positive aging balances above 90 days s
  await page.locator('.aging-comparison-frame').scrollIntoViewIfNeeded();
  // Account names label the clipped artifact as synthetic; the fixed test badge would cover a value.
  await page.getByLabel('Synthetic test data',{exact:true}).evaluate(element=>element.style.visibility='hidden');
- await page.locator('.aging-comparison-frame').screenshot({path:`${process.env.AR_TEST_CAPTURE_DIR??'evidence'}/aging-column-order-${width}.png`,animations:'disabled'});
+ await page.locator('.aging-comparison-frame').screenshot({path:`${process.env.AR_TEST_CAPTURE_DIR??'.tmp/audit-ui'}/aging-column-order-${width}.png`,animations:'disabled'});
 
  await value(table,'Azure Travel · Synthetic','TSK','151+').click();
  await page.mouse.move(0,0);
@@ -124,7 +127,7 @@ for(const width of [1440,1280,390])test(`positive aging balances above 90 days s
  // React StrictMode may repeat read effects locally; every read must remain in the chosen hotel/account.
  expect([...new Set(accountReads)]).toEqual(['/api/accounts/TSK/visual-azure-tsk']);
  await highlighted(value(table,'Azure Travel · Synthetic','TSK','151+'));
- await page.getByRole('button',{name:'Back to Agent accounts',exact:true}).click();
+ await page.getByRole('button',{name:'Back to Agent accounts',exact:true}).last().click();
  await expect(table.locator('tbody[data-aging-group]')).toHaveCount(2);
  await fits(page,table);
  expect(writes).toEqual([]);expect(openRefreshes).toEqual([{hotel:'All',reason:'open',region:'phuket'}]);

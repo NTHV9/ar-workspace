@@ -1,5 +1,6 @@
 import {OperaStatusMenu} from './OperaStatusMenu';
 import {useTrackerRevision} from './reports/use-tracker-revision';
+import {isOwnRegisterChange} from './register/model';
 import {clearPeriodPreview} from './dashboard/period-preview-cache';
 import {SignInScreen} from './access/SignInScreen';
 import './regional.css';
@@ -96,7 +97,7 @@ export function App() {
   const refreshAbort=useRef<AbortController|null>(null);
   const refreshRevision=useRef(0);
   const [reloadVersion,setReloadVersion]=useState(0);
-  useEffect(()=>{if(!session?.user.id)return;const changed=()=>{clearPeriodPreview();setReloadVersion(n=>n+1);};window.addEventListener('ar-invoice-changed',changed);let channel:BroadcastChannel|undefined;try{channel=new BroadcastChannel('ar-invoice-changes');channel.onmessage=()=>window.dispatchEvent(new Event('ar-invoice-changed'));}catch{}return()=>{window.removeEventListener('ar-invoice-changed',changed);channel?.close();};},[session?.user.id]);
+  useEffect(()=>{if(!session?.user.id)return;const changed=()=>{clearPeriodPreview();setReloadVersion(n=>n+1);};window.addEventListener('ar-invoice-changed',changed);let channel:BroadcastChannel|undefined;try{channel=new BroadcastChannel('ar-invoice-changes');channel.onmessage=event=>{if(!isOwnRegisterChange(event.data))window.dispatchEvent(new Event('ar-invoice-changed'));};}catch{}return()=>{window.removeEventListener('ar-invoice-changed',changed);channel?.close();};},[session?.user.id]);
   const [invoiceState,setInvoiceState]=useState('ready');
   const invoiceOwner=useRef('');
   const sessionRef=useRef(session); sessionRef.current=session;

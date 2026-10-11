@@ -1,3 +1,9 @@
+## 2026-10-11 — System audit and repairs
+
+- Owner requests whole-system testing and repairs, with synthetic email outside business history. Initial 1,832 unit tests pass; actual main-surface reads and two regional synthetic sends pass with zero business Sent events. [Findings, measurements and scope](SYSTEM_AUDIT_20261011.md).
+- Implemented same-user token-renewal edit preservation, duplicate refresh suppression, hidden-tab polling pause and exact-identity Set selection. SQL 113 skips zero-row invalidations/future empty warnings; SQL 114 keeps identical tracker conflicts at the reviewed revision. Exact candidates passed local and actual rollback qualification, then both migrations were applied/readback-verified. Account/Invoice/settings/history values preserved; no TSUN activation or original-sheet changes.
+- Frontend changes are implemented and Astra-reviewed. Final unit suite 1,832/1,832 passes; fresh release-focused browser suite 71/71 passes. All 183 maintained smoke cases pass across the initial 163 and focused corrected-fixture reruns; 20 additional maintained Aging cases and the new image-only scan are verified. Historical full-suite attempts exposed stale/retired fixtures and are not certified green. Normal deployment pending. No broad whole-page latency claim; measured limits are in the audit report.
+
 ## 2026-10-10 — TSUN pre-opening property
 
 - Deployed source `4c4b53921f7c57e055420506eaf7d618a86ecd71` as Worker `62b9a328-33c1-4da3-a305-8933a1ca26b8`. Exact-source health/database/OPERA checks pass; binding readback changes only COMMIT_SHA and preserves runtime plus all six operational hotel IDs. Temporary `/api/opera/tsun-preflight` returns 404. Signed-in live Khao Lak shows disabled TSUN · Pre-opening and available current outstanding figures; header screenshot inspected. [PR 133](https://github.com/NTHV9/ar-workspace/pull/133) attached and unmerged. This is pre-opening display deployed, not operational TSUN activation.

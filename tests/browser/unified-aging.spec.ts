@@ -3,7 +3,7 @@ import {setupDashboard} from './fixtures/dashboard-period';
 import {currentAgingAccounts} from './fixtures/current-aging';
 
 for(const width of [1280,390])test(`unified Aging retains its layout and adds portfolio controls ${width}`,async({page})=>{
- const c=await setupDashboard(page);await page.setViewportSize({width,height:900});
+ const c=await setupDashboard(page,{tabSession:true});await page.setViewportSize({width,height:900});
  await page.goto('/?dashboard=1&dashboardView=aging');
  await expect(page.getByRole('heading',{name:'Aging',exact:true})).toBeVisible();
  const nav=page.getByRole('navigation',{name:'Main navigation'});
@@ -31,7 +31,7 @@ for(const width of [1280,390])test(`unified Aging retains its layout and adds po
 });
 
 test('legacy Portfolio bookmarks use Aging with search and exposure and Dashboard stays separate',async({page})=>{
- await setupDashboard(page);
+ await setupDashboard(page,{tabSession:true});
  await page.route('**/api/portfolio',r=>r.fulfill({json:{status:'connected',accounts:currentAgingAccounts.map(a=>({...a,over90:a.name.includes('Azure')?100:0})),refresh:{running:false,hotels:[]}}}));
  await page.goto('/?portfolio=1&search=Azure&aging=over90');
  await expect(page.getByRole('heading',{name:'Aging',exact:true})).toBeVisible();

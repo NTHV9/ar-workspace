@@ -1,6 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {setupRegional} from './fixtures/hotel-regions';
 const user={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{providers:['google']},user_metadata:{},created_at:'2026-09-23T00:00:00Z'};
+async function openActivity(page:Page){const details=page.locator('.management-more');if(await details.getAttribute('open')===null)await details.locator('summary').click();}
 async function login(page:Page){
  await page.route('https://example.supabase.co/**',route=>route.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user}}));
  await page.route('**/api/config',r=>r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}}));
@@ -10,7 +11,7 @@ async function login(page:Page){
  await page.goto('/?code=synthetic-code');await expect(page.getByRole('button',{name:'Dashboard',exact:true})).toBeVisible();
 }
 for(const region of ['phuket','khao-lak'])test(`${region}: slow or failed payments do not hold invoice and billing results`,async({page})=>{
- const fixture=await setupRegional(page);await login(page);
+ const fixture=await setupRegional(page,false);await login(page);
  if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption('khao-lak');
  let release=()=>{};const gate=new Promise<void>(resolve=>release=resolve);const requests:string[]=[];
  await page.route('**/api/dashboard/hotel-overview?*',async route=>{
@@ -19,7 +20,7 @@ for(const region of ['phuket','khao-lak'])test(`${region}: slow or failed paymen
   await route.fallback();
  });
  try{
-  await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();
+  await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();await openActivity(page);
   await expect(page.getByTestId('dashboard-invoice_entries-count')).not.toHaveText('—');
   await expect(page.getByTestId('dashboard-first-count')).not.toHaveText('—');
   const card=page.locator('[data-activity="paid"]');await expect(card).toContainText('Loading…');
@@ -33,15 +34,15 @@ for(const region of ['phuket','khao-lak'])test(`${region}: slow or failed paymen
 for(const region of ['phuket','khao-lak'])test(`${region}: cached month appears on return and reload before any slow response, then clears at sign-out`,async({page})=>{
  await setupRegional(page,true);await login(page);
  if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption('khao-lak');
- await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();
+ await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();await openActivity(page);
  await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
  await expect.poll(()=>page.evaluate(()=>({tab:!!sessionStorage.getItem('ar-google-tab-v1'),paths:JSON.parse(sessionStorage.getItem('ar-period-preview-v1')??'[]').map((e:{path:string})=>e.path)}))).toMatchObject({tab:true,paths:expect.arrayContaining([expect.stringMatching(/from=\d{4}-\d{2}-01/)])});
  let release=()=>{};const gate=new Promise<void>(r=>release=r);
  await page.route('**/api/dashboard/hotel-overview?*',async route=>{await gate;await route.fallback();});
  try{
-  await page.getByRole('button',{name:'Aging',exact:true}).click();await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();
+  await page.getByRole('button',{name:'Aging',exact:true}).click();await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();await openActivity(page);
   await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
-  await expect(page.getByText('Loading activity… Available results are shown as they arrive.',{exact:true})).toBeVisible();
+  await expect(page.getByText('Loading activity…',{exact:true})).toBeVisible();
   await page.reload();await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
   await page.getByRole('button',{name:'Sign out',exact:true}).click();
   await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeVisible();
@@ -53,7 +54,7 @@ for(const region of ['phuket','khao-lak'])test(`${region}: a linked invoice edit
  await setupRegional(page,true);await login(page);
  if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption('khao-lak');
  const requests:string[]=[];page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/dashboard/'))requests.push(u.pathname+u.search);});
- await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();
+ await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();await openActivity(page);
  await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
  await expect.poll(()=>requests.filter(p=>p.includes('segment=paid')).length).toBeGreaterThan(0);
  const before=requests.length;
