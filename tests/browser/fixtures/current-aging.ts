@@ -1,6 +1,6 @@
 import type {Account,AgingBucket} from '../../../src/domain/portfolio';
 const ranges=[[0,30],[31,60],[61,90],[91,120],[121,150],[151,null]] as const;
-const buckets=(values:number[]):AgingBucket[]=>ranges.map(([start,end],sequence)=>({label:end===null?'151+':`${start}–${end}`,start,end,sequence,amount:values[sequence]??0,debit:Math.max(0,values[sequence]??0),credit:Math.min(0,values[sequence]??0)}));
+const buckets=(values:number[]):AgingBucket[]=>ranges.map(([start,end],sequence)=>({label:end===null?'151+':`${start}–${end}`,start,end,sequence,amount:values[sequence]??0,debit:Math.max(0,values[sequence]??0),credit:Math.max(0,-(values[sequence]??0))}));
 const account=(hotel:string,id:string,account_no:string,name:string,type:string,values:number[]):Account=>({hotel,id,account_no,name,type,open:values.reduce((s,n)=>s+n,0),over90:0,items:2,verification_state:'verified',agingBuckets:buckets(values)});
 export const currentAgingAccounts:Account[]=[
  account('KAT','kat-azure','SYN-A','Azure Travel · Synthetic','Agent',[100,-20,0,0,0,200]),

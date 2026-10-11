@@ -3,7 +3,7 @@ import {setupRegional} from './fixtures/hotel-regions';
 const regions={phuket:['KAT','TSK'],'khao-lak':['TLKL','WAKL','TLFO','TSAN']};
 const matrices=['Closing balances by hotel','Activity by hotel','Payment amounts by hotel','Billing status by hotel','Latest Follow-Up by hotel'];
 for(const [region,hotels] of Object.entries(regions))for(const width of [1280,390])test(`Period comparisons have room for ${region} at ${width}`,async({page})=>{
- const c=await setupRegional(page);await page.setViewportSize({width,height:1000});await page.goto('/?dashboard=1&region='+region);
+ const c=await setupRegional(page,false,true);await page.setViewportSize({width,height:1000});await page.goto('/?dashboard=1&region='+region);
  await expect(page.getByTestId('metric-open-'+hotels[0])).toBeVisible();
  if(process.env.AR_PERIOD_BEFORE==='1'){await page.screenshot({path:`.tmp/period-before-${region}-${width}.png`,fullPage:true});}
  for(const name of matrices){const table=page.getByRole('table',{name,exact:true});await expect(table).toBeVisible();await expect(table.locator('tbody tr[data-hotel]')).toHaveCount(hotels.length);}

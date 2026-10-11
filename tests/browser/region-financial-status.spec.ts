@@ -5,7 +5,7 @@ for(const [region,hotels,otherHotel] of [
  ['phuket',['KAT','TSK'],'TLKL'],
  ['khao-lak',['TLKL','WAKL','TLFO','TSAN'],'KAT'],
 ] as const)test(`completed ${region} history is released while another region is still running`,async({page})=>{
- const c=await setupRegional(page),posted:string[]=[],statusRegions:string[]=[];
+ const c=await setupRegional(page,false,true),posted:string[]=[],statusRegions:string[]=[];
  const completed:{hotel:string;from:string;to:string;status:string;finishedAt:string}[]=[];
  await page.route('**/api/financial/status**',route=>{
   const requested=new URL(route.request().url()).searchParams.get('region')??'phuket';statusRegions.push(requested);

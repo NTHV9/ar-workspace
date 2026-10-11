@@ -17,6 +17,7 @@ export function useTrackerRevision(token:string|undefined,accessKey:string){
    const key=trackerRevisionKey(await response.json());if(key===null||controller.signal.aborted)return;
    if(prior!==null&&prior!==key)notifyRegisterChanged();prior=key;
   }catch{/* A failed background check never replaces saved or dirty data. */}finally{inflight=false;}};
-  void poll();const interval=setInterval(()=>void poll(),60000);return()=>{controller.abort();clearInterval(interval);};
+  const visiblePoll=()=>{if(document.visibilityState==='visible')void poll();};
+  void poll();const interval=setInterval(visiblePoll,60000);document.addEventListener('visibilitychange',visiblePoll);return()=>{controller.abort();clearInterval(interval);document.removeEventListener('visibilitychange',visiblePoll);};
  },[token,accessKey]);
 }

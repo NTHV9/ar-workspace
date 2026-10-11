@@ -7,7 +7,7 @@ const memberId='00000000-0000-4000-8000-000000000081';
 const owner:AccessMember={memberId:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',administrator:true,active:true,registered:true,regions:['phuket','khao-lak'],revision:1,setupState:'ready'};
 const syntheticPassword='Synthetic-browser-only-17';
 async function setup(page:Page,options:{pendingCreate?:boolean;pendingDelete?:boolean;failCreate?:boolean}={}){
- const base=await setupRegional(page),writes:{path:string;body:Record<string,unknown>}[]=[];let members:AccessMember[]=[owner],checkCount=0;
+ const base=await setupRegional(page,false,true),writes:{path:string;body:Record<string,unknown>}[]=[];let members:AccessMember[]=[owner],checkCount=0;
  await page.route('**/api/access/users**',route=>{
   const req=route.request(),url=new URL(req.url()),path=url.pathname;
   if(req.method()==='GET')return route.fulfill({json:{rows:members.filter(m=>memberLogin(m).includes(url.searchParams.get('search')??'')),total:members.length}});

@@ -22,7 +22,7 @@ test('stored scheduled failure shows last success and polling clears stored and 
   return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:'2026-10-07T04:00:00Z',lastSuccessAt:'2026-10-06T04:00:00Z',error:mode==='stored'?'synthetic_private_error':null,pending:0,conflictCount:0,conflicts:[]}});
  });
  await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');
- await expect(page.getByRole('alert')).toContainText('The latest tracker synchronization failed');await expect(page.getByText(/Last successful synchronization/)).toBeVisible();await expect(page.getByText(/Last attempt/)).toBeVisible();await expect(page.getByText('synthetic_private_error',{exact:false})).toHaveCount(0);
+ await expect(page.getByRole('alert')).toContainText('Tracker synchronization failed');await expect(page.getByText(/Last successful synchronization/)).toBeVisible();await expect(page.getByText(/Last attempt/)).toBeVisible();await expect(page.getByText('synthetic_private_error',{exact:false})).toHaveCount(0);
  await page.screenshot({path:'.tmp/tracker-sync/stored-failure-fixed.png',fullPage:false});
  mode='healthy';await page.clock.fastForward(61000);await expect(page.getByRole('alert')).toHaveCount(0);
  mode='request';await page.clock.fastForward(61000);await expect(page.getByRole('alert')).toContainText('Tracker status could not be loaded');

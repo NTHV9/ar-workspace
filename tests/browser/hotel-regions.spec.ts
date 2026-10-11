@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {setupRegional} from './fixtures/hotel-regions';
 for(const width of [1440,1280,390])test('regional Aging keeps all hotel rows and six ranges '+width,async({page})=>{
- const c=await setupRegional(page);await page.setViewportSize({width,height:900});await page.goto('/?dashboard=1&dashboardView=aging&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
+ const c=await setupRegional(page,false,true);await page.setViewportSize({width,height:900});await page.goto('/?dashboard=1&dashboardView=aging&dashboardFrom=2026-09-01&dashboardTo=2026-09-12');
  await page.getByLabel('Region',{exact:true}).selectOption('khao-lak');
  const table=page.getByRole('table',{name:'Current source aging comparison'});
  await expect(table.locator('tbody[data-aging-group]')).toHaveCount(1);
@@ -19,7 +19,7 @@ for(const width of [1440,1280,390])test('regional Aging keeps all hotel rows and
  await page.getByLabel('Region',{exact:true}).selectOption('phuket');await expect(page.getByTestId('metric-open-KAT')).toContainText('1 invoices');expect(c.errors).toEqual([]);
 });
 test('regional reads and matched account count drills preserve scope and back navigation',async({page})=>{
- const c=await setupRegional(page);await page.goto('/?region=khao-lak&dashboard=1&dashboardView=aging');const table=page.getByRole('table',{name:'Current source aging comparison'});
+ const c=await setupRegional(page,false,true);await page.goto('/?region=khao-lak&dashboard=1&dashboardView=aging');const table=page.getByRole('table',{name:'Current source aging comparison'});
  await table.getByRole('button',{name:'Open accounts in Agent',exact:true}).click();
  await table.getByRole('button',{name:'View invoice statuses for Regional Travel · Synthetic · Total · All ages',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Regional Travel · Synthetic · Invoice details',exact:true})).toBeVisible();
@@ -29,14 +29,14 @@ test('regional reads and matched account count drills preserve scope and back na
  expect(c.errors).toEqual([]);expect(c.unexpected).toEqual([]);
 });
 test('old explicit Khao Lak account URLs infer region and dirty account changes guard region switches',async({page})=>{
- const c=await setupRegional(page);await page.goto('/?account=same-id&property=TLKL');await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');
+ const c=await setupRegional(page,false,true);await page.goto('/?account=same-id&property=TLKL');await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');
  await page.getByRole('button',{name:'Overview',exact:true}).click();await expect(page.getByLabel('Billing requirement')).toHaveValue('unset');await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('');
  await page.getByLabel('Credit term (calendar days)').fill('30');page.once('dialog',dialog=>dialog.dismiss());await page.getByLabel('Region',{exact:true}).selectOption('phuket');await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('30');
  page.once('dialog',dialog=>dialog.accept());await page.getByLabel('Region',{exact:true}).selectOption('phuket');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();await expect(page).not.toHaveURL(/account=|property=/);expect(c.errors).toEqual([]);
 });
 
 test('Khao Lak portfolio compares four separate ledgers and preserves region through account return',async({page})=>{
- const c=await setupRegional(page);await page.goto('/?region=khao-lak');const table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');
+ const c=await setupRegional(page,false,true);await page.goto('/?region=khao-lak');const table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');
  await expect(table.locator('tbody tr')).toHaveCount(1);await expect(table.locator('thead th').filter({hasText:/^(TLKL|WAKL|TLFO|TSAN)$/})).toHaveText(['TLKL','WAKL','TLFO','TSAN']);
  await expect(table.locator('tbody .total-cell')).toContainText('10.8K');
  await table.locator('tbody .tlfo .amount-link').click();await expect(page).toHaveURL(/property=TLFO/);await expect(page.locator('.account-page')).toContainText('TLFO');
@@ -45,7 +45,7 @@ test('Khao Lak portfolio compares four separate ledgers and preserves region thr
 });
 
 test('refresh completion after region switch reloads only the active regional catalog',async({page})=>{
- const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page);let running=true;const catalogRegions:string[]=[];
+ const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page,false,true);let running=true;const catalogRegions:string[]=[];
  await page.route('**/api/portfolio**',route=>{const region=new URL(route.request().url()).searchParams.get('region')??'phuket';catalogRegions.push(region);return route.fulfill({json:{status:'connected',accounts:regionalAccounts.filter(a=>region==='phuket'?['KAT','TSK'].includes(a.hotel):!['KAT','TSK'].includes(a.hotel)),refresh:{running,hotels:[]}}});});
  await page.route('**/api/refresh**',route=>route.fulfill({json:{jobs:[],running,hotels:[]}}));
  await page.goto('/?portfolio=1');const table=page.getByRole('region',{name:'Accounts comparison'}).getByRole('table');await expect(table.locator('tbody .total-cell')).toContainText('1.8K');
@@ -53,13 +53,13 @@ test('refresh completion after region switch reloads only the active regional ca
  await expect.poll(()=>catalogRegions.length).toBeGreaterThan(2);expect(catalogRegions).toEqual(['phuket','khao-lak','khao-lak']);await expect(table.locator('tbody .total-cell')).toContainText('10.8K');await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');expect(c.errors).toEqual([]);
 });
 test('Phuket desktop navigation keeps all eight administrator controls inside the header',async({page})=>{
- await setupRegional(page);await page.setViewportSize({width:1280,height:900});await page.goto('/?portfolio=1');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
+ await setupRegional(page,false,true);await page.setViewportSize({width:1280,height:900});await page.goto('/?portfolio=1');await expect(page.getByRole('heading',{name:'Receivables portfolio'})).toBeVisible();
  const nav=page.getByRole('navigation',{name:'Main navigation'});await expect(nav.getByRole('button')).toHaveCount(8);expect(await nav.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:'.tmp/khao-lak-ui-results/phuket-header-1280.png',fullPage:false});
 });
 
 for(const pending of ['status','catalog'] as const)test('region switch aborts an in-flight '+pending+' response from the old region',async({page})=>{
- const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page);const catalogRegions:string[]=[];let held=false,released=false,phuketStatusReads=0,phuketCatalogReads=0;
+ const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page,false,true);const catalogRegions:string[]=[];let held=false,released=false,phuketStatusReads=0,phuketCatalogReads=0;
  let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});const failed:string[]=[];page.on('requestfailed',request=>failed.push(new URL(request.url()).pathname));
  await page.route('**/api/portfolio**',async route=>{const region=new URL(route.request().url()).searchParams.get('region')??'phuket';catalogRegions.push(region);const hold=pending==='catalog'&&region==='phuket'&&++phuketCatalogReads===2;if(hold){held=true;await gate;}
   await route.fulfill({json:{status:'connected',accounts:regionalAccounts.filter(a=>region==='phuket'?['KAT','TSK'].includes(a.hotel):!['KAT','TSK'].includes(a.hotel)),refresh:{running:pending==='status'&&region==='phuket',hotels:[]}}});if(hold)released=true;
@@ -72,7 +72,7 @@ for(const pending of ['status','catalog'] as const)test('region switch aborts an
 
 const regionalJobId='00000000-0000-4000-8000-000000000071';
 async function regionalDocument(page:import('@playwright/test').Page){
- const c=await setupRegional(page),exports=[{name:'Synthetic-reviewed.pdf',storage_key:'jobs/'+regionalJobId+'/exports/synthetic.pdf',byte_count:1000,sha256:'a'.repeat(64)}];
+ const c=await setupRegional(page,false,true),exports=[{name:'Synthetic-reviewed.pdf',storage_key:'jobs/'+regionalJobId+'/exports/synthetic.pdf',byte_count:1000,sha256:'a'.repeat(64)}];
  const job={id:regionalJobId,lifecycle:'transient',hotel:'TLKL',account_id:'same-id',account_name:'Regional Travel · Synthetic',invoice_ids:['invoice-0'],state:'ready',revision:1,acknowledged:true,files:[],exports,manifest:[]};let reads=0;
  await page.route('**/api/documents/'+regionalJobId,route=>{reads++;return route.fulfill({json:job});});
  await page.route('**/api/gmail/status*',route=>route.fulfill({json:{region:'khao-lak',expectedEmail:'ar@thesandskhaolak.com',configured:true,connected:true,canRead:true,email:'ar@thesandskhaolak.com'}}));
@@ -108,7 +108,7 @@ test('legacy property-only valid account context keeps region after returning th
 });
 
 for(const publication of ['missing','verified-zero','retained'] as const)test('Portfolio distinguishes '+publication+' hotel publication from a zero balance',async({page})=>{
- const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page),at='2026-09-12T02:59:00Z';
+ const {regionalAccounts}=await import('./fixtures/hotel-regions');const c=await setupRegional(page,false,true),at='2026-09-12T02:59:00Z';
  const accounts=regionalAccounts.filter(a=>!['KAT','TSK'].includes(a.hotel)&&(publication==='retained'||a.hotel!=='TLFO'));
  const refresh={running:false,hotels:['TLKL','WAKL','TLFO','TSAN'].map(hotel=>({hotel,status:hotel==='TLFO'&&publication!=='verified-zero'?'failed':'succeeded',last_success_at:hotel==='TLFO'&&publication==='missing'?null:at}))};
  await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts,status:'connected',refresh}}));await page.route('**/api/refresh**',r=>r.fulfill({json:{...refresh,jobs:[]}}));
@@ -125,7 +125,7 @@ for(const publication of ['missing','verified-zero','retained'] as const)test('P
 });
 
 for(const published of [false,true])test('empty regional Portfolio distinguishes unavailable from verified zero '+published,async({page})=>{
- await setupRegional(page);const refresh={running:false,hotels:['TLKL','WAKL','TLFO','TSAN'].map(hotel=>({hotel,status:published?'succeeded':'failed',last_success_at:published?'2026-09-12T02:59:00Z':null}))};
+ await setupRegional(page,false,true);const refresh={running:false,hotels:['TLKL','WAKL','TLFO','TSAN'].map(hotel=>({hotel,status:published?'succeeded':'failed',last_success_at:published?'2026-09-12T02:59:00Z':null}))};
  await page.route('**/api/portfolio**',r=>r.fulfill({json:{accounts:[],status:'connected',refresh}}));await page.route('**/api/refresh**',r=>r.fulfill({json:{...refresh,jobs:[]}}));await page.goto('/?region=khao-lak');
  await expect(page.locator('.portfolio-total strong')).toHaveText(published?'0':'—');await expect(page.locator('.portfolio-total .metric-label')).toHaveText(published?'Total open AR':'Open AR unavailable');
 });

@@ -1,3 +1,4 @@
+import {agingFixtureInventory,publishedAgingAccounts} from './fixtures/aging-published';
 import {test,expect} from '@playwright/test';
 import {setupDashboard,openDashboard} from './fixtures/dashboard-period';
 import {currentAgingAccounts} from './fixtures/current-aging';
@@ -39,13 +40,9 @@ for(const width of [1440,390])test('Dashboard all records sort across source pag
 
 for(const width of [1440,390])test('signed Aging retains the ring and marks credits without inventing positive shares at '+width,async({page})=>{
  await setupDashboard(page);await page.setViewportSize({width,height:900});
- const accounts=currentAgingAccounts.map(a=>a.id==='tsk-azure'?{...a,open:999990,agingBuckets:a.agingBuckets!.map((b,i)=>({...b,amount:i===0?1000000:i===1?-10:0,debit:i===0?1000000:0,credit:i===1?-10:0}))}:a);
+ const accounts=publishedAgingAccounts(currentAgingAccounts.map(a=>a.id==='tsk-azure'?{...a,open:999990,agingBuckets:a.agingBuckets!.map((b,i)=>({...b,amount:i===0?1000000:i===1?-10:0,debit:i===0?1000000:0,credit:i===1?10:0}))}:a));
  await page.route('**/api/portfolio**',r=>r.fulfill({json:{status:'connected',accounts,refresh:{running:false,hotels:['KAT','TSK'].map(hotel=>({hotel,status:'succeeded',last_success_at:'2026-09-12T02:59:00Z'}))}}}));
- await page.route('**/api/dashboard/aging-invoices**',r=>{
-  const q=new URL(r.request().url()).searchParams,scoped=accounts.filter(a=>!q.get('hotel')||a.hotel===q.get('hotel'));
-  const inventory=scoped.map(a=>{const buckets=a.agingBuckets!.map(b=>({key:JSON.stringify([b.label,b.start,b.end,b.sequence]),count:b.amount===0?0:1,amount:b.amount.toFixed(2),creditAmount:Math.max(0,-b.amount).toFixed(2),complete:true}));return {hotel:a.hotel,accountId:a.id,accountType:a.type,syncedAt:'2026-09-12T02:59:00Z',complete:true,unverified:0,buckets:[...buckets,{key:null,count:buckets.reduce((n,b)=>n+b.count,0),amount:a.open.toFixed(2),creditAmount:buckets.reduce((n,b)=>n+Number(b.creditAmount),0).toFixed(2),complete:true}]};});
-  return r.fulfill({json:{asOfDate:'2026-09-12',publications:['KAT','TSK'].map(hotel=>({hotel,sourceAt:'2026-09-12T02:59:00Z'})),accounts:inventory,summary:{complete:true,count:2,amount:'999990.00',creditAmount:'10.00',billing:[],followup:[],due:[],flags:[]},rows:[],total:0,complete:true}});
- });
+ await page.route('**/api/dashboard/aging-invoices**',r=>{const q=new URL(r.request().url()).searchParams,scoped=accounts.filter(a=>!q.get('hotel')||a.hotel===q.get('hotel'));return r.fulfill({json:agingFixtureInventory(scoped)});});
  await openDashboard(page,'/?dashboard=1&dashboardView=aging&hotel=TSK');
  const overview=page.getByRole('region',{name:'Current aging overview'});
  await expect(overview).toHaveAttribute('data-chart-mode','signed');await expect(overview.locator('.aging-v4-ring')).toHaveCount(1);

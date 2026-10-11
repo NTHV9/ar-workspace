@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 import {setupAgingStatus} from './fixtures/aging-invoice-status';
 const entry='/?dashboard=1&dashboardView=aging';
 for(const width of [1280,390])test('signed Aging counts include credits in totals, ranges and detail '+width,async({page})=>{
- const c=await setupAgingStatus(page,{credits:'mixed'});await page.setViewportSize({width,height:900});await page.goto(entry);
+ const c=await setupAgingStatus(page,{tabSession:true,credits:'mixed'});await page.setViewportSize({width,height:900});await page.goto(entry);
  await expect(page.getByLabel('Total open invoice count')).toHaveText('34 open invoices');await expect(page.getByLabel('KAT open invoice count')).toHaveText('31 invoices');await expect(page.getByLabel('TSK open invoice count')).toHaveText('3 invoices');
  await page.getByRole('button',{name:'View invoice statuses for Agent · Total · 91–120',exact:true}).click();const panel=page.locator('.aging-invoice-breakdown');
  await expect(panel.locator('.aging-breakdown-total')).toContainText('34 open invoices');await expect(panel.locator('.aging-breakdown-total')).toContainText('3,050.00');
@@ -13,5 +13,5 @@ for(const width of [1280,390])test('signed Aging counts include credits in total
  expect(c.errors).toEqual([]);expect(c.unexpected).toEqual([]);
 });
 for(const mode of ['only','zero'] as const)test('signed Aging preserves counts for '+mode+' net balances',async({page})=>{
- await setupAgingStatus(page,{credits:mode});await page.goto(entry);await expect(page.getByLabel('Total open invoice count')).toHaveText('2 open invoices');await page.getByRole('button',{name:'View invoice statuses for Agent · Total · All ages',exact:true}).click();const panel=page.locator('.aging-invoice-breakdown');await expect(panel.locator('.aging-breakdown-total')).toContainText('2 open invoices');await expect(panel.locator('.aging-breakdown-total')).toContainText(mode==='only'?'-฿150.00':'0.00');await expect(panel).not.toContainText('NaN');await expect(panel).not.toContainText('Infinity');
+ await setupAgingStatus(page,{tabSession:true,credits:mode});await page.goto(entry);await expect(page.getByLabel('Total open invoice count')).toHaveText('2 open invoices');await page.getByRole('button',{name:'View invoice statuses for Agent · Total · All ages',exact:true}).click();const panel=page.locator('.aging-invoice-breakdown');await expect(panel.locator('.aging-breakdown-total')).toContainText('2 open invoices');await expect(panel.locator('.aging-breakdown-total')).toContainText(mode==='only'?'-฿150.00':'0.00');await expect(panel).not.toContainText('NaN');await expect(panel).not.toContainText('Infinity');
 });

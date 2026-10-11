@@ -5,7 +5,7 @@ import type {AccessMember} from '../../src/access/model';
 import type {RegionId} from '../../src/domain/hotels';
 const owner:AccessMember={email:'ar@katathani.com',administrator:true,active:true,regions:['phuket','khao-lak'],revision:1,registered:true};
 async function adminSetup(page:Page,extra=0){
- const context=await setupRegional(page),writes:Record<string,unknown>[]=[];let conflict=false;
+ const context=await setupRegional(page,false,true),writes:Record<string,unknown>[]=[];let conflict=false;
  let members:AccessMember[]=[owner,{email:'synthetic.phuket@example.invalid',administrator:false,active:true,regions:['phuket'],revision:1,registered:false},{email:'synthetic.khaolak@example.invalid',administrator:false,active:false,regions:['khao-lak'],revision:2,registered:true},...Array.from({length:extra},(_,i)=>({email:`synthetic.${String(i).padStart(3,'0')}@example.invalid`,administrator:false,active:true,regions:['phuket'] as RegionId[],revision:1,registered:false}))];
  await page.route('**/api/access/users*',route=>{const r=route.request(),url=new URL(r.url());if(r.method()==='POST'){const input=r.postDataJSON();writes.push(input);if(conflict)return route.fulfill({status:409,json:{error:'access_revision_conflict'}});const found=members.find(m=>m.email===input.email);const row={...input,administrator:false,registered:found?.registered??false,revision:(found?.revision??0)+1};members=members.filter(m=>m.email!==input.email).concat(row);return route.fulfill({json:row});}const selected=members.filter(m=>(m.email??'').includes(url.searchParams.get('search')??'')),page=Number(url.searchParams.get('page')??0);return route.fulfill({json:{rows:selected.slice(page*25,page*25+25),total:selected.length}});});
  return {...context,writes,conflict:()=>{conflict=true;}};
@@ -30,7 +30,7 @@ test('keeps conflicting edits and paginates every approved email',async({page})=
  await page.getByRole('button',{name:'Save access',exact:true}).click();await expect(page.getByRole('alert')).toContainText('changed since you opened it');await expect(page.getByLabel('Email',{exact:true})).toHaveValue('synthetic.phuket@example.invalid');await expect(page.getByRole('checkbox',{name:'Khao Lak',exact:true})).toBeChecked();
 });
 async function staffSetup(page:Page,regions:RegionId[]){
- const context=await setupRegional(page);let active=true;
+ const context=await setupRegional(page,false,true);let active=true;
  await page.addInitScript(()=>{const key='sb-example-auth-token',data=JSON.parse(localStorage.getItem(key)!);data.user={...data.user,id:'00000000-0000-4000-8000-000000000044',email:'synthetic.staff@example.invalid'};localStorage.setItem(key,JSON.stringify(data));});
  await page.route('**/api/access/me',route=>route.fulfill(active?{json:{email:'synthetic.staff@example.invalid',administrator:false,regions,revision:1}}:{status:403,json:{error:'access_forbidden'}}));
  return {...context,revoke:()=>{active=false;}};
