@@ -23,7 +23,7 @@
 - [x] Database/integration: refresh freshness, failed jobs, query statistics/plans, reporting reconciliation and authorization boundaries.
 - [x] Synthetic workflow: PDF creation/edit/scan attachment/rename/preview, email preparation/region sender/retry and discard protections; optional actual synthetic test mail with no business event.
 - [x] For confirmed defects: record reproduction, implement minimal repair, prove original case and relevant regression tests pass.
-- [ ] Verify integrated build, review changes, deploy tested normal artifacts, check live behavior and publish a report separating tested/fixed/deployed and remaining limits.
+- [x] Verify integrated build, review changes, deploy tested normal artifacts, check live behavior and publish a report separating tested/fixed/deployed and remaining limits.
 
 ## Review focus
 

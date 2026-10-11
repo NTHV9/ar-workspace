@@ -38,3 +38,7 @@ Live authenticated request samples before release returned 200 for the main surf
 Both migrations passed synthetic local rollback tests and an actual-database candidate transaction. Account, Invoice, settings, Sent and tracker-conflict fingerprints remained unchanged after rolling back fixtures; original functions were restored and no synthetic Accounts remained. Exact reviewed migrations 113 and 114 were then applied. Readback confirms 53 new statement triggers, both original Sent triggers and the conflict guard, with zero synthetic Accounts or test business events.
 
 No historical warning deletion, original-sheet writes, OPERA accounting writes, paid configuration changes, or TSUN activation were performed. Six newly started production refreshes subsequently completed, with zero failed runs and zero new empty quality rows. A later cache sample still had no valid entries; genuine publications continue to invalidate globally, so cache hit-rate improvement is not claimed. Frontend deployment and integrated verification are recorded in PROJECT_STATUS.
+
+## Final release
+
+Normal source `9b6c466c264cd54aaef886f0f9a9acdda60d8c3c` is deployed as Worker `6087320d-97da-4ab7-bb55-fb4324a35a3e`. Health/source and signed-in Account search/navigation pass; runtime/bindings are unchanged apart from COMMIT_SHA. Database migrations 113/114 are enabled. [Review PR 134](https://github.com/NTHV9/ar-workspace/pull/134) remains open.
