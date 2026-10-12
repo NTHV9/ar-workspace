@@ -1,3 +1,9 @@
+## 2026-10-12 — Khao Lak Aging Account identity collision
+
+- Reproduced a number-only comparison collision: unrelated Khao Lak agents share an Account No. across hotels, so the first member's label described another member's real balance and Invoice drill. The underlying Hotel + Account ID and Invoice ownership remain correct.
+- Implemented Khao-only exact normalized number/name/type comparison keys, retaining complete-catalog ambiguity checks, explicit mappings and Phuket aliases. No ledger, settings, recipients, backend API or schema changes.
+- Red regression reproduced the collision; 74 related unit tests and TypeScript pass after correction. Private replay of all 412 current Accounts conserves every Hotel total, type aggregate and member exactly once; Phuket grouping is identical, while Khao Lak comparison groups split from 85 to 91. Full unit suite 1,835/1,835 passes. Desktop/mobile collision regressions pass exact status-to-ledger navigation for both identities and close the stale target after a renamed publication. Synthetic screenshots inspected; Astra review passes. Deployment verification follows below.
+
 ## 2026-10-11 — System audit and repairs
 
 - Deployed source `9b6c466c264cd54aaef886f0f9a9acdda60d8c3c` as Worker `6087320d-97da-4ab7-bb55-fb4324a35a3e`. Exact-source health/database/OPERA checks pass. Binding readback changes only COMMIT_SHA; runtime, workflows, six-hotel scope and ten secret names remain unchanged; Worker code bundle is byte-identical to the prior release. Signed-in live reload/search returns 412 Accounts, filters to four matches and opens the exact WAKL Account without errors. No Account save or additional send. [PR 134](https://github.com/NTHV9/ar-workspace/pull/134) attached and unmerged.

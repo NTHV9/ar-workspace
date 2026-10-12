@@ -1,3 +1,7 @@
+## Khao Lak Account comparison identity — 12 October 2026
+
+The owner reported an Aging row displaying another company's invoice after opening its detail. Account numbers are reused for different agents across Khao Lak hotels. Automatic Khao Lak comparison now requires matching Account No., exact normalized name and Account Type, all nonempty, with the full-catalog duplicate-number guard retained. Whitespace/case normalization is allowed; fuzzy names and name-only pairing across different numbers are not. Preserve explicit mappings and the existing Phuket number-based comparison policy. This changes reporting groups only: operational Hotel + Account ID, balances, Invoice ownership and recipient settings stay unchanged.
+
 ## Unbilled Dashboard attention starts at 31 days — 10 October 2026
 
 The owner changes the Dashboard's aged-unbilled indicator from 61+ to 31+ days of OPERA invoice age (inclusive). Apply the same threshold to count, amount, hotel comparison and Account/Invoice drilldown. Preserve billing-required, positive verified open balance and unbilled-as-of eligibility, including DRF exclusion. General invoices aged 61+ days, Aging ranges and the separate observation report remain unchanged. Keep the existing metric URL/API key for compatibility while updating its meaning and visible labels; invalidate cached old classifications. No ledger, billing history or reminder history changes.

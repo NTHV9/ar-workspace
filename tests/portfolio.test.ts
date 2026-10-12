@@ -49,3 +49,35 @@ it('totals only selected invoices in the active hotel and account', () => {
   const invoices = [{ id: 'i', hotel: 'KAT', accountId: 'a', open: 100 }, { id: 'i', hotel: 'TSK', accountId: 'a', open: 300 }];
   expect(selectionTotal(invoices, new Set(['i']), 'KAT', 'a')).toBe(100);
 });
+const regional = [
+  {hotel:'TLKL',id:'regional-a',account_no:'SYN-OTA-1',name:'Synthetic North Travel',type:'Agent',open:151,over90:20,items:1},
+  {hotel:'TLFO',id:'regional-b',account_no:'SYN-OTA-1',name:'Synthetic South Travel',type:'Agent',open:200,over90:30,items:2},
+  {hotel:'TSAN',id:'regional-c',account_no:' syn-ota-1 ',name:' synthetic   SOUTH travel ',type:' agent ',open:0,over90:0,items:0},
+];
+it('requires the complete normalized account identity for automatic Khao Lak comparisons',()=>{
+  const result=aggregateAccounts(regional);
+  expect(result).toHaveLength(2);
+  expect(result[0].members.map(a=>a.id)).toEqual(['regional-a']);
+  expect(result[1].members.map(a=>a.id)).toEqual(['regional-b','regional-c']);
+  expect(result[1]).toMatchObject({total:200,accounts:2,items:2,amounts:{TLFO:200,TSAN:0}});
+  expect(result.reduce((sum,a)=>sum+a.total,0)).toBe(351);
+  expect(result.reduce((sum,a)=>sum+a.over90,0)).toBe(50);
+  expect(aggregateAccounts([...regional].reverse()).map(a=>a.key).sort()).toEqual(result.map(a=>a.key).sort());
+});
+it('does not infer regional identity from a name, different number, type mismatch, or blank fields',()=>{
+  const first=regional[0];
+  const others=[
+    {...first,hotel:'TLFO',id:'other-number',account_no:'SYN-OTA-2'},
+    {...first,hotel:'TLFO',id:'other-type',type:'Corporate'},
+    {...first,hotel:'TSAN',id:'blank-name',name:' '},
+    {...first,hotel:'WAKL',id:'blank-type',type:' '},
+    {...first,hotel:'WAKL',id:'blank-number',account_no:' '},
+  ];
+  for(const other of others)expect(aggregateAccounts([first,other])).toHaveLength(2);
+});
+it('keeps the full regional duplicate-number guard and explicit reporting mappings',()=>{
+  const matching={...regional[0],hotel:'TLFO',id:'matching'};
+  const catalog=[regional[0],matching,{...regional[0],id:'duplicate',name:'Synthetic Other'}];
+  expect(aggregateAccounts([regional[0],matching],false,catalog)).toHaveLength(2);
+  expect(aggregateAccounts(regional.map(a=>({...a,group:'approved-reporting-group'})))).toHaveLength(1);
+});
