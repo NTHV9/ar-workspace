@@ -1,6 +1,7 @@
 import {isHotelId,type RegionId} from '../domain/hotels';
 import {ChevronRight} from 'lucide-react';
-import type {AgingBucket} from '../domain/portfolio';
+import {useEffect,useRef,useState} from 'react';
+import {money,type AgingBucket} from '../domain/portfolio';
 import {agingBucketKey,comparisonHotels,agingPercentage,type AgingCell,type AgingComparisonRow,type AgingHotel} from './aging-model';
 import type {AgingCount} from './aging-invoice-data';
 import './aging-all-table.css';
@@ -9,6 +10,12 @@ interface Props {netTotals?:Partial<Record<AgingHotel,number|null>>;onOpenAccoun
 const amount=(n:number|null)=>n===null?'—':new Intl.NumberFormat('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
 const stateText:Record<AgingCell['state'],string>={verified:'',absent:'No account',outside:'Outside scope',unavailable:'Unverified'};
 export default function AgingAllTable({netTotals,onOpenAccount,debitCredit=false,region,rows,columns,allColumns,showNet,percentages,hotel,type,selectedKey,sort,onSort,onDrill,getCount,onCounts}:Props){
+ const [picker,setPicker]=useState<{key:string;hotel:AgingHotel}|null>(null);
+ const pickerDialog=useRef<HTMLDialogElement>(null),pickerTrigger=useRef<HTMLButtonElement|null>(null);
+ const pickerRow=picker?rows.find(row=>row.key===picker.key):undefined;
+ const pickerMembers=pickerRow?.members.filter(a=>a.hotel===picker?.hotel)??[];
+ const closePicker=()=>{pickerDialog.current?.close();setPicker(null);pickerTrigger.current?.focus();};
+ useEffect(()=>{if(picker&&pickerMembers.length>1)pickerDialog.current?.showModal();else if(picker)closePicker();},[picker,pickerMembers.length]);
  const hotels:AgingHotel[]=isHotelId(hotel)?[hotel]:comparisonHotels(rows.flatMap(r=>r.members),region);
  const measures=[...columns.map(bucket=>({key:agingBucketKey(bucket),label:bucket.label,bucket})),...(showNet?[{key:'net',label:'Net open',bucket:undefined as AgingBucket|undefined}]:[])];
  const cell=(row:AgingComparisonRow,h:AgingHotel,key:string):AgingCell=>key==='net'?row.net[h]:row.cells[allColumns.findIndex(b=>agingBucketKey(b)===key)]?.[h]??{amount:null,state:'unavailable',debit:null,credit:null};
@@ -16,8 +23,8 @@ export default function AgingAllTable({netTotals,onOpenAccount,debitCredit=false
   const c=cell(row,h,measure.key);
   return measure.bucket?.start!=null&&measure.bucket.start>90&&c.state==='verified'&&c.amount!==null&&Number.isFinite(c.amount)&&c.amount>0?'has-aged-balance':'';
  };
- const name=(row:AgingComparisonRow)=><><button className="aging-group-name aging-row-link" aria-label={type===undefined?`Open accounts in ${row.name}`:`Open invoices for ${row.name}`} onClick={()=>onDrill(row,'Total')}>{row.name}<ChevronRight size={14}/></button><small className="aging-group-meta">{type===undefined?`${row.members.length} hotel accounts`:row.members.map(a=>`${a.hotel} · ${a.account_no||a.id}`).join(' / ')}</small></>;
- const hotelName=(row:AgingComparisonRow,h:AgingHotel)=>{const members=row.members.filter(a=>a.hotel===h);return type!==undefined&&onOpenAccount&&members.length===1?<button className={`aging-property-label aging-hotel-link ${h.toLowerCase()}`} aria-label={`Open ${h} account ${members[0].name}`} onClick={()=>onOpenAccount(h,members[0].id)}>{h}</button>:<span className={`aging-property-label ${h.toLowerCase()}`}>{h}</span>;};
+ const name=(row:AgingComparisonRow)=><><button className="aging-group-name aging-row-link" aria-label={type===undefined?`Open accounts in ${row.name}`:`Open invoices for ${row.name}`} onClick={()=>onDrill(row,'Total')}>{row.name}<ChevronRight size={14}/></button><small className="aging-group-meta">{type===undefined?`${row.members.length} hotel accounts`:row.members.map(a=>`${a.hotel} · ${a.account_no?.trim()||a.id}`).join(' / ')}</small></>;
+ const hotelName=(row:AgingComparisonRow,h:AgingHotel)=>{const members=row.members.filter(a=>a.hotel===h);return type!==undefined&&onOpenAccount&&members.length?<button className={`aging-property-label aging-hotel-link ${h.toLowerCase()}`} aria-label={members.length===1?`Open ${h} account ${members[0].name}`:`Choose ${h} account for ${row.name}`} onClick={event=>{if(members.length===1)onOpenAccount(h,members[0].id);else{pickerTrigger.current=event.currentTarget;setPicker({key:row.key,hotel:h});}}}>{h}</button>:<span className={`aging-property-label ${h.toLowerCase()}`}>{h}</span>;};
  const value=(row:AgingComparisonRow,h:AgingHotel,key:string,bucket?:AgingBucket)=>{
   const c=cell(row,h,key),p=agingPercentage(c.amount,row.net[h].amount),content=<><strong className={c.amount!==null&&c.amount<0?'is-credit':''}>{amount(c.amount)}</strong>{c.state!=='verified'?<small>{stateText[c.state]}</small>:percentages&&bucket&&<small>{p===null?'% unavailable':`${p.toFixed(1)}%`}</small>}{percentages&&!bucket&&netTotals&&c.state==='verified'&&<small>{agingPercentage(c.amount,netTotals[h]??null)===null?'% unavailable':`${agingPercentage(c.amount,netTotals[h]??null)!.toFixed(1)}% of scope`}</small>}{debitCredit&&bucket&&c.state==='verified'&&<small className="aging-cell-components">Debit {amount(c.debit)}<br/>Credit {amount(c.credit)}</small>}</>;
   const count=getCount?.(row,h,bucket);
@@ -31,5 +38,6 @@ export default function AgingAllTable({netTotals,onOpenAccount,debitCredit=false
   </table>
   <table className="aging-all-table aging-mobile-table" aria-label="Current source aging comparison"><colgroup><col className="aging-mobile-range-col"/>{hotels.map(h=><col key={h} className={h==='Total'?'aging-mobile-total-col':undefined}/>)}</colgroup><thead><tr><th scope="col">Range · THB</th>{hotels.map(h=><th key={h} scope="col"><span className={'aging-property-label '+h.toLowerCase()}>{h}</span></th>)}</tr></thead>{rows.map(row=><tbody key={row.key} data-aging-group={row.key}><tr><th className="aging-mobile-group-name" scope="rowgroup" colSpan={hotels.length+1}>{name(row)}{type!==undefined&&<span className="aging-mobile-hotel-links">{hotels.filter(h=>h!=='Total').map(h=><span key={h}>{hotelName(row,h)}</span>)}</span>}</th></tr>{measures.map(m=><tr key={m.key} className={m.key===selectedKey?'is-selected':m.key==='net'?'is-net':''}><th scope="row" data-band={m.bucket?allColumns.findIndex(b=>agingBucketKey(b)===m.key)%6:undefined}>{m.label}</th>{hotels.map(h=><td key={h} className={balanceClass(row,h,m)}>{value(row,h,m.key,m.bucket)}</td>)}</tr>)}</tbody>)}</table>
   {!rows.length&&<p className="aging-empty">No current accounts match these filters.</p>}
+  {picker&&pickerMembers.length>1&&<dialog ref={pickerDialog} className="group-dialog panel" aria-label="Choose account" onCancel={event=>{event.preventDefault();closePicker();}} onClose={()=>{setPicker(null);pickerTrigger.current?.focus();}}><h2>{pickerRow?.name} · {picker.hotel}</h2>{pickerMembers.map(a=><button key={a.id} className="hotel-choice" onClick={()=>{const current=rows.find(row=>row.key===picker.key)?.members.find(member=>member.hotel===picker.hotel&&member.id===a.id);if(current){closePicker();onOpenAccount?.(current.hotel,current.id);}}}><span><b>{a.account_no?.trim()||a.id}</b><small>{a.name}{a.account_no?.trim()&&pickerMembers.filter(member=>member.account_no?.trim().toUpperCase()===a.account_no?.trim().toUpperCase()).length>1?` · ${a.id}`:''}</small></span><strong>{money(a.open,false)}</strong><ChevronRight size={16}/></button>)}<button onClick={closePicker}>Cancel</button></dialog>}
  </div>;
 }

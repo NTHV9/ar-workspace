@@ -63,11 +63,9 @@ export function aggregateAccounts(rows: Account[], byType = false, identityRows:
     const number=numberOf(row);
     const region=isHotelId(row.hotel)?hotelRegion(row.hotel):row.hotel;
     const name=normalizedIdentity(row.name), type=normalizedIdentity(row.type);
-    const automaticKey=number && !ambiguous.has(region+number)
-      ? region==='khao-lak'
-        ? name && type ? `identity:${JSON.stringify([number,name,type])}` : null
-        : `number:${number}`
-      : null;
+    const automaticKey=region==='khao-lak'
+      ? name && type ? `identity:${JSON.stringify([name,type])}` : null
+      : number && !ambiguous.has(region+number) ? `number:${number}` : null;
     const key = byType ? row.type : row.group ? `group:${row.group}`
       : automaticKey ?? `${row.hotel}:${row.id}`;
     const scopedKey=region==='phuket'?key:`${region}:${key}`;
