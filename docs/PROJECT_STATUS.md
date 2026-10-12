@@ -1,3 +1,9 @@
+## 2026-10-12 — Consolidate same-name Khao Lak reporting groups
+
+- Owner clarifies the earlier identity-collision repair still splits identical agents when numbers differ. Khao comparison grouping now uses exact normalized name + type independently of Account No.; explicit mappings and Phuket matching remain unchanged.
+- Retain every ledger member, including multiple same-hotel Accounts. Hotel labels open an explicit picker when necessary, including zero-balance members and IDs to distinguish duplicate numbers. Invoice/status drills retain exact Hotel + Account + Invoice identities.
+- Private current-catalog replay preserves all 412 Account identities, hotel totals and type aggregates; Phuket remains 106 groups, Khao groups consolidate from 91 to 77. Red regression and unit/browser checks verify one group across numbers, multiple same-hotel members, exact Invoice navigation, zero-account selection and stale-picker closure. No ledger, settings, recipient, API or schema mutations. TypeScript, 75 related unit tests and two desktop/mobile browser cases pass. Picker duplicate-number, zero-account, Escape/cancel focus and stale-membership cases pass; screenshots inspected and Astra review approved. Deployment follows below.
+
 ## 2026-10-12 — Khao Lak Aging Account identity collision
 
 - Deployed source `899539165ed0d93bed63f5f1bd2200af214e5239` as Worker `939b87ea-03e3-4b80-8be2-17755caf6a32`. Health/source/database/OPERA checks pass; binding comparison changes only COMMIT_SHA and preserves runtime, workflows and ten secret names. Backend bundle remains byte-identical. Signed-in live Aging separates the conflicting companies, shows the reported amount beneath its correct Account title, and opens the exact Hotel/Account/Invoice focus. Screenshot inspected privately. [PR 135](https://github.com/NTHV9/ar-workspace/pull/135) attached and unmerged. No database mutations or emails.

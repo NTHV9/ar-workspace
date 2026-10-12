@@ -1,3 +1,7 @@
+## Same-name Khao Lak Accounts share one reporting group — 12 October 2026
+
+The owner clarified that identical agent names must not appear as separate comparison rows merely because Account numbers differ, including multiple Accounts within one hotel. This supersedes the earlier same-day Khao number/name/type rule below. Khao automatic reporting groups use exact normalized name + Account Type, both nonempty, regardless of missing/different/duplicate Account No. Preserve every Hotel + Account ID and expose an explicit picker for hotels with multiple members; Invoice navigation, settings and recipients remain per ledger. No fuzzy aliases or cross-type/region merging. Explicit mappings and the Phuket number-based policy remain unchanged.
+
 ## Khao Lak Account comparison identity — 12 October 2026
 
 The owner reported an Aging row displaying another company's invoice after opening its detail. Account numbers are reused for different agents across Khao Lak hotels. Automatic Khao Lak comparison now requires matching Account No., exact normalized name and Account Type, all nonempty, with the full-catalog duplicate-number guard retained. Whitespace/case normalization is allowed; fuzzy names and name-only pairing across different numbers are not. Preserve explicit mappings and the existing Phuket number-based comparison policy. This changes reporting groups only: operational Hotel + Account ID, balances, Invoice ownership and recipient settings stay unchanged.

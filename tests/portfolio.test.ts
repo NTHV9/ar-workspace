@@ -54,7 +54,7 @@ const regional = [
   {hotel:'TLFO',id:'regional-b',account_no:'SYN-OTA-1',name:'Synthetic South Travel',type:'Agent',open:200,over90:30,items:2},
   {hotel:'TSAN',id:'regional-c',account_no:' syn-ota-1 ',name:' synthetic   SOUTH travel ',type:' agent ',open:0,over90:0,items:0},
 ];
-it('requires the complete normalized account identity for automatic Khao Lak comparisons',()=>{
+it('uses normalized name and type for automatic Khao Lak comparisons',()=>{
   const result=aggregateAccounts(regional);
   expect(result).toHaveLength(2);
   expect(result[0].members.map(a=>a.id)).toEqual(['regional-a']);
@@ -64,20 +64,28 @@ it('requires the complete normalized account identity for automatic Khao Lak com
   expect(result.reduce((sum,a)=>sum+a.over90,0)).toBe(50);
   expect(aggregateAccounts([...regional].reverse()).map(a=>a.key).sort()).toEqual(result.map(a=>a.key).sort());
 });
-it('does not infer regional identity from a name, different number, type mismatch, or blank fields',()=>{
+it('does not infer regional identity across a type mismatch or blank name/type',()=>{
   const first=regional[0];
   const others=[
-    {...first,hotel:'TLFO',id:'other-number',account_no:'SYN-OTA-2'},
     {...first,hotel:'TLFO',id:'other-type',type:'Corporate'},
     {...first,hotel:'TSAN',id:'blank-name',name:' '},
     {...first,hotel:'WAKL',id:'blank-type',type:' '},
-    {...first,hotel:'WAKL',id:'blank-number',account_no:' '},
   ];
   for(const other of others)expect(aggregateAccounts([first,other])).toHaveLength(2);
 });
-it('keeps the full regional duplicate-number guard and explicit reporting mappings',()=>{
+it('allows different or missing numbers and multiple same-hotel IDs in one exact regional name/type group',()=>{
+  const matching={...regional[0],hotel:'TLFO',id:'matching',account_no:'SYN-OTA-2'};
+  const duplicate={...regional[0],id:'second',account_no:'SYN-OTA-3'};
+  const missing={...regional[0],hotel:'TSAN',id:'missing',account_no:' '};
+  const result=aggregateAccounts([regional[0],matching,duplicate,missing]);
+  expect(result).toHaveLength(1);
+  expect(result[0]).toMatchObject({total:604,accounts:4,amounts:{TLKL:302,TLFO:151,TSAN:151}});
+  expect(result[0].members.map(a=>a.id)).toEqual(['regional-a','matching','second','missing']);
+  expect(aggregateAccounts([regional[0],matching],false,[regional[0],matching,duplicate])).toHaveLength(1);
+});
+it('keeps explicit regional reporting mappings ahead of normalized name/type',()=>{
   const matching={...regional[0],hotel:'TLFO',id:'matching'};
   const catalog=[regional[0],matching,{...regional[0],id:'duplicate',name:'Synthetic Other'}];
-  expect(aggregateAccounts([regional[0],matching],false,catalog)).toHaveLength(2);
+  expect(aggregateAccounts([regional[0],matching],false,catalog)).toHaveLength(1);
   expect(aggregateAccounts(regional.map(a=>({...a,group:'approved-reporting-group'})))).toHaveLength(1);
 });
