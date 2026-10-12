@@ -46,9 +46,10 @@ export function filterAccounts(rows: Account[], filters: { hotel: string; type: 
   return rows.filter(row => (filters.hotel === 'All' || row.hotel === filters.hotel) && (filters.type === 'All' || row.type === filters.type) && `${row.name} ${row.id}`.toLowerCase().includes(filters.search.toLowerCase()));
 }
 export function aggregateAccounts(rows: Account[], byType = false, identityRows: Account[] = rows): Comparison[] {
-  // Account No. pairs reporting rows only. Hotel + ID remains the ledger identity.
+  // Reporting pairs do not change the operational Hotel + ID ledger identity.
   // Check the complete catalog so a filter cannot conceal an ambiguous number.
   const numberOf = (row:Account) => row.account_no?.trim().toUpperCase() || '';
+  const normalizedIdentity = (value:string) => value.trim().replace(/\s+/g,' ').toUpperCase();
   const seen = new Set<string>(), ambiguous = new Set<string>();
   if(!byType)for(const row of identityRows){
     const number=numberOf(row);
@@ -61,8 +62,14 @@ export function aggregateAccounts(rows: Account[], byType = false, identityRows:
   for (const row of rows) {
     const number=numberOf(row);
     const region=isHotelId(row.hotel)?hotelRegion(row.hotel):row.hotel;
+    const name=normalizedIdentity(row.name), type=normalizedIdentity(row.type);
+    const automaticKey=number && !ambiguous.has(region+number)
+      ? region==='khao-lak'
+        ? name && type ? `identity:${JSON.stringify([number,name,type])}` : null
+        : `number:${number}`
+      : null;
     const key = byType ? row.type : row.group ? `group:${row.group}`
-      : number && !ambiguous.has(region+number) ? `number:${number}` : `${row.hotel}:${row.id}`;
+      : automaticKey ?? `${row.hotel}:${row.id}`;
     const scopedKey=region==='phuket'?key:`${region}:${key}`;
     const value = groups.get(scopedKey) ?? { key, name: byType ? row.type : row.name, amounts:{}, kat: 0, tsk: 0, total: 0, over90: 0, share: 0, items: 0, accounts: 0, members: [] };
     if(isHotelId(row.hotel))value.amounts[row.hotel]=(value.amounts[row.hotel]??0)+row.open;
