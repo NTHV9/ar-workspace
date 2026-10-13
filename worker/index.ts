@@ -1,5 +1,6 @@
 import {safeAuthenticationDiagnostic} from './opera/auth';
 import {trackerApi} from './tracker-sync/api';
+import {trackerWatchCallback,maintainTrackerWatches,type TrackerWatchEnv} from './tracker-sync/watch';
 import {trackerConflictsApi} from './tracker-sync/conflicts-api';
 import {trackerPickerConfig} from './tracker-sync/picker';
 import {trackerAdapter} from './tracker-sync/provider';
@@ -48,7 +49,7 @@ import type {EmailEnv} from './email/shared';
 import {rendererProof} from './statement/proof';
 import {isHotelId,regionHotels} from '../src/domain/hotels';
 import {configuredOperaHotels,hotelBelongsToRegion,regionalHotelScope,resultMatchesHotelScope} from './hotels';
-interface Env extends TrackerEnv,ReportSheetLinksEnv,FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
+interface Env extends TrackerWatchEnv,TrackerEnv,ReportSheetLinksEnv,FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function upstream(url: string, options: RequestInit) {
   const controller = new AbortController();
@@ -62,6 +63,7 @@ async function upstream(url: string, options: RequestInit) {
 }
 export async function handleApi(request: Request, env: Env,background?:{waitUntil(task:Promise<unknown>):void}): Promise<Response> {
   const requestUrl=new URL(request.url),path=requestUrl.pathname;
+  if(path==='/api/tracker/notifications')return trackerWatchCallback(request,env,background);
   if(path==='/api/access/login')return json({error:'google_sign_in_required'},410);
   if(path==='/api/gmail/callback')return request.method==='GET'?(new URL(request.url).searchParams.get('state')?.startsWith('d.')?driveCallback(request,env):gmailCallback(request,env)):json({error:'method_not_allowed'},405);
   const acceptanceRequest=path.startsWith('/api/acceptance/');
@@ -271,6 +273,7 @@ export default {
   async scheduled(event:{cron?:string},env:Env) {
     if(writesHeld(env))return;
     if(env.TRACKER_SYNC_ENABLED==='true'&&['*/5 * * * *',currentRefreshCron].includes(event.cron??'')){
+      await maintainTrackerWatches(env);
       const bindings=await backendRpc<{region:'phuket'|'khao-lak';owner:string}[]>(env,'ar_tracker_scheduled_bindings',{});
       await Promise.allSettled(bindings.map(b=>syncTracker(env,b.owner,b.owner,b.region,trackerAdapter)));
     }

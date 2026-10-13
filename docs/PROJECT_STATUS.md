@@ -1,3 +1,10 @@
+## 2026-10-13 — Tracker change notification design
+
+- Owner approved event-driven synchronization to reduce idle polling. [Detailed design](superpowers/specs/2026-10-13-tracker-change-notifications-design.md) covers file-scoped Drive watches, durable coalesced work, renewal, immediate confirmed-send wakeup, browser revision refresh and per-region staged fallback.
+- Read-only inspection confirms existing five-minute tracker scheduling and existing 60-second browser revision polling. The earlier conversational suggestion that the browser had no Sheet-change tracking was corrected.
+- Owner subsequently confirmed fastest Sheet-to-open-web updates with five-minute fallback. Implemented file-scoped authenticated notification hints, durable tracker Workflow, expiring-watch renewal and authenticated regional Realtime revision hints. Original files and date authority remain unchanged; outbound acceleration is deferred from this scope.
+- Local SQL behavioral replay passed, browser regression 16/16 and focused checks passed. Independent review found and verified fixes for terminal-before-claim Workflow recovery and initial browser revision races. Production transactional preflight passed then schema applied: Realtime logical publication available, zero initial watch/wake records, anonymous read and authenticated write denied. Worker deployment and actual notification delivery follow; no live Sheet values edited to create events.
+
 ## 2026-10-13 — Sheet-authoritative dates and verified empty address
 
 - Owner makes verified Sheet R/U/V/W current dates authoritative, including corrections/clears; Friendly/Final remain web-sent. Exact inspection finds a completed billing write followed by a blank Sheet date, and a different Sheet row with a billing date but missing Account No. Implementation and verified source alignment are in progress; immutable Sent evidence must remain.
