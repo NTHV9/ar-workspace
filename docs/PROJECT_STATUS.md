@@ -2112,3 +2112,5 @@ Older checkpoints below retain their results and limitations as history; their h
 
 
 Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed as Worker `660d164c-a9e8-4e6b-b03b-6038802e2c86`. Exact source health, database verification and six unauthenticated route boundaries passed. This supersedes the local-only checkpoint above. Signed-in live visual validation still awaits owner Google sign-in; PR #113 CI/merge is recorded separately.
+
+- Dashboard Invoice-link release: source 7afe9a9 deployed as Worker db8c4a22-675a-41c7-b8b2-3d9cce557639. Actual signed-in Dashboard click opened the selected TSAN Invoice with the correct Hotel, Account, Invoice and Folio in its detail panel; no business write or mail. Private screenshot retained outside Git.
