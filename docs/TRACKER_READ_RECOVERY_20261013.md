@@ -23,3 +23,13 @@ Google's [spreadsheet read documentation](https://developers.google.com/workspac
 ## Verification
 
 Red regressions reproduce the old oversized-response failure and occupied typed metadata exceeding 16 MiB in aggregate. Focused native/provider/sync/telemetry checks and TypeScript pass after repair, including later-page key movement, missing/truncated data, changed sheet/offset, duplicate identities, formula keys, response caps and exact single-POST/uncertain writeback behavior. Private differential replay of the reconstructed current export produces exactly the same 1,101 provider rows and schema as the original parser, using nine reads with at most 200 grid rows per request. Final deployment and actual recovery are recorded below after verification; the repair is not declared enabled from local tests alone.
+
+## Deployed and recovered
+
+Final source `cd2fc8f6ab5b50319a70711813d9223aa5a021b3` is deployed as Worker `f52fb2ce-32e7-459b-be8d-df597b6e6379`. Normal release build and exact-source health pass. Runtime and non-variable bindings are identical; only COMMIT_SHA changes. Existing schedules, workflows, credentials and integration flags are preserved.
+
+Final focused suite: **90/90 passed**. Entire unit suite: **1,887/1,887 passed**. Astra's independent review passes.
+
+A normal Check changes run on the deployed reader starts at **12:26:31 ICT** and succeeds at **12:26:39 ICT** on 13 October. Fresh application readback confirms `error=null`, connected/enabled/available/writebackAvailable=true and zero pending writes. The red error disappears in the actual Reports UI; a private screenshot was inspected. This is verified manual recovery through the normal synchronization function; the next scheduled recurrence was not needed to establish this result and is not claimed as observed.
+
+Pending field differences update to 2,016 after the current source becomes readable. They remain separate review items, not synchronization failures; no conflict values were guessed or manually resolved. No original-sheet layout/permission change, email send, schema migration or OPERA accounting write was performed.

@@ -1,4 +1,7 @@
-## 2026-10-13 — Investigating a later Khao Lak tracker failure
+## 2026-10-13 — Khao Lak tracker read recovered
+
+- Final paged source `cd2fc8f6ab5b50319a70711813d9223aa5a021b3` deployed as Worker `f52fb2ce-32e7-459b-be8d-df597b6e6379`. Normal build, exact-source health and runtime/binding readback pass; only COMMIT_SHA changes. Ninety focused tests, the complete 1,887-test unit suite and Astra review pass.
+- Normal Check changes succeeds at **12:26:39 ICT**, with error=null and zero pending writes. Actual Reports UI no longer shows the red error; private screenshot inspected. Pending differences update to 2,016 and remain review items. This is a verified manual recovery using the normal sync path; existing automatic schedules remain enabled. No sheet layout/permissions, schema, email or OPERA ledger change.
 
 - Owner reports a red tracker status after the functional audit. Fresh status confirms Khao Lak last succeeded at 10:51 ICT and later attempts fail with generic tracker_unavailable; Phuket succeeds and shared Drive remains connected. This is distinct from the pending field-difference count. No manual synchronization or original-sheet edit was performed for diagnosis.
 - Read-only current sheet export has the expected headers and no duplicate nonblank canonical Invoice identity. Existing generic error storage discards the failed stage, so a narrow sanitized failure log is implemented: fixed phase/region, exact allowlisted code and trusted bounded HTTP status only. No identifiers, values, credentials, raw errors, success logs or business behavior changes. Forty-one focused tests and TypeScript pass; Astra reviewed the privacy/control-flow boundary. Runtime diagnosis remains pending, not fixed.
