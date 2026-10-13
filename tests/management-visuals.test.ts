@@ -4,6 +4,16 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {BillingProgress} from '../src/dashboard/ManagementVisuals';
 import {syntheticManagement} from './fixtures/management-dashboard';
 import {agingPlot,attentionAccounts,billingCompletion} from '../src/dashboard/management-visuals';
+it('renders fractional completion and never rounds remaining billing up to 100%',()=>{
+ const data=syntheticManagement(),scope={hotel:'All',day:data.to,from:data.from,to:data.to,type:'',account:''};
+ const billed=data.metrics.find(m=>m.key==='billed')!,unbilled=data.metrics.find(m=>m.key==='unbilled')!;
+ billed.amount='10720000.00';unbilled.amount='23000.00';unbilled.count=2;
+ const html=()=>renderToStaticMarkup(createElement(BillingProgress,{data,scope,onDetail:()=>{}}));
+ expect(html()).toContain('<strong>99.8%</strong>');expect(html()).not.toContain('<strong>100%</strong>');
+ unbilled.amount='0.01';expect(html()).toContain('<strong>&lt;100%</strong>');
+ unbilled.amount='0.00';unbilled.count=0;expect(html()).toContain('<strong>100%</strong>');
+ billed.amount='0.00';unbilled.amount='100.00';expect(html()).toContain('<strong>0%</strong>');
+});
 it('makes verified Credits a read-only drill and disables unknown credit coverage',()=>{
  const data=syntheticManagement(),scope={hotel:'All',day:data.to,from:data.from,to:data.to,type:'',account:''};
  const html=()=>renderToStaticMarkup(createElement(BillingProgress,{data,scope,onDetail:()=>{}}));

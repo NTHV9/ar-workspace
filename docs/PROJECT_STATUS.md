@@ -1,3 +1,8 @@
+## 2026-10-13 — Billing progress rounding
+
+- Fixed whole-number rounding that displayed 100% while positive unbilled value remained. Visible and accessible percentage now share one-decimal formatting; near-complete values rounding to 100 display <100% while a positive remainder exists. Amount-based denominator, exact amounts and invoice counts are unchanged.
+- Seven management-visual regressions and TypeScript pass, including fractional completion, one-satang remainder, true completion and zero billed. Deployment/live verification follows.
+
 ## 2026-10-13 — Reports navigation restricted to administrator
 
 - Invoice Register and External billing activity tabs render only for the verified administrator session with ar@katathani.com. Staff Reports defaults to Google Sheets even on stale register/external deep links and does not mount/fetch those report surfaces. Existing regional APIs used by account-level work and tracker synchronization are unchanged; this is report-surface visibility, not removal of staff account workflow rights.
