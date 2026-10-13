@@ -27,6 +27,8 @@ export async function accountWithAddressee(reader:{profile?:(profileId:string)=>
  if(!addresses.length&&!attachedId)return account;
  if(matches.length!==1)throw Error('document_addressee_ambiguous');
  const chosen=matches[0],address=record(chosen.address);
- if(!Array.isArray(address.addressLine)||!hasLines(address))throw Error('document_addressee_unavailable');
+ // A successful, identity-checked profile can explicitly contain blank postal
+ // lines. Keep its selected address (including country) without inventing text.
+ if(!Array.isArray(address.addressLine)||!address.addressLine.every(value=>typeof value==='string'))throw Error('document_addressee_unavailable');
  return {...account,address:chosen};
 }

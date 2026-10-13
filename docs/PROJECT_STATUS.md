@@ -1,3 +1,8 @@
+## 2026-10-13 — Sheet-authoritative dates and verified empty address
+
+- Owner makes verified Sheet R/U/V/W current dates authoritative, including corrections/clears; Friendly/Final remain web-sent. Exact inspection finds a completed billing write followed by a blank Sheet date, and a different Sheet row with a billing date but missing Account No. Implementation and verified source alignment are in progress; immutable Sent evidence must remain.
+- Selected TSAN document diagnostic verifies the matching profile and attached primary address, one complete address row, four blank address lines and a country. Local resolver fix accepts these verified blank postal lines while preserving all identity, shape, count and provider-failure checks; Statement/Invoice models retain country and unchanged money. Actual repaired PDF generation pending.
+
 ## 2026-10-13 — Live PDF and existing Draft send completed
 
 - [Actual full-flow evidence and cleanup](LIVE_PDF_DRAFT_SEND_20261013.md): two fictional Invoices → actual Statement/Invoice generation → edited/renamed four-page package with synthetic scan → actual private storage → Gmail Draft → explicit web send. Sent verified at 17:34:44 ICT; downloaded/reviewed/stored/sent attachment hashes agree. One isolated delivery; zero original business Sent events and tracker writes for the fixture.

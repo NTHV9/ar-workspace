@@ -35,9 +35,20 @@ it('does not turn profile failure into a successful name-only PDF',async()=>{
 it('permits a verified empty address list without inventing address or tax text',async()=>{
  const a=account();expect(await accountWithAddressee({profile:async()=>profile([])},'KAT','account',a)).toBe(a);
 });
-it('feeds the same complete profile lines into Statement without changing money or aging',async()=>{
- const money=(amount:number)=>({amount,currencyCode:'THB'}),a=await accountWithAddressee({profile:async()=>profile()},'KAT','account',account());
+it.each([true,false])('retains a verified selected profile address with four blank lines (country present: %s)',async countryPresent=>{
+ const a={...account('TSAN'),address:{id:'attached',type:'Address'}},chosen={id:'attached',type:'Address',address:{addressLine:['','','',''],primaryInd:true,country:countryPresent?{code:'TH'}:{}}};
+ const p={profileIdList:[{id:'profile',type:'Profile'}],profileDetails:{addresses:{addressInfo:[chosen],totalResults:1}}};
+ const result=await accountWithAddressee({profile:async()=>p},'TSAN','account',a);
+ expect(result).toEqual({...a,address:chosen});expect(result.accountName).toBe(a.accountName);
+});
+it.each([undefined,null,'',{},[null],[123],['',{}]])('rejects malformed or unconfirmed profile address lines (%j)',async addressLine=>{
+ const p={profileIdList:[{id:'profile',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'primary',address:{addressLine,primaryInd:true,country:{code:'TH'}}}],totalResults:1}}};
+ await expect(accountWithAddressee({profile:async()=>p},'KAT','account',account())).rejects.toThrow('document_addressee_unavailable');
+});
+it.each([false,true])('feeds verified profile stationery into Statement without changing money or aging (blank lines: %s)',async blank=>{
+ const source=profile();if(blank){source.profileDetails.addresses.addressInfo[0].address.addressLine=['','','',''];source.profileDetails.addresses.addressInfo[0].address.country={code:'TH'};}
+ const money=(amount:number)=>({amount,currencyCode:'THB'}),a=await accountWithAddressee({profile:async()=>source},'KAT','account',account());
  const raw={accountDetails:{...a,accountNo:'SYN-AR',summary:{total:money(80)},agingInfo:{aging:Array.from({length:6},(_,i)=>({sequence:i+1,agingBucketRange:'Range '+i,balanceInfo:{total:money(i?0:80)}}))},invoices:[{transactionNo:1,invoiceNo:101,folioNo:201,guestName:'Synthetic Guest',transactionDate:'2026-09-01',amount:money(100),payments:money(-20),balance:money(80)}]}};
  const manifest=[{id:'1',hotel:'KAT',account_id:'account',invoice_no:'101',folio_no:'201',reservation_id:null,folio_date:null,open:80,collection_role:'standalone'}];
- const model=statementModel(raw,manifest,'2026-10-01');expect(model.address).toEqual(['Synthetic Travel',...lines]);expect(model.total).toBe(8000);expect(model.aging[0].cents).toBe(8000);
+ const model=statementModel(raw,manifest,'2026-10-01');expect(model.address).toEqual(blank?['Synthetic Travel','TH']:['Synthetic Travel',...lines]);expect(model.total).toBe(8000);expect(model.aging[0].cents).toBe(8000);
 });
