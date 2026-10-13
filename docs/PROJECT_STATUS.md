@@ -1,3 +1,8 @@
+## 2026-10-13 — Investigating a later Khao Lak tracker failure
+
+- Owner reports a red tracker status after the functional audit. Fresh status confirms Khao Lak last succeeded at 10:51 ICT and later attempts fail with generic tracker_unavailable; Phuket succeeds and shared Drive remains connected. This is distinct from the pending field-difference count. No manual synchronization or original-sheet edit was performed for diagnosis.
+- Read-only current sheet export has the expected headers and no duplicate nonblank canonical Invoice identity. Existing generic error storage discards the failed stage, so a narrow sanitized failure log is implemented: fixed phase/region, exact allowlisted code and trusted bounded HTTP status only. No identifiers, values, credentials, raw errors, success logs or business behavior changes. Forty-one focused tests and TypeScript pass; Astra reviewed the privacy/control-flow boundary. Runtime diagnosis remains pending, not fixed.
+
 ## 2026-10-13 — Whole-system functional audit and repairs
 
 - The owner retains the existing signature: Phuket format, personal name/title and workplace derived from the Invoice hotel. No signature or profile changes. [Audit report](SYSTEM_AUDIT_20261013.md).

@@ -4,6 +4,24 @@ import type {DriveEnv} from '../drive/shared';
 import type {RegionId,HotelId} from '../../src/domain/hotels';
 import type {TrackerValues,TrackerField} from './model';
 import {trackerIdentityMatches} from './native';
+import {OperaError} from '../opera/client';
+
+type SyncPhase='provider_read'|'validate'|'snapshot_import'|'membership'|'outbox'|'write_result'|'provider_write'|'finish';
+const syncErrorCodes=new Set([
+ 'invalid_configuration','invalid_request','redirect_rejected','provider_unavailable','provider_unauthorized','provider_rejected','response_too_large','invalid_response','timeout','duplicate_member','pagination_incomplete','pagination_changed',
+ 'tracker_target_conflict','tracker_authorization_required','tracker_provider_unavailable','tracker_snapshot_changed','tracker_schema_unverified','tracker_intent_not_confirmed',
+ 'tracker_workbook_invalid','tracker_workbook_too_large','tracker_row_identity_ambiguous','tracker_row_identity_invalid','tracker_row_key_ambiguous','tracker_schema_ambiguous',
+ 'tracker_native_cell_invalid','tracker_native_date_invalid','tracker_native_identity_ambiguous','tracker_native_identity_invalid','tracker_native_schema_invalid',
+ 'drive_response_too_large','drive_unavailable','drive_invalid','drive_not_configured','budget_database_exceeded','retention_busy',
+]);
+function logSyncFailure(region:RegionId,phase:SyncPhase,error:unknown){
+ const candidate=error instanceof DOMException&&error.name==='TimeoutError'?'timeout':error instanceof OperaError?error.code:error instanceof Error?error.message:'';
+ const code=syncErrorCodes.has(candidate)?candidate:'unknown_error';
+ const upstreamStatus=error instanceof OperaError&&Number.isSafeInteger(error.upstreamStatus)&&Number(error.upstreamStatus)>=100&&Number(error.upstreamStatus)<=599?error.upstreamStatus:undefined;
+ // Static context only: never serialize the error, its cause, provider details,
+ // sheet identifiers, versions, row identities or business values.
+ console.error(JSON.stringify({event:'tracker_sync_failure',region,phase,code,...(upstreamStatus!==undefined?{upstreamStatus}:{})}));
+}
 
 export interface TrackerEnv extends RefreshEnv,ReportSheetLinksEnv,DriveEnv {TRACKER_SYNC_ENABLED?:string;TRACKER_BLOB_CAS_ENABLED?:string;TRACKER_NATIVE_BEST_EFFORT_ENABLED?:string}
 export interface ProviderRow {rowKey:string;hotel:HotelId;accountNo:string;invoiceNo:string;folio:string|null;folioNo?:string|null;transactionDate?:string|null;fields:TrackerValues;locator:unknown;issues?:string[];formulaFields?:TrackerField[];blockedWriteFields?:('R'|'U'|'V'|'W')[]}
@@ -53,15 +71,18 @@ export async function syncTracker(env:TrackerEnv,actor:string,owner:string,regio
  const lock=crypto.randomUUID(),claim=await backendRpc<{status:string;fileId?:string}>(env,'ar_tracker_claim',{p_actor:actor,p_region:region,p_lock:lock,p_force:force});
  if(claim.status!=='claimed')return {status:claim.status};
  if(!claim.fileId||claim.fileId!==trackerFile(env,region))throw Error('tracker_target_conflict');
- let version:string|null=null;
+ let version:string|null=null,phase:SyncPhase='provider_read';
  try{
-  const snapshot=await adapter.read(env,owner,region,claim.fileId);validateTrackerSnapshot(snapshot);version=snapshot.version;
+  const snapshot=await adapter.read(env,owner,region,claim.fileId);phase='validate';validateTrackerSnapshot(snapshot);version=snapshot.version;
   const rows=normalizedRows(snapshot);
+  phase='snapshot_import';
   for(let offset=0;offset<rows.length;offset+=500)await backendRpc(env,'ar_tracker_snapshot',{p_actor:actor,p_region:region,p_lock:lock,p_rows:rows.slice(offset,offset+500)});
+  phase='membership';
   await backendRpc(env,'ar_tracker_membership',{p_actor:actor,p_region:region,p_lock:lock,p_keys:snapshot.rows.map(r=>r.rowKey)});
+  phase='outbox';
   const pending=await backendRpc<{id:string;rowKey:string;identity:ProviderWrite['expectedIdentity'];locator:unknown;field:TrackerField;value:string|null;expected:string|null;state:string}[]>(env,'ar_tracker_outbox',{p_actor:actor,p_region:region,p_lock:lock});
   const eligible:typeof pending=[];
-  const record=async(item:typeof pending[number],state:'written'|'conflict'|'uncertain'|'held')=>backendRpc<{state?:string}>(env,'ar_tracker_write_result',{p_actor:actor,p_region:region,p_lock:lock,p_id:item.id,p_state:state,p_expected:item.expected,p_value:item.value,p_version:version});
+  const record=async(item:typeof pending[number],state:'written'|'conflict'|'uncertain'|'held')=>{phase='write_result';return backendRpc<{state?:string}>(env,'ar_tracker_write_result',{p_actor:actor,p_region:region,p_lock:lock,p_id:item.id,p_state:state,p_expected:item.expected,p_value:item.value,p_version:version});};
   for(const item of pending){
    const row=rows.find(r=>r.rowKey===item.rowKey);
    // Exact readback also resolves a prior upload timeout without another write.
@@ -89,17 +110,20 @@ export async function syncTracker(env:TrackerEnv,actor:string,owner:string,regio
   // worker termination/result-RPC failure must not turn it into another POST.
   if(region==='khao-lak'&&inputs.length)for(const item of attempted){const intent=await record(item,'uncertain');if(intent.state!=='uncertain')throw Error('tracker_intent_not_confirmed');}
   if(inputs.length&&adapter.writeBatch){
+   phase='provider_write';
    let result:{status:'written'|'conflict'|'uncertain';version?:string};
    try{result=await adapter.writeBatch(env,owner,region,claim.fileId,inputs);}catch{result={status:'uncertain'};}
    if(result.version)version=result.version;
    for(const item of attempted)await record(item,result.status);
   }else if(inputs.length===1){
+   phase='provider_write';
    let result:{status:'written'|'conflict'|'uncertain';version?:string};
    try{result=await adapter.write(env,owner,region,claim.fileId,{...inputs[0],version});}catch{result={status:'uncertain'};}
    if(result.version)version=result.version;for(const item of attempted)await record(item,result.status);
   }else for(const item of attempted)await record(item,'held');
-  await backendRpc(env,'ar_tracker_finish',{p_actor:actor,p_region:region,p_lock:lock,p_version:version,p_error:null});return {status:'checked'};
+  phase='finish';await backendRpc(env,'ar_tracker_finish',{p_actor:actor,p_region:region,p_lock:lock,p_version:version,p_error:null});return {status:'checked'};
  }catch(error){
+  logSyncFailure(region,phase,error);
   await backendRpc(env,'ar_tracker_finish',{p_actor:actor,p_region:region,p_lock:lock,p_version:version,p_error:'tracker_unavailable'}).catch(()=>{});
   throw error;
  }
