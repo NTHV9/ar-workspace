@@ -1,3 +1,11 @@
+## 2026-10-13 — Follow-up verification and hands-on PDF use
+
+- Owner approves the five-part follow-up, excludes real employee login retesting, and requests hands-on PDF Workspace use. [Scoped results and limitations](END_TO_END_VERIFICATION_20261013.md). No application code/configuration change or deployment in this round.
+- Four new automatic tracker successes per region correlate with scheduled Worker events (14:01, 14:11, 14:16 and 14:26 ICT), without Check changes. All have null errors/zero pending writes. Aging reconciles 413 Accounts/2,367 rows/2,891 bucket aggregates; Dashboard passes 36 hotel/metric summary-to-detail comparisons under publication guards.
+- Current joined local SQL/service/adapter proof passes both formats and R/U/V/W with provider boundaries explicitly simulated; 109 local-table fingerprints survive rollback. Two actual local PostgreSQL sessions verify lock contention/stale-save rejection, and their exact disposable database is removed. Thirty-nine current-bundle browser cases pass.
+- Manual PDF UI checks cover address-only newlines, retained Whiteout, whole-row insertion, Undo/Redo, scan import/reassignment, names, page operations, Preview and actual local download. The seven-page output matches its split/source renders, and all three owner-provided scan pages match pixel-for-pixel. Cloud save/send of that exact package is not claimed; no customer scan was emailed.
+- Two concurrent real diagnostic-send requests share one test delivery, with verified Sent and recorded=false. Latest difference counts remain data-review items (6,886 Phuket/2,005 Khao at the category read); they were not mass-resolved. No new product defect reproduced in this scoped follow-up.
+
 ## 2026-10-13 — Khao Lak tracker read recovered
 
 - Final paged source `cd2fc8f6ab5b50319a70711813d9223aa5a021b3` deployed as Worker `f52fb2ce-32e7-459b-be8d-df597b6e6379`. Normal build, exact-source health and runtime/binding readback pass; only COMMIT_SHA changes. Ninety focused tests, the complete 1,887-test unit suite and Astra review pass.
