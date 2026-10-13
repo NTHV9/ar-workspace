@@ -17,6 +17,11 @@ export function invoiceBillingStatus(workflow:InvoiceWorkflow|null|undefined,acc
  return workflow.billing_required===true?'Not billed':workflow.billing_required===false?'Not required':'Setup needed';
 }
 export function sortInvoiceRows(rows:Invoice[],key:keyof Invoice,direction:'asc'|'desc',buckets:Pick<AgingBucket,'label'|'start'>[]):Invoice[]{
+ if(key==='stage')return [...rows].sort((a,b)=>{
+  const priority=(a.stage==='No billing sent'?0:1)-(b.stage==='No billing sent'?0:1);
+  const stage=priority||a.stage.localeCompare(b.stage);
+  return stage*(direction==='asc'?1:-1)||a.guest.localeCompare(b.guest)||a.invoiceNo.localeCompare(b.invoiceNo,undefined,{numeric:true});
+ });
  if(key!=='aging')return sortRows(rows,key,direction);
  const valid=(n:unknown):n is number=>typeof n==='number'&&Number.isSafeInteger(n)&&n>=0;
  const days=(row:Invoice)=>{if(valid(row.age))return row.age;const start=buckets.find(b=>b.label===row.aging)?.start;return valid(start)?start:null;};

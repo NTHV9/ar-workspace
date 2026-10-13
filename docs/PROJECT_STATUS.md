@@ -1,3 +1,8 @@
+## 2026-10-13 — Dashboard account default status sort
+
+- Account Invoice/Folio entered from Dashboard defaults to Latest sent ascending with No billing sent first. Same-status ties use guest name then invoice number; user-selected column sorting remains available. Other entry contexts retain their existing guest default.
+- Eight invoice-display unit tests, TypeScript, and three browser cases pass, including mixed billed/unbilled ordering, manual guest override and exact Invoice navigation on desktop/mobile. Deployment and live verification follow.
+
 ## 2026-10-13 — Dashboard invoice number navigation
 
 - Invoice numbers in Dashboard detail records now open the exact hotel/account/invoice using the existing focused-Invoice navigation. Payment records and rows without verified navigation identity remain text. Existing Account link remains available.

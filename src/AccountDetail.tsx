@@ -33,7 +33,7 @@ export function AccountDetail({account, invoices:sourceInvoices, review, refresh
     if(dialog.open&&(compact!==dialog.matches(':modal')||compact&&!drawer))dialog.close();
     if(!dialog.open&&(!compact||drawer)){if(compact)dialog.showModal();else dialog.show();}
   },[compact,drawer]);
-  const [search,setSearch]=useState(''), [sort,setSort]=useState<keyof Invoice>('guest'), [direction,setDirection]=useState<'asc'|'desc'>('asc');
+  const [search,setSearch]=useState(''), [sort,setSort]=useState<keyof Invoice>(backContext==='Dashboard'?'stage':'guest'), [direction,setDirection]=useState<'asc'|'desc'>('asc');
   const dirtyForms=useRef<Record<string,boolean>>({});const dirtyCallback=useRef(onDirtyChange);dirtyCallback.current=onDirtyChange;
   const formDirty=(form:string,dirty:boolean)=>{dirtyForms.current[form]=dirty;dirtyCallback.current?.(Object.values(dirtyForms.current).some(Boolean));};
   const leaveForm=()=>!Object.values(dirtyForms.current).some(Boolean)||window.confirm('Discard unsaved account changes?');

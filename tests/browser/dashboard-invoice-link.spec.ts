@@ -1,5 +1,14 @@
 import {test,expect} from '@playwright/test';
 import {setupDashboard} from './fixtures/dashboard-period';
+import {currentAgingInvoices} from './fixtures/current-aging';
+test('Dashboard account entry puts unsent billing first while guest sort remains available',async({page})=>{
+ await setupDashboard(page,{tabSession:true});
+ await page.route('**/api/accounts/KAT/kat-azure*',route=>route.fulfill({json:{invoices:currentAgingInvoices['kat-azure'].map((r:any)=>({...r,guest:r.id==='kat-old'?'Zebra unsent':'Alpha billed',workflow:{revision:1,billing_required:true,credit_term:30,first_billing_date:r.id==='kat-old'?null:'2026-09-01',last_reminder_stage:null,last_reminder_date:null,due_date:null}}))}}));
+ await page.goto('/?dashboard=1&account=kat-azure&property=KAT');
+ const rows=page.locator('.ledger tbody tr');
+ await expect(rows.first()).toContainText('Zebra unsent');await expect(rows.first()).toContainText('No billing sent');
+ await page.getByRole('button',{name:/Guest name/i}).click();await expect(rows.first()).toContainText('Alpha billed');
+});
 for(const width of [1440,390])test(`Dashboard invoice number opens the exact invoice at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:900});
  const fixture=await setupDashboard(page,{tabSession:true});
@@ -17,3 +26,4 @@ for(const width of [1440,390])test(`Dashboard invoice number opens the exact inv
  expect(new URL(page.url()).searchParams.get('focusInvoice')).toBeNull();
  expect(fixture.errors).toEqual([]);
 });
+
