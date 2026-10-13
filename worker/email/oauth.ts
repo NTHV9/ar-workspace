@@ -46,7 +46,17 @@ export async function gmailToken(env:EmailEnv,owner:string,mailbox:MailboxId='ph
   if(typeof t.access_token!=='string'||typeof t.expires_in!=='number')throw Error('gmail_reconnect_required');tokens={...tokens,access_token:t.access_token,expires_at:Date.now()+t.expires_in*1000};
   const refreshedProfile=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers:{Authorization:'Bearer '+tokens.access_token}});if(typeof refreshedProfile.emailAddress!=='string'||refreshedProfile.emailAddress.toLowerCase()!==mailboxSender(mailbox))throw Error('gmail_reconnect_required');
   const saved=await emailRpc(env,'ar_gmail_connection_refresh_region',{p_owner:owner,p_mailbox:mailbox,p_payload:await seal(env.GMAIL_TOKEN_KEY!,credentialAad(owner,mailbox),tokens),p_scope:c.scope,p_revision:c.revision});
-  if(!saved)throw Error('gmail_reconnect_required');
+  if(!saved){
+   // Another refresh may have won the revision check. Reuse only its stored,
+   // still-valid credential; never overwrite a reconnect or use this losing token.
+   const winner=await connectionFor(env,owner,mailbox);
+   if(!winner||winner.revision<=c.revision||winner.cipher_version!==2||winner.scope!==c.scope)throw Error('gmail_reconnect_required');
+   const stored=await unseal<Token>(env.GMAIL_TOKEN_KEY!,credentialAad(owner,mailbox),winner.payload);
+   if(stored.refresh_token!==tokens.refresh_token||typeof stored.access_token!=='string'||!stored.access_token||!Number.isFinite(stored.expires_at)||stored.expires_at<Date.now()+60000)throw Error('gmail_reconnect_required');
+   const profile=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers:{Authorization:'Bearer '+stored.access_token}});
+   if(typeof profile.emailAddress!=='string'||profile.emailAddress.toLowerCase()!==mailboxSender(mailbox))throw Error('gmail_reconnect_required');
+   tokens=stored;
+  }
  }
  // An unexpired credential is already profile-verified at OAuth/refresh and bound to this mailbox by authenticated encryption.
  return tokens.access_token;

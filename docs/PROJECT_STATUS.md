@@ -1,3 +1,10 @@
+## 2026-10-13 — Whole-system functional audit and repairs
+
+- The owner retains the existing signature: Phuket format, personal name/title and workplace derived from the Invoice hotel. No signature or profile changes. [Audit report](SYSTEM_AUDIT_20261013.md).
+- Implemented three reproduced fixes: Khao Dashboard name/type grouping with exact multi-ledger choices; safe stored-winner reuse after concurrent Gmail refresh; distinguishable same-name Remittance Account choices. Preserve financial identity, sender, reviewed files and business history; no migration or original-sheet write.
+- Baseline 1,836 and final 1,852 unit tests pass. Employee workflow audit qualifies 115 browser cases; Dashboard 45 and original signature six browser cases pass. Focused repair regressions and independent Astra reviews pass. Fresh six-hotel OPERA reads and live primary-surface checks pass within the report's stated scope; provider Folio limitations and pending tracker differences remain disclosed.
+- Local implementation/testing complete; release and actual synthetic mail verification follow. No actual email sent in this audit at this checkpoint.
+
 ## 2026-10-12 — Consolidate same-name Khao Lak reporting groups
 
 - Deployed source `aad88d4523475a6cc8c223cc903ac14e6595b64d` as Worker `0334ec2e-3a0a-4d92-8a05-2469536fa6a8`. Exact-source health/database/OPERA and binding readback pass; only COMMIT_SHA changes and the backend bundle remains identical. Signed-in live checks confirm each reported name has one group, both same-hotel Accounts remain available in the picker, and the nonzero Invoice opens its exact original Hotel/Account. Private live group screenshot inspected. [PR 136](https://github.com/NTHV9/ar-workspace/pull/136) attached and unmerged. No business writes or email sends.
