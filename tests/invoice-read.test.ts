@@ -116,3 +116,26 @@ it('uses the verified linked profile address when the AR account only supplies a
  const linkedReader={...reader,profile};const model=await readInvoiceModel(linkedReader,p.manifest);
  expect(model.address).toEqual(['Synthetic Travel','Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123']);
 });
+
+it('reports bounded address shape on a failed linked profile without returning customer values',async()=>{
+ const {reader,p}=fixture(),current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
+ reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'PRIVATE-PROFILE'},address:{id:'PRIVATE-ADDRESS'},invoices:[current]}});
+ const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'PRIVATE-ADDRESS',address:{addressLine:[],primaryInd:true,cityName:'PRIVATE-CITY'}}],totalResults:1}}});
+ const report=await auditInvoiceRead({...reader,profile},p.manifest);
+ expect(report).toMatchObject({ok:false,error:'document_addressee_unavailable',addressee:{profileIdentityMatches:true,attachedAddressPresent:true,addressesKind:'object',addressInfoKind:'array',addressCount:1,totalResults:1,rows:[{attachedMatch:true,primary:true,lineKind:'array',lineCount:0,nonblankLines:0,cityPresent:true}]}});
+ expect(profile).toHaveBeenCalledOnce();
+ expect(JSON.stringify(report)).not.toMatch(/PRIVATE-|Synthetic Travel/);
+});
+it.each([undefined,null,{}, {addressInfo:null}])('diagnoses an absent address list without treating it as verified empty (%j)',async addresses=>{
+ const {reader,p}=fixture();reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'PRIVATE-PROFILE'},address:{},invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
+ const report=await auditInvoiceRead({...reader,profile:async()=>({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses}})},p.manifest);
+ expect(report).toMatchObject({ok:false,error:'document_addressee_unavailable',addressee:{profileIdentityMatches:true,addressCount:null,rows:[]}});
+ expect(JSON.stringify(report)).not.toContain('PRIVATE-');
+});
+it('caps diagnostic rows and never returns untrusted count fields or dynamic profile keys',async()=>{
+ const {reader,p}=fixture();reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'PRIVATE-PROFILE'},address:{},invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
+ const report=await auditInvoiceRead({...reader,profile:async()=>({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses:{'PRIVATE-KEY':'PRIVATE-TEXT',totalResults:'PRIVATE-TOTAL',count:'PRIVATE-COUNT',addressInfo:Array.from({length:25},()=>({id:'PRIVATE-ID',address:{addressLine:['PRIVATE-LINE'],cityName:'PRIVATE-CITY',postalCode:'PRIVATE-POSTAL',country:{code:'PRIVATE-COUNTRY'}}}))}}})},p.manifest);
+ expect(report).toMatchObject({ok:false,error:'document_addressee_incomplete',addressee:{addressCount:25,totalResults:null,count:null,omittedRows:5}});
+ expect('addressee' in report&&report.addressee?.rows).toHaveLength(20);
+ expect(JSON.stringify(report)).not.toMatch(/PRIVATE-|Synthetic Travel/);
+});
