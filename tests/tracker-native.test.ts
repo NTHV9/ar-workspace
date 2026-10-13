@@ -25,6 +25,23 @@ function grid(){const headers:Cell[]=Array.from({length:33},()=>({}));for(const 
 function fake(options:{lost?:boolean;move?:boolean;formula?:boolean;changeIdentity?:boolean;newGid?:boolean}={}){let value=grid();if(options.move){const rows=value.sheets[0].data[0].rowData;[rows[2],rows[3]]=[rows[3],rows[2]];value.sheets[0].properties.sheetId=77;}if(options.formula)value.sheets[0].data[0].rowData[2].values[col('R')].userEnteredValue={formulaValue:'=TODAY()'};const posts:Record<string,unknown>[]=[];const fetcher=vi.fn(async(input:RequestInfo|URL,init:RequestInit={})=>{const url=String(input);if(url.includes('sheets.googleapis.com')){if(init.method==='POST'){const body=JSON.parse(String(init.body));posts.push(body);for(const request of body.requests){const u=request.updateCells;value.sheets[0].data[0].rowData[u.start.rowIndex].values[u.start.columnIndex].userEnteredValue=u.rows[0].values[0].userEnteredValue;}if(options.changeIdentity)value.sheets[0].data[0].rowData[2].values[col('E')].userEnteredValue={stringValue:'OTHER'};if(options.newGid)value.sheets[0].properties.sheetId=88;if(options.lost)throw Error('synthetic response lost');return Response.json({spreadsheetId:file,replies:[]});}return nativeResponse(value,url);}return Response.json({id:file,name:'Master_SAN_AR_Tracker',mimeType:'application/vnd.google-apps.spreadsheet',trashed:false,version:'1',modifiedTime:'2026-10-07T00:00:00Z',capabilities:{canDownload:true,canEdit:true,canModifyContent:true}});});vi.stubGlobal('fetch',fetcher);return {posts,value,fetcher};}
 const input=():ProviderWrite=>({version:'observed',rowKey:'key-A',expectedIdentity:{hotel:'TSAN',accountNo:'0002',invoiceNo:'00001',folio:'F00001',transactionDate:'2026-09-01'},locator:{sheetId:123,row:40},changes:[{field:'R',expected:null,value:'2026-09-02'},{field:'U',expected:null,value:'2026-09-03'},{field:'V',expected:null,value:'2026-09-04'},{field:'W',expected:null,value:'2026-09-05'}]});
 afterEach(()=>vi.unstubAllGlobals());
+it('streams individually bounded pages when combined typed metadata exceeds 16 MiB',async()=>{
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData,base=globalThis.fetch;
+ rows.length=402;for(let i=4;i<402;i++)rows[i]={values:[]};rows[400]=structuredClone(rows[2]);rows[400].values[col('AG')].userEnteredValue={stringValue:'key-last'};rows[400].values[col('E')].userEnteredValue={stringValue:'last-invoice'};
+ // Typed formatting is large but does not become business fields. Each page
+ // fits the existing cap while a single complete grid cannot fit it.
+ const hugeFormat='0'.repeat(60000);
+ for(let i=4;i<400;i++)rows[i]={values:[{userEnteredFormat:{numberFormat:{type:'NUMBER',pattern:hugeFormat}}}]};
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const url=new URL(String(args[0])),range=url.searchParams.get('ranges')?.match(/!A(\d+):AG(\d+)$/);
+  if(range&&Number(range[2])-Number(range[1])+1>200)return new Response('{}',{headers:{'Content-Length':String(16*1024*1024+1)}});
+  return base(...args);
+ });
+ const result=await readNativeTracker('synthetic-token',file);
+ expect(result.rows.map(row=>row.rowKey)).toEqual(['key-A','key-B','key-last']);expect(result.rows.at(-1)?.locator).toMatchObject({rowIndex:400});
+ expect(state.fetcher.mock.calls.filter(call=>new URL(String(call[0])).searchParams.has('ranges')).map(call=>new URL(String(call[0])).searchParams.get('ranges'))).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG200","'ลูกหนี้ เขาหลัก'!A201:AG400","'ลูกหนี้ เขาหลัก'!A401:AG401"]);
+ expect(state.posts).toHaveLength(0);
+});
 it('reads only occupied typed rows when an unbounded formatted tail exceeds 16 MiB',async()=>{
  const state=fake(),base=globalThis.fetch;
  vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
@@ -54,6 +71,22 @@ it('preserves exact locators and duplicate-key guards at distant occupied rows',
  const result=await readNativeTracker('synthetic-token',file);expect(result.rows.find(row=>row.rowKey==='key-edge')?.locator).toMatchObject({rowIndex:200});
  rows[200].values[col('AG')].userEnteredValue={stringValue:'key-A'};
  await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow('tracker_native_identity_ambiguous');expect(state.posts).toHaveLength(0);
+});
+it('rejects a canonical invoice repeated on a later page even with a different AG key',async()=>{
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData;rows.length=201;for(let i=4;i<200;i++)rows[i]={values:[]};rows[200]=structuredClone(rows[2]);rows[200].values[col('AG')].userEnteredValue={stringValue:'different-key'};
+ await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow('tracker_native_identity_ambiguous');expect(state.posts).toHaveLength(0);
+});
+it.each(['gid','offset','missing','keys'] as const)('fails closed for a later page with changed %s',async mode=>{
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData,base=globalThis.fetch;rows.length=201;for(let i=4;i<200;i++)rows[i]={values:[]};rows[200]=structuredClone(rows[2]);rows[200].values[col('AG')].userEnteredValue={stringValue:'last-key'};rows[200].values[col('E')].userEnteredValue={stringValue:'last-invoice'};
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const response=await base(...args);if(new URL(String(args[0])).searchParams.get('ranges')!=="'ลูกหนี้ เขาหลัก'!A201:AG201")return response;
+  const body=await response.json() as ReturnType<typeof grid>;if(mode==='gid')body.sheets[0].properties.sheetId=10;if(mode==='offset')body.sheets[0].data[0].startRow=199;if(mode==='missing')body.sheets[0].data=[];if(mode==='keys')body.sheets[0].data[0].rowData[0].values[col('AG')].userEnteredValue={stringValue:'changed-key'};return Response.json(body);
+ });
+ await expect(writeTrackerBatch(env,owner,'khao-lak',file,[input()])).rejects.toThrow();expect(state.posts).toHaveLength(0);
+});
+it.each(['keys','grid'] as const)('keeps the 16 MiB cap and identifies the oversized %s response',async kind=>{
+ const state=fake(),base=globalThis.fetch;vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{const url=new URL(String(args[0]));if(kind==='keys'?url.pathname.includes('/values/'):url.searchParams.has('ranges'))return new Response('{}',{headers:{'Content-Length':String(16*1024*1024+1)}});return base(...args);});
+ await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow(kind==='keys'?'tracker_native_keys_too_large':'tracker_native_grid_too_large');expect(state.posts).toHaveLength(0);
 });
 it.each(['during-grid','after-grid','missing-grid','wrong-gid','wrong-offset'] as const)('rejects %s changes without partial import or provider write',async mode=>{
  const state=fake(),base=globalThis.fetch;let keyReads=0;

@@ -30,7 +30,7 @@ function parse(value:Record<string,unknown>,file:string){
 export function trackerIdentityMatches(row:ProviderRow,identity:ProviderWrite['expectedIdentity']):boolean{return !!identity&&row.hotel===identity.hotel&&row.accountNo===identity.accountNo&&row.invoiceNo===identity.invoiceNo&&(row.folio??null)===(identity.folio??null)&&(row.transactionDate??null)===(identity.transactionDate??null);}
 async function nativeJson(token:string,file:string,suffix:string){
  const response=await request(token,file,suffix);if(!response.ok){await response.body?.cancel();throw Error(response.status===401||response.status===403||response.status===404?'tracker_authorization_required':'tracker_provider_unavailable');}
- return readJson(response,16*1024*1024);
+ try{return await readJson(response,16*1024*1024);}catch(error){if(error instanceof Error&&error.message==='drive_response_too_large')throw Error(suffix.startsWith('/values/')?'tracker_native_keys_too_large':'tracker_native_grid_too_large');throw error;}
 }
 async function nativeKeys(token:string,file:string){
  // Values omit the formatted-only tail. FORMULA exposes key formulas rather
@@ -46,22 +46,40 @@ async function nativeKeys(token:string,file:string){
 }
 export async function readNativeTracker(token:string,file:string):Promise<ProviderSnapshot>{
  const keys=await nativeKeys(token,file);let extent=Math.max(2,keys.length);while(extent>2&&!keys[extent-1])extent--;
- const query=new URLSearchParams({includeGridData:'true',ranges:`'${TITLE}'!A1:AG${extent}`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
- const value=await nativeJson(token,file,'?'+query);
- if(value.spreadsheetId!==file||!Array.isArray(value.sheets))throw Error('tracker_native_schema_invalid');
- const matches=(value.sheets as Sheet[]).filter(sheet=>sheet.properties?.title===TITLE);if(matches.length!==1)throw Error('tracker_native_schema_invalid');
- const sheet=matches[0],data=sheet.data;
- if(sheet.properties?.title!==TITLE||!Array.isArray(data)||data.length!==1||(data[0].startRow??0)!==0||(data[0].startColumn??0)!==0||!Array.isArray(data[0].rowData)||data[0].rowData.length>extent)throw Error('tracker_native_schema_invalid');
- for(let i=0;i<extent;i++){
-  const cell=data[0].rowData[i]?.values?.[column('AG')];if(cell?.userEnteredValue?.formulaValue)throw Error('tracker_native_identity_invalid');
-  if((raw(cell)??'')!==(keys[i]??''))throw Error('tracker_snapshot_changed');
+ const rows:ProviderRow[]=[],pageHashes:string[]=[],seenKeys=new Set<string>(),identities=new Set<string>();
+ let gid:number|undefined,headers:NonNullable<NonNullable<Sheet['data']>[number]['rowData']>|undefined,retainedBytes=2;
+ const digest=async(value:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
+ for(let start=0;start<extent;start+=200){
+  const end=Math.min(start+200,extent),query=new URLSearchParams({includeGridData:'true',ranges:`'${TITLE}'!A${start+1}:AG${end}`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
+  const value=await nativeJson(token,file,'?'+query);
+  if(value.spreadsheetId!==file||!Array.isArray(value.sheets))throw Error('tracker_native_schema_invalid');
+  const matches=(value.sheets as Sheet[]).filter(sheet=>sheet.properties?.title===TITLE);if(matches.length!==1)throw Error('tracker_native_schema_invalid');
+  const sheet=matches[0],data=sheet.data;
+  if(!Number.isInteger(sheet.properties.sheetId)||sheet.properties.sheetId<0||gid!==undefined&&sheet.properties.sheetId!==gid||!Array.isArray(data)||data.length!==1||(data[0].startRow??0)!==start||(data[0].startColumn??0)!==0||data[0].rowData!==undefined&&!Array.isArray(data[0].rowData))throw Error('tracker_native_schema_invalid');
+  gid=sheet.properties.sheetId;const page=data[0].rowData??[];if(page.length>end-start||page.some(row=>row.values!==undefined&&(!Array.isArray(row.values)||row.values.length>33)))throw Error('tracker_native_schema_invalid');
+  for(let i=start;i<end;i++){
+   const cell=page[i-start]?.values?.[column('AG')];if(cell?.userEnteredValue?.formulaValue)throw Error('tracker_native_identity_invalid');
+   if((raw(cell)??'')!==(keys[i]??''))throw Error('tracker_snapshot_changed');
+  }
+  if(start===0)headers=page.slice(0,2).map(row=>({values:row.values?.map(cell=>({userEnteredValue:cell.userEnteredValue,effectiveValue:cell.effectiveValue}))}));
+  if(!headers||headers.length!==2)throw Error('tracker_native_schema_invalid');
+  const parsed=parse({spreadsheetId:file,sheets:[{properties:sheet.properties,data:[...(start?[{startRow:0,startColumn:0,rowData:headers}]:[]),{startRow:start,startColumn:0,rowData:page}]}]},file);
+  for(const row of parsed.rows){
+   const identity=JSON.stringify([row.hotel,row.accountNo,row.invoiceNo,row.folio]);
+   if(seenKeys.has(row.rowKey)||row.accountNo&&row.invoiceNo&&identities.has(identity))throw Error('tracker_native_identity_ambiguous');
+   seenKeys.add(row.rowKey);identities.add(identity);
+   retainedBytes+=new TextEncoder().encode(JSON.stringify(row)).byteLength+1;if(retainedBytes>16*1024*1024)throw Error('tracker_native_grid_too_large');rows.push(row);
+  }
+  // Keep a digest of each complete typed observation, then release its cells.
+  // Only normalized business rows and the small headers survive to the next GET.
+  pageHashes.push(await digest(value));
  }
- const parsed=parse(value,file),after=await nativeKeys(token,file);
+ const after=await nativeKeys(token,file);
  // This detects moved/changed key positions, not an atomic field snapshot.
  // Native publication keeps its existing best-effort/readback contract.
  if(JSON.stringify(after)!==JSON.stringify(keys))throw Error('tracker_snapshot_changed');
- const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
- return {version:'native-observed:'+hash,rows:parsed.rows,schemaFingerprint:JSON.stringify([TITLE,parsed.gid,trackerHeaders]),capabilities:{conditionalWrite:'unverified',writeAssurance:'best-effort'}};
+ const hash=await digest(pageHashes);
+ return {version:'native-observed:'+hash,rows,schemaFingerprint:JSON.stringify([TITLE,gid,trackerHeaders]),capabilities:{conditionalWrite:'unverified',writeAssurance:'best-effort'}};
 }
 export async function writeNativeTrackerBatch(token:string,file:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
  if(!inputs.length||inputs.length>100||inputs.reduce((n,i)=>n+i.changes.length,0)>300)throw Error('tracker_batch_limit');

@@ -12,6 +12,7 @@ const syncErrorCodes=new Set([
  'tracker_target_conflict','tracker_authorization_required','tracker_provider_unavailable','tracker_snapshot_changed','tracker_schema_unverified','tracker_intent_not_confirmed',
  'tracker_workbook_invalid','tracker_workbook_too_large','tracker_row_identity_ambiguous','tracker_row_identity_invalid','tracker_row_key_ambiguous','tracker_schema_ambiguous',
  'tracker_native_cell_invalid','tracker_native_date_invalid','tracker_native_identity_ambiguous','tracker_native_identity_invalid','tracker_native_schema_invalid',
+ 'tracker_native_keys_too_large','tracker_native_grid_too_large',
  'drive_response_too_large','drive_unavailable','drive_invalid','drive_not_configured','budget_database_exceeded','retention_busy',
 ]);
 function logSyncFailure(region:RegionId,phase:SyncPhase,error:unknown){
