@@ -2140,3 +2140,5 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - Report visibility release b76a1d5 deployed as Worker e79e3426-838d-419b-81ba-644d35257fb2; exact-source health verified. Actual admin Reports retains all three tabs and Google Sheets access. Staff behavior verified with isolated browser fixtures; no staff credential/session was impersonated.
 
 - Billing-percent fix source 4a4f3ac deployed as Worker 0bf7a491-afec-4326-b234-4222462331bc. Actual signed-in Khao Lak Dashboard displays 99.8% alongside two unbilled invoices. No amounts or statuses were modified; private screenshot retained.
+
+- Database allowance source 6aeadd1 deployed as Worker b793d35e-6335-4f3c-98b8-d2f5dc801f16. Actual Storage UI shows 344.5 MiB / 2 GiB and retains 20% headroom, 1 GiB files and 2 GiB transfers. No provider plan change or data deletion.
