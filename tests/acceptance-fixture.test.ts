@@ -4,11 +4,16 @@ import {acceptanceAccount,acceptanceTransport,newAcceptanceFixture} from '../wor
 import {discoverAccountIds,readVerifiedAccount} from '../worker/refresh/read-snapshot';
 import {statementModel} from '../worker/statement/model';
 import {getNativeInvoicePdf} from '../worker/documents/native-invoice';
+import {readInvoiceModel} from '../worker/invoice/read';
 import {readFinancialHistory,readFinancialTransactionDetail,readAppliedPaymentMapping} from '../worker/opera/financial-history';
 import {readPaymentApplications} from '../worker/opera/payment-applications';
 const id='00000000-0000-4000-8000-000000000001';
 const fixture=()=>newAcceptanceFixture(id,'2026-09-11');
 const reader=(f=fixture(),hotel='KAT')=>new OperaReader({origin:'https://ar-acceptance.invalid',appKey:'synthetic',hotelId:hotel},async()=> 'synthetic',acceptanceTransport(f,hotel));
+it('supports the current exact-posting workspace Invoice reader with no provider network',async()=>{
+ const f=fixture(),r=reader(f),network=vi.fn(()=>{throw Error('Unexpected provider request');});vi.stubGlobal('fetch',network);
+ try{for(const row of f.invoices){const model=await readInvoiceModel(r,{id:row.id,hotel:f.hotel,account_id:f.accountId,invoice_no:row.invoiceNo,folio_no:row.folioNo,reservation_id:row.reservationId,folio_date:row.date,open:row.open,collection_role:'standalone'});expect(model.gross).toBe(row.original*100);expect(model.outstanding).toBe(row.open*100);}expect(network).not.toHaveBeenCalled();}finally{vi.unstubAllGlobals();}
+});
 it('runs the actual discovery and snapshot normalizer against exactly three fictional invoices',async()=>{const f=fixture(),r=reader(f);expect(await discoverAccountIds(r,'KAT')).toEqual([f.accountId]);expect(await discoverAccountIds(reader(f,'TSK'),'TSK')).toEqual([]);const snapshot=await readVerifiedAccount(r,'KAT',f.accountId,f.businessDate);expect(snapshot.invoices).toHaveLength(3);expect(snapshot.account.open).toBe(6000);expect(snapshot.invoices.every(i=>i.collection_role==='standalone')).toBe(true);});
 it('proves explicit zero and partial source amounts without treating absent rows as zero',async()=>{const f=fixture();f.invoices[0].open=0;f.invoices[1].open=500;const snapshot=await readVerifiedAccount(reader(f),'KAT',f.accountId,f.businessDate,[{id:f.invoices[0].id,invoice_no:f.invoices[0].invoiceNo,open:1000}]);expect(snapshot.account.open).toBe(3500);expect(snapshot.invoices.find(i=>i.id===f.invoices[0].id)).toMatchObject({open:0,collection_role:'standalone'});});
 it('feeds the real selected-only Statement model while retaining all-account aging',async()=>{const f=fixture(),snapshot=await readVerifiedAccount(reader(f),'KAT',f.accountId,f.businessDate),selected=snapshot.invoices.filter((_,n)=>n!==1);const model=statementModel(acceptanceAccount(f),selected,f.businessDate);expect(model.rows.map(r=>r.id)).toEqual([f.invoices[0].id,f.invoices[2].id]);expect(model.total).toBe(400000);expect(model.aging.reduce((n,b)=>n+b.cents,0)).toBe(600000);});
