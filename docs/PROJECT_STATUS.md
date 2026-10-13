@@ -1,3 +1,9 @@
+## 2026-10-13 — Live PDF and existing Draft send completed
+
+- [Actual full-flow evidence and cleanup](LIVE_PDF_DRAFT_SEND_20261013.md): two fictional Invoices → actual Statement/Invoice generation → edited/renamed four-page package with synthetic scan → actual private storage → Gmail Draft → explicit web send. Sent verified at 17:34:44 ICT; downloaded/reviewed/stored/sent attachment hashes agree. One isolated delivery; zero original business Sent events and tracker writes for the fixture.
+- Five test objects deleted, exact empty provider containers removed, both isolated schemas retired, zero active scenarios. Acceptance disabled again. Final Worker `3c29eb75-bb1e-4e9c-bbe4-308d361499d9`, app source `21b0e7dc1804ed39a4bcc9db698fcbd3366f8bfb`; health/database verified. No customer Draft was sent. Minimal technical receipts are retained for recovery; recipient email/local QA PDFs remain.
+- Acceptance-only migrations 20261013100000 and 20261013120000 are applied. Current Invoice fixture transport, template headers and isolated operator context are qualified. Transient-only closeout no longer requires unused Drive archive history, while pending-file and exact-folder guards remain. Original application retention/permissions are unchanged.
+
 ## 2026-10-13 — Send an existing Gmail Draft from the web
 
 - Owner requests web sending after Gmail Draft creation and makes Review & send now the primary colored button. Implemented exact existing Draft sending with a durable one-time claim, draft-content and reviewed-byte checks, updated Sent receipt identity and no POST replay after uncertainty. Preserve human confirmation, account/region, hold/reopen, workflow revision and collection policy checks.
