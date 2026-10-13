@@ -1,3 +1,8 @@
+## 2026-10-13 — Owner-approved 2 GiB app database allowance
+
+- Owner explicitly raises application database allowance to 2 GiB. Worker config and database-side validation accept 2,147,483,648 bytes; 20% safety reserve remains. File storage/transfer allowances, provider plan, resources and retention are unchanged.
+- Applied migration 20261013151354 via Supabase migration API; guarded function replacement verifies 2 GiB accepted and larger value rejected transactionally. 21 budget regressions and TypeScript pass. Worker deploy/UI readback follow.
+
 ## 2026-10-13 — Billing progress rounding
 
 - Fixed whole-number rounding that displayed 100% while positive unbilled value remained. Visible and accessible percentage now share one-decimal formatting; near-complete values rounding to 100 display <100% while a positive remainder exists. Amount-based denominator, exact amounts and invoice counts are unchanged.

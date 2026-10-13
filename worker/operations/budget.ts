@@ -38,7 +38,7 @@ function checkedMeasurement(value:unknown,code='budget_invalid'):BudgetMeasureme
 }
 export function operationBudgetLimits(env:BudgetEnvironment):BudgetLimits {
  const read=(v:string|undefined,fallback:number,min:number,max:number)=>{if(v===undefined)return fallback;if(!/^[1-9][0-9]*$/.test(v)||!Number.isSafeInteger(Number(v))||Number(v)<min||Number(v)>max)throw Error('budget_not_configured');return Number(v);};
- return {storedBytes:read(env.OPS_BUDGET_STORED_BYTES,1073741824,1,17179869184),egressBytes:read(env.OPS_BUDGET_EGRESS_BYTES,2147483648,1,34359738368),databaseBytes:read(env.OPS_BUDGET_DATABASE_BYTES,268435456,1,1073741824),safetyPercent:read(env.OPS_BUDGET_SAFETY_PERCENT,20,20,90),maxConcurrent:read(env.OPS_BUDGET_MAX_CONCURRENT,4,1,16),measurementMaxAgeSeconds:read(env.OPS_BUDGET_MEASUREMENT_SECONDS,300,30,900)};
+ return {storedBytes:read(env.OPS_BUDGET_STORED_BYTES,1073741824,1,17179869184),egressBytes:read(env.OPS_BUDGET_EGRESS_BYTES,2147483648,1,34359738368),databaseBytes:read(env.OPS_BUDGET_DATABASE_BYTES,268435456,1,2147483648),safetyPercent:read(env.OPS_BUDGET_SAFETY_PERCENT,20,20,90),maxConcurrent:read(env.OPS_BUDGET_MAX_CONCURRENT,4,1,16),measurementMaxAgeSeconds:read(env.OPS_BUDGET_MEASUREMENT_SECONDS,300,30,900)};
 }
 function checkedLimits(limits:BudgetLimits){
  return operationBudgetLimits({OPS_BUDGET_STORED_BYTES:String(limits.storedBytes),OPS_BUDGET_EGRESS_BYTES:String(limits.egressBytes),OPS_BUDGET_DATABASE_BYTES:String(limits.databaseBytes),OPS_BUDGET_SAFETY_PERCENT:String(limits.safetyPercent),OPS_BUDGET_MAX_CONCURRENT:String(limits.maxConcurrent),OPS_BUDGET_MEASUREMENT_SECONDS:String(limits.measurementMaxAgeSeconds)});
