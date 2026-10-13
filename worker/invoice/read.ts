@@ -1,6 +1,6 @@
 import {accountWithAddressee} from '../documents/addressee';
 import {OperaError,type OperaReader} from '../opera/client';
-import {nativeFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
+import {historicalFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
 import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {collectPages} from '../opera/pagination';
@@ -23,7 +23,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  // three reads on failure; balance/posting/tax checks and the final fence stay.
  const reads=await Promise.allSettled([reader.reservationFolios(manifest.reservation_id,manifest.folio_date,true),reader.financialTransactionDetail(scope),reader.invoiceReservation(manifest.reservation_id)]);
  const [historical,rawDetail,rawHeader]=reads.map(result=>{if(result.status==='rejected')throw result.reason;return result.value;});
- const window=nativeFolioSelector(historical,manifest),folioInfo=record(record(historical).reservationFolioInformation),reservation=folioInfo.reservationInfo;
+ const window=historicalFolioSelector(historical,manifest),folioInfo=record(record(historical).reservationFolioInformation),reservation=folioInfo.reservationInfo;
  const detail=record(rawDetail),accounts=list(detail.details);if(accounts.length!==1||accounts[0].hotelId!==manifest.hotel||record(accounts[0].accountId).id!==manifest.account_id)fail();
  const invoices=list(accounts[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(invoices.length!==1||!valid(invoices[0]))fail();const invoice=invoices[0];
  if(typeof invoice.internalFolioWindowID!=='string')fail();

@@ -3,7 +3,7 @@ import {makeReader} from '../opera/probe';
 import {readVerifiedAccount,readBusinessDate,asObject} from '../refresh/read-snapshot';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
-import {nativeFolioSelector} from '../documents/native-invoice';
+import {historicalFolioSelector} from '../documents/native-invoice';
 import type {DocumentJob} from '../documents/jobs';
 import {statementModel} from './model';
 import {renderStatement,supportedStatementTemplate,type StatementAssets} from './render';
@@ -25,7 +25,7 @@ export async function workspaceStatement(env:RefreshEnv,job:DocumentJob,resource
   const existing=item.reservationInfo&&asObject(item.reservationInfo).roomStay;
   if((!existing||!asObject(existing).arrivalDate||!asObject(existing).departureDate)&&selected.reservation_id&&selected.folio_date&&selected.folio_no&&selected.invoice_no){
    const folios=await reader.reservationFolios(selected.reservation_id,selected.folio_date);
-   nativeFolioSelector(folios,selected);
+   historicalFolioSelector(folios,selected);
    item.reservationInfo=asObject(asObject(folios).reservationFolioInformation).reservationInfo;
   }
  }

@@ -1,3 +1,14 @@
+## 2026-10-13 — Urgent shared-folio document fix
+
+- Owner prioritizes a failed TSAN preparation over the acceptance work. Both workspace-generated Statement and Invoice fail with `folio_window_ambiguous`. Reproduced locally: the read-only renderers incorrectly reuse the stricter native-print selector even when the exact Invoice/Folio pair is unique.
+- Separate exact historical metadata lookup from native printing. Workspace Statement and Invoice retain hotel/reservation and unique Invoice/Folio validation; Invoice retains exact AR posting selection and amount/tax reconciliation. Native window-only printing remains fenced. Regression fails before the fix; 43 focused tests and TypeScript pass. Deployment and actual generation readback pending.
+- Acceptance headroom migration remains unapplied; no synthetic cloud namespace or acceptance enablement occurred before this urgent interruption.
+
+## 2026-10-13 — Live PDF email follow-up preflight
+
+- Owner approves closing the remaining actual PDF-to-email boundary. Read-only preflight finds acceptance inactive, both retired namespaces absent and no active scenario. The existing provisioner rejects databases above 100 MiB; actual size is 342,502,547 bytes. Requalification/resource review is required before safely reopening this retired test path. [Evidence and prerequisites](PDF_LIVE_FLOW_PREFLIGHT_20261013.md).
+- No new email, fixture, deployment, business history or sheet change. The full live edited-package flow remains **untested**, distinct from the earlier manual local PDF and actual generic diagnostic-mail proofs.
+
 ## 2026-10-13 — Follow-up verification and hands-on PDF use
 
 - Owner approves the five-part follow-up, excludes real employee login retesting, and requests hands-on PDF Workspace use. [Scoped results and limitations](END_TO_END_VERIFICATION_20261013.md). No application code/configuration change or deployment in this round.

@@ -9,6 +9,13 @@ function fixture(count=2,p:ReturnType<typeof packet>|ReturnType<typeof mixedTaxP
  const reader={invoiceReservation:vi.fn().mockResolvedValue({reservations:{reservation:[{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'777'}],customReference:'CUSTOM-VOUCHER'}]}}),account:vi.fn().mockResolvedValue({accountDetails:{...p.account,invoices:[current]}}),invoiceHistory:vi.fn(),reservationFolios:vi.fn().mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}]}}),financialTransactionDetail:vi.fn().mockImplementation(async()=>structuredClone(detail)),invoicePostings:vi.fn().mockResolvedValue(p.postings),invoicePostingBreakdown:vi.fn().mockImplementation(async(_r:string,_w:number,_s:string,_e:string,offset:number,limit:number)=>({financialPostings:p.taxRows.slice(offset,offset+limit),offset,limit,hasMore:offset+limit<p.taxRows.length,totalResults:p.taxRows.length})),invoiceTransactionDetails:vi.fn().mockResolvedValue({trxCodesInfo:p.taxCodes})};
  return {p,reader,detail};
 }
+it('reads the exact invoice when unrelated historical folios share its reservation window',async()=>{
+ const {reader,p}=fixture();
+ reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88},{invoiceNo:100,folioNo:89}]}]}});
+ const model=await readInvoiceModel(reader,p.manifest);
+ expect(model.gross).toBe(663000);
+ expect(reader.invoicePostings).toHaveBeenCalledWith({hotel:'KAT',accountId:'101',transactionId:'500',invoiceNo:'99',folioNo:'88',internalFolioWindowId:'456'});
+});
 it('overlaps independent invoice header reads and keeps the final balance fence after postings',async()=>{
  const {reader,p}=fixture(),original=await reader.reservationFolios();reader.reservationFolios.mockClear();let release=()=>{};const gate=new Promise<void>(r=>{release=r;});
  reader.reservationFolios.mockImplementation(async()=>{await gate;return original;});
