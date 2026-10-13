@@ -1,3 +1,8 @@
+## 2026-10-13 — Reports navigation restricted to administrator
+
+- Invoice Register and External billing activity tabs render only for the verified administrator session with ar@katathani.com. Staff Reports defaults to Google Sheets even on stale register/external deep links and does not mount/fetch those report surfaces. Existing regional APIs used by account-level work and tracker synchronization are unchanged; this is report-surface visibility, not removal of staff account workflow rights.
+- TypeScript and five browser cases pass: staff direct links, admin desktop/mobile access, regional Sheet destinations and read recovery. Deployment follows.
+
 ## 2026-10-13 — Dashboard account default status sort
 
 - Account Invoice/Folio entered from Dashboard defaults to Latest sent ascending with No billing sent first. Same-status ties use guest name then invoice number; user-selected column sorting remains available. Other entry contexts retain their existing guest default.
