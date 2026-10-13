@@ -28,10 +28,39 @@ function parse(value:Record<string,unknown>,file:string){
  return {rows,cells,gid};
 }
 export function trackerIdentityMatches(row:ProviderRow,identity:ProviderWrite['expectedIdentity']):boolean{return !!identity&&row.hotel===identity.hotel&&row.accountNo===identity.accountNo&&row.invoiceNo===identity.invoiceNo&&(row.folio??null)===(identity.folio??null)&&(row.transactionDate??null)===(identity.transactionDate??null);}
+async function nativeJson(token:string,file:string,suffix:string){
+ const response=await request(token,file,suffix);if(!response.ok){await response.body?.cancel();throw Error(response.status===401||response.status===403||response.status===404?'tracker_authorization_required':'tracker_provider_unavailable');}
+ return readJson(response,16*1024*1024);
+}
+async function nativeKeys(token:string,file:string){
+ // Values omit the formatted-only tail. FORMULA exposes key formulas rather
+ // than silently accepting their evaluated result as a stable row identity.
+ const query=new URLSearchParams({majorDimension:'ROWS',valueRenderOption:'FORMULA'});
+ const value=await nativeJson(token,file,'/values/'+encodeURIComponent(`'${TITLE}'!AG:AG`)+'?'+query);
+ if(typeof value.range!=='string'||!new RegExp(`^'${TITLE}'!AG1:AG[1-9][0-9]*$`).test(value.range)||value.majorDimension!=='ROWS'||value.values!==undefined&&!Array.isArray(value.values))throw Error('tracker_native_schema_invalid');
+ const rows=(value.values??[]) as unknown[];if(rows.length>100002)throw Error('tracker_native_schema_invalid');
+ return rows.map(row=>{
+  if(!Array.isArray(row)||row.length>1)throw Error('tracker_native_schema_invalid');
+  const key=row[0];if(key===undefined)return '';if(typeof key==='boolean')return key?'TRUE':'FALSE';if(typeof key==='string'||typeof key==='number'&&Number.isFinite(key))return String(key);throw Error('tracker_native_identity_invalid');
+ });
+}
 export async function readNativeTracker(token:string,file:string):Promise<ProviderSnapshot>{
- const query=new URLSearchParams({includeGridData:'true',ranges:`'${TITLE}'!A:AG`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
- const response=await request(token,file,'?'+query);if(!response.ok){await response.body?.cancel();throw Error(response.status===401||response.status===403||response.status===404?'tracker_authorization_required':'tracker_provider_unavailable');}
- const value=await readJson(response,16*1024*1024),parsed=parse(value,file),hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
+ const keys=await nativeKeys(token,file);let extent=Math.max(2,keys.length);while(extent>2&&!keys[extent-1])extent--;
+ const query=new URLSearchParams({includeGridData:'true',ranges:`'${TITLE}'!A1:AG${extent}`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
+ const value=await nativeJson(token,file,'?'+query);
+ if(value.spreadsheetId!==file||!Array.isArray(value.sheets))throw Error('tracker_native_schema_invalid');
+ const matches=(value.sheets as Sheet[]).filter(sheet=>sheet.properties?.title===TITLE);if(matches.length!==1)throw Error('tracker_native_schema_invalid');
+ const sheet=matches[0],data=sheet.data;
+ if(sheet.properties?.title!==TITLE||!Array.isArray(data)||data.length!==1||(data[0].startRow??0)!==0||(data[0].startColumn??0)!==0||!Array.isArray(data[0].rowData)||data[0].rowData.length>extent)throw Error('tracker_native_schema_invalid');
+ for(let i=0;i<extent;i++){
+  const cell=data[0].rowData[i]?.values?.[column('AG')];if(cell?.userEnteredValue?.formulaValue)throw Error('tracker_native_identity_invalid');
+  if((raw(cell)??'')!==(keys[i]??''))throw Error('tracker_snapshot_changed');
+ }
+ const parsed=parse(value,file),after=await nativeKeys(token,file);
+ // This detects moved/changed key positions, not an atomic field snapshot.
+ // Native publication keeps its existing best-effort/readback contract.
+ if(JSON.stringify(after)!==JSON.stringify(keys))throw Error('tracker_snapshot_changed');
+ const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
  return {version:'native-observed:'+hash,rows:parsed.rows,schemaFingerprint:JSON.stringify([TITLE,parsed.gid,trackerHeaders]),capabilities:{conditionalWrite:'unverified',writeAssurance:'best-effort'}};
 }
 export async function writeNativeTrackerBatch(token:string,file:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
