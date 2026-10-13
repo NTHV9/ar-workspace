@@ -3,6 +3,7 @@
 - Owner prioritizes a failed TSAN preparation over the acceptance work. Both workspace-generated Statement and Invoice fail with `folio_window_ambiguous`. Reproduced locally: the read-only renderers incorrectly reuse the stricter native-print selector even when the exact Invoice/Folio pair is unique.
 - Separate exact historical metadata lookup from native printing. Workspace Statement and Invoice retain hotel/reservation and unique Invoice/Folio validation; Invoice retains exact AR posting selection and amount/tax reconciliation. Native window-only printing remains fenced. Regression fails before the fix; 43 focused tests and TypeScript pass. Deployment and actual generation readback pending.
 - Acceptance headroom migration remains unapplied; no synthetic cloud namespace or acceptance enablement occurred before this urgent interruption.
+- Deployed source `de3e61fc26369aa58ec1ec78bd5287d65cb2b998` as Worker `b424000e-79ee-47ba-8082-1aafab0391bc`. Health reports database verified; all runtime bindings match the preceding release except COMMIT_SHA. A new preparation of the owner's exact reported selection reaches ready for both Statement and Invoice, with null errors. Both one-page PDFs load in the actual Workspace; the correct folio and selected amount are visible. No email or actual-billing event was submitted. Private screenshots/IDs stay outside Git, and the usable preparation is left open for the owner.
 
 ## 2026-10-13 — Live PDF email follow-up preflight
 
