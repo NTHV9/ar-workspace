@@ -22,3 +22,14 @@ The existing signed-in Supabase client subscribes to a minimal regional revision
 No legitimate employee edit was available during this verification. Registration and initial `sync` are not evidence of actual cell-edit notification delivery, nor of end-to-end edit-to-screen timing. No original billing dates were modified to manufacture evidence. The owner confirmed there is no current item requiring an edit. Keep the five-minute fallback; measure a legitimate edit when available before stating a real-time latency guarantee.
 
 No customer mail, OPERA accounting mutation, paid upgrade or new credential scope was used. Private identifiers and screenshots remain outside Git.
+
+## Authorized original-sheet edit/clear test
+
+Owner subsequently authorized a temporary edit followed by restoration. A verified previously unbilled test selection in the original Khao Lak tracker had one blank R cell temporarily set to 13 October, then cleared after rechecking exact row identity and test value. Only userEnteredValue changed; formatting, formulas and neighboring cells were preserved. No email was sent. The sheet cell was read back blank and the already-open Dashboard returned to Not billed with unchanged open amount.
+
+- Write request start to stable Dashboard removal from unbilled: **31.880 seconds** (31.189 seconds after write response).
+- Clear request start to stable Dashboard reappearance as unbilled: **125.718 seconds** (125.015 seconds after clear response).
+- No browser reload or manual source synchronization was used between either edit and its corresponding visible result. Actual Drive change wakes completed. Actual Realtime UPDATE observed for the first committed import. The clear coincided with the next scheduled window, so exact provider/queue/fallback latency attribution is not established solely by these observations.
+- These are connector/API cell edits on the original native Sheet, not a direct employee-keyboard test. They prove end-to-end edit and clear convergence, not uniform instant delivery or Phuket XLSX behavior. File-level push alone does not meet a guaranteed immediate-cell-update requirement; native edit-trigger notification is a potential next design requiring its own qualification.
+
+Temporary source observations may remain in immutable integration audit history; current billing/date state was restored. Private timings and screenshot are outside Git. No history deletion was performed or claimed.

@@ -1,5 +1,7 @@
 ## 2026-10-13 — Tracker change notification design
 
+- Owner-authorized original Khao Lak single-cell edit/clear test completed: temporary billing date appeared on the already-open Dashboard in 31.880 seconds from request start; clearing restored unbilled in 125.718 seconds. No Reload/manual sync/email. Exact original blank restored and unchanged balance verified. This proves convergence, not consistently instant delivery; native Sheet API edits tested, Phuket and employee-keyboard trigger timing not claimed. See release report for attribution limits and retained audit observations.
+
 - Owner approved event-driven synchronization to reduce idle polling. [Detailed design](superpowers/specs/2026-10-13-tracker-change-notifications-design.md) covers file-scoped Drive watches, durable coalesced work, renewal, immediate confirmed-send wakeup, browser revision refresh and per-region staged fallback.
 - Read-only inspection confirms existing five-minute tracker scheduling and existing 60-second browser revision polling. The earlier conversational suggestion that the browser had no Sheet-change tracking was corrected.
 - Owner subsequently confirmed fastest Sheet-to-open-web updates with five-minute fallback. Implemented file-scoped authenticated notification hints, durable tracker Workflow, expiring-watch renewal and authenticated regional Realtime revision hints. Original files and date authority remain unchanged; outbound acceleration is deferred from this scope.
