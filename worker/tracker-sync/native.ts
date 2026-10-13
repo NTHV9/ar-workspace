@@ -1,5 +1,5 @@
 import {readJson} from '../drive/shared';
-import {trackerFields,trackerHotel,type TrackerField} from './model';
+import {canResolveWithoutAccountNumber,trackerFields,trackerHotel,type TrackerField} from './model';
 import {trackerHeaders,trackerDateValue} from './workbook';
 import type {ProviderRow,ProviderSnapshot,ProviderWrite} from './service';
 const TITLE='ลูกหนี้ เขาหลัก',ROOT='https://sheets.googleapis.com/v4/spreadsheets/';
@@ -84,7 +84,7 @@ export async function readNativeTracker(token:string,file:string):Promise<Provid
 export async function writeNativeTrackerBatch(token:string,file:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
  if(!inputs.length||inputs.length>100||inputs.reduce((n,i)=>n+i.changes.length,0)>300)throw Error('tracker_batch_limit');
  const current=await readNativeTracker(token,file),requests:unknown[]=[],seen=new Map<string,string>();
- for(const input of inputs){const row=current.rows.find(r=>r.rowKey===input.rowKey);if(!row||!trackerIdentityMatches(row,input.expectedIdentity)||row.issues?.some(i=>!/^([A-Z]{1,2})_invalid$/.test(i))||!input.changes.length)return {status:'conflict'};
+ for(const input of inputs){const row=current.rows.find(r=>r.rowKey===input.rowKey);if(!row||!trackerIdentityMatches(row,input.expectedIdentity)||row.issues?.some(i=>!/^([A-Z]{1,2})_invalid$/.test(i)&&!(i==='account_missing'&&canResolveWithoutAccountNumber(row)))||!input.changes.length)return {status:'conflict'};
   for(const change of input.changes){if(!allowed.has(change.field)||typeof change.value!=='string')throw Error('tracker_patch_forbidden');let day:string|null;try{day=date(change.value);}catch{return {status:'conflict'};}if(!day||day!==change.value||row.blockedWriteFields?.includes(change.field as 'R'|'U'|'V'|'W')||row.issues?.includes(change.field+'_invalid')||(row.fields[change.field]??null)!==change.expected)return {status:'conflict'};const key=input.rowKey+':'+change.field,prior=seen.get(key);if(prior&&prior!==day)return {status:'conflict'};if(prior)continue;seen.set(key,day);const locator=row.locator as {sheetId:number;rowIndex:number};requests.push({updateCells:{start:{sheetId:locator.sheetId,rowIndex:locator.rowIndex,columnIndex:column(change.field)},rows:[{values:[{userEnteredValue:{numberValue:(Date.parse(day+'T00:00:00Z')-Date.UTC(1899,11,30))/86400000}}]}],fields:'userEnteredValue'}});}
  }
  // One best-effort atomic request, without any conditional-write guarantee.

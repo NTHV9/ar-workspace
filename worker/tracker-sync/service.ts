@@ -2,7 +2,7 @@ import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import type {ReportSheetLinksEnv} from '../reports/sheet-links';
 import type {DriveEnv} from '../drive/shared';
 import type {RegionId,HotelId} from '../../src/domain/hotels';
-import type {TrackerValues,TrackerField} from './model';
+import {canResolveWithoutAccountNumber,type TrackerValues,type TrackerField} from './model';
 import {trackerIdentityMatches} from './native';
 import {OperaError} from '../opera/client';
 
@@ -37,6 +37,8 @@ export const trackerFile=(env:TrackerEnv,region:RegionId)=>region==='phuket'?env
 function normalizedRows(snapshot:ProviderSnapshot){
  const identityCounts=new Map<string,number>(),key=(r:ProviderRow)=>JSON.stringify([r.hotel,r.accountNo,r.invoiceNo,r.folio]);
  for(const row of snapshot.rows)identityCounts.set(key(row),(identityCounts.get(key(row))??0)+1);
+ const corroboratingKey=(r:ProviderRow)=>JSON.stringify([r.hotel,r.invoiceNo,r.folio??null,r.transactionDate??null]),corroboratingCounts=new Map<string,number>(),missingAccountGroups=new Set<string>();
+ for(const row of snapshot.rows){const k=corroboratingKey(row);corroboratingCounts.set(k,(corroboratingCounts.get(k)??0)+1);if(canResolveWithoutAccountNumber(row))missingAccountGroups.add(k);}
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  return snapshot.rows.map(row=>{
   const fieldHolds=new Set((row.issues??[]).flatMap(issue=>/^([A-Z]{1,2})_invalid$/.exec(issue)?.[1]??[]));
@@ -44,8 +46,9 @@ function normalizedRows(snapshot:ProviderSnapshot){
   const received=row.fields.Z,invalidAmount=received!==null&&received!==undefined&&!/^\d{1,14}(?:\.\d{1,2})?$/.test(received);
   const term=row.fields.S;if(term!==null&&term!==undefined&&(!/^\d{1,4}(?:\.\d+)?$/.test(term)||!Number.isInteger(Number(term))||Number(term)>3650))fieldHolds.add('S');
   if(invalidAmount)fieldHolds.add('Z');if((row.fields.AB?.length??0)>4000)fieldHolds.add('AB');if((row.fields.AC?.length??0)>160)fieldHolds.add('AC');
-  const identityIssue=(row.issues??[]).some(issue=>!/^([A-Z]{1,2})_invalid$/.test(issue));
-  return {...row,ambiguous:identityCounts.get(key(row))!==1,fieldHolds:[...fieldHolds],holdReason:identityIssue?'provider_identity_requires_review':!row.accountNo||!row.invoiceNo?'incomplete_identity':null};
+  const missingAccountAllowed=canResolveWithoutAccountNumber(row);
+  const identityIssue=(row.issues??[]).some(issue=>!/^([A-Z]{1,2})_invalid$/.test(issue)&&!(issue==='account_missing'&&missingAccountAllowed));
+  return {...row,ambiguous:identityCounts.get(key(row))!==1||missingAccountGroups.has(corroboratingKey(row))&&corroboratingCounts.get(corroboratingKey(row))!==1,fieldHolds:[...fieldHolds],holdReason:identityIssue?'provider_identity_requires_review':(!row.accountNo&&!missingAccountAllowed)||!row.invoiceNo?'incomplete_identity':null};
  });
 }
 export async function trackerSnapshotHash(snapshot:ProviderSnapshot){

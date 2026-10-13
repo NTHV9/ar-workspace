@@ -2,6 +2,8 @@
 
 - Owner makes verified Sheet R/U/V/W current dates authoritative, including corrections/clears; Friendly/Final remain web-sent. Exact inspection finds a completed billing write followed by a blank Sheet date, and a different Sheet row with a billing date but missing Account No. Implementation and verified source alignment are in progress; immutable Sent evidence must remain.
 - Selected TSAN document diagnostic verifies the matching profile and attached primary address, one complete address row, four blank address lines and a country. Local resolver fix accepts these verified blank postal lines while preserving all identity, shape, count and provider-failure checks; Statement/Invoice models retain country and unchanged money. Actual repaired PDF generation pending.
+- Address fix deployed as Worker `2580124f-df63-4bf3-9e0e-6593fa31c414`, source `e9bec37`. The reported selection now generates both actual source PDFs as ready with null errors; the Invoice was rendered and visually inspected with the provided country and no invented postal address. No mail sent.
+- Sheet authority migration and adapter qualification pass local SQL tests using repository and inspected production-format definitions, 1,922 unit tests and TypeScript. Independent Astra review caught and verified fixes for stale Phuket uncertainty, earliest billing date, and native snapshot-before-reconciliation ordering. Fresh source adoption is required; no cached-data authority backfill. Deployment/source readback for the reported statuses follows.
 
 ## 2026-10-13 — Live PDF and existing Draft send completed
 
