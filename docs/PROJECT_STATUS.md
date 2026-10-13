@@ -1,3 +1,10 @@
+## 2026-10-13 — Send an existing Gmail Draft from the web
+
+- Owner requests web sending after Gmail Draft creation and makes Review & send now the primary colored button. Implemented exact existing Draft sending with a durable one-time claim, draft-content and reviewed-byte checks, updated Sent receipt identity and no POST replay after uncertainty. Preserve human confirmation, account/region, hold/reopen, workflow revision and collection policy checks.
+- Independent review found missing completeness parity on existing drafts; fixed and added empty-To/subject/body regressions. Focused Worker/evidence checks pass (21), local PostgreSQL replay/receipt/event checks pass, and the actual current-component browser test confirms Draft → review → explicit confirmation with primary Send/secondary Draft. Full unit run before the three added completeness cases passed 1,897; those additions pass separately. TypeScript passes.
+- Migration `20261013110000` applied to the configured production project; service-only function execution verified and authenticated direct execution denied. Application deployment and actual provider Draft send still pending. No customer draft was sent by this work.
+- Current-source synthetic Invoice transport was separately qualified against the workspace Invoice reader (9 tests). Acceptance stays disabled; its headroom migration is still unapplied.
+
 ## 2026-10-13 — Urgent shared-folio document fix
 
 - Owner prioritizes a failed TSAN preparation over the acceptance work. Both workspace-generated Statement and Invoice fail with `folio_window_ambiguous`. Reproduced locally: the read-only renderers incorrectly reuse the stricter native-print selector even when the exact Invoice/Folio pair is unique.

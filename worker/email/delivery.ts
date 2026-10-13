@@ -15,7 +15,7 @@ import {hash,url64} from './crypto';
 import {buildMime} from './mime';
 import {prepareMail,readMailFile,draftBudget} from './gmail-draft';
 import type {MailFile} from './mime';
-import {verifySentEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
+import {verifySentEvidence,verifyDraftEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
 import {syntheticConversation,type ThreadProof} from './threads';
 export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string;signatureHotel?:string}};claimed?:boolean;error?:string}
@@ -41,7 +41,7 @@ async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,tok
 }
 export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,revision:number,mode:'send'|'draft',stage:string|null,policyVersion?:number){
  assertWritesEnabled(env);
- const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return deliveryView(existing);
+ const existing=await emailRpc<Delivery|null>(env,'ar_mail_for_draft',{p_actor:actor,p_draft:draftId,p_revision:revision});if(existing)return mode==='send'&&existing.mode==='draft'&&existing.state==='created'?sendExistingDraft(env,actor,existing,revision,stage,policyVersion):deliveryView(existing);
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:draftId});if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
  await requireRegionalDelivery(env,draft);
  const mailbox=hotelMailbox(draft.hotel);if(!await gmailCanRead(env,actor,mailbox))throw Error('gmail_read_permission_required');
@@ -58,6 +58,42 @@ export async function deliverMessage(env:EmailEnv,actor:string,draftId:string,re
  return submit(env,actor,claim,raw,token);
 }
 export interface TestSupplementals {draftId:string;revision:number;ids:string[]}
+const canonical=(v:unknown):string=>JSON.stringify(v,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(k=>[k,value[k]])):value);
+async function sendExistingDraft(env:EmailEnv,actor:string,d:Delivery,revision:number,stage:string|null,policyVersion?:number){
+ if(d.owner!==actor||d.revision!==revision||d.stage!==stage||!d.gmail_draft_id||!/^[A-Za-z0-9_-]+$/.test(d.gmail_draft_id))throw Error('email_handoff_pending');
+ const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:d.draft_id});
+ if(!draft)throw Error('email_missing');if(draft.revision!==revision)throw Error('email_revision_conflict');if(draft.package_changed)throw Error('email_package_changed');
+ parseRecipients(draft.recipients);if(!draft.recipients.to.length||!draft.subject.trim()||!draft.body.trim())throw Error('email_incomplete');
+ await requireRegionalDelivery(env,draft);
+ if(draft.rich_body?.signature&&draft.rich_body.signature.staffId!==(env.REQUEST_ACTOR??actor))throw Error('email_signature_changed');
+ if(draft.purpose==='collection')await readPolicyForHandoff(env,actor,stage!,policyVersion);
+ const identity=frozenMailIdentity(d.snapshot.expected);if(identity.mailbox!==hotelMailbox(draft.hotel))throw Error('email_forbidden');
+ if(!await gmailCanRead(env,actor,identity.mailbox))throw Error('gmail_read_permission_required');
+ const {raw,expected}=await prepareMail(env,actor,draft,d.message_id);
+ for(const key of Object.keys(expected) as (keyof typeof expected)[])if(canonical(expected[key])!==canonical(d.snapshot.expected[key]))throw Error('email_package_changed');
+ const token=await gmailToken(env,actor,identity.mailbox),headers={Authorization:'Bearer '+token};
+ let remote:Record<string,unknown>;
+ try{remote=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/drafts/${d.gmail_draft_id}?format=full`,{headers});}
+ catch(e){if(e instanceof GoogleResponseError&&e.status===404)return checkDelivery(env,actor,d.id);throw e;}
+ const message=remote.message as Parameters<typeof verifyDraftEvidence>[0];
+ if(remote.id!==d.gmail_draft_id||!message?.id||!/^[A-Za-z0-9_-]+$/.test(message.id))throw Error('email_draft_changed');
+ const verified=await verifyDraftEvidence(message,{...d.snapshot.expected,gmailId:message.id},async id=>{
+  const response=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}/attachments/${encodeURIComponent(id)}`,{headers,redirect:'manual',signal:AbortSignal.timeout(30000)});
+  if(!response.ok){await response.body?.cancel();throw Error('gmail_unavailable');}
+  const value=JSON.parse(new TextDecoder().decode(await boundedBody(response,18*1024*1024))) as {data?:string};if(typeof value.data!=='string')throw Error('gmail_unavailable');return decodeUrl64(value.data);
+ });
+ if(verified.status!=='verified')throw Error('email_draft_changed');
+ const claim=await emailRpc<Delivery>(env,'ar_mail_claim_draft_send',{p_actor:actor,p_id:d.id,p_revision:revision,p_expected:d.snapshot.expected,p_policy_version:policyVersion??null});
+ assertDelivery(claim);if(!claim.claimed)return deliveryView(claim);
+ // Send the existing ID with the exact reviewed MIME, not a new message. This
+ // also fences Gmail edits between our read and send. Never retry this POST.
+ try{
+  const result=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/drafts/send',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({id:d.gmail_draft_id,message:{raw,...(expected.thread?{threadId:expected.thread.threadId}:{})}})});
+  if(typeof result.id!=='string'||!/^[A-Za-z0-9_-]+$/.test(result.id))throw Error('gmail_unavailable');
+  await record(env,actor,claim,'awaiting_evidence',result.id);
+ }catch{try{await record(env,actor,claim,'awaiting_evidence',null,null,'provider_result_unconfirmed');}catch{/* The one-time claim still fences any resend. */}}
+ try{return await checkDelivery(env,actor,d.id);}catch{return {...deliveryView(claim),state:'awaiting_evidence',recorded:false};}
+}
 const testSourceKey=(s?:TestSupplementals)=>JSON.stringify(s?[s.draftId,s.revision,s.ids]:null);
 export async function sendDiagnostic(env:EmailEnv,actor:string,id:string,recipient:string,supplementals?:TestSupplementals,rich=false,replyToDeliveryId?:string,region?:MailboxId){
  await assertAcceptanceRecipient(env,{to:[recipient],cc:[],bcc:[]});
