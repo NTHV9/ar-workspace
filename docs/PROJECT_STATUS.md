@@ -1,3 +1,8 @@
+## 2026-10-13 — Dashboard invoice number navigation
+
+- Invoice numbers in Dashboard detail records now open the exact hotel/account/invoice using the existing focused-Invoice navigation. Payment records and rows without verified navigation identity remain text. Existing Account link remains available.
+- Compact Account detail opens its Invoice drawer immediately when entered with an explicit invoice ID. Desktop and mobile behavioral tests pass: exact identity, visible focused detail and return to the original Dashboard context. TypeScript passes. Deployment and live verification follow.
+
 ## 2026-10-13 — Tracker change notification design
 
 - Owner-authorized original Khao Lak single-cell edit/clear test completed: temporary billing date appeared on the already-open Dashboard in 31.880 seconds from request start; clearing restored unbilled in 125.718 seconds. No Reload/manual sync/email. Exact original blank restored and unchanged balance verified. This proves convergence, not consistently instant delivery; native Sheet API edits tested, Phuket and employee-keyboard trigger timing not claimed. See release report for attribution limits and retained audit observations.
