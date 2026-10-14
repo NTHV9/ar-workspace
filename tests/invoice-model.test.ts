@@ -35,6 +35,8 @@ describe('workspace invoice financial model',()=>{
   const p=packet();p.postings.invoicePostingsDetails[0].reference='Routed From Example Guest Of Room #202';
   const m=invoiceModel(p,now);expect(m.lines[0].reference).toBe('Routed From Example Guest Of Room #202\nPRINTED-1');
   expect(m.lines[1].reference).toBe('PRINTED-2');
+  p.postings.invoicePostingsDetails[0].reference='Internal prefix PRINTED-1 Routed From Example Guest Of Room #202';
+  expect(invoiceModel(p,now).lines[0].reference).toBe('Routed From Example Guest Of Room #202\nPRINTED-1');
   p.postings.invoicePostingsDetails[0].reference='Routed From Example Guest Of Room #202 PRINTED-1';
   expect(invoiceModel(p,now).lines[0].reference.match(/PRINTED-1/g)).toHaveLength(1);
   p.postings.invoicePostingsDetails[0].checkNo='202';p.postings.invoicePostingsDetails[0].reference='Routed From Example Guest Of Room #202';
