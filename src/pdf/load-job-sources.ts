@@ -17,7 +17,8 @@ export async function loadJobSources(job:DocumentJob,token:string,maxBytes:numbe
   const bytes=new Uint8Array(size);let at=0;for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length;}
   if(file.sha256&&/^[a-f0-9]{64}$/.test(file.sha256)){const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');if(hash!==file.sha256)throw Error('A private source file changed. Reload this preparation.');}
   const invoice=job.manifest.find(i=>i.id===file.invoice_id);
-  docs[index]={id:file.id,name:file.kind==='statement'?'Statement.pdf':`Invoice ${invoice?.invoice_no??file.ordinal}.pdf`,kind:file.kind,invoiceId:file.invoice_id??undefined,...file.kind==='invoice'?{invoiceLabel:`Invoice ${invoice?.invoice_no??file.ordinal}${invoice?.folio_no?' · Folio '+invoice.folio_no:''}`}:{},invoiceIds:job.manifest.map(i=>i.id),bytes};
+  const folio=invoice?.folio_no?.trim();
+  docs[index]={id:file.id,name:file.kind==='statement'?'Statement.pdf':folio?`Inv. ${folio}.pdf`:`Invoice ${invoice?.invoice_no??file.ordinal}.pdf`,kind:file.kind,invoiceId:file.invoice_id??undefined,...file.kind==='invoice'?{invoiceLabel:`Invoice ${invoice?.invoice_no??file.ordinal}${invoice?.folio_no?' · Folio '+invoice.folio_no:''}`}:{},invoiceIds:job.manifest.map(i=>i.id),bytes};
  }
  for(let start=0;start<ready.length;start+=2){
   const outcomes=await Promise.allSettled(ready.slice(start,start+2).map((_file,offset)=>read(start+offset).catch(error=>{controller.abort();throw error;})));

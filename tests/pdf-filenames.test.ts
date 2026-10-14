@@ -5,6 +5,10 @@ import type {PdfProject,PdfSourceDocument} from '../src/pdf/types';
 const sources:PdfSourceDocument[]=['a','b'].map(id=>({id,invoiceId:id,name:`Invoice ${id}.pdf`,kind:'invoice',bytes:new Uint8Array()}));
 const project:PdfProject={version:1,content:'invoices',delivery:'separate',pages:sources.map(s=>({id:s.id,sourceId:s.id,sourcePage:1,width:600,height:800,layers:[]}))};
 describe('preparation filenames',()=>{
+ it('uses Inv. Folio for download/email defaults and disambiguates repeated Folios',()=>{
+  expect(defaultPdfFilename({id:'a',name:'Inv. 001234'},1)).toBe('Inv. 001234.pdf');
+  expect(deliveryFilenames(project,[{id:'a',name:'Inv. 001234'},{id:'b',name:'Inv. 001234'}])).toEqual(['01-Inv. 001234.pdf','02-Inv. 001234.pdf']);
+ });
  it('preserves Thai and adds exactly one extension',()=>{expect(pdfFilename('ใบแจ้งหนี้ 123')).toBe('ใบแจ้งหนี้ 123.pdf');expect(pdfFilename('Invoice.PDF')).toBe('Invoice.PDF');});
  it('rejects unsafe, ambiguous, reserved and oversized names',()=>{for(const name of ['', '.pdf','../bill.pdf','folder/bill.pdf','folder\\bill.pdf','a\n.pdf','a\0.pdf','bill.pdf.pdf','CON.pdf','LPT1.pdf','a?.pdf','a .pdf','a'.repeat(197)])expect(()=>pdfFilename(name)).toThrow();});
  it('keeps defaults and rejects case insensitive output collisions',()=>{const groups=deliveryGroups(project,sources);expect(deliveryFilenames(project,groups)).toEqual(['01-Invoice a.pdf','02-Invoice b.pdf']);expect(()=>deliveryFilenames({...project,outputNames:{[groups[0].id]:'Bill.pdf',[groups[1].id]:'bill.pdf'}},groups)).toThrow('different filename');});

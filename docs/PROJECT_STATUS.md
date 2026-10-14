@@ -1,3 +1,8 @@
+## 2026-10-14 — Folio-based Invoice PDF filenames
+
+- New Invoice source names and separate delivery defaults use Inv. followed by exact Folio, preserving leading zeroes and one .pdf extension. Dots are permitted by filename validation. Repeated Folios get ordinal prefixes only to avoid duplicate output names; missing Folio retains explicit Invoice-number fallback. Combined Documents, Statement names and manually entered names remain unchanged.
+- Source-loading and filename tests cover identity separation, download/email shared names, duplicate Folios and validation. TypeScript passes. Deployment follows; existing reviewed email attachments are not silently renamed.
+
 ## 2026-10-14 — PDF stationery completeness comparison
 
 - Final deployed source `463eca5` / Worker `f1cbc2c6-eb35-4118-bc66-c013678df198`. Production regeneration restores the missing fourth address/VAT line on Statement and every Invoice page, 14 routed narratives and repeated signature blocks. Monetary/source identities remain unchanged. Print-operator User is still blank because its mapping is not verified; explicitly disclosed rather than invented. [Report and verification boundaries](PDF_STATIONERY_COMPLETENESS_20261014.md). Private customer comparison and regenerated PDFs are outside Git; existing user preparation untouched.
