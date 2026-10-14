@@ -1,3 +1,9 @@
+## 2026-10-15 — PdfCraft component reuse research
+
+- Inspected tagged v0.8.0 source modules and current Workspace exporter. Strong candidates are text-plus-visual comparison, opt-in pre-review optimization and a selectively qualified native text-edit/export path. Existing edited-page export is rasterized; native editing could preserve selectable text but must retain redaction/full-rewrite safeguards. No code integration or production changes made.
+- Additional isolated CLI probes: comparison reports changed text and visual regions for the address edit; this does not semantically certify visible VAT because its text remains under a table. Default reducer saves roughly 15.8% on an Invoice, 59.6% on a Statement and 0.4% on a scan. Page counts and extracted text are unchanged; inspected template labels/footer visibly soften, so default lossy compression is not approved for automatic use. All trial data stays private.
+- Existing PDF.js/pdf-lib, AR workflow and email handoff should remain until a minimal module wins specific fidelity/performance tests. Table-group movement still failed on the supplied Statement; OSS availability does not establish that it solves that feature. License/NOTICE and dependency/build boundaries are part of the component research report.
+
 ## 2026-10-15 — PdfCraft isolated trial
 
 - Tried official v0.8.0 Windows portable engine and loopback web build with checksum verification and private PDF copies. Viewing/scans, same-height text edits, targeted white redaction and merge succeeded. Address newline causes VAT line to be hidden under the original table; independent render confirms. Default-font Thai edit is refused. User-requested table-move trials move text but not complete grid/fills, producing misalignment. [Trial scope and results](PDFCRAFT_TRIAL_20261015.md).
