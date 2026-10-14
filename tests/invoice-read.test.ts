@@ -99,7 +99,8 @@ it('rejects a voucher response for another reservation',async()=>{const {p,reade
 it.each([true,false])('uses payee tax identity only when the selected window and AR profile agree (%s)',async agrees=>{
  const {p,reader}=fixture();const account={...p.account,profileId:{id:'123'}};reader.account.mockResolvedValue({accountDetails:{...account,invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
  reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:agrees?'123':'999'},payeeTaxNumber:'SYNTHETIC-TAX'}}]}});
- expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe(agrees?'SYNTHETIC-TAX':'');
+ const profile=async()=>({profileIdList:[{id:'123',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'verified-primary',address:{...p.account.address.address,primaryInd:true}}],totalResults:1}}});
+ expect((await readInvoiceModel({...reader,profile},p.manifest)).taxId).toBe(agrees?'SYNTHETIC-TAX':'');
 });
 
 it('identifies an AR credit without a reservation folio without fabricating an invoice',async()=>{
@@ -115,6 +116,13 @@ it('uses the verified linked profile address when the AR account only supplies a
  const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'],primaryInd:false}}],totalResults:1}}});
  const linkedReader={...reader,profile};const model=await readInvoiceModel(linkedReader,p.manifest);
  expect(model.address).toEqual(['Synthetic Travel','Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123']);
+});
+it('includes country and VAT stationery from the exact profile address when AR supplies only three nonblank lines',async()=>{
+ const {reader,p}=fixture(),full=['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'];
+ reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',address:{addressLine:full.slice(0,3),country:{}}},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
+ const profile=async()=>({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:full,primaryInd:false,country:{}}},{id:'another-primary',address:{addressLine:['Another Address'],primaryInd:true}}],totalResults:2}}});
+ const model=await readInvoiceModel({...reader,profile},p.manifest);
+ expect(model.address).toEqual(['Synthetic Travel',...full]);expect(model.gross).toBe(663000);expect(model.outstanding).toBe(Math.round(p.manifest.open*100));
 });
 
 it('reports bounded address shape on a failed linked profile without returning customer values',async()=>{

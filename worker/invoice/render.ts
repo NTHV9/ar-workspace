@@ -27,6 +27,12 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
  const wrap=(s:string,max:number,size=8,b=false)=>{if(s.length>2000)fail();const lines:string[]=[];let line='';for(const {segment}of new Intl.Segmenter('th',{granularity:'grapheme'}).segment(s.normalize('NFC'))){if(segment==='\n'){lines.push(line);line='';continue;}if(width(line+segment,size,b)>max){const space=line.lastIndexOf(' ');if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);}else{if(!line)fail();lines.push(line);line='';}}line+=segment;}lines.push(line);return lines;};
  const entries=await Promise.all((['header','closing','signature','footer'] as const).map(async key=>{const a=assets[key];if(a.width!==612||!Number.isFinite(a.height)||a.height<1||a.height>400||a.png.length>2000000)fail();const bytes=Uint8Array.from(atob(a.png),c=>c.charCodeAt(0));const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');if(hash!==a.sha256)throw Error('document_invoice_template_invalid');return [key,await doc.embedPng(bytes)] as const;}));
  const images=Object.fromEntries(entries),p=assets.layout.positions,pos=(key:string)=>{const hit=p[key]?.[0];if(!hit||![hit.x0,hit.x1,hit.top,hit.size].every(Number.isFinite)||hit.x0<0||hit.x1>612||hit.top<0||hit.top>792||hit.size<5||hit.size>18)return fail();return hit;};
+ const cashier=pos('CASHIER_NAME'),cashierLines=wrap(model.cashierName,215,9),cashierOffset=cashier.top-assets.layout.signatureTop;
+ // Continuation pages retain the source signature position. The final signature
+ // may move below the totals, but neither the image nor cashier may reach the footer.
+ const signatureHeight=Math.max(assets.signature.height,cashierOffset+(cashierLines.length-1)*10+9),footerTop=792-assets.footer.height,signatureLimit=footerTop-signatureHeight-8;
+ const rowLimit=Math.min(660,assets.layout.signatureTop-8);
+ if(cashierLines.length>2||cashierOffset<0||!Number.isFinite(assets.layout.signatureTop)||assets.layout.signatureTop>signatureLimit||rowLimit<=assets.layout.rowTop)fail();
  const pages:PDFPage[]=[];let page!:PDFPage,y=0;
  const write=(s:string,x:number,top:number,size=8,b=false)=>{if(top<0||top+size>792)fail();for(const r of runs(s,b)){page.drawText(r.text,{x,y:792-top-size,size,font:r.font});x+=r.font.widthOfTextAtSize(r.text,size);}};
  const field=(name:string,value:string,offset=0,right=false,max=110)=>{if(!value)return;const q=pos(name);const b=/Bold/.test(q.fontname);if(width(value,q.size,b)>max)fail();write(value,right?q.x1-width(value,q.size,b):q.x0,q.top+offset,q.size,b);};
@@ -51,20 +57,19 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
  add();
  const dateX=pos('TRX_DATE_SHORT').x0,descX=pos('DESCRIPTION').x0,refX=pos('REFERENCE_DISPLAYED').x0,debitRight=pos('DEBIT').x1,creditRight=pos('CREDIT').x1;
  for(const line of model.lines){const cells=[wrap(line.date,descX-dateX-6),wrap(line.description,refX-descX-6),wrap(line.reference,debitRight-60-refX)],height=Math.max(...cells.map(c=>c.length))*10+2;
-  if(height>350)fail();if(y+height>660)add();
+  if(height>350||height>rowLimit-assets.layout.rowTop)fail();if(y+height>rowLimit)add();
   cells.forEach((lines,i)=>lines.forEach((s,j)=>write(s,[dateX,descX,refX][i],y+j*10)));
   for(const [n,right]of [[line.debit,debitRight],[line.credit,creditRight]])if(n){const s=money(n);if(width(s,8)>65)fail();write(s,right-width(s,8),y);}
   y+=height;
  }
- const amountLines=wrap('*** '+invoiceAmountWords(model.outstanding)+' ***',280,8,true),closingSpace=assets.closing.height+amountLines.length*10+70;
- if(y+closingSpace>672)add();
+ const amountLines=wrap('*** '+invoiceAmountWords(model.outstanding)+' ***',280,8,true),closingSpace=5+assets.closing.height+13+amountLines.length*10+32;
+ if(y+closingSpace>signatureLimit)add();if(y+closingSpace>signatureLimit)fail();
  const closingY=y+5;imageAt('closing',closingY);const offset=closingY-assets.layout.closingTop;
  for(const fixed of assets.closingText){if(!/^Total(?: |$)|^THB$/.test(fixed.text))fail();write(fixed.text,fixed.x,fixed.top+offset,fixed.size,fixed.bold);}
  for(const line of assets.bankText??[]){if(line.text.length>250||line.x<30||line.x>200)fail();let size=8;while(size>6.5&&width(line.text,size)>180)size-=.25;if(width(line.text,size)>180)fail();write(line.text,line.x,line.top+offset,size);}
  for(const [name,n]of [['TOTAL_DEBIT',model.debit],['TOTAL_CREDIT',model.credit],['TOTAL_GROSS',model.gross],['BALANCE',model.outstanding],['TOTAL_NON_TAXABLE',model.nonTaxable],['VAT1_AMT',model.vat],['xdofx:TOTAL_NET-TOTAL_NON_TAXABLE',model.taxableNet]] as const)field(name,money(n),offset,true,95);
- let wordsY=closingY+assets.closing.height+13;amountLines.forEach((s,i)=>write(s,575-width(s,8,true),wordsY+i*10,8,true));
- const signatureY=Math.max(wordsY+amountLines.length*10+32,Math.min(580,assets.layout.signatureTop));imageAt('signature',signatureY);
- const cashier=pos('CASHIER_NAME'),cashierLines=wrap(model.cashierName,215,9);if(cashierLines.length>2)fail();cashierLines.forEach((s,i)=>write(s,465-width(s,9)/2,signatureY+cashier.top-assets.layout.signatureTop+i*10,9));
- pages.forEach((p,i)=>{page=p;write(`${i+1} of ${pages.length}`,474.4,assets.layout.pageTop);});
+ const wordsY=closingY+assets.closing.height+13;amountLines.forEach((s,i)=>write(s,575-width(s,8,true),wordsY+i*10,8,true));
+ const finalSignatureTop=Math.max(wordsY+amountLines.length*10+32,assets.layout.signatureTop);
+ pages.forEach((p,i)=>{page=p;const signatureY=i===pages.length-1?finalSignatureTop:assets.layout.signatureTop;imageAt('signature',signatureY);cashierLines.forEach((s,j)=>write(s,465-width(s,9)/2,signatureY+cashierOffset+j*10,9));write(`${i+1} of ${pages.length}`,474.4,assets.layout.pageTop);});
  return doc.save();
 }

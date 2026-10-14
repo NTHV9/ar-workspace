@@ -3,13 +3,23 @@ type Row=Record<string,unknown>;
 const record=(value:unknown):Row=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('document_addressee_invalid');return value as Row;};
 const optional=(value:unknown)=>value==null?{}:record(value);
 const hasLines=(address:Row)=>Array.isArray(address.addressLine)&&address.addressLine.some(value=>typeof value==='string'&&value.trim());
-/** AR may return an empty address even though its linked profile has full stationery data. */
+const compatible=(inline:Row,full:Row)=>{
+ if(hasLines(inline)){
+  if(!Array.isArray(inline.addressLine)||!inline.addressLine.every(value=>typeof value==='string')||!Array.isArray(full.addressLine)||!full.addressLine.every(value=>typeof value==='string'))return false;
+  const expected=inline.addressLine.map(value=>value.trim()).filter(Boolean),actual=full.addressLine.map(value=>value.trim()).filter(Boolean);let next=0;
+  for(const line of actual)if(line===expected[next])next++;
+  if(next!==expected.length)return false;
+ }
+ for(const field of ['cityName','postalCode'])if(inline[field]!=null&&inline[field]!==''&&inline[field]!==full[field])return false;
+ const country=optional(inline.country),fullCountry=optional(full.country);
+ return Object.entries(country).every(([field,value])=>value==null||value===''||value===fullCountry[field]);
+};
+/** AR inline address lines may be truncated; resolve its verified linked stationery. */
 export async function accountWithAddressee(reader:{profile?:(profileId:string)=>Promise<unknown>},hotel:string,accountId:string,input:unknown):Promise<Row>{
  const account=record(input);
  if(account.hotelId!==hotel||String(record(account.accountId).id)!==accountId)throw Error('document_addressee_scope_invalid');
  const attached=optional(account.address),inline=optional(attached.address);
  if(inline.addressLine!==undefined&&!Array.isArray(inline.addressLine))throw Error('document_addressee_invalid');
- if(hasLines(inline))return account;
  const profileId=optional(account.profileId).id;
  // A non-profile account can legitimately have no postal address. Never invent one.
  if(profileId==null)return account;
@@ -24,11 +34,17 @@ export async function accountWithAddressee(reader:{profile?:(profileId:string)=>
  const attachedId=attached.id;
  if(attachedId!=null&&(typeof attachedId!=='string'||!attachedId))throw Error('document_addressee_invalid');
  const matches=attachedId?addresses.filter(row=>row.id===attachedId):addresses.filter(row=>record(row.address).primaryInd===true);
- if(!addresses.length&&!attachedId)return account;
+ if(!addresses.length&&!attachedId){if(hasLines(inline))throw Error('document_addressee_unavailable');return account;}
  if(matches.length!==1)throw Error('document_addressee_ambiguous');
  const chosen=matches[0],address=record(chosen.address);
  // A successful, identity-checked profile can explicitly contain blank postal
  // lines. Keep its selected address (including country) without inventing text.
  if(!Array.isArray(address.addressLine)||!address.addressLine.every(value=>typeof value==='string'))throw Error('document_addressee_unavailable');
+ // Without an exact address reference, partial inline data must agree with the
+ // selected primary address before replacing it with full profile stationery.
+ if(!attachedId){
+  if(!compatible(inline,address))throw Error('document_addressee_ambiguous');
+  if(hasLines(inline)&&addresses.filter(row=>compatible(inline,record(row.address))).length!==1)throw Error('document_addressee_ambiguous');
+ }
  return {...account,address:chosen};
 }

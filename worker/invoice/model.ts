@@ -39,7 +39,10 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
   const debit=optionalCents(p.debitAmount),credit=optionalCents(p.creditAmount);if(!debit&&!credit||debit&&credit)return fail('posting_amount_invalid');
   // OPERA's AR posting check number is the printed reference. The financial
   // transaction identity remains separate for tax and scope verification.
-  return {id:postingId,date:dateText(p.transactionDate),description:text(code[0].description),reference:text(p.checkNo),debit,credit};
+  const check=text(p.checkNo),narrative=text(p.reference);
+  const printedCheckAtEnd=!!check&&narrative.trimEnd().endsWith(check)&&/\s/.test(narrative.trimEnd().charAt(narrative.trimEnd().length-check.length-1));
+  const reference=/^Routed From /i.test(narrative.trim())?[narrative,...check&&!printedCheckAtEnd?[check]:[]].join('\n'):check;
+  return {id:postingId,date:dateText(p.transactionDate),description:text(code[0].description),reference,debit,credit};
  }).sort((x,y)=>postingDates.get(x.id)!.localeCompare(postingDates.get(y.id)!)||Number(x.id)-Number(y.id));
  const debit=sum(lines.map(l=>l.debit)),credit=sum(lines.map(l=>l.credit)),gross=debit-credit;if(!Number.isSafeInteger(gross)||gross!==currentAmount)throw Error('document_source_changed');
  const netRows=packet.taxRows.map(record),byId=new Map<string,Row>();

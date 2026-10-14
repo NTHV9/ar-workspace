@@ -1,3 +1,9 @@
+## 2026-10-14 — PDF stationery completeness comparison
+
+- Compared every rendered page of the two owner-supplied PDFs privately. Confirmed missing country/VAT address continuation, routed-charge narratives, print-operator value and first Invoice page signature block. All charge rows, amounts, tax totals, bank details and account-wide aging match; pagination and off-page source material distinguished from content loss.
+- Actual read-only selected-source audit confirms populated AR inline address has only three lines and empty country, while linked profile has fuller address records. Shared resolver now fetches exact referenced profile address even when inline lines exist; no-ID partial addresses require unique compatible primary evidence. Provider failures/identity ambiguity remain errors.
+- Routed narrative preservation and per-page signature bounds implemented with synthetic regressions. Print operator is not copied from an unrelated user or cashier; source mapping remains under investigation. Full unit run 1,958 tests passes before final multiline fixture addition; final render checks and live repaired generation follow. Customer PDFs/data remain outside Git.
+
 ## 2026-10-13 — Owner-approved 2 GiB app database allowance
 
 - Owner explicitly raises application database allowance to 2 GiB. Worker config and database-side validation accept 2,147,483,648 bytes; 20% safety reserve remains. File storage/transfer allowances, provider plan, resources and retention are unchanged.
