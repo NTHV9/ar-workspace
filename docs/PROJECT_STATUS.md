@@ -1,3 +1,8 @@
+## 2026-10-15 — PdfCraft isolated trial
+
+- Tried official v0.8.0 Windows portable engine and loopback web build with checksum verification and private PDF copies. Viewing/scans, same-height text edits, targeted white redaction and merge succeeded. Address newline causes VAT line to be hidden under the original table; independent render confirms. Default-font Thai edit is refused. User-requested table-move trials move text but not complete grid/fills, producing misalignment. [Trial scope and results](PDFCRAFT_TRIAL_20261015.md).
+- Production Workspace/dependencies/cloud resources/original files unchanged. No mail sent. Recommendation: do not replace the Workspace wholesale; focus any next prototype on grouped region/table movement. Native one-shot timings are not claimed as a browser speed improvement.
+
 ## 2026-10-14 — Unbilled attention starts at Invoice age 10
 
 - Owner explicitly requests age >=10, including data rather than wording only. Migration 20261014064509 updates shared balance metric membership and hotel management counts, invalidates period cache generation, and preserves general 61+ aging. Established API keys remain compatibility aliases; labels now say 10+ days across headline, hotel matrix and detail views.
