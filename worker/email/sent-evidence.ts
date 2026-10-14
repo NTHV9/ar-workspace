@@ -17,8 +17,14 @@ function addresses(value:string):string[]{
  return (value.match(/(?:[^,"]|"[^"]*")+/g)??[]).map(s=>{const angle=/<([^<>]+)>/.exec(s);const address=(angle?angle[1]:s).trim().toLowerCase();if(!/^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(address))throw Error();return address;}).sort();
 }
 function decodedHeader(value:string){return value.replace(/\?=\s+=\?/g,'?==?').replace(/=\?utf-8\?([bq])\?([^?]*)\?=/gi,(_,encoding:string,data:string)=>new TextDecoder().decode(encoding.toLowerCase()==='b'?unbase64(data):Uint8Array.from(data.replaceAll('_',' ').replace(/=([0-9a-f]{2})/gi,(_x,n:string)=>String.fromCharCode(parseInt(n,16))),c=>c.charCodeAt(0))));}
-export async function verifySentEvidence(message:Message,expected:ExpectedMail,attachment:(id:string)=>Promise<Uint8Array>):Promise<{status:'verified'|'not_sent'|'review_required';sentAt?:string;reason?:string}>{
- if(!message.labelIds?.includes('SENT')||message.labelIds.includes('DRAFT'))return {status:'not_sent'};
+export async function verifySentEvidence(message:Message,expected:ExpectedMail,attachment:(id:string)=>Promise<Uint8Array>){
+ return verifyMessageEvidence(message,expected,attachment,'sent');
+}
+export async function verifyDraftEvidence(message:Message,expected:ExpectedMail,attachment:(id:string)=>Promise<Uint8Array>){
+ const {sentAt:_,...result}=await verifyMessageEvidence(message,expected,attachment,'draft');return result;
+}
+async function verifyMessageEvidence(message:Message,expected:ExpectedMail,attachment:(id:string)=>Promise<Uint8Array>,kind:'sent'|'draft'):Promise<{status:'verified'|'not_sent'|'review_required';sentAt?:string;reason?:string}>{
+ if(kind==='sent'?(!message.labelIds?.includes('SENT')||message.labelIds.includes('DRAFT')):(!message.labelIds?.includes('DRAFT')||message.labelIds.includes('SENT')))return {status:'not_sent'};
  let check='message_labels';
  try{
   check='message_time';const date=Number(message.internalDate);if(!Number.isSafeInteger(date)||date<1||date>Date.now()+300000||!message.id||!message.payload)throw Error();

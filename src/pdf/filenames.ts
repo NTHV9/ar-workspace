@@ -16,10 +16,11 @@ export function pdfFilename(input:string):string {
 export function defaultPdfFilename(group:DeliveryGroup,index:number):string {
   let stem=group.name.replace(/[^\p{L}\p{N}._ -]/gu,'_').slice(0,100).replace(/\.{2,}/g,'.').replace(/^[. ]+|[. ]+$/g,'');
   while(/\.pdf$/i.test(stem))stem=stem.slice(0,-4).replace(/[. ]+$/g,'');
-  return pdfFilename(`${String(index+1).padStart(2,'0')}-${stem||'Documents'}.pdf`);
+  return pdfFilename(/^Inv\. \S/.test(stem)?`${stem}.pdf`:`${String(index+1).padStart(2,'0')}-${stem||'Documents'}.pdf`);
 }
 export function deliveryFilenames(project:PdfProject,groups:DeliveryGroup[]):string[] {
-  const names=groups.map((group,index)=>pdfFilename(project.outputNames?.[group.id]??defaultPdfFilename(group,index)));
+  const defaults=groups.map(defaultPdfFilename);
+  const names=groups.map((group,index)=>pdfFilename(project.outputNames?.[group.id]??(defaults.filter(n=>n.normalize('NFC').toLowerCase()===defaults[index].normalize('NFC').toLowerCase()).length>1?`${String(index+1).padStart(2,'0')}-${defaults[index]}`:defaults[index])));
   const seen=new Set<string>();
   for(const name of names){const key=name.normalize('NFC').toLowerCase();if(seen.has(key))throw Error('Each output PDF needs a different filename.');seen.add(key);}
   return names;

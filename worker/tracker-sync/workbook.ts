@@ -1,5 +1,5 @@
 import {inflateSync,Inflate} from 'fflate';
-import {trackerFields,trackerHotel,type TrackerField,type TrackerIdentity,type TrackerValues} from './model';
+import {canResolveWithoutAccountNumber,trackerFields,trackerHotel,type TrackerField,type TrackerIdentity,type TrackerValues} from './model';
 import type {RegionId} from '../../src/domain/hotels';
 
 const decoder=new TextDecoder('utf-8',{fatal:true}),encoder=new TextEncoder();
@@ -137,7 +137,7 @@ function patchLoadedWorkbook(loaded:ReturnType<typeof load>,edits:readonly Track
  const rows=new Map(loaded.parsed.rows.map(row=>[row.rowKey,row])),identityIssues=new Set(['identity_invalid','account_missing','invoice_missing','transaction_date_invalid']);
  const replacements:{start:number;end:number;value:string}[]=[],seen=new Map<string,TrackerCellChange>();let text=loaded.chosen.text;
  for(const {rowKey,expectedIdentity,changes} of edits){const row=rows.get(rowKey);
- if(!row||row.issues?.some(issue=>identityIssues.has(issue)||changes.some(change=>issue===change.field+'_invalid'))||row.hotel!==expectedIdentity.hotel||row.accountNo!==expectedIdentity.accountNo||row.invoiceNo!==expectedIdentity.invoiceNo||(row.folio??null)!==(expectedIdentity.folioNo??null)||(expectedIdentity.transactionDate!==undefined&&row.transactionDate!==expectedIdentity.transactionDate))throw Error('tracker_identity_conflict');
+ if(!row||row.issues?.some(issue=>identityIssues.has(issue)&&!(issue==='account_missing'&&canResolveWithoutAccountNumber(row))||changes.some(change=>issue===change.field+'_invalid'))||row.hotel!==expectedIdentity.hotel||row.accountNo!==expectedIdentity.accountNo||row.invoiceNo!==expectedIdentity.invoiceNo||(row.folio??null)!==(expectedIdentity.folioNo??null)||(expectedIdentity.transactionDate!==undefined&&row.transactionDate!==expectedIdentity.transactionDate))throw Error('tracker_identity_conflict');
  if(!changes.length||changes.length>4||new Set(changes.map(c=>c.field)).size!==changes.length)throw Error('tracker_patch_invalid');
  for(const change of changes){if(!['R','U','V','W'].includes(change.field)||!/^\d{4}-\d{2}-\d{2}$/.test(change.value))throw Error('tracker_patch_forbidden');
   if(row.fields[change.field]!==change.expected)throw Error('tracker_cell_conflict');const cell=loaded.chosen.map.get(change.field+row.locator.row);if(!cell||cell.formula)throw Error('tracker_formula_or_missing_cell');

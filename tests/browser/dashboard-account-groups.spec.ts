@@ -1,0 +1,22 @@
+import {test,expect} from '@playwright/test';
+import {setupRegional} from './fixtures/hotel-regions';
+import {syntheticManagement} from '../fixtures/management-dashboard';
+const members=[{hotel:'TSAN',accountId:'synthetic-a',accountNo:'DUPLICATE',accountName:'Synthetic Tour Company',accountType:'OTA',count:1,amount:'0.00',oldest:61},{hotel:'TSAN',accountId:'synthetic-b',accountNo:'DUPLICATE',accountName:'Synthetic Tour Company',accountType:'OTA',count:1,amount:'-20.00',oldest:91},{hotel:'TLKL',accountId:'synthetic-c',accountNo:'OTHER',accountName:'Synthetic Tour Company',accountType:'OTA',count:1,amount:'200.00',oldest:61}];
+for(const width of [1440,390])test(`Khao Dashboard grouped ledger choice at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});const fixture=await setupRegional(page,false,true);const queries:URLSearchParams[]=[];
+ await page.route('**/api/dashboard/management?*',route=>{const q=new URL(route.request().url()).searchParams,data=syntheticManagement('khao-lak',q.get('from')!,q.get('to')!);data.accountsOver60!.find(a=>a.hotel==='TSAN'&&a.accountId==='lake')!.accountName='Synthetic Tour Company';return route.fulfill({json:data});});
+ await page.route('**/api/dashboard/balance-accounts?*',route=>{const q=new URL(route.request().url()).searchParams;return route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:true,missingHotels:[],unverified:0,total:3,metrics:[],stages:[],rows:members.map(a=>({...a,verified:true}))}});});
+ await page.route('**/api/dashboard/balances?*',route=>{const q=new URL(route.request().url()).searchParams;queries.push(q);return route.fulfill({json:{asOfDate:q.get('asOf'),mode:'snapshot',complete:true,missingHotels:[],unverified:0,total:0,metrics:[],stages:[],rows:[]}});});
+ await page.goto('/?dashboard=1&region=khao-lak&dashboardFrom=2026-09-01&dashboardTo=2026-09-12&dashboardDateMode=range');
+ await page.locator('.management-account-disclosure>summary').click();
+ const summary=page.getByRole('region',{name:'Accounts with invoices 61+ days old',exact:true});
+ const summaryChoice=summary.getByRole('button',{name:'Choose TSAN account for Synthetic Tour Company'});await summaryChoice.click();
+ const dialog=page.getByRole('dialog');await expect(dialog).toBeVisible();await expect(dialog.getByRole('button')).toHaveCount(3);await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();await expect(summaryChoice).toBeFocused();
+ await page.getByRole('button',{name:'View outstanding',exact:true}).click();
+ const detail=page.getByRole('region',{name:'Dashboard account details',exact:true});await expect(detail).toContainText('1 comparison row');await expect(detail).toContainText('3 accounts');
+ const choose=detail.getByRole('button',{name:'Choose TSAN account for Synthetic Tour Company'});await choose.click();await expect(dialog).toBeVisible();await expect(dialog).toContainText('ID synthetic-a');await expect(dialog).toContainText('ID synthetic-b');await expect(dialog).toContainText('-฿20.00');await page.screenshot({path:`.tmp/dashboard-audit-20261013/group-picker-${width}.png`});
+ await dialog.getByRole('button',{name:/DUPLICATE · ID synthetic-b/}).click();await expect.poll(()=>queries.at(-1)?.get('account')).toBe('synthetic-b');expect(queries.at(-1)?.get('hotel')).toBe('TSAN');
+ await page.getByRole('button',{name:'Back to accounts',exact:true}).click();await choose.click();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(choose).toBeFocused();
+ await choose.click();await dialog.getByRole('button',{name:/DUPLICATE · ID synthetic-a/}).click();await expect.poll(()=>queries.at(-1)?.get('account')).toBe('synthetic-a');expect(queries.at(-1)?.get('hotel')).toBe('TSAN');await page.getByRole('button',{name:'Back to accounts',exact:true}).click();await detail.getByRole('button',{name:'Open Synthetic Tour Company · TLKL · Account OTHER'}).click();await expect.poll(()=>queries.at(-1)?.get('account')).toBe('synthetic-c');expect(queries.at(-1)?.get('hotel')).toBe('TLKL');await page.getByRole('button',{name:'Back to accounts',exact:true}).click();await choose.click();await page.getByRole('button',{name:'Reload dashboard',exact:true}).evaluate((button:HTMLButtonElement)=>button.click());await expect(dialog).not.toBeVisible();
+ expect(fixture.errors).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

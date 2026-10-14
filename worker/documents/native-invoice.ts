@@ -8,7 +8,7 @@ export interface DocumentInvoice {
 }
 export interface NativePdf {bytes:Uint8Array;sha256:string;pages:number}
 function fail(stage:string):never{throw new OperaError('invalid_response',undefined,stage);}
-export function nativeFolioSelector(raw:unknown,invoice:DocumentInvoice){
+function matchedHistoricalFolio(raw:unknown,invoice:DocumentInvoice){
  const info=asObject(asObject(raw).reservationFolioInformation),reservation=asObject(info.reservationInfo);
  if(reservation.hotelId!==invoice.hotel||!Array.isArray(reservation.reservationIdList)||!reservation.reservationIdList.map(asObject).some(id=>id.type==='Reservation'&&id.id===invoice.reservation_id))fail('folio_reservation_identity');
  if(!Array.isArray(info.folioHistory))fail('folio_history_missing');
@@ -18,9 +18,18 @@ export function nativeFolioSelector(raw:unknown,invoice:DocumentInvoice){
  });
  const matches=rows.filter(r=>String(r.folio.invoiceNo)===invoice.invoice_no&&String(r.folio.folioNo)===invoice.folio_no);
  if(matches.length!==1||typeof matches[0].window!=='number'||!Number.isSafeInteger(matches[0].window)||matches[0].window<1)fail('folio_selector_ambiguous');
- // billNumber mapping for multiple historical folios in one window is unproven.
- if(rows.filter(r=>r.window===matches[0].window).length!==1)fail('folio_window_ambiguous');
- return matches[0].window;
+ return {window:matches[0].window,sameWindowCount:rows.filter(r=>r.window===matches[0].window).length};
+}
+/** Read-only metadata lookup: the exact invoice/folio must occur once. */
+export function historicalFolioSelector(raw:unknown,invoice:DocumentInvoice){
+ return matchedHistoricalFolio(raw,invoice).window;
+}
+export function nativeFolioSelector(raw:unknown,invoice:DocumentInvoice){
+ const match=matchedHistoricalFolio(raw,invoice);
+ // Native printing selects by window/date, unlike the exact AR posting reader.
+ // Keep the print fence until billNumber mapping has been independently proven.
+ if(match.sameWindowCount!==1)fail('folio_window_ambiguous');
+ return match.window;
 }
 export async function getNativeInvoicePdf(reader:Pick<OperaReader,'account'|'reservationFolios'|'folioReport'> & Partial<Pick<OperaReader,'invoiceHistory'>>,invoice:DocumentInvoice,onRenderStart:()=>void=()=>{}):Promise<NativePdf>{
  if(!['standalone','parent'].includes(invoice.collection_role)||invoice.open<=0)fail('document_not_collectible');

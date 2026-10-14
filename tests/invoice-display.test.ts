@@ -3,6 +3,13 @@ import {latestInvoiceActivity,invoiceBillingStatus,sortInvoiceRows} from '../src
 import type {Invoice,InvoiceWorkflow} from '../src/domain/portfolio';
 const workflow:InvoiceWorkflow={revision:1,credit_term:30,billing_required:true,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:null};
 const row=(id:string,age?:number|null,aging='Unmapped'):Invoice=>({id,age,aging,hotel:'KAT',accountId:'synthetic',guest:id,invoiceNo:id,folioNo:id,date:'2026-09-01',due:null,original:100,open:100,stage:'No reminders sent'});
+it('puts No billing sent first for ascending latest-status sort and preserves manual guest sorting',()=>{
+ const rows=[{...row('A'),stage:'Billed'},{...row('Z'),stage:'No billing sent'},{...row('B'),stage:'No billing sent'},{...row('C'),stage:'No reminders sent'}];
+ expect(sortInvoiceRows(rows,'stage','asc',[]).map(r=>r.id)).toEqual(['B','Z','A','C']);
+ expect(sortInvoiceRows(rows,'stage','desc',[]).map(r=>r.id)).toEqual(['C','A','B','Z']);
+ expect(sortInvoiceRows(rows,'guest','asc',[]).map(r=>r.id)).toEqual(['A','B','C','Z']);
+ expect(rows.map(r=>r.id)).toEqual(['A','Z','B','C']);
+});
 it('shows billing before reminder defaults and distinguishes not-required accounts',()=>{
  expect(latestInvoiceActivity(workflow)).toBe('No billing sent');expect(invoiceBillingStatus(workflow)).toBe('Not billed');
  const exempt={...workflow,billing_required:false};expect(latestInvoiceActivity(exempt)).toBe('No reminders sent');expect(invoiceBillingStatus(exempt)).toBe('Not required');

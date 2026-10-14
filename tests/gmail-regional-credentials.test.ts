@@ -1,9 +1,39 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {gmailToken,gmailConnect,gmailCallback,gmailStatus,credentialAad,gmailReadScope,gmailScope} from '../worker/email/oauth';
-import {seal} from '../worker/email/crypto';
+import {seal,unseal,type Cipher} from '../worker/email/crypto';
 const owner='00000000-0000-4000-8000-000000000001',key='11'.repeat(32),env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic',GMAIL_CLIENT_ID:'synthetic-client',GMAIL_CLIENT_SECRET:'synthetic-secret',GMAIL_TOKEN_KEY:key};
 const scope=gmailReadScope+' '+gmailScope;
 afterEach(()=>vi.unstubAllGlobals());
+it.each(['phuket','khao-lak'] as const)('concurrent expired-token refreshes both use the saved winner in %s',async mailbox=>{
+ const email=mailbox==='phuket'?'ar@katathani.com':'ar@thesandskhaolak.com';
+ const payload=await seal(key,credentialAad(owner,mailbox),{refresh_token:'same-refresh',access_token:'expired',expires_at:0});
+ let stored={mailbox,email,cipher_version:2,revision:7,payload,scope},issued=0,winner='',writes=0;
+ vi.stubGlobal('fetch',async(url:string,init:RequestInit={})=>{
+  if(url.endsWith('get_region'))return Response.json(stored);
+  if(url.includes('oauth2.googleapis.com'))return Response.json({access_token:'refreshed-'+(++issued),expires_in:3600});
+  if(url.endsWith('/profile'))return Response.json({emailAddress:email});
+  if(url.endsWith('refresh_region')){
+   writes++;const args=JSON.parse(String(init.body)) as {p_revision:number;p_payload:Cipher};
+   if(args.p_revision!==stored.revision)return Response.json(false);
+   stored={...stored,payload:args.p_payload,revision:stored.revision+1};winner=(await unseal<{access_token:string}>(key,credentialAad(owner,mailbox),stored.payload)).access_token;return Response.json(true);
+  }
+  throw Error('unexpected_provider_request');
+ });
+ const results=await Promise.allSettled([gmailToken(env,owner,mailbox),gmailToken(env,owner,mailbox)]);
+ expect(results).toEqual([{status:'fulfilled',value:winner},{status:'fulfilled',value:winner}]);expect(writes).toBe(2);expect(stored.revision).toBe(8);
+});
+it.each(['wrong-mailbox','wrong-profile','reconnect','expired','scope-changed','unchanged-revision'])('fences an unusable refresh winner: %s',async mode=>{
+ const initial=await seal(key,credentialAad(owner,'khao-lak'),{refresh_token:'original-refresh',access_token:'expired',expires_at:0});
+ const next=await seal(key,credentialAad(owner,'khao-lak'),{refresh_token:mode==='reconnect'?'reconnected-refresh':'original-refresh',access_token:'stored-winner',expires_at:mode==='expired'?0:Date.now()+3600000});
+ let reads=0;const attemptedWrites:Record<string,unknown>[]=[];
+ vi.stubGlobal('fetch',async(url:string,init:RequestInit={})=>{
+  if(url.endsWith('get_region'))return Response.json(++reads===1?{mailbox:'khao-lak',email:'ar@thesandskhaolak.com',cipher_version:2,revision:7,payload:initial,scope}:{mailbox:mode==='wrong-mailbox'?'phuket':'khao-lak',email:'ar@thesandskhaolak.com',cipher_version:2,revision:mode==='unchanged-revision'?7:8,payload:next,scope:mode==='scope-changed'?gmailScope:scope});
+  if(url.includes('oauth2.googleapis.com'))return Response.json({access_token:'losing-token',expires_in:3600});
+  if(url.endsWith('/profile'))return Response.json({emailAddress:mode==='wrong-profile'&&new Headers(init.headers).get('Authorization')==='Bearer stored-winner'?'ar@katathani.com':'ar@thesandskhaolak.com'});
+  attemptedWrites.push(JSON.parse(String(init.body)));return Response.json(false);
+ });
+ await expect(gmailToken(env,owner,'khao-lak')).rejects.toThrow('gmail_reconnect_required');expect(attemptedWrites).toHaveLength(1);expect(attemptedWrites[0]).toMatchObject({p_mailbox:'khao-lak',p_revision:7});
+});
 it.each(['revoked','wrong-profile','correct-profile'])('checks live mailbox profile for cached token status: %s',async mode=>{
  const payload=await seal(key,credentialAad(owner,'khao-lak'),{refresh_token:'synthetic-refresh',access_token:'synthetic-cached',expires_at:Date.now()+3600000});
  vi.stubGlobal('fetch',async(url:string)=>{

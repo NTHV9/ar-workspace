@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest';
 import {PDFDocument} from 'pdf-lib';
-import {nativeFolioSelector,getNativeInvoicePdf,type DocumentInvoice} from '../worker/documents/native-invoice';
+import {nativeFolioSelector,historicalFolioSelector,getNativeInvoicePdf,type DocumentInvoice} from '../worker/documents/native-invoice';
 const invoice:DocumentInvoice={id:'1',hotel:'KAT',account_id:'A',invoice_no:'100',folio_no:'200',reservation_id:'300',folio_date:'2026-09-01',open:100,collection_role:'standalone'};
 const printedRow={transactionNo:1,invoiceNo:100,folioNo:200,reservationId:{id:'300'},folioDate:'2026-09-01',balance:{amount:100,currencyCode:'THB'},printed:true,compressed:false};
 function printedPage(rows=[printedRow],hotel='KAT'){return {details:[{hotelId:hotel,accountId:{id:'A'},invoices:rows}],totalResults:rows.length,hasMore:false,offset:20,limit:20};}
@@ -26,6 +26,17 @@ it('rejects history from another hotel before native render',async()=>{
 });
 function history(folios=[{invoiceNo:100,folioNo:200}]){return {reservationFolioInformation:{reservationInfo:{hotelId:'KAT',reservationIdList:[{id:'300',type:'Reservation'}]},folioHistory:[{folioWindowNo:2,folios}]}};}
 it('uses verified window rather than internal ID or default1',()=>{expect(nativeFolioSelector(history(),invoice)).toBe(2);});
+it('allows exact metadata selection in a shared window but keeps native printing fenced',()=>{
+ const shared=history([{invoiceNo:100,folioNo:200},{invoiceNo:101,folioNo:201}]);
+ expect(historicalFolioSelector(shared,invoice)).toBe(2);
+ expect(()=>nativeFolioSelector(shared,invoice)).toThrow('folio_window_ambiguous');
+});
+it('rejects duplicate exact metadata matches and foreign reservation identity',()=>{
+ expect(()=>historicalFolioSelector(history([{invoiceNo:100,folioNo:200},{invoiceNo:100,folioNo:200}]),invoice)).toThrow('folio_selector_ambiguous');
+ expect(()=>historicalFolioSelector(history(),{...invoice,hotel:'TSAN'})).toThrow('folio_reservation_identity');
+ expect(()=>historicalFolioSelector(history(),{...invoice,reservation_id:'other'})).toThrow('folio_reservation_identity');
+ expect(()=>historicalFolioSelector(history([{invoiceNo:100,folioNo:201}]),invoice)).toThrow('folio_selector_ambiguous');
+});
 it('rejects ambiguous window, wrong folio and cross-hotel history',()=>{
  expect(()=>nativeFolioSelector(history([{invoiceNo:100,folioNo:200},{invoiceNo:101,folioNo:201}]),invoice)).toThrow();
  expect(()=>nativeFolioSelector(history([{invoiceNo:100,folioNo:201}]),invoice)).toThrow();

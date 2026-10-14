@@ -2,6 +2,18 @@ import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 import {assertButtonVisibility} from './fixtures/button-visibility';
 const jobId='00000000-0000-4000-8000-000000000001',draftId='00000000-0000-4000-8000-000000000002';
+test('Send is primary and an existing Gmail draft can be reviewed and sent once from the workspace',async({page})=>{
+ const calls=await setup(page);await page.goto('/tests/browser/audit-email/harness.html');
+ await page.getByLabel('Email TO').fill('recipient@example.test');
+ const send=page.getByRole('button',{name:'Review & send now',exact:true}),create=page.getByRole('button',{name:'Create Gmail draft',exact:true});
+ await expect(send).toHaveClass(/primary-button/);await expect(create).not.toHaveClass(/primary-button/);
+ await create.click();await expect(page.getByText('Delivery: created',{exact:true})).toBeVisible();
+ await expect(create).toBeDisabled();await expect(send).toBeEnabled();await send.click();
+ await expect(page.getByRole('button',{name:'Confirm send now',exact:true})).toBeDisabled();
+ await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();
+ await page.getByRole('button',{name:'Confirm send now',exact:true}).click();
+ await expect(page.getByText('Delivery: sent',{exact:true})).toBeVisible();expect(calls.filter(c=>c.endsWith('/send'))).toHaveLength(1);
+});
 async function setup(page:Page,conflict=false){
  const user={id:'synthetic-email-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
  const files=[{name:'Statement-final.pdf',storage_key:`jobs/${jobId}/exports/example.pdf`,byte_count:120000,sha256:'a'.repeat(64)}];

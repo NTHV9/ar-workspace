@@ -24,7 +24,7 @@ export function AccountDetail({account, invoices:sourceInvoices, review, refresh
   const [focusedId,setFocusedId]=useState<string|null>(initialInvoiceId??null);
   const focused=focusedId?(invoices.find(i=>i.id===focusedId)??null):(invoices[0]??null);
   const validSelected=new Set([...selected].filter(id=>invoices.some(i=>i.id===id&&selectableInvoice(i,review))));
-  const [drawer,setDrawer]=useState(false), [aging,setAging]=useState(true);
+  const [drawer,setDrawer]=useState(!!initialInvoiceId), [aging,setAging]=useState(true);
   const detailDialog=useRef<HTMLDialogElement>(null);
   const [compact,setCompact]=useState(()=>typeof matchMedia!=='undefined'&&matchMedia('(max-width:1000px)').matches);
   useEffect(()=>{const media=matchMedia('(max-width:1000px)');const changed=()=>setCompact(media.matches);media.addEventListener('change',changed);return()=>media.removeEventListener('change',changed);},[]);
@@ -33,7 +33,7 @@ export function AccountDetail({account, invoices:sourceInvoices, review, refresh
     if(dialog.open&&(compact!==dialog.matches(':modal')||compact&&!drawer))dialog.close();
     if(!dialog.open&&(!compact||drawer)){if(compact)dialog.showModal();else dialog.show();}
   },[compact,drawer]);
-  const [search,setSearch]=useState(''), [sort,setSort]=useState<keyof Invoice>('guest'), [direction,setDirection]=useState<'asc'|'desc'>('asc');
+  const [search,setSearch]=useState(''), [sort,setSort]=useState<keyof Invoice>(backContext==='Dashboard'?'stage':'guest'), [direction,setDirection]=useState<'asc'|'desc'>('asc');
   const dirtyForms=useRef<Record<string,boolean>>({});const dirtyCallback=useRef(onDirtyChange);dirtyCallback.current=onDirtyChange;
   const formDirty=(form:string,dirty:boolean)=>{dirtyForms.current[form]=dirty;dirtyCallback.current?.(Object.values(dirtyForms.current).some(Boolean));};
   const leaveForm=()=>!Object.values(dirtyForms.current).some(Boolean)||window.confirm('Discard unsaved account changes?');

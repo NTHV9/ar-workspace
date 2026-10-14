@@ -15,7 +15,10 @@ export function checkedAcceptanceFixture(raw:unknown):AcceptanceFixture{
  return f;
 }
 const paymentId=(row:AcceptanceInvoice)=>String(Number(row.id)+1000);
-function rawInvoice(f:AcceptanceFixture,row:AcceptanceInvoice,history=false){return {hotelId:f.hotel,transactionNo:row.id,invoiceNo:row.invoiceNo,folioNo:row.folioNo,reservationId:{id:row.reservationId},folioDate:row.date,transactionDate:row.date,invoiceType:'Normal',originalAmount:money(row.original),amount:money(row.original),payments:money((history?1:-1)*(row.original-row.open)),balance:money(row.open),age:Math.round((Date.parse(f.businessDate)-Date.parse(row.date))/86400000),guestName:row.guest,reference:row.reference,printed:false,compressed:false,reservationInfo:{roomStay:{arrivalDate:row.arrival,departureDate:row.date}}};}
+const internalWindow=(row:AcceptanceInvoice)=>String(Number(row.id)+2000);
+const syntheticPosting=(row:AcceptanceInvoice)=>String(Number(row.id)+3000);
+const reservationInfo=(f:AcceptanceFixture,row:AcceptanceInvoice)=>({hotelId:f.hotel,reservationIdList:[{id:row.reservationId,type:'Reservation'}],roomStay:{arrivalDate:row.arrival,departureDate:row.date,adultCount:1,childCount:0,roomId:'TEST'}});
+function rawInvoice(f:AcceptanceFixture,row:AcceptanceInvoice,history=false){return {internalFolioWindowID:internalWindow(row),hotelId:f.hotel,transactionNo:row.id,invoiceNo:row.invoiceNo,folioNo:row.folioNo,reservationId:{id:row.reservationId},folioDate:row.date,transactionDate:row.date,invoiceType:'Normal',originalAmount:money(row.original),amount:money(row.original),payments:money((history?1:-1)*(row.original-row.open)),balance:money(row.open),age:Math.round((Date.parse(f.businessDate)-Date.parse(row.date))/86400000),guestName:row.guest,reference:row.reference,printed:false,compressed:false,reservationInfo:{roomStay:{arrivalDate:row.arrival,departureDate:row.date}}};}
 function rawPayment(f:AcceptanceFixture,row:AcceptanceInvoice){const paid=row.original-row.open;return {hotelId:f.hotel,transactionNo:paymentId(row),transactionCode:'9000',transactionDate:f.businessDate,postingDate:f.businessDate,amount:money(-paid),amountUsed:money(-paid),balance:money(0),transferredIn:false,transferredOut:false};}
 export function acceptanceAccount(f:AcceptanceFixture){
  const debit=f.invoices.reduce((n,r)=>n+r.original,0),balance=f.invoices.reduce((n,r)=>n+r.open,0),bands=[[0,30,'Up to 30'],[31,60,'31 - 60'],[61,90,'61 - 90'],[91,120,'91 - 120'],[121,150,'121 - 150'],[151,99999,'151 and Over']] as const;
@@ -30,6 +33,20 @@ export function acceptanceTransport(fixture:Promise<AcceptanceFixture>|Acceptanc
   if(u.pathname==='/ars/v1/accounts')return Response.json(page(hotel===f.hotel?[{hotelId:hotel,accountId:{id:f.accountId},accountNo:f.accountNo,accountName:f.name}]:[],'accountsDetails'));
   if(hotel!==f.hotel)throw Error('acceptance_fixture_scope_invalid');
   const account=encodeURIComponent(f.accountId);
+  const reservationHeader=new RegExp(`^/rsv/v1/hotels/${hotel}/reservations/([0-9]+)$`).exec(u.pathname);
+  if(reservationHeader){const row=f.invoices.find(r=>r.reservationId===reservationHeader[1]);if(!row)throw Error('acceptance_fixture_scope_invalid');return Response.json({reservations:{reservation:[{...reservationInfo(f,row),customReference:row.reference}],hasMore:false}});}
+  if(u.pathname==='/ars/v1/invoicePostings'){
+   const row=f.invoices.find(r=>r.id===u.searchParams.get('transactionNo'));
+   if(!row||u.searchParams.get('hotelId')!==hotel||u.searchParams.get('accountId')!==f.accountId||u.searchParams.get('invoiceNo')!==row.invoiceNo||u.searchParams.get('folioNo')!==row.folioNo||u.searchParams.get('internalFolioWindowID')!==internalWindow(row))throw Error('acceptance_fixture_scope_invalid');
+   return Response.json({invoicePostingsDetails:[{transactionNo:Number(syntheticPosting(row)),transactionCode:'SYNTHETIC',transactionDate:row.date,checkNo:row.reference,debitAmount:money(row.original)}],trxCodesInfo:[{hotelId:hotel,transactionCode:'SYNTHETIC',description:'Synthetic test charge - no payment requested',transactionGroup:'OTHER'}]});
+  }
+  if(u.pathname===`/csh/v1/hotels/${hotel}/financialPostingsNetVat`){
+   const row=f.invoices.find(r=>r.reservationId===u.searchParams.get('reservationId'));
+   if(!row||u.searchParams.get('folioWindowNo')!=='1')throw Error('acceptance_fixture_scope_invalid');
+   const offset=Number(u.searchParams.get('offset')??0),limit=Number(u.searchParams.get('limit')??50),included=row.date>=(u.searchParams.get('startDate')??'')&&row.date<=(u.searchParams.get('endDate')??'');
+   const entries=included?[{posting:{hotelId:hotel,folioNo:Number(row.folioNo),guestInfo:{reservationId:{id:row.reservationId}},transactionNo:Number(syntheticPosting(row)),transactionCode:'SYNTHETIC',transactionType:'Revenue'},postingBreakdown:{grossAmount:money(row.original),netAmount:money(row.original)}}]:[];
+   return Response.json({financialPostings:entries.slice(offset,offset+limit),offset,limit,totalResults:entries.length,hasMore:offset+limit<entries.length});
+  }
   if(u.pathname===`/ars/v1/hotels/${hotel}/accounts/${account}`)return Response.json(acceptanceAccount(f));
   if(u.pathname===`/ars/v1/invoicePayments/accounts/${account}`){
    const instructions=u.searchParams.getAll('fetchInstructions'),numbers=u.searchParams.getAll('invoiceNo'),includeZero=u.searchParams.get('inclZeroBalance')==='true',from=u.searchParams.get('start'),to=u.searchParams.get('end');
@@ -49,9 +66,10 @@ export function acceptanceTransport(fixture:Promise<AcceptanceFixture>|Acceptanc
    throw Error('acceptance_fixture_scope_invalid');
   }
   const stay=new RegExp(`^/csh/v1/hotels/${hotel}/reservations/([0-9]+)/folios$`).exec(u.pathname);
-  if(stay){const row=f.invoices.find(r=>r.reservationId===stay[1]);if(!row)throw Error('acceptance_fixture_scope_invalid');return Response.json({reservationFolioInformation:{reservationInfo:{hotelId:hotel,reservationIdList:[{id:row.reservationId,type:'Reservation'}],roomStay:{arrivalDate:row.arrival,departureDate:row.date}},folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:row.invoiceNo,folioNo:row.folioNo}]}]}});}
+  if(stay){const row=f.invoices.find(r=>r.reservationId===stay[1]);if(!row)throw Error('acceptance_fixture_scope_invalid');return Response.json({reservationFolioInformation:{reservationInfo:reservationInfo(f,row),folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:row.invoiceNo,folioNo:row.folioNo}]}]}});}
   const report=new RegExp(`^/med/config/v1/hotels/${hotel}/reservations/([0-9]+)/folioReports$`).exec(u.pathname);
   if(report){const row=f.invoices.find(r=>r.reservationId===report[1]);if(!row||u.searchParams.get('folioWindowNo')!=='1'||u.searchParams.get('folioDate')!==row.date)throw Error('acceptance_fixture_scope_invalid');const pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica),sheet=pdf.addPage([595,842]);['SYNTHETIC TEST INVOICE','NO PAYMENT REQUESTED',`Hotel ${hotel} · Account ${f.accountNo}`,`Invoice No. ${row.invoiceNo}`,`Folio No. ${row.folioNo}`,row.guest,`THB ${row.open.toFixed(2)}`].forEach((line,i)=>sheet.drawText(line,{x:50,y:770-i*34,size:i<2?16:12,font}));const bytes=await pdf.save();return Response.json({folio:{hotelId:hotel,reservationId:{id:row.reservationId},folio:btoa(String.fromCharCode(...bytes))}});}
   throw Error('acceptance_fixture_request_unsupported');
  };
 }
+

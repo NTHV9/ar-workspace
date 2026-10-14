@@ -1,5 +1,5 @@
 import {readJson} from '../drive/shared';
-import {trackerFields,trackerHotel,type TrackerField} from './model';
+import {canResolveWithoutAccountNumber,trackerFields,trackerHotel,type TrackerField} from './model';
 import {trackerHeaders,trackerDateValue} from './workbook';
 import type {ProviderRow,ProviderSnapshot,ProviderWrite} from './service';
 const TITLE='ลูกหนี้ เขาหลัก',ROOT='https://sheets.googleapis.com/v4/spreadsheets/';
@@ -28,16 +28,63 @@ function parse(value:Record<string,unknown>,file:string){
  return {rows,cells,gid};
 }
 export function trackerIdentityMatches(row:ProviderRow,identity:ProviderWrite['expectedIdentity']):boolean{return !!identity&&row.hotel===identity.hotel&&row.accountNo===identity.accountNo&&row.invoiceNo===identity.invoiceNo&&(row.folio??null)===(identity.folio??null)&&(row.transactionDate??null)===(identity.transactionDate??null);}
+async function nativeJson(token:string,file:string,suffix:string){
+ const response=await request(token,file,suffix);if(!response.ok){await response.body?.cancel();throw Error(response.status===401||response.status===403||response.status===404?'tracker_authorization_required':'tracker_provider_unavailable');}
+ try{return await readJson(response,16*1024*1024);}catch(error){if(error instanceof Error&&error.message==='drive_response_too_large')throw Error(suffix.startsWith('/values/')?'tracker_native_keys_too_large':'tracker_native_grid_too_large');throw error;}
+}
+async function nativeKeys(token:string,file:string){
+ // Values omit the formatted-only tail. FORMULA exposes key formulas rather
+ // than silently accepting their evaluated result as a stable row identity.
+ const query=new URLSearchParams({majorDimension:'ROWS',valueRenderOption:'FORMULA'});
+ const value=await nativeJson(token,file,'/values/'+encodeURIComponent(`'${TITLE}'!AG:AG`)+'?'+query);
+ if(typeof value.range!=='string'||!new RegExp(`^'${TITLE}'!AG1:AG[1-9][0-9]*$`).test(value.range)||value.majorDimension!=='ROWS'||value.values!==undefined&&!Array.isArray(value.values))throw Error('tracker_native_schema_invalid');
+ const rows=(value.values??[]) as unknown[];if(rows.length>100002)throw Error('tracker_native_schema_invalid');
+ return rows.map(row=>{
+  if(!Array.isArray(row)||row.length>1)throw Error('tracker_native_schema_invalid');
+  const key=row[0];if(key===undefined)return '';if(typeof key==='boolean')return key?'TRUE':'FALSE';if(typeof key==='string'||typeof key==='number'&&Number.isFinite(key))return String(key);throw Error('tracker_native_identity_invalid');
+ });
+}
 export async function readNativeTracker(token:string,file:string):Promise<ProviderSnapshot>{
- const query=new URLSearchParams({includeGridData:'true',ranges:`'${TITLE}'!A:AG`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
- const response=await request(token,file,'?'+query);if(!response.ok){await response.body?.cancel();throw Error(response.status===401||response.status===403||response.status===404?'tracker_authorization_required':'tracker_provider_unavailable');}
- const value=await readJson(response,16*1024*1024),parsed=parse(value,file),hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
- return {version:'native-observed:'+hash,rows:parsed.rows,schemaFingerprint:JSON.stringify([TITLE,parsed.gid,trackerHeaders]),capabilities:{conditionalWrite:'unverified',writeAssurance:'best-effort'}};
+ const keys=await nativeKeys(token,file);let extent=Math.max(2,keys.length);while(extent>2&&!keys[extent-1])extent--;
+ const rows:ProviderRow[]=[],pageHashes:string[]=[],seenKeys=new Set<string>(),identities=new Set<string>();
+ let gid:number|undefined,headers:NonNullable<NonNullable<Sheet['data']>[number]['rowData']>|undefined,retainedBytes=2;
+ const digest=async(value:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
+ for(let start=0;start<extent;start+=200){
+  const end=Math.min(start+200,extent),query=new URLSearchParams({includeGridData:'true',ranges:`'${TITLE}'!A${start+1}:AG${end}`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
+  const value=await nativeJson(token,file,'?'+query);
+  if(value.spreadsheetId!==file||!Array.isArray(value.sheets))throw Error('tracker_native_schema_invalid');
+  const matches=(value.sheets as Sheet[]).filter(sheet=>sheet.properties?.title===TITLE);if(matches.length!==1)throw Error('tracker_native_schema_invalid');
+  const sheet=matches[0],data=sheet.data;
+  if(!Number.isInteger(sheet.properties.sheetId)||sheet.properties.sheetId<0||gid!==undefined&&sheet.properties.sheetId!==gid||!Array.isArray(data)||data.length!==1||(data[0].startRow??0)!==start||(data[0].startColumn??0)!==0||data[0].rowData!==undefined&&!Array.isArray(data[0].rowData))throw Error('tracker_native_schema_invalid');
+  gid=sheet.properties.sheetId;const page=data[0].rowData??[];if(page.length>end-start||page.some(row=>row.values!==undefined&&(!Array.isArray(row.values)||row.values.length>33)))throw Error('tracker_native_schema_invalid');
+  for(let i=start;i<end;i++){
+   const cell=page[i-start]?.values?.[column('AG')];if(cell?.userEnteredValue?.formulaValue)throw Error('tracker_native_identity_invalid');
+   if((raw(cell)??'')!==(keys[i]??''))throw Error('tracker_snapshot_changed');
+  }
+  if(start===0)headers=page.slice(0,2).map(row=>({values:row.values?.map(cell=>({userEnteredValue:cell.userEnteredValue,effectiveValue:cell.effectiveValue}))}));
+  if(!headers||headers.length!==2)throw Error('tracker_native_schema_invalid');
+  const parsed=parse({spreadsheetId:file,sheets:[{properties:sheet.properties,data:[...(start?[{startRow:0,startColumn:0,rowData:headers}]:[]),{startRow:start,startColumn:0,rowData:page}]}]},file);
+  for(const row of parsed.rows){
+   const identity=JSON.stringify([row.hotel,row.accountNo,row.invoiceNo,row.folio]);
+   if(seenKeys.has(row.rowKey)||row.accountNo&&row.invoiceNo&&identities.has(identity))throw Error('tracker_native_identity_ambiguous');
+   seenKeys.add(row.rowKey);identities.add(identity);
+   retainedBytes+=new TextEncoder().encode(JSON.stringify(row)).byteLength+1;if(retainedBytes>16*1024*1024)throw Error('tracker_native_grid_too_large');rows.push(row);
+  }
+  // Keep a digest of each complete typed observation, then release its cells.
+  // Only normalized business rows and the small headers survive to the next GET.
+  pageHashes.push(await digest(value));
+ }
+ const after=await nativeKeys(token,file);
+ // This detects moved/changed key positions, not an atomic field snapshot.
+ // Native publication keeps its existing best-effort/readback contract.
+ if(JSON.stringify(after)!==JSON.stringify(keys))throw Error('tracker_snapshot_changed');
+ const hash=await digest(pageHashes);
+ return {version:'native-observed:'+hash,rows,schemaFingerprint:JSON.stringify([TITLE,gid,trackerHeaders]),capabilities:{conditionalWrite:'unverified',writeAssurance:'best-effort'}};
 }
 export async function writeNativeTrackerBatch(token:string,file:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
  if(!inputs.length||inputs.length>100||inputs.reduce((n,i)=>n+i.changes.length,0)>300)throw Error('tracker_batch_limit');
  const current=await readNativeTracker(token,file),requests:unknown[]=[],seen=new Map<string,string>();
- for(const input of inputs){const row=current.rows.find(r=>r.rowKey===input.rowKey);if(!row||!trackerIdentityMatches(row,input.expectedIdentity)||row.issues?.some(i=>!/^([A-Z]{1,2})_invalid$/.test(i))||!input.changes.length)return {status:'conflict'};
+ for(const input of inputs){const row=current.rows.find(r=>r.rowKey===input.rowKey);if(!row||!trackerIdentityMatches(row,input.expectedIdentity)||row.issues?.some(i=>!/^([A-Z]{1,2})_invalid$/.test(i)&&!(i==='account_missing'&&canResolveWithoutAccountNumber(row)))||!input.changes.length)return {status:'conflict'};
   for(const change of input.changes){if(!allowed.has(change.field)||typeof change.value!=='string')throw Error('tracker_patch_forbidden');let day:string|null;try{day=date(change.value);}catch{return {status:'conflict'};}if(!day||day!==change.value||row.blockedWriteFields?.includes(change.field as 'R'|'U'|'V'|'W')||row.issues?.includes(change.field+'_invalid')||(row.fields[change.field]??null)!==change.expected)return {status:'conflict'};const key=input.rowKey+':'+change.field,prior=seen.get(key);if(prior&&prior!==day)return {status:'conflict'};if(prior)continue;seen.set(key,day);const locator=row.locator as {sheetId:number;rowIndex:number};requests.push({updateCells:{start:{sheetId:locator.sheetId,rowIndex:locator.rowIndex,columnIndex:column(change.field)},rows:[{values:[{userEnteredValue:{numberValue:(Date.parse(day+'T00:00:00Z')-Date.UTC(1899,11,30))/86400000}}]}],fields:'userEnteredValue'}});}
  }
  // One best-effort atomic request, without any conditional-write guarantee.

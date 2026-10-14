@@ -3,6 +3,13 @@ import {loadJobSources} from '../src/pdf/load-job-sources';
 import type {DocumentJob} from '../worker/documents/jobs';
 const job:DocumentJob={id:'synthetic-job',owner:'synthetic',hotel:'KAT',account_id:'A',account_name:'Synthetic',content:'invoices',layout:'combined',purpose:'billing',invoice_ids:['1','2','3'],manifest:[],state:'ready',revision:0,project_key:null,exports:[],acknowledged:false,created_at:'2026-10-01',files:[1,2,3].map(id=>({id:String(id),kind:'invoice',invoice_id:String(id),ordinal:id,state:'ready',storage_key:null,error_code:null,byte_count:3,sha256:null}))};
 afterEach(()=>vi.unstubAllGlobals());
+it('names invoice PDFs by the exact Folio and keeps Invoice identity separate',async()=>{
+ vi.stubGlobal('fetch',async()=>new Response(new Uint8Array([1,2,3])));
+ const manifest=job.invoice_ids.map(id=>({id,hotel:'KAT',account_id:'A',invoice_no:'INV-'+id,folio_no:id==='1'?'001234':null,reservation_id:null,folio_date:null,open:1,collection_role:'standalone'}));
+ const docs=await loadJobSources({...job,manifest},'synthetic',100);
+ expect(docs[0].name).toBe('Inv. 001234.pdf');expect(docs[0].invoiceId).toBe('1');expect(docs[0].invoiceLabel).toBe('Invoice INV-1 · Folio 001234');
+ expect(docs[1].name).toBe('Invoice INV-2.pdf');
+});
 it('bounds concurrent source loading and keeps manifest order despite reversed completion',async()=>{
  let release=()=>{};const gate=new Promise<void>(r=>{release=r;}),started:string[]=[];let active=0,peak=0;
  vi.stubGlobal('fetch',async(url:string)=>{const id=url.split('/').at(-1)!;started.push(id);peak=Math.max(peak,++active);if(id==='1')await gate;active--;return new Response(new Uint8Array([Number(id),0,0]));});

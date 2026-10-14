@@ -9,10 +9,107 @@ const file='synthetic_native_original_123456',owner='synthetic-owner';
 const env:TrackerEnv={REPORT_SHEET_KHAOLAK_ID:file,TRACKER_NATIVE_BEST_EFFORT_ENABLED:'true'};
 type Cell={userEnteredValue?:{stringValue?:string;numberValue?:number;formulaValue?:string;boolValue?:boolean};effectiveValue?:{stringValue?:string;numberValue?:number};textFormatRuns?:unknown[];chipRuns?:unknown[];userEnteredFormat?:{numberFormat:{type:string;pattern:string}}};
 const col=(v:string)=>[...v].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0)-1;
+function nativeResponse(value:ReturnType<typeof grid>,url:string){
+ const parsed=new URL(url),sheet=value.sheets[0],rows=sheet.data[0].rowData;
+ if(parsed.pathname.includes('/values/')){
+  const values=rows.map(row=>{const v=row.values[col('AG')]?.userEnteredValue;const key=v?.formulaValue??v?.stringValue??v?.numberValue??v?.boolValue;return key===undefined?[]:[key];});
+  while(values.length&&!values.at(-1)?.length)values.pop();
+  return Response.json({range:"'ลูกหนี้ เขาหลัก'!AG1:AG100002",majorDimension:'ROWS',values});
+ }
+ const range=parsed.searchParams.get('ranges')?.match(/!A(\d+):AG(\d+)$/);
+ if(!range)return Response.json(value);
+ const start=Number(range[1])-1,end=Number(range[2]);
+ return Response.json({...value,sheets:[{...sheet,data:[{startRow:start,startColumn:0,rowData:rows.slice(start,end)}]}]});
+}
 function grid(){const headers:Cell[]=Array.from({length:33},()=>({}));for(const [k,v]of Object.entries(trackerHeaders))headers[col(k)]={userEnteredValue:{stringValue:v}};const row=(key:string,invoice:string)=>{const cells:Cell[]=Array.from({length:33},()=>({}));for(const [k,v]of Object.entries({A:'SAN',C:'0002',E:invoice,F:'F'+invoice,G:'2026-09-01',AG:key}))cells[col(k)]={userEnteredValue:{stringValue:v}};for(const k of ['R','U','V','W'])cells[col(k)].userEnteredFormat={numberFormat:{type:'DATE',pattern:'dd/mm/yyyy'}};cells[col('T')]={userEnteredValue:{formulaValue:'=R3+S3'}};cells[col('AA')]={userEnteredValue:{formulaValue:'=H3-Z3'}};return {values:cells};};return {spreadsheetId:file,sheets:[{properties:{sheetId:9,title:'ลูกหนี้ เขาหลัก',gridProperties:{rowCount:100,columnCount:33}},data:[{startRow:0,startColumn:0,rowData:[{values:[]},{values:headers},row('key-A','00001'),row('key-B','00002')]}]}]};}
-function fake(options:{lost?:boolean;move?:boolean;formula?:boolean;changeIdentity?:boolean;newGid?:boolean}={}){let value=grid();if(options.move){const rows=value.sheets[0].data[0].rowData;[rows[2],rows[3]]=[rows[3],rows[2]];value.sheets[0].properties.sheetId=77;}if(options.formula)value.sheets[0].data[0].rowData[2].values[col('R')].userEnteredValue={formulaValue:'=TODAY()'};const posts:Record<string,unknown>[]=[];const fetcher=vi.fn(async(input:RequestInfo|URL,init:RequestInit={})=>{const url=String(input);if(url.includes('sheets.googleapis.com')){if(init.method==='POST'){const body=JSON.parse(String(init.body));posts.push(body);for(const request of body.requests){const u=request.updateCells;value.sheets[0].data[0].rowData[u.start.rowIndex].values[u.start.columnIndex].userEnteredValue=u.rows[0].values[0].userEnteredValue;}if(options.changeIdentity)value.sheets[0].data[0].rowData[2].values[col('E')].userEnteredValue={stringValue:'OTHER'};if(options.newGid)value.sheets[0].properties.sheetId=88;if(options.lost)throw Error('synthetic response lost');return Response.json({spreadsheetId:file,replies:[]});}return Response.json(value);}return Response.json({id:file,name:'Master_SAN_AR_Tracker',mimeType:'application/vnd.google-apps.spreadsheet',trashed:false,version:'1',modifiedTime:'2026-10-07T00:00:00Z',capabilities:{canDownload:true,canEdit:true,canModifyContent:true}});});vi.stubGlobal('fetch',fetcher);return {posts,value,fetcher};}
+function fake(options:{lost?:boolean;move?:boolean;formula?:boolean;changeIdentity?:boolean;newGid?:boolean}={}){let value=grid();if(options.move){const rows=value.sheets[0].data[0].rowData;[rows[2],rows[3]]=[rows[3],rows[2]];value.sheets[0].properties.sheetId=77;}if(options.formula)value.sheets[0].data[0].rowData[2].values[col('R')].userEnteredValue={formulaValue:'=TODAY()'};const posts:Record<string,unknown>[]=[];const fetcher=vi.fn(async(input:RequestInfo|URL,init:RequestInit={})=>{const url=String(input);if(url.includes('sheets.googleapis.com')){if(init.method==='POST'){const body=JSON.parse(String(init.body));posts.push(body);for(const request of body.requests){const u=request.updateCells;value.sheets[0].data[0].rowData[u.start.rowIndex].values[u.start.columnIndex].userEnteredValue=u.rows[0].values[0].userEnteredValue;}if(options.changeIdentity)value.sheets[0].data[0].rowData[2].values[col('E')].userEnteredValue={stringValue:'OTHER'};if(options.newGid)value.sheets[0].properties.sheetId=88;if(options.lost)throw Error('synthetic response lost');return Response.json({spreadsheetId:file,replies:[]});}return nativeResponse(value,url);}return Response.json({id:file,name:'Master_SAN_AR_Tracker',mimeType:'application/vnd.google-apps.spreadsheet',trashed:false,version:'1',modifiedTime:'2026-10-07T00:00:00Z',capabilities:{canDownload:true,canEdit:true,canModifyContent:true}});});vi.stubGlobal('fetch',fetcher);return {posts,value,fetcher};}
 const input=():ProviderWrite=>({version:'observed',rowKey:'key-A',expectedIdentity:{hotel:'TSAN',accountNo:'0002',invoiceNo:'00001',folio:'F00001',transactionDate:'2026-09-01'},locator:{sheetId:123,row:40},changes:[{field:'R',expected:null,value:'2026-09-02'},{field:'U',expected:null,value:'2026-09-03'},{field:'V',expected:null,value:'2026-09-04'},{field:'W',expected:null,value:'2026-09-05'}]});
 afterEach(()=>vi.unstubAllGlobals());
+it('writes dates for a corroborated blank Account No. without filling or changing that identity cell',async()=>{
+ const state=fake(),cell=state.value.sheets[0].data[0].rowData[2].values[col('C')];delete cell.userEnteredValue;
+ const write=input();write.expectedIdentity={...write.expectedIdentity,accountNo:'',transactionDate:'2026-09-01'};
+ expect(await writeTrackerBatch(env,owner,'khao-lak',file,[write])).toMatchObject({status:'written'});
+ expect(cell.userEnteredValue).toBeUndefined();expect(state.posts).toHaveLength(1);
+});
+it('streams individually bounded pages when combined typed metadata exceeds 16 MiB',async()=>{
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData,base=globalThis.fetch;
+ rows.length=402;for(let i=4;i<402;i++)rows[i]={values:[]};rows[400]=structuredClone(rows[2]);rows[400].values[col('AG')].userEnteredValue={stringValue:'key-last'};rows[400].values[col('E')].userEnteredValue={stringValue:'last-invoice'};
+ // Typed formatting is large but does not become business fields. Each page
+ // fits the existing cap while a single complete grid cannot fit it.
+ const hugeFormat='0'.repeat(60000);
+ for(let i=4;i<400;i++)rows[i]={values:[{userEnteredFormat:{numberFormat:{type:'NUMBER',pattern:hugeFormat}}}]};
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const url=new URL(String(args[0])),range=url.searchParams.get('ranges')?.match(/!A(\d+):AG(\d+)$/);
+  if(range&&Number(range[2])-Number(range[1])+1>200)return new Response('{}',{headers:{'Content-Length':String(16*1024*1024+1)}});
+  return base(...args);
+ });
+ const result=await readNativeTracker('synthetic-token',file);
+ expect(result.rows.map(row=>row.rowKey)).toEqual(['key-A','key-B','key-last']);expect(result.rows.at(-1)?.locator).toMatchObject({rowIndex:400});
+ expect(state.fetcher.mock.calls.filter(call=>new URL(String(call[0])).searchParams.has('ranges')).map(call=>new URL(String(call[0])).searchParams.get('ranges'))).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG200","'ลูกหนี้ เขาหลัก'!A201:AG400","'ลูกหนี้ เขาหลัก'!A401:AG401"]);
+ expect(state.posts).toHaveLength(0);
+});
+it('reads only occupied typed rows when an unbounded formatted tail exceeds 16 MiB',async()=>{
+ const state=fake(),base=globalThis.fetch;
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const url=new URL(String(args[0]));
+  if(url.searchParams.get('ranges')==="'ลูกหนี้ เขาหลัก'!A:AG")return new Response('{}',{headers:{'Content-Length':String(16*1024*1024+1)}});
+  return base(...args);
+ });
+ const result=await readNativeTracker('synthetic-token',file);
+ expect(result.rows.map(row=>row.rowKey)).toEqual(['key-A','key-B']);expect(state.posts).toHaveLength(0);
+ expect(state.fetcher.mock.calls.filter(call=>new URL(String(call[0])).searchParams.has('ranges')).map(call=>new URL(String(call[0])).searchParams.get('ranges'))).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG4"]);
+});
+it.each([false,true])('allows unrelated sheet metadata but rejects duplicate target sheets: %s',async duplicateTarget=>{
+ const state=fake(),base=globalThis.fetch;
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const response=await base(...args);if(!new URL(String(args[0])).searchParams.has('ranges'))return response;
+  const body=await response.json() as ReturnType<typeof grid>;
+  body.sheets.push({...body.sheets[0],properties:{...body.sheets[0].properties,sheetId:10,title:duplicateTarget?'ลูกหนี้ เขาหลัก':'Unrelated sheet'},data:[]});
+  return Response.json(body);
+ });
+ if(duplicateTarget)await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow('tracker_native_schema_invalid');
+ else expect((await readNativeTracker('synthetic-token',file)).rows.map(row=>row.rowKey)).toEqual(['key-A','key-B']);
+ expect(state.posts).toHaveLength(0);
+});
+it('preserves exact locators and duplicate-key guards at distant occupied rows',async()=>{
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData;
+ rows.length=202;for(let i=4;i<202;i++)rows[i]={values:[]};rows[200]=structuredClone(rows[2]);rows[200].values[col('AG')].userEnteredValue={stringValue:'key-edge'};rows[200].values[col('E')].userEnteredValue={stringValue:'edge-invoice'};
+ const result=await readNativeTracker('synthetic-token',file);expect(result.rows.find(row=>row.rowKey==='key-edge')?.locator).toMatchObject({rowIndex:200});
+ rows[200].values[col('AG')].userEnteredValue={stringValue:'key-A'};
+ await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow('tracker_native_identity_ambiguous');expect(state.posts).toHaveLength(0);
+});
+it('rejects a canonical invoice repeated on a later page even with a different AG key',async()=>{
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData;rows.length=201;for(let i=4;i<200;i++)rows[i]={values:[]};rows[200]=structuredClone(rows[2]);rows[200].values[col('AG')].userEnteredValue={stringValue:'different-key'};
+ await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow('tracker_native_identity_ambiguous');expect(state.posts).toHaveLength(0);
+});
+it.each(['gid','offset','missing','keys'] as const)('fails closed for a later page with changed %s',async mode=>{
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData,base=globalThis.fetch;rows.length=201;for(let i=4;i<200;i++)rows[i]={values:[]};rows[200]=structuredClone(rows[2]);rows[200].values[col('AG')].userEnteredValue={stringValue:'last-key'};rows[200].values[col('E')].userEnteredValue={stringValue:'last-invoice'};
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const response=await base(...args);if(new URL(String(args[0])).searchParams.get('ranges')!=="'ลูกหนี้ เขาหลัก'!A201:AG201")return response;
+  const body=await response.json() as ReturnType<typeof grid>;if(mode==='gid')body.sheets[0].properties.sheetId=10;if(mode==='offset')body.sheets[0].data[0].startRow=199;if(mode==='missing')body.sheets[0].data=[];if(mode==='keys')body.sheets[0].data[0].rowData[0].values[col('AG')].userEnteredValue={stringValue:'changed-key'};return Response.json(body);
+ });
+ await expect(writeTrackerBatch(env,owner,'khao-lak',file,[input()])).rejects.toThrow();expect(state.posts).toHaveLength(0);
+});
+it.each(['keys','grid'] as const)('keeps the 16 MiB cap and identifies the oversized %s response',async kind=>{
+ const state=fake(),base=globalThis.fetch;vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{const url=new URL(String(args[0]));if(kind==='keys'?url.pathname.includes('/values/'):url.searchParams.has('ranges'))return new Response('{}',{headers:{'Content-Length':String(16*1024*1024+1)}});return base(...args);});
+ await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow(kind==='keys'?'tracker_native_keys_too_large':'tracker_native_grid_too_large');expect(state.posts).toHaveLength(0);
+});
+it.each(['during-grid','after-grid','missing-grid','wrong-gid','wrong-offset'] as const)('rejects %s changes without partial import or provider write',async mode=>{
+ const state=fake(),base=globalThis.fetch;let keyReads=0;
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const url=new URL(String(args[0]));if(url.pathname.includes('/values/')){keyReads++;if(mode==='after-grid'&&keyReads===2)state.value.sheets[0].data[0].rowData[2].values[col('AG')].userEnteredValue={stringValue:'changed-key'};}
+  if(url.searchParams.has('ranges')){
+   if(mode==='missing-grid')return Response.json({spreadsheetId:file,sheets:[{properties:state.value.sheets[0].properties,data:[]}]});
+   if(mode==='during-grid')state.value.sheets[0].data[0].rowData[2].values[col('AG')].userEnteredValue={stringValue:'changed-key'};
+   const response=await base(...args),body=await response.json() as ReturnType<typeof grid>;
+   if(mode==='wrong-gid')body.sheets[0].properties.sheetId=-1;
+   if(mode==='wrong-offset')body.sheets[0].data[0].startRow=1;
+   return Response.json(body);
+  }
+  return base(...args);
+ });
+ await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow();expect(state.posts).toHaveLength(0);
+});
 it('publishes only numeric date values at freshly matched identity, preserving all other cell metadata',async()=>{const state=fake(),before=structuredClone(state.value);expect(await writeTrackerBatch(env,owner,'khao-lak',file,[input()])).toMatchObject({status:'written'});expect(state.posts).toHaveLength(1);const requests=state.posts[0].requests as {updateCells:{start:{sheetId:number;rowIndex:number;columnIndex:number};fields:string;rows:{values:{userEnteredValue:{numberValue:number}}[]}[]}}[];expect(requests.map(r=>[r.updateCells.start,r.updateCells.fields])).toEqual([17,20,21,22].map(columnIndex=>[{sheetId:9,rowIndex:2,columnIndex},'userEnteredValue']));for(const r of requests){expect(Number.isInteger(r.updateCells.rows[0].values[0].userEnteredValue.numberValue)).toBe(true);before.sheets[0].data[0].rowData[2].values[r.updateCells.start.columnIndex].userEnteredValue=r.updateCells.rows[0].values[0].userEnteredValue;}expect(state.value).toEqual(before);});
 it('is disabled by default and formulas/identity mismatches never publish',async()=>{const state=fake();expect(await writeTrackerBatch({...env,TRACKER_NATIVE_BEST_EFFORT_ENABLED:undefined},owner,'khao-lak',file,[input()])).toEqual({status:'conflict'});expect(state.posts).toHaveLength(0);const formula=fake({formula:true});expect(await writeTrackerBatch(env,owner,'khao-lak',file,[input()])).toMatchObject({status:'conflict'});expect(formula.posts).toHaveLength(0);const wrong=input();wrong.expectedIdentity.invoiceNo='1';const identity=fake();expect(await writeTrackerBatch(env,owner,'khao-lak',file,[wrong])).toMatchObject({status:'conflict'});expect(identity.posts).toHaveLength(0);});
 it.each([{lost:true},{changeIdentity:true}])('response loss or changed readback identity is uncertain with exactly one POST: %j',async option=>{const state=fake(option);expect(await writeTrackerBatch(env,owner,'khao-lak',file,[input()])).toMatchObject({status:'uncertain'});expect(state.posts).toHaveLength(1);});

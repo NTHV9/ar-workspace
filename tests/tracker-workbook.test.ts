@@ -9,6 +9,13 @@ function localParts(bytes:Uint8Array){const view=new DataView(bytes.buffer,bytes
  const central=view.getUint32(end+16,true);offsets.sort((a,b)=>a.offset-b.offset);return new Map(offsets.map((part,index)=>[part.name,bytes.slice(part.offset,index+1<offsets.length?offsets[index+1].offset:central)]));
 }
 describe('tracker OOXML boundaries',()=>{
+ it('keeps blank Account No. unchanged when complete identity corroboration permits a date write',()=>{
+  const parts=unzipSync(fixture());parts['xl/worksheets/sheet1.xml']=strToU8(strFromU8(parts['xl/worksheets/sheet1.xml']).replace(/<c r="C3"[\s\S]*?<\/c>/,'<c r="C3"/>').replace('<row r="3">','<row r="3"><c r="G3" t="inlineStr"><is><t>2026-09-01</t></is></c>'));
+  const bytes=zipSync(parts),row=parseTrackerWorkbook(bytes,'phuket').rows[0];
+  const changed=patchTrackerWorkbook(bytes,'phuket',row.rowKey,{...identity,accountNo:'',transactionDate:'2026-09-01'},[{field:'R',value:'2026-10-06',expected:null}]);
+  expect(parseTrackerWorkbook(changed,'phuket').rows[0]).toMatchObject({accountNo:'',fields:{R:'2026-10-06'}});
+  expect(strFromU8(unzipSync(changed)['xl/worksheets/sheet1.xml'])).toContain('<c r="C3"/>');
+ });
  it('holds boolean identity, dates and financial values without treating them as 1 or 0',()=>{
   for(const raw of ['1','0'])for(const field of ['C','E','F','AG','G','R','T','U','V','W','X','S','Z','AA']){
    const parts=unzipSync(fixture());let sheet=strFromU8(parts['xl/worksheets/sheet1.xml']);

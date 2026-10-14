@@ -1,5 +1,11 @@
 import type {ManagementDashboardData} from '../../worker/dashboard/management-model';
 
+export function billingPercentLabel(percent:number,remaining:number){
+ const rounded=percent.toFixed(1);
+ if(remaining>0&&Number(rounded)>=100)return '<100%';
+ return `${Number(rounded)}%`;
+}
+
 /** Ratios are presentation-only; exact source amounts remain visible alongside. */
 export function billingCompletion(data:ManagementDashboardData|undefined){
  const billed=data?.metrics.find(c=>c.key==='billed'),unbilled=data?.metrics.find(c=>c.key==='unbilled');

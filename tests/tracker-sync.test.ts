@@ -8,6 +8,23 @@ const actor='00000000-0000-4000-8000-000000000001',file='synthetic_tracker_origi
 const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic',REPORT_SHEET_PHUKET_ID:file,TRACKER_SYNC_ENABLED:'true'};
 const snapshot:ProviderSnapshot={version:'v1',schemaFingerprint:'headers1',capabilities:{conditionalWrite:'unsupported'},rows:[{rowKey:'opaque-key',hotel:'KAT',accountNo:'0002',invoiceNo:'00001',folio:'7',fields:{R:'2026-09-01',U:null},locator:{tab:'KT',row:3}}]};
 const adapter=():TrackerAdapter=>({read:vi.fn(async()=>structuredClone(snapshot)),write:vi.fn(async()=>({status:'written' as const,version:'v2'}))});
+it('matches a blank Account No. only with a unique complete corroborating tuple',()=>{
+ const candidate={hotel:'TLKL' as const,accountNo:'0071',invoiceNo:'101',folioNo:'301',transactionDate:'2026-10-10',accountId:'a',invoiceId:'i'};
+ const row={...candidate,accountNo:''};expect(matchTrackerInvoice(row,[candidate])).toEqual(candidate);
+ for(const changed of [{folioNo:null},{transactionDate:null},{transactionDate:'2026-02-30'},{transactionDate:'2026-10-09'},{accountNo:'WRONG'}])expect(matchTrackerInvoice({...row,...changed},[candidate])).toBeNull();
+ expect(matchTrackerInvoice(row,[candidate,{...candidate,accountId:'other'}])).toBeNull();
+});
+it('permits only the account_missing issue when complete evidence can be uniquely matched by SQL',async()=>{
+ const calls=database([]),p=adapter();p.read=vi.fn(async()=>({...structuredClone(snapshot),rows:[{...snapshot.rows[0],accountNo:'',transactionDate:'2026-09-01',issues:['account_missing']}]}));
+ await syncTracker(env,actor,actor,'phuket',p);
+ expect(calls.find(c=>c.name==='ar_tracker_snapshot')?.body).toMatchObject({p_rows:[{holdReason:null}]});
+});
+it('holds duplicate corroborating identities involving a blank Account No.',async()=>{
+ const calls=database([]),p=adapter(),row={...snapshot.rows[0],transactionDate:'2026-09-01'};
+ p.read=vi.fn(async()=>({...structuredClone(snapshot),rows:[row,{...row,rowKey:'other-key',accountNo:'',issues:['account_missing']}]}));
+ await syncTracker(env,actor,actor,'phuket',p);
+ expect(calls.find(c=>c.name==='ar_tracker_snapshot')?.body).toMatchObject({p_rows:[{ambiguous:true},{ambiguous:true}]});
+});
 afterEach(()=>vi.unstubAllGlobals());
 it('scopes background revision comparisons and rejects malformed or duplicate regional revisions',()=>{
  expect(trackerRevisionKey({rows:[{region:'phuket',revision:'1'}]})).not.toBe(trackerRevisionKey({rows:[{region:'phuket',revision:'2'}]}));

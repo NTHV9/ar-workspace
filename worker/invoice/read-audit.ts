@@ -9,6 +9,17 @@ function canonical(value:unknown):string {
  return JSON.stringify(value)??'null';
 }
 function dataShape(value:unknown,depth=0):unknown {if(value===null)return 'null';if(depth>5)return typeof value;if(Array.isArray(value))return {count:value.length,item:value.length?dataShape(value[0],depth+1):null};if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([key])=>key!=='links').map(([key,v])=>[key,dataShape(v,depth+1)]));return typeof value;}
+/** Fixed fields only: never expose profile identifiers, address/contact text or dynamic keys. */
+function addresseeShape(account:Record<string,unknown>,value:unknown,requested:unknown){
+ const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
+ const kind=(v:unknown)=>v===null?'null':Array.isArray(v)?'array':typeof v;
+ const present=(v:unknown)=>typeof v==='string'&&!!v.trim();
+ const count=(v:unknown)=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0?v:null;
+ const profile=object(value),attached=object(account.address),addresses=object(profile.profileDetails).addresses,envelope=object(addresses),rows=Array.isArray(envelope.addressInfo)?envelope.addressInfo:[];
+ return {profileIdentityMatches:Array.isArray(profile.profileIdList)&&profile.profileIdList.filter(v=>object(v).type==='Profile'&&object(v).id===requested).length===1,
+  attachedAddressPresent:present(attached.id),addressesKind:kind(addresses),addressInfoKind:kind(envelope.addressInfo),addressCount:Array.isArray(envelope.addressInfo)?rows.length:null,totalResults:count(envelope.totalResults),count:count(envelope.count),omittedRows:Math.max(0,rows.length-20),
+  rows:rows.slice(0,20).map(v=>{const row=object(v),address=object(row.address),lines=address.addressLine;return {rowKind:kind(v),addressKind:kind(row.address),attachedMatch:present(attached.id)&&row.id===attached.id,primary:address.primaryInd===true,lineKind:kind(lines),lineCount:Array.isArray(lines)?lines.length:null,nonblankLines:Array.isArray(lines)?lines.filter(present).length:null,cityPresent:present(address.cityName),postalCodePresent:present(address.postalCode),countryPresent:Object.values(object(address.country)).some(present)};})};
+}
 /** Control-plane, read-only diagnostic. Never returns source rows or identifiers. */
 export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacket>[0],manifest:DocumentInvoice){
  if(!manifest.reservation_id||!manifest.folio_no||!manifest.folio_date){
@@ -22,7 +33,7 @@ export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacke
   }catch(error){return {ok:false,stage:'ar-selector',error:error instanceof OperaError?error.code:'document_probe_selector_unavailable'};}
  }
  let stage='start';const calls:Record<string,number>={},pages:Record<string,unknown>[]=[],queries:Record<string,unknown>[]=[],seen=new Map<string,string>();
- let postingCodes:Record<string,unknown>[]=[],postingRows:Record<string,unknown>[]=[],accountMetadata:Record<string,unknown>={};const netRows:Record<string,unknown>[]=[];
+ let postingCodes:Record<string,unknown>[]=[],postingRows:Record<string,unknown>[]=[],accountMetadata:Record<string,unknown>={},addressee:ReturnType<typeof addresseeShape>|undefined;const netRows:Record<string,unknown>[]=[];
  const taxClasses=new Map<string,{code:unknown;type:unknown;count:number;omittedTaxes:number;equalNetGross:number}>();
  const directGroups=()=>{
   const groups=new Map<string,{rows:number;taxRows:number;noCheck:boolean;base:number;vat:number}>(),byId=new Map(netRows.map(e=>[String(record(e.posting).transactionNo),e]));
@@ -41,6 +52,7 @@ export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacke
    if(key==='invoicePostingBreakdown')queries.push({window:args[1],spanDays:(Date.parse(String(args[3]))-Date.parse(String(args[2])))/86400000,offset:args[4],limit:args[5]});
    const result:unknown=await Reflect.apply(value,target,args);
    if(key==='account')accountMetadata=record(record(result).accountDetails);
+   if(key==='profile')addressee=addresseeShape(accountMetadata,result,args[0]);
    if(key==='invoicePostings'){const raw=record(result);postingRows=(raw.invoicePostingsDetails as unknown[]).map(record);postingCodes=(raw.trxCodesInfo as unknown[]).map(record).map(c=>({hotelId:c.hotelId,transactionCode:c.transactionCode,description:c.description,transactionGroup:c.transactionGroup}));}
    if(key==='invoicePostingBreakdown'){
     const raw=record(result),rows=Array.isArray(raw.financialPostings)?raw.financialPostings.map(record):[];
@@ -59,8 +71,12 @@ export async function auditInvoiceRead(reader:Parameters<typeof readInvoicePacke
   };
  }});
  try{const packet=await readInvoicePacket(observed,manifest);netRows.splice(0,netRows.length,...packet.taxRows.map(record));stage='model';const model=invoiceModel(packet);
-  return {ok:true,stage,calls,pages,lines:model.lines.length,gross:model.gross,vat:model.vat,outstanding:model.outstanding};
+  let profileShape:unknown,profileAddressEvidence:unknown;
+  const profileId=record(packet.account).profileId;
+  if(profileId&&reader.profile){try{const full=await reader.profile(String(record(profileId).id));profileShape=dataShape(full);profileAddressEvidence=addresseeShape(record(packet.account),full,record(profileId).id);}catch{profileShape={unavailable:true};}}
+  const postingEvidence=postingRows.map(p=>({referenceLength:typeof p.reference==='string'?p.reference.length:null,referenceIsRouting:typeof p.reference==='string'&&/^Routed From /i.test(p.reference),referenceHasCheck:typeof p.reference==='string'&&typeof p.checkNo==='string'&&p.reference.includes(p.checkNo),checkLength:typeof p.checkNo==='string'?p.checkNo.length:null}));
+  return {ok:true,stage,calls,pages,lines:model.lines.length,gross:model.gross,vat:model.vat,outstanding:model.outstanding,profileAddressEvidence,postingEvidence,stationeryShape:{account:dataShape(packet.account),invoice:dataShape(packet.invoice),profile:profileShape,reservation:dataShape(packet.reservation),postingRows:Array.isArray(record(packet.postings).invoicePostingsDetails)?(record(packet.postings).invoicePostingsDetails as unknown[]).slice(0,2).map(p=>dataShape(p)):null,financialRows:packet.taxRows.slice(0,2).map(p=>dataShape(p))}};
  }catch(error){const covered=new Set(netRows.map(e=>String(record(e.posting).transactionNo)));const missing=postingRows.filter(p=>!covered.has(String(p.transactionNo)));let missingDetail:unknown;
   if(error instanceof Error&&error.message==='document_invoice_tax_coverage_missing'&&missing.length&&missing.length<=40){try{const detail=record(await reader.invoiceTransactionDetails(missing.map(p=>String(p.transactionNo))));missingDetail={accountKeys:Object.keys(accountMetadata),shape:dataShape(detail),classes:Array.isArray(detail.transactions)?detail.transactions.map(record).map(t=>({selected:missing.some(p=>String(p.transactionNo)===String(t.transactionNo)),code:t.transactionCode,type:t.transactionType,deferredTax:t.deferredTax,holdingLedger:t.holdingLedgerTransaction,arInvoiceMatches:String(record(t.aRInfo??{}).invoiceNo)===manifest.invoice_no,arAccountMatches:String(record(t.aRInfo??{}).accountNumber)===String(accountMetadata.accountNo),folioMatches:String(t.folioNo)===manifest.folio_no,debit:t.debitAmount,credit:t.creditAmount,posted:t.postedAmount,subPostingsShape:dataShape(t.subPostings)})):undefined};}catch{missingDetail={unavailable:true};}}
-  return {ok:false,stage,calls,pages,queries,coverage:{selected:postingRows.length,matched:postingRows.length-missing.length,missingCodes:[...new Set(missing.map(p=>p.transactionCode))]},missingDetail,postingCodes,taxClasses:[...taxClasses.values()],directGroups:directGroups(),...(error instanceof OperaError?{providerStatus:error.upstreamStatus,providerValidation:error.providerMessage}:{}),error:error instanceof OperaError?error.code:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'};}
+  return {ok:false,stage,calls,pages,queries,...(error instanceof Error&&error.message.startsWith('document_addressee_')?{addressee}:{}),coverage:{selected:postingRows.length,matched:postingRows.length-missing.length,missingCodes:[...new Set(missing.map(p=>p.transactionCode))]},missingDetail,postingCodes,taxClasses:[...taxClasses.values()],directGroups:directGroups(),...(error instanceof OperaError?{providerStatus:error.upstreamStatus,providerValidation:error.providerMessage}:{}),error:error instanceof OperaError?error.code:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'};}
 }

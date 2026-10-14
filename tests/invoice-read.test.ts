@@ -9,6 +9,13 @@ function fixture(count=2,p:ReturnType<typeof packet>|ReturnType<typeof mixedTaxP
  const reader={invoiceReservation:vi.fn().mockResolvedValue({reservations:{reservation:[{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'777'}],customReference:'CUSTOM-VOUCHER'}]}}),account:vi.fn().mockResolvedValue({accountDetails:{...p.account,invoices:[current]}}),invoiceHistory:vi.fn(),reservationFolios:vi.fn().mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}]}}),financialTransactionDetail:vi.fn().mockImplementation(async()=>structuredClone(detail)),invoicePostings:vi.fn().mockResolvedValue(p.postings),invoicePostingBreakdown:vi.fn().mockImplementation(async(_r:string,_w:number,_s:string,_e:string,offset:number,limit:number)=>({financialPostings:p.taxRows.slice(offset,offset+limit),offset,limit,hasMore:offset+limit<p.taxRows.length,totalResults:p.taxRows.length})),invoiceTransactionDetails:vi.fn().mockResolvedValue({trxCodesInfo:p.taxCodes})};
  return {p,reader,detail};
 }
+it('reads the exact invoice when unrelated historical folios share its reservation window',async()=>{
+ const {reader,p}=fixture();
+ reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88},{invoiceNo:100,folioNo:89}]}]}});
+ const model=await readInvoiceModel(reader,p.manifest);
+ expect(model.gross).toBe(663000);
+ expect(reader.invoicePostings).toHaveBeenCalledWith({hotel:'KAT',accountId:'101',transactionId:'500',invoiceNo:'99',folioNo:'88',internalFolioWindowId:'456'});
+});
 it('overlaps independent invoice header reads and keeps the final balance fence after postings',async()=>{
  const {reader,p}=fixture(),original=await reader.reservationFolios();reader.reservationFolios.mockClear();let release=()=>{};const gate=new Promise<void>(r=>{release=r;});
  reader.reservationFolios.mockImplementation(async()=>{await gate;return original;});
@@ -92,7 +99,8 @@ it('rejects a voucher response for another reservation',async()=>{const {p,reade
 it.each([true,false])('uses payee tax identity only when the selected window and AR profile agree (%s)',async agrees=>{
  const {p,reader}=fixture();const account={...p.account,profileId:{id:'123'}};reader.account.mockResolvedValue({accountDetails:{...account,invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
  reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:agrees?'123':'999'},payeeTaxNumber:'SYNTHETIC-TAX'}}]}});
- expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe(agrees?'SYNTHETIC-TAX':'');
+ const profile=async()=>({profileIdList:[{id:'123',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'verified-primary',address:{...p.account.address.address,primaryInd:true}}],totalResults:1}}});
+ expect((await readInvoiceModel({...reader,profile},p.manifest)).taxId).toBe(agrees?'SYNTHETIC-TAX':'');
 });
 
 it('identifies an AR credit without a reservation folio without fabricating an invoice',async()=>{
@@ -108,4 +116,40 @@ it('uses the verified linked profile address when the AR account only supplies a
  const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'],primaryInd:false}}],totalResults:1}}});
  const linkedReader={...reader,profile};const model=await readInvoiceModel(linkedReader,p.manifest);
  expect(model.address).toEqual(['Synthetic Travel','Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123']);
+});
+it('includes country and VAT stationery from the exact profile address when AR supplies only three nonblank lines',async()=>{
+ const {reader,p}=fixture(),full=['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'];
+ reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',address:{addressLine:full.slice(0,3),country:{}}},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
+ const profile=async()=>({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:full,primaryInd:false,country:{}}},{id:'another-primary',address:{addressLine:['Another Address'],primaryInd:true}}],totalResults:2}}});
+ const model=await readInvoiceModel({...reader,profile},p.manifest);
+ expect(model.address).toEqual(['Synthetic Travel',...full]);expect(model.gross).toBe(663000);expect(model.outstanding).toBe(Math.round(p.manifest.open*100));
+});
+
+it('reports bounded address shape on a failed linked profile without returning customer values',async()=>{
+ const {reader,p}=fixture(),current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
+ reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'PRIVATE-PROFILE'},address:{id:'PRIVATE-ADDRESS'},invoices:[current]}});
+ const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'PRIVATE-ADDRESS',address:{primaryInd:true,cityName:'PRIVATE-CITY'}}],totalResults:1}}});
+ const report=await auditInvoiceRead({...reader,profile},p.manifest);
+ expect(report).toMatchObject({ok:false,error:'document_addressee_unavailable',addressee:{profileIdentityMatches:true,attachedAddressPresent:true,addressesKind:'object',addressInfoKind:'array',addressCount:1,totalResults:1,rows:[{attachedMatch:true,primary:true,lineKind:'undefined',lineCount:null,nonblankLines:null,cityPresent:true}]}});
+ expect(profile).toHaveBeenCalledOnce();
+ expect(JSON.stringify(report)).not.toMatch(/PRIVATE-|Synthetic Travel/);
+});
+it('renders country-only verified profile stationery without inventing postal lines or changing invoice totals',async()=>{
+ const {reader,p}=fixture();reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',type:'Address'},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
+ const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:['','','',''],primaryInd:true,country:{code:'TH'}}}],totalResults:1}}});
+ const model=await readInvoiceModel({...reader,profile},p.manifest);
+ expect(model.address).toEqual(['Synthetic Travel','TH']);expect(model.gross).toBe(663000);expect(model.outstanding).toBe(Math.round(p.manifest.open*100));
+});
+it.each([undefined,null,{}, {addressInfo:null}])('diagnoses an absent address list without treating it as verified empty (%j)',async addresses=>{
+ const {reader,p}=fixture();reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'PRIVATE-PROFILE'},address:{},invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
+ const report=await auditInvoiceRead({...reader,profile:async()=>({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses}})},p.manifest);
+ expect(report).toMatchObject({ok:false,error:'document_addressee_unavailable',addressee:{profileIdentityMatches:true,addressCount:null,rows:[]}});
+ expect(JSON.stringify(report)).not.toContain('PRIVATE-');
+});
+it('caps diagnostic rows and never returns untrusted count fields or dynamic profile keys',async()=>{
+ const {reader,p}=fixture();reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'PRIVATE-PROFILE'},address:{},invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
+ const report=await auditInvoiceRead({...reader,profile:async()=>({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses:{'PRIVATE-KEY':'PRIVATE-TEXT',totalResults:'PRIVATE-TOTAL',count:'PRIVATE-COUNT',addressInfo:Array.from({length:25},()=>({id:'PRIVATE-ID',address:{addressLine:['PRIVATE-LINE'],cityName:'PRIVATE-CITY',postalCode:'PRIVATE-POSTAL',country:{code:'PRIVATE-COUNTRY'}}}))}}})},p.manifest);
+ expect(report).toMatchObject({ok:false,error:'document_addressee_incomplete',addressee:{addressCount:25,totalResults:null,count:null,omittedRows:5}});
+ expect('addressee' in report&&report.addressee?.rows).toHaveLength(20);
+ expect(JSON.stringify(report)).not.toMatch(/PRIVATE-|Synthetic Travel/);
 });

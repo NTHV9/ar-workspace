@@ -1,3 +1,127 @@
+## 2026-10-15 — PdfCraft component reuse research
+
+- Inspected tagged v0.8.0 source modules and current Workspace exporter. Strong candidates are text-plus-visual comparison, opt-in pre-review optimization and a selectively qualified native text-edit/export path. Existing edited-page export is rasterized; native editing could preserve selectable text but must retain redaction/full-rewrite safeguards. No code integration or production changes made.
+- Additional isolated CLI probes: comparison reports changed text and visual regions for the address edit; this does not semantically certify visible VAT because its text remains under a table. Default reducer saves roughly 15.8% on an Invoice, 59.6% on a Statement and 0.4% on a scan. Page counts and extracted text are unchanged; inspected template labels/footer visibly soften, so default lossy compression is not approved for automatic use. All trial data stays private.
+- Existing PDF.js/pdf-lib, AR workflow and email handoff should remain until a minimal module wins specific fidelity/performance tests. Table-group movement still failed on the supplied Statement; OSS availability does not establish that it solves that feature. License/NOTICE and dependency/build boundaries are part of the component research report.
+
+## 2026-10-15 — PdfCraft isolated trial
+
+- Tried official v0.8.0 Windows portable engine and loopback web build with checksum verification and private PDF copies. Viewing/scans, same-height text edits, targeted white redaction and merge succeeded. Address newline causes VAT line to be hidden under the original table; independent render confirms. Default-font Thai edit is refused. User-requested table-move trials move text but not complete grid/fills, producing misalignment. [Trial scope and results](PDFCRAFT_TRIAL_20261015.md).
+- Production Workspace/dependencies/cloud resources/original files unchanged. No mail sent. Recommendation: do not replace the Workspace wholesale; focus any next prototype on grouped region/table movement. Native one-shot timings are not claimed as a browser speed improvement.
+
+## 2026-10-14 — Unbilled attention starts at Invoice age 10
+
+- Owner explicitly requests age >=10, including data rather than wording only. Migration 20261014064509 updates shared balance metric membership and hotel management counts, invalidates period cache generation, and preserves general 61+ aging. Established API keys remain compatibility aliases; labels now say 10+ days across headline, hotel matrix and detail views.
+- Transactional migration assertions verify age9 excluded/10 included, general61 unchanged, billed and not-required excluded. 32 focused frontend/model tests and TypeScript pass. Actual six-hotel invoice drill readback returns complete true and zero qualifying rows at verification time; a zero card is therefore still possible under the new criterion. Full synthetic rollback fixture prepared separately, not claimed executed. Deployment follows.
+
+## 2026-10-14 — Folio-based Invoice PDF filenames
+
+- New Invoice source names and separate delivery defaults use Inv. followed by exact Folio, preserving leading zeroes and one .pdf extension. Dots are permitted by filename validation. Repeated Folios get ordinal prefixes only to avoid duplicate output names; missing Folio retains explicit Invoice-number fallback. Combined Documents, Statement names and manually entered names remain unchanged.
+- Source-loading and filename tests cover identity separation, download/email shared names, duplicate Folios and validation. TypeScript passes. Deployment follows; existing reviewed email attachments are not silently renamed.
+
+## 2026-10-14 — PDF stationery completeness comparison
+
+- Final deployed source `463eca5` / Worker `f1cbc2c6-eb35-4118-bc66-c013678df198`. Production regeneration restores the missing fourth address/VAT line on Statement and every Invoice page, 14 routed narratives and repeated signature blocks. Monetary/source identities remain unchanged. Print-operator User is still blank because its mapping is not verified; explicitly disclosed rather than invented. [Report and verification boundaries](PDF_STATIONERY_COMPLETENESS_20261014.md). Private customer comparison and regenerated PDFs are outside Git; existing user preparation untouched.
+
+- Compared every rendered page of the two owner-supplied PDFs privately. Confirmed missing country/VAT address continuation, routed-charge narratives, print-operator value and first Invoice page signature block. All charge rows, amounts, tax totals, bank details and account-wide aging match; pagination and off-page source material distinguished from content loss.
+- Actual read-only selected-source audit confirms populated AR inline address has only three lines and empty country, while linked profile has fuller address records. Shared resolver now fetches exact referenced profile address even when inline lines exist; no-ID partial addresses require unique compatible primary evidence. Provider failures/identity ambiguity remain errors.
+- Routed narrative preservation and per-page signature bounds implemented with synthetic regressions. Print operator is not copied from an unrelated user or cashier; source mapping remains under investigation. Full unit run 1,958 tests passes before final multiline fixture addition; final render checks and live repaired generation follow. Customer PDFs/data remain outside Git.
+
+## 2026-10-13 — Owner-approved 2 GiB app database allowance
+
+- Owner explicitly raises application database allowance to 2 GiB. Worker config and database-side validation accept 2,147,483,648 bytes; 20% safety reserve remains. File storage/transfer allowances, provider plan, resources and retention are unchanged.
+- Applied migration 20261013151354 via Supabase migration API; guarded function replacement verifies 2 GiB accepted and larger value rejected transactionally. 21 budget regressions and TypeScript pass. Worker deploy/UI readback follow.
+
+## 2026-10-13 — Billing progress rounding
+
+- Fixed whole-number rounding that displayed 100% while positive unbilled value remained. Visible and accessible percentage now share one-decimal formatting; near-complete values rounding to 100 display <100% while a positive remainder exists. Amount-based denominator, exact amounts and invoice counts are unchanged.
+- Seven management-visual regressions and TypeScript pass, including fractional completion, one-satang remainder, true completion and zero billed. Deployment/live verification follows.
+
+## 2026-10-13 — Reports navigation restricted to administrator
+
+- Invoice Register and External billing activity tabs render only for the verified administrator session with ar@katathani.com. Staff Reports defaults to Google Sheets even on stale register/external deep links and does not mount/fetch those report surfaces. Existing regional APIs used by account-level work and tracker synchronization are unchanged; this is report-surface visibility, not removal of staff account workflow rights.
+- TypeScript and five browser cases pass: staff direct links, admin desktop/mobile access, regional Sheet destinations and read recovery. Deployment follows.
+
+## 2026-10-13 — Dashboard account default status sort
+
+- Account Invoice/Folio entered from Dashboard defaults to Latest sent ascending with No billing sent first. Same-status ties use guest name then invoice number; user-selected column sorting remains available. Other entry contexts retain their existing guest default.
+- Eight invoice-display unit tests, TypeScript, and three browser cases pass, including mixed billed/unbilled ordering, manual guest override and exact Invoice navigation on desktop/mobile. Deployment and live verification follow.
+
+## 2026-10-13 — Dashboard invoice number navigation
+
+- Invoice numbers in Dashboard detail records now open the exact hotel/account/invoice using the existing focused-Invoice navigation. Payment records and rows without verified navigation identity remain text. Existing Account link remains available.
+- Compact Account detail opens its Invoice drawer immediately when entered with an explicit invoice ID. Desktop and mobile behavioral tests pass: exact identity, visible focused detail and return to the original Dashboard context. TypeScript passes. Deployment and live verification follow.
+
+## 2026-10-13 — Tracker change notification design
+
+- Owner-authorized original Khao Lak single-cell edit/clear test completed: temporary billing date appeared on the already-open Dashboard in 31.880 seconds from request start; clearing restored unbilled in 125.718 seconds. No Reload/manual sync/email. Exact original blank restored and unchanged balance verified. This proves convergence, not consistently instant delivery; native Sheet API edits tested, Phuket and employee-keyboard trigger timing not claimed. See release report for attribution limits and retained audit observations.
+
+- Owner approved event-driven synchronization to reduce idle polling. [Detailed design](superpowers/specs/2026-10-13-tracker-change-notifications-design.md) covers file-scoped Drive watches, durable coalesced work, renewal, immediate confirmed-send wakeup, browser revision refresh and per-region staged fallback.
+- Read-only inspection confirms existing five-minute tracker scheduling and existing 60-second browser revision polling. The earlier conversational suggestion that the browser had no Sheet-change tracking was corrected.
+- Owner subsequently confirmed fastest Sheet-to-open-web updates with five-minute fallback. Implemented file-scoped authenticated notification hints, durable tracker Workflow, expiring-watch renewal and authenticated regional Realtime revision hints. Original files and date authority remain unchanged; outbound acceleration is deferred from this scope.
+- Local SQL behavioral replay passed, browser regression 16/16 and focused checks passed. Independent review found and verified fixes for terminal-before-claim Workflow recovery and initial browser revision races. Production transactional preflight passed then schema applied: Realtime logical publication available, zero initial watch/wake records, anonymous read and authenticated write denied. Worker deployment and actual notification delivery follow; no live Sheet values edited to create events.
+- Deployed source `e1c21a46e176b0833dbd5361a4d216e29ab4b9ae`, Worker `1419a854-2d0f-4392-8a0f-4ed6ba0bb9bf`, push enabled with dedicated tracker Workflow. Health confirms source, database verified and OPERA connected. Full unit suite **1,943 tests / 195 files**, TypeScript and 16 local browser cases pass. Both original-file watch registrations are active; initial Google `sync` notifications recorded, durable startup jobs completed and both regional imports succeeded without error. Existing five-minute source fallback and OPERA schedules remain.
+- Actual signed-in Dashboard WebSocket returns `Subscribed to PostgreSQL` with one subscription. This proves subscription establishment, not edit-to-screen latency. Owner has no legitimate row to edit now; no original Sheet dates were changed just for testing. Actual employee edit delivery and end-to-end latency remain unmeasured. [Release evidence and limits](TRACKER_PUSH_20261013.md).
+
+## 2026-10-13 — Sheet-authoritative dates and verified empty address
+
+- Owner makes verified Sheet R/U/V/W current dates authoritative, including corrections/clears; Friendly/Final remain web-sent. Exact inspection finds a completed billing write followed by a blank Sheet date, and a different Sheet row with a billing date but missing Account No. Implementation and verified source alignment are in progress; immutable Sent evidence must remain.
+- Selected TSAN document diagnostic verifies the matching profile and attached primary address, one complete address row, four blank address lines and a country. Local resolver fix accepts these verified blank postal lines while preserving all identity, shape, count and provider-failure checks; Statement/Invoice models retain country and unchanged money. Actual repaired PDF generation pending.
+- Address fix deployed as Worker `2580124f-df63-4bf3-9e0e-6593fa31c414`, source `e9bec37`. The reported selection now generates both actual source PDFs as ready with null errors; the Invoice was rendered and visually inspected with the provided country and no invented postal address. No mail sent.
+- Sheet authority migration and adapter qualification pass local SQL tests using repository and inspected production-format definitions, 1,922 unit tests and TypeScript. Independent Astra review caught and verified fixes for stale Phuket uncertainty, earliest billing date, and native snapshot-before-reconciliation ordering. Fresh source adoption is required; no cached-data authority backfill. Deployment/source readback for the reported statuses follows.
+- Migration `20261013130000` applied after rolled-back production preflight. Worker `59cda9a0-bcf8-4e96-8ffc-618bf7736270` / source `8486ff7` deployed. Both original region checks succeed. Actual Dashboard API and UI show the reported TSAN test invoice unbilled with null billing/due dates, and the reported TLKL invoice billed on 12 October, no longer unbilled. Original balances unchanged. [Scope, verification and remaining technical uncertainty](SHEET_STATUS_AUTHORITY_20261013.md).
+
+## 2026-10-13 — Live PDF and existing Draft send completed
+
+- [Actual full-flow evidence and cleanup](LIVE_PDF_DRAFT_SEND_20261013.md): two fictional Invoices → actual Statement/Invoice generation → edited/renamed four-page package with synthetic scan → actual private storage → Gmail Draft → explicit web send. Sent verified at 17:34:44 ICT; downloaded/reviewed/stored/sent attachment hashes agree. One isolated delivery; zero original business Sent events and tracker writes for the fixture.
+- Five test objects deleted, exact empty provider containers removed, both isolated schemas retired, zero active scenarios. Acceptance disabled again. Final Worker `3c29eb75-bb1e-4e9c-bbe4-308d361499d9`, app source `21b0e7dc1804ed39a4bcc9db698fcbd3366f8bfb`; health/database verified. No customer Draft was sent. Minimal technical receipts are retained for recovery; recipient email/local QA PDFs remain.
+- Acceptance-only migrations 20261013100000 and 20261013120000 are applied. Current Invoice fixture transport, template headers and isolated operator context are qualified. Transient-only closeout no longer requires unused Drive archive history, while pending-file and exact-folder guards remain. Original application retention/permissions are unchanged.
+
+## 2026-10-13 — Send an existing Gmail Draft from the web
+
+- Owner requests web sending after Gmail Draft creation and makes Review & send now the primary colored button. Implemented exact existing Draft sending with a durable one-time claim, draft-content and reviewed-byte checks, updated Sent receipt identity and no POST replay after uncertainty. Preserve human confirmation, account/region, hold/reopen, workflow revision and collection policy checks.
+- Independent review found missing completeness parity on existing drafts; fixed and added empty-To/subject/body regressions. Focused Worker/evidence checks pass (21), local PostgreSQL replay/receipt/event checks pass, and the actual current-component browser test confirms Draft → review → explicit confirmation with primary Send/secondary Draft. Full unit run before the three added completeness cases passed 1,897; those additions pass separately. TypeScript passes.
+- Migration `20261013110000` applied to the configured production project; service-only function execution verified and authenticated direct execution denied. Application deployment and actual provider Draft send still pending. No customer draft was sent by this work.
+- Current-source synthetic Invoice transport was separately qualified against the workspace Invoice reader (9 tests). Acceptance stays disabled; its headroom migration is still unapplied.
+
+## 2026-10-13 — Urgent shared-folio document fix
+
+- Owner prioritizes a failed TSAN preparation over the acceptance work. Both workspace-generated Statement and Invoice fail with `folio_window_ambiguous`. Reproduced locally: the read-only renderers incorrectly reuse the stricter native-print selector even when the exact Invoice/Folio pair is unique.
+- Separate exact historical metadata lookup from native printing. Workspace Statement and Invoice retain hotel/reservation and unique Invoice/Folio validation; Invoice retains exact AR posting selection and amount/tax reconciliation. Native window-only printing remains fenced. Regression fails before the fix; 43 focused tests and TypeScript pass. Deployment and actual generation readback pending.
+- Acceptance headroom migration remains unapplied; no synthetic cloud namespace or acceptance enablement occurred before this urgent interruption.
+- Deployed source `de3e61fc26369aa58ec1ec78bd5287d65cb2b998` as Worker `b424000e-79ee-47ba-8082-1aafab0391bc`. Health reports database verified; all runtime bindings match the preceding release except COMMIT_SHA. A new preparation of the owner's exact reported selection reaches ready for both Statement and Invoice, with null errors. Both one-page PDFs load in the actual Workspace; the correct folio and selected amount are visible. No email or actual-billing event was submitted. Private screenshots/IDs stay outside Git, and the usable preparation is left open for the owner.
+
+## 2026-10-13 — Live PDF email follow-up preflight
+
+- Owner approves closing the remaining actual PDF-to-email boundary. Read-only preflight finds acceptance inactive, both retired namespaces absent and no active scenario. The existing provisioner rejects databases above 100 MiB; actual size is 342,502,547 bytes. Requalification/resource review is required before safely reopening this retired test path. [Evidence and prerequisites](PDF_LIVE_FLOW_PREFLIGHT_20261013.md).
+- No new email, fixture, deployment, business history or sheet change. The full live edited-package flow remains **untested**, distinct from the earlier manual local PDF and actual generic diagnostic-mail proofs.
+
+## 2026-10-13 — Follow-up verification and hands-on PDF use
+
+- Owner approves the five-part follow-up, excludes real employee login retesting, and requests hands-on PDF Workspace use. [Scoped results and limitations](END_TO_END_VERIFICATION_20261013.md). No application code/configuration change or deployment in this round.
+- Four new automatic tracker successes per region correlate with scheduled Worker events (14:01, 14:11, 14:16 and 14:26 ICT), without Check changes. All have null errors/zero pending writes. Aging reconciles 413 Accounts/2,367 rows/2,891 bucket aggregates; Dashboard passes 36 hotel/metric summary-to-detail comparisons under publication guards.
+- Current joined local SQL/service/adapter proof passes both formats and R/U/V/W with provider boundaries explicitly simulated; 109 local-table fingerprints survive rollback. Two actual local PostgreSQL sessions verify lock contention/stale-save rejection, and their exact disposable database is removed. Thirty-nine current-bundle browser cases pass.
+- Manual PDF UI checks cover address-only newlines, retained Whiteout, whole-row insertion, Undo/Redo, scan import/reassignment, names, page operations, Preview and actual local download. The seven-page output matches its split/source renders, and all three owner-provided scan pages match pixel-for-pixel. Cloud save/send of that exact package is not claimed; no customer scan was emailed.
+- Two concurrent real diagnostic-send requests share one test delivery, with verified Sent and recorded=false. Latest difference counts remain data-review items (6,886 Phuket/2,005 Khao at the category read); they were not mass-resolved. No new product defect reproduced in this scoped follow-up.
+
+## 2026-10-13 — Khao Lak tracker read recovered
+
+- Final paged source `cd2fc8f6ab5b50319a70711813d9223aa5a021b3` deployed as Worker `f52fb2ce-32e7-459b-be8d-df597b6e6379`. Normal build, exact-source health and runtime/binding readback pass; only COMMIT_SHA changes. Ninety focused tests, the complete 1,887-test unit suite and Astra review pass.
+- Normal Check changes succeeds at **12:26:39 ICT**, with error=null and zero pending writes. Actual Reports UI no longer shows the red error; private screenshot inspected. Pending differences update to 2,016 and remain review items. This is a verified manual recovery using the normal sync path; existing automatic schedules remain enabled. No sheet layout/permissions, schema, email or OPERA ledger change.
+
+- Owner reports a red tracker status after the functional audit. Fresh status confirms Khao Lak last succeeded at 10:51 ICT and later attempts fail with generic tracker_unavailable; Phuket succeeds and shared Drive remains connected. This is distinct from the pending field-difference count. No manual synchronization or original-sheet edit was performed for diagnosis.
+- Read-only current sheet export has the expected headers and no duplicate nonblank canonical Invoice identity. Existing generic error storage discards the failed stage, so a narrow sanitized failure log is implemented: fixed phase/region, exact allowlisted code and trusted bounded HTTP status only. No identifiers, values, credentials, raw errors, success logs or business behavior changes. Forty-one focused tests and TypeScript pass; Astra reviewed the privacy/control-flow boundary. Runtime diagnosis remains pending, not fixed.
+- Diagnostic source `8faa602bfbf95cfb79150ca5d7b8ce1747064bae` deployed as Worker `45aa5bef-272f-4d24-bd48-1097b70a2fa5`, preserving runtime/bindings except COMMIT_SHA. Automatic failure confirms `provider_read / drive_response_too_large`. Implemented occupied-key discovery and one trimmed typed-grid read under the unchanged 16 MiB cap, with before/after key-position checks. Original sheet and sync/writeback semantics remain unchanged. [Cause, scope and verification](TRACKER_READ_RECOVERY_20261013.md); actual repair release/recovery follow.
+- A normal Check changes attempt confirms the first trimmed response still exceeds the cap. Final reader streams 200-row typed pages, keeps only normalized rows/page hashes and preserves both response and retained-data limits. Ninety focused tests and independent Astra review pass; private current-export replay preserves all 1,101 rows and schema exactly. Actual paged-reader recovery is verified below when complete.
+
+## 2026-10-13 — Whole-system functional audit and repairs
+
+- The owner retains the existing signature: Phuket format, personal name/title and workplace derived from the Invoice hotel. No signature or profile changes. [Audit report](SYSTEM_AUDIT_20261013.md).
+- Implemented three reproduced fixes: Khao Dashboard name/type grouping with exact multi-ledger choices; safe stored-winner reuse after concurrent Gmail refresh; distinguishable same-name Remittance Account choices. Preserve financial identity, sender, reviewed files and business history; no migration or original-sheet write.
+- Baseline 1,836 and final 1,852 unit tests pass. Employee workflow audit qualifies 115 browser cases; Dashboard 45 and original signature six browser cases pass. Focused repair regressions and independent Astra reviews pass. Fresh six-hotel OPERA reads and live primary-surface checks pass within the report's stated scope; provider Folio limitations and pending tracker differences remain disclosed.
+- Deployed source `a1e989d1e486845cbdf914f1df405e02a5535f1f` as Worker `079aaf09-cdbd-49fd-b809-b0f5d8b2f51d`. Final normal build, exact-source health/database and binding readback pass; only COMMIT_SHA changes. Signed-in Dashboard/Remittance checks and private screenshot inspection pass. Employee coverage including the new Remittance regressions is 117 distinct cases, alongside Dashboard 45 and signature six.
+- Two actual synthetic mails, one per regional mailbox, reach verified Sent in approximately 3.6/3.2 seconds. Subsequent delivery readback confirms test mode, persisted Sent timestamps and recorded=false. No business Draft, Invoice history, customer document or original-sheet write was created by these tests; minimal private technical receipts prevent resending. Fresh direct-SQL history counts were not available in this round.
+
 ## 2026-10-12 — Consolidate same-name Khao Lak reporting groups
 
 - Deployed source `aad88d4523475a6cc8c223cc903ac14e6595b64d` as Worker `0334ec2e-3a0a-4d92-8a05-2469536fa6a8`. Exact-source health/database/OPERA and binding readback pass; only COMMIT_SHA changes and the backend bundle remains identical. Signed-in live checks confirm each reported name has one group, both same-hotel Accounts remain available in the picker, and the nonzero Invoice opens its exact original Hotel/Account. Private live group screenshot inspected. [PR 136](https://github.com/NTHV9/ar-workspace/pull/136) attached and unmerged. No business writes or email sends.
@@ -2037,3 +2161,17 @@ Older checkpoints below retain their results and limitations as history; their h
 
 
 Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed as Worker `660d164c-a9e8-4e6b-b03b-6038802e2c86`. Exact source health, database verification and six unauthenticated route boundaries passed. This supersedes the local-only checkpoint above. Signed-in live visual validation still awaits owner Google sign-in; PR #113 CI/merge is recorded separately.
+
+- Dashboard Invoice-link release: source 7afe9a9 deployed as Worker db8c4a22-675a-41c7-b8b2-3d9cce557639. Actual signed-in Dashboard click opened the selected TSAN Invoice with the correct Hotel, Account, Invoice and Folio in its detail panel; no business write or mail. Private screenshot retained outside Git.
+
+- Dashboard status-sort source 013ef8d deployed as Worker 72c23e08-6e4a-44fd-afde-e39dbc8a1192. Actual signed-in Dashboard account entry verified unsent billing first followed by billed rows; private screenshot retained. No business state changed.
+
+- Report visibility release b76a1d5 deployed as Worker e79e3426-838d-419b-81ba-644d35257fb2; exact-source health verified. Actual admin Reports retains all three tabs and Google Sheets access. Staff behavior verified with isolated browser fixtures; no staff credential/session was impersonated.
+
+- Billing-percent fix source 4a4f3ac deployed as Worker 0bf7a491-afec-4326-b234-4222462331bc. Actual signed-in Khao Lak Dashboard displays 99.8% alongside two unbilled invoices. No amounts or statuses were modified; private screenshot retained.
+
+- Database allowance source 6aeadd1 deployed as Worker b793d35e-6335-4f3c-98b8-d2f5dc801f16. Actual Storage UI shows 344.5 MiB / 2 GiB and retains 20% headroom, 1 GiB files and 2 GiB transfers. No provider plan change or data deletion.
+
+- Folio filename source 1db25c8 deployed as Worker b34e3fad-796e-49ad-92a5-ec979198add6; exact-source health verified. Twelve filename/source-loading tests and TypeScript pass. No user-edited preparation was reloaded or existing attachment renamed during verification.
+
+- Unbilled10 source 596fe7b deployed as Worker d8f8f99e-0bf1-4ead-b154-7a60c2011387; exact-source health verified. Database membership/matrix migration applied and period generation invalidated. Original user PDF preparation was left undisturbed during verification.

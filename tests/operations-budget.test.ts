@@ -15,10 +15,10 @@ afterEach(()=>vi.unstubAllGlobals());
 
 it('production database allowance admits growth beyond the old cap and keeps 20% in reserve',()=>{
  const configured=operationBudgetLimits(JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8')).vars);
- expect(configured).toEqual({...operationBudgetLimits({}),databaseBytes:1073741824});
- const s=state();s.measurement.used.databaseBytes=300*1048576;s.measurement.headroom.databaseBytes=1073741824;
+ expect(configured).toEqual({...operationBudgetLimits({}),databaseBytes:2147483648});
+ const s=state();s.measurement.used.databaseBytes=300*1048576;s.measurement.headroom.databaseBytes=2147483648;
  expect(assessOperationBudget(s,bytes(0,0,8192),configured,now)).toEqual({allowed:true});
- const safeLimit=Math.floor(1073741824*0.8);
+ const safeLimit=Math.floor(2147483648*0.8);
  s.measurement.used.databaseBytes=safeLimit-8192;
  expect(assessOperationBudget(s,bytes(0,0,8192),configured,now)).toEqual({allowed:true});
  expect(assessOperationBudget(s,bytes(0,0,8193),configured,now)).toEqual({allowed:false,reason:'budget_database_exceeded'});

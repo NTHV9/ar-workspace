@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {balancesResult,balanceLabels} from '../src/dashboard/period-data';
 it('keeps the established unbilled drill key while labeling its new 31-day boundary',()=>{
- expect(balanceLabels.over60_unbilled).toBe('31+ days · not billed');expect(balanceLabels.over60).toBe('Invoice age 61+ days');
+ expect(balanceLabels.over60_unbilled).toBe('10+ days · not billed');expect(balanceLabels.over60).toBe('Invoice age 61+ days');
 });
 
 const response={asOfDate:'2026-09-12',mode:'current',capturedAt:null,sourceAt:null,complete:true,missingHotels:[],metrics:[{key:'open',count:3,amount:'280.00'}],stages:[],rows:[],total:3,unverified:0};
