@@ -2162,3 +2162,5 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - Database allowance source 6aeadd1 deployed as Worker b793d35e-6335-4f3c-98b8-d2f5dc801f16. Actual Storage UI shows 344.5 MiB / 2 GiB and retains 20% headroom, 1 GiB files and 2 GiB transfers. No provider plan change or data deletion.
 
 - Folio filename source 1db25c8 deployed as Worker b34e3fad-796e-49ad-92a5-ec979198add6; exact-source health verified. Twelve filename/source-loading tests and TypeScript pass. No user-edited preparation was reloaded or existing attachment renamed during verification.
+
+- Unbilled10 source 596fe7b deployed as Worker d8f8f99e-0bf1-4ead-b154-7a60c2011387; exact-source health verified. Database membership/matrix migration applied and period generation invalidated. Original user PDF preparation was left undisturbed during verification.
