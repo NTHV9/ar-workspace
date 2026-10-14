@@ -1,3 +1,8 @@
+## 2026-10-14 — Unbilled attention starts at Invoice age 10
+
+- Owner explicitly requests age >=10, including data rather than wording only. Migration 20261014064509 updates shared balance metric membership and hotel management counts, invalidates period cache generation, and preserves general 61+ aging. Established API keys remain compatibility aliases; labels now say 10+ days across headline, hotel matrix and detail views.
+- Transactional migration assertions verify age9 excluded/10 included, general61 unchanged, billed and not-required excluded. 32 focused frontend/model tests and TypeScript pass. Actual six-hotel invoice drill readback returns complete true and zero qualifying rows at verification time; a zero card is therefore still possible under the new criterion. Full synthetic rollback fixture prepared separately, not claimed executed. Deployment follows.
+
 ## 2026-10-14 — Folio-based Invoice PDF filenames
 
 - New Invoice source names and separate delivery defaults use Inv. followed by exact Folio, preserving leading zeroes and one .pdf extension. Dots are permitted by filename validation. Repeated Folios get ordinal prefixes only to avoid duplicate output names; missing Folio retains explicit Invoice-number fallback. Combined Documents, Statement names and manually entered names remain unchanged.
