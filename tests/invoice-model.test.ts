@@ -41,6 +41,8 @@ describe('workspace invoice financial model',()=>{
   expect(invoiceModel(p,now).lines[0].reference.match(/PRINTED-1/g)).toHaveLength(1);
   p.postings.invoicePostingsDetails[0].checkNo='202';p.postings.invoicePostingsDetails[0].reference='Routed From Example Guest Of Room #202';
   expect(invoiceModel(p,now).lines[0].reference).toBe('Routed From Example Guest Of Room #202\n202');
+  p.postings.invoicePostingsDetails[0].checkNo='123456789';p.postings.invoicePostingsDetails[0].reference='Internal prefix Routed From Example Guest Of Room #202123456789';
+  expect(invoiceModel(p,now).lines[0].reference).toBe('Routed From Example Guest Of Room #202\n123456789');
  });
  it('uses AR outstanding, printed check references and actual VAT excluding service charge',()=>{
   const p=packet(14),m=invoiceModel(p,now);expect(m.gross).toBe(4641000);expect(m.vat).toBe(303617);expect(m.taxableNet).toBe(4337383);expect(m.nonTaxable).toBe(0);expect(m.outstanding).toBe(m.gross);

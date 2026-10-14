@@ -39,9 +39,11 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
   const debit=optionalCents(p.debitAmount),credit=optionalCents(p.creditAmount);if(!debit&&!credit||debit&&credit)return fail('posting_amount_invalid');
   // OPERA's AR posting check number is the printed reference. The financial
   // transaction identity remains separate for tax and scope verification.
-  const check=text(p.checkNo),referenceText=text(p.reference),narrative=referenceText.match(/Routed From [\s\S]*/i)?.[0]??'';
-  const printedCheckAtEnd=!!check&&narrative.trimEnd().endsWith(check)&&/\s/.test(narrative.trimEnd().charAt(narrative.trimEnd().length-check.length-1));
-  const reference=narrative?[narrative,...check&&!printedCheckAtEnd?[check]:[]].join('\n'):check;
+  const check=text(p.checkNo),referenceText=text(p.reference),narrative=(referenceText.match(/Routed From [\s\S]*/i)?.[0]??'').trimEnd();
+  const joinedRoom=narrative.match(/Room\s*#(\d+)$/i)?.[1];
+  const printedCheckAtEnd=!!check&&narrative.endsWith(check)&&(/\s/.test(narrative.charAt(narrative.length-check.length-1))||!!joinedRoom&&/^\d+$/.test(check)&&joinedRoom.length>check.length);
+  const routing=printedCheckAtEnd?narrative.slice(0,-check.length).trimEnd():narrative;
+  const reference=narrative?[routing,...check?[check]:[]].join('\n'):check;
   return {id:postingId,date:dateText(p.transactionDate),description:text(code[0].description),reference,debit,credit};
  }).sort((x,y)=>postingDates.get(x.id)!.localeCompare(postingDates.get(y.id)!)||Number(x.id)-Number(y.id));
  const debit=sum(lines.map(l=>l.debit)),credit=sum(lines.map(l=>l.credit)),gross=debit-credit;if(!Number.isSafeInteger(gross)||gross!==currentAmount)throw Error('document_source_changed');
