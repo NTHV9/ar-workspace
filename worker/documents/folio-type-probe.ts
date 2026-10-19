@@ -8,7 +8,7 @@ export async function readFolioReportTypes(reader:Pick<OperaReader,'folioTypeNam
   try{
    const details=asObject(asObject(await reader.folioTypeName(group)).details),hotelMatches=details.hotelId===hotel;
    const name=(key:string)=>hotelMatches&&typeof details[key]==='string'&&details[key].length<=200?details[key]:undefined;
-   results.push({group,status:'read',hotelMatches,folioTypeName:name('folioTypeName'),folioReportName:name('folioReportName'),language:name('folioLanguageCode')});
+   results.push({group,status:'read',hotelMatches,folioTypeName:name('folioTypeName'),folioReportName:name('folioReportName'),reportModule:hotelMatches?JSON.stringify(details.folioReportModuleId):undefined,language:name('folioLanguageCode')});
   }catch(error){results.push({group,status:'unavailable',code:error instanceof OperaError?error.code:'invalid_response',upstreamStatus:error instanceof OperaError?error.upstreamStatus:undefined});}
  }
  let configuration:unknown;
