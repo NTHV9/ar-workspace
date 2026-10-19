@@ -1,6 +1,28 @@
 # Invoice adjustment tax discrepancy — investigation
 
-## Latest outcome � 20 October
+## Current outcome — all active hotels
+
+Expanded and enabled for KAT, TSK, TLKL, WAKL, TLFO and TSAN. Fresh production
+model/render runs succeeded for one exact current invoice in every hotel.
+KAT and TSAN include actual additional AR postings with missing reservation tax
+breakdowns; their qualified simulation totals match fresh native VAT/non-VAT
+controls. TSK, TLKL, WAKL and TLFO live examples are ordinary invoices with
+posted-tax/native-control parity, not claimed independent adjustment AR prints.
+A fresh two-page TLKL native report was also parsed successfully in the Worker.
+Synthetic adjustment and cross-hotel regressions cover all six profiles.
+
+Full 2,064 tests / 205 files, TypeScript, Vite build and independent Astra High
+review passed. Temporary native PDF-return diagnostics and their exact owned
+byte-holding test instances were removed. No email, business history, Sheet or
+ledger changes. The pre-opening TSUN catalog entry remains outside operational
+financial scope until it has an active configuration/data source to qualify.
+
+The same checks apply per invoice: complete source scope, supported inclusive
+rules, fresh matching native controls and unchanged AR postings. Unsupported
+conditional rules, non-unique folios, conflicting controls, incomplete pages and
+documents outside bounded parsing limits fail without guessed VAT.
+
+## Initial TSAN qualification — historical checkpoint
 
 Automatic generation now reconciles supported TSAN AR adjustments using OPERA
 charge simulation plus fresh native VAT/non-VAT controls. The actual Worker

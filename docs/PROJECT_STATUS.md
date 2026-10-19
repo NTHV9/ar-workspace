@@ -2218,3 +2218,22 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
   pass and six anonymous protected routes reject access. Immutable binding
   comparison matches the previous production release except COMMIT_SHA; no
   runtime setting or secret binding was dropped. PR139 contains this repair.
+
+## 2026-10-20 — VAT fallback expanded to all active hotels
+
+- Enabled explicit native report profiles for KAT, TSK, TLKL, WAKL, TLFO and TSAN.
+  Read and hash-verified exact native PDFs for all six; live ordinary posted-tax
+  parity passes for TSK/TLKL/WAKL/TLFO. KAT/TSAN actual additional AR postings pass
+  simulation-plus-native-control reconciliation. Adjustment behavior in the other
+  four hotels has synthetic coverage, not independently printed real ADJ cases.
+- Fresh production generation succeeded for all six selected invoices. TLKL's
+  two-page native report also passed the new parser in the actual Worker runtime.
+  Every page must match the folio and printed page count; tax controls must be
+  unique. Bounds are 4 MB / 10 pages / 4,000 text items per page / 15-second parse
+  deadline and 250-ms maximum cancellation cleanup.
+- 2,064 tests / 205 files, TypeScript/build and Astra High review pass. Fixed and
+  regression-tested truncated 1-of-2 PDFs and stalled parser/cleanup behavior.
+  Existing uncertain-print/no-retry handling remains. TSUN stays pre-opening.
+- No mail, business history, Sheet or OPERA ledger changes. Temporary native PDF
+  probe code and the exact six byte-holding test instances were removed after
+  private evidence verification. Existing prepared/reviewed bytes stay unchanged.
