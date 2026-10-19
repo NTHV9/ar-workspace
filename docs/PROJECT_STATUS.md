@@ -2175,3 +2175,9 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - Folio filename source 1db25c8 deployed as Worker b34e3fad-796e-49ad-92a5-ec979198add6; exact-source health verified. Twelve filename/source-loading tests and TypeScript pass. No user-edited preparation was reloaded or existing attachment renamed during verification.
 
 - Unbilled10 source 596fe7b deployed as Worker d8f8f99e-0bf1-4ead-b154-7a60c2011387; exact-source health verified. Database membership/matrix migration applied and period generation invalidated. Original user PDF preparation was left undisturbed during verification.
+## 2026-10-19 — PDF Workspace repair acceptance
+
+- Owner approved fixing the five demonstrated issues. Implemented same-column stationery spacing, occupied-destination protection, intrinsic image ratio, visible page-number consistency and selectively qualified native text replacement with safe background handling. Existing whole-row insertion and exact reviewed-file handoff remain.
+- Full 1,994 tests across 200 files, TypeScript and production build passed. Independent reviews approved after scale, native-box and raster-antialiasing repairs. Actual browser and independently reopened 300-dpi PDFs verify address/VAT spacing, unchanged invoice pages, preserved blue header plus searchable native replacement, image ratio, correct attachment labels and simulated reviewed-file handoff. No actual email or accounting operation.
+- Native coverage remains deliberately narrow; complex Image/Form pages retain raster handling. No production deployment is claimed by this checkpoint; release verification follows. [Implementation and evidence](PDF_WORKSPACE_REPAIRS_20261019.md).
+
