@@ -20,7 +20,9 @@ export function assertMoveDestinationClear(page:PdfProjectPage,edit:Move,runs:De
  if(occupied.some(rect=>subtractRect(rect,edit).some(part=>overlaps(part,destination))))throw Error('The destination is occupied and would overlap text or artwork. Choose a blank area; the move was not applied.');
 }
 /** Inspect actual visible artwork, allowing blank parts of full-page scan images. */
-export function assertRasterDestinationClear(edit:Move,raster:{data:Uint8ClampedArray;width:number;height:number},scale=1):void {
+export function assertRasterDestinationClear(edit:Move,raster:{data:Uint8ClampedArray;width:number;height:number},rendered:{scale:number}):void {
+ const {scale}=rendered;
+ if(!Number.isFinite(scale)||scale<=0)throw Error('The destination scale could not be checked. Reopen the document before moving this area.');
  const destination={...edit,x:edit.x+edit.dx,y:edit.y+edit.dy};
  for(const part of subtractRect(destination,edit)){
   for(let y=Math.max(0,Math.floor(part.y*scale));y<Math.min(raster.height,Math.ceil((part.y+part.height)*scale));y++){

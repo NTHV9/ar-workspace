@@ -56,7 +56,7 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
    if(edit.kind==='move'){
     assertMoveDestinationClear(before,edit,runs,[]);
     const probe=document.createElement('canvas');
-    try{await renderPage(before,documents,probe,1);const context=probe.getContext('2d');if(!context)throw Error('The destination could not be checked. Try reopening the document.');assertRasterDestinationClear(edit,context.getImageData(0,0,probe.width,probe.height));}finally{probe.width=probe.height=0;}
+    try{const rendered=await renderPage(before,documents,probe,1);const context=probe.getContext('2d');if(!context)throw Error('The destination could not be checked. Try reopening the document.');assertRasterDestinationClear(edit,context.getImageData(0,0,probe.width,probe.height),rendered);}finally{probe.width=probe.height=0;}
    }
    const flowed=applyFlowEdit({...before,layers:before.layers.filter(l=>!removeIds.includes(l.id))},edit,excluded);
    return {...flowed,layers:[...flowed.layers,...extra]};

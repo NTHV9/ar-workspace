@@ -67,9 +67,19 @@ it('accepts white scanner pixels but refuses painted destination pixels outside 
  const smallMove:Extract<PdfRowEdit,{kind:'move'}>={id:'m',kind:'move',x:0,y:0,width:10,height:10,dx:0,dy:5};
  const pixels=new Uint8ClampedArray(20*20*4).fill(255),raster={data:pixels,width:20,height:20};
  pixels.set([0,0,0,255],(6*20+5)*4);
- expect(()=>assertRasterDestinationClear(smallMove,raster)).not.toThrow();
+ expect(()=>assertRasterDestinationClear(smallMove,raster,{scale:1})).not.toThrow();
  pixels.set([0,0,0,255],(12*20+5)*4);
- expect(()=>assertRasterDestinationClear(smallMove,raster)).toThrow(/occupied/i);
+ expect(()=>assertRasterDestinationClear(smallMove,raster,{scale:1})).toThrow(/occupied/i);
+});
+it('checks destination ink using the actual renderer scale after the large-page pixel cap',()=>{
+ const pageWidth=5000,scale=Math.sqrt(20_000_000/(pageWidth*pageWidth));
+ const width=Math.ceil(pageWidth*scale),height=width;
+ const pixels=new Uint8ClampedArray(width*height*4).fill(255),raster={data:pixels,width,height};
+ const largeMove:Extract<PdfRowEdit,{kind:'move'}>={id:'large',kind:'move',x:0,y:0,width:100,height:100,dx:4800,dy:4800};
+ expect(()=>assertRasterDestinationClear(largeMove,raster,{scale})).not.toThrow();
+ const x=Math.floor(4850*scale),y=Math.floor(4850*scale);
+ pixels.set([0,0,0,255],(y*width+x)*4);
+ expect(()=>assertRasterDestinationClear(largeMove,raster,{scale})).toThrow(/occupied/i);
 });
 it('preserves a portrait PNG aspect on insert and ordinary width/height resize',()=>{
  const initial=fitImage(1240,1754,210,250);
