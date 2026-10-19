@@ -1,3 +1,4 @@
+import {nativeTaxReport} from './tax-report-profile';
 import type {OperaReader} from '../opera/client';
 import {getNativeInvoicePdf,type DocumentInvoice} from '../documents/native-invoice';
 import {canonical,verifyArSimulation,type ArSimulation} from './ar-tax';
@@ -7,10 +8,9 @@ export type ArTaxReader=Pick<OperaReader,'account'|'reservationFolios'|'folioRep
 const fail=():never=>{throw Error('document_invoice_ar_tax_unverified');};
 const list=(v:unknown)=>Array.isArray(v)?v.map(record):fail();
 export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvoice,account:Record<string,unknown>,postings:Record<string,unknown>,details:NonNullable<InvoicePacket['arDetails']>,onRenderStart:()=>void=()=>{}){
- // Only this native report/layout has been compared against a current AR print.
- if(manifest.hotel!=='TSAN')return fail();
+ const report=nativeTaxReport(manifest.hotel);if(!report)return fail();
  const config=record(record(await reader.folioTypeName('Guest')).details);
- if(config.hotelId!==manifest.hotel||config.folioReportName!=='tsan_folio')fail();
+ if(config.hotelId!==manifest.hotel||config.folioReportName!==report)fail();
  const roots=details.flatMap(d=>list(record(d.response).transactions));if(!roots.length||roots.length>20)fail();
  const simulations:ArSimulation[]=[];
  for(const p of roots){

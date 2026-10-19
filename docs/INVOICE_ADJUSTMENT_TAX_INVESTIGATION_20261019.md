@@ -196,3 +196,30 @@ Worker runtime qualification and production enablement remain pending.
 The experimental report-name-as-folio-type request did not produce a correct
 AR invoice and was not adopted. Its byte-return code and exact owned Workflow
 instance were removed; the downloaded evidence remains private outside Git.
+
+## 20 October — expansion to all six active hotels
+
+Verified each property's actual Guest report configuration: KAT `kat_folio`,
+TSK `tsk_folio_vat`, TLKL `tlkl_folio_vat`, WAKL `wakl_folio_vat`, TLFO
+`tlfo_folio_vat`, TSAN `tsan_folio`. Downloaded exact scoped native PDFs privately
+and SHA-256 verified all six. Ordinary posted-tax parity matches for TSK, TLKL,
+WAKL and TLFO. KAT also has a real later AR adjustment: its OPERA simulation
+provides explicit base/SVC/VAT components and its native tax control reflects
+that additional tax. TSAN retains the independently compared current AR print.
+Do not equate ordinary parity with independent AR-adjustment print validation
+for every hotel; native-control equality remains mandatory on each invoice.
+
+Implemented explicit hotel/report profiles and removed TSAN-only admission.
+The actual TLKL native PDF has two pages, tax totals on the first and outstanding
+only on the continuation. The parser now checks Folio identity on every page,
+printed page numbers against physical count, and exactly one pair of tax controls
+across the document. It rejects duplicates, missing pages and mixed folios.
+Bounds: 4 MB, ten pages, 4,000 text items per page, 15-second extraction deadline
+plus at most 250 ms cancellation cleanup. Unknown reports and TSUN pre-opening
+remain outside admitted financial scopes.
+
+Red/green regressions cover all five newly admitted hotels, truncated single-page
+PDFs printed as 1 of 2, multi-page/split footers and stalled parsing/cancellation.
+Full 2,064 tests / 205 files, TypeScript and Vite build pass. Independent Astra
+High review approved after the missing-page/deadline repairs. Live generation
+qualification of the expanded deployment remains the next check.

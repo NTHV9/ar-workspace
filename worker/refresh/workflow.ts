@@ -54,8 +54,9 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
           if(config.hotelId!==hotel)throw Error('document_probe_scope_invalid');
           let expected:unknown;try{const model=invoiceModel(packet);expected={vat:model.vat,nonTaxable:model.nonTaxable,gross:model.gross};}catch(error){expected={error:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'};}
           const native=await getNativeInvoicePdf(reader,invoice);
-          if(native.bytes.length>1_000_000)throw Error('document_probe_scope_invalid');
-          return JSON.stringify({hotel,report:config.folioReportName,folio:invoice.folio_no,pages:native.pages,byteCount:native.bytes.length,sha256:native.sha256,base64:btoa(Array.from(native.bytes,c=>String.fromCharCode(c)).join('')),expected,missingArRows:(packet.arDetails??[]).reduce((n,d)=>n+d.ids.length,0)});
+          const {readNativeTaxControls}=await import('../invoice/native-tax-controls');
+          const controls=await readNativeTaxControls(native.bytes,invoice.folio_no!);
+          return JSON.stringify({hotel,report:config.folioReportName,pages:native.pages,byteCount:native.bytes.length,expected,controls,missingArRows:(packet.arDetails??[]).reduce((n,d)=>n+d.ids.length,0)});
         }
         if(payload.invoiceTaxRulesProbe){
           const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
@@ -101,7 +102,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(payload.invoiceRenderProbe){
           try{const model=await readInvoiceModel(makeReader(runtime,hotel),invoice);
             const assets=await backendRpc<InvoiceAssets>(runtime,'ar_invoice_template',{p_hotel:hotel,p_version:job.invoice_template_version});
-            const bytes=await renderInvoice(model,assets);return JSON.stringify({ok:true,hotel,byteCount:bytes.length,voucherLength:model.voucher.length,lineCount:model.lines.length});
+            const bytes=await renderInvoice(model,assets);return JSON.stringify({ok:true,hotel,byteCount:bytes.length,voucherLength:model.voucher.length,lineCount:model.lines.length,vat:model.vat,nonTaxable:model.nonTaxable,taxableNet:model.taxableNet,gross:model.gross,outstanding:model.outstanding});
           }catch(error){return JSON.stringify({ok:false,hotel,error:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'});}
         }
         if(payload.invoiceReadAudit)return JSON.stringify(await auditInvoiceRead(makeReader(runtime,hotel),invoice));

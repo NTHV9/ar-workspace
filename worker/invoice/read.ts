@@ -1,3 +1,4 @@
+import {nativeTaxReport} from './tax-report-profile';
 import {readArTaxEvidence,financialPostingFingerprint,type ArTaxReader} from './ar-tax-read';
 import {accountWithAddressee} from '../documents/addressee';
 import {OperaError,type OperaReader} from '../opera/client';
@@ -67,7 +68,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
  // the model independently checks account/invoice/folio, amounts and tax facts.
  for(let offset=0;offset<missingIds.length;offset+=40){const ids=missingIds.slice(offset,offset+40);arDetails.push({ids,response:await reader.invoiceTransactionDetails(ids)});}
  let arTax:Pick<InvoicePacket,'arSimulations'|'nativeTaxControls'>={};
- if(qualifyArTax&&arDetails.length&&manifest.hotel==='TSAN'&&reader.folioReport&&reader.folioTypeName&&reader.invoiceTransactionCodeRules&&reader.invoiceChargeSimulation){
+ if(qualifyArTax&&arDetails.length&&nativeTaxReport(manifest.hotel)&&reader.folioReport&&reader.folioTypeName&&reader.invoiceTransactionCodeRules&&reader.invoiceChargeSimulation){
   arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,postings,arDetails,onRenderStart);
   const finalPostings=await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string});
   if(financialPostingFingerprint(finalPostings)!==financialPostingFingerprint(postings))throw Error('document_source_changed');
