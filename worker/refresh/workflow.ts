@@ -20,7 +20,6 @@ import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
-import {getNativeInvoicePdf} from '../documents/native-invoice';
 import {renderInvoice} from '../invoice/render';
 import type {InvoiceAssets} from '../invoice/types';
 import {readInvoicePacket} from '../invoice/read';
@@ -48,13 +47,6 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         const selectedId=payload.invoiceAuditId??job.invoice_ids[0];if(!/^[1-9][0-9]{0,15}$/.test(selectedId)||!job.invoice_ids.includes(selectedId))throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===selectedId);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
-        if(payload.pdfProbe){
-          const pdf=await getNativeInvoicePdf(makeReader(runtime,hotel),invoice);
-          if(pdf.bytes.length>524288)throw Error('document_probe_response_too_large');
-          let binary='';for(let start=0;start<pdf.bytes.length;start+=8192)binary+=String.fromCharCode(...pdf.bytes.subarray(start,start+8192));
-          return JSON.stringify({hotel,byteCount:pdf.bytes.length,pages:pdf.pages,sha256:pdf.sha256,base64:btoa(binary)});
-        }
-        if(payload.invoiceCredentialIdentityProbe)return JSON.stringify({appKeyDisplaySuffix:runtime.OPERA_APP_KEY?.slice(-4)??null,approvedClientMatches:runtime.OPERA_CLIENT_ID==='KCTLK-Production-TSTLKL-mtcb2pr-AR-KAT',enterprise:runtime.OPERA_ENTERPRISE_ID,origin:runtime.OPERA_BASE_URL?new URL(runtime.OPERA_BASE_URL).origin:null});
         if(payload.invoiceGuestProbe){
           const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
           const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord);

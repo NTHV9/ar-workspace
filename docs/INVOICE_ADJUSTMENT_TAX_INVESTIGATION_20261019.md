@@ -59,6 +59,32 @@ mapping evidence; do not replace them from arbitrary latest rows.
 
 ## Remaining work
 
+## Portal and alternative-source verification
+
+- Read-only Developer Portal inspection confirms the approved AR client and
+  matching Enterprise/Gateway. A temporary display-suffix diagnostic confirms
+  the deployed application key belongs to the inspected application; no full
+  key or secret was returned. Its subscribed plans are API Catalog, Hospitality
+  Property and OAuth. Hospitality Data APIs is absent from the available edit
+  choices. The dialog was cancelled; no changes saved.
+- Oracle's Data API prerequisites describe a separate Reporting & Analytics
+  Data Access add-on for hoteliers. No subscription was added or purchased.
+  This finding is distinct from the owner's correctly approved operational
+  client or staff permissions.
+- `calculateTaxes`, although mentioned in Oracle release notes, is absent from
+  both the current published CSH specification and the inspected API catalog.
+- An exact, single-run native folio PDF test succeeded. The returned COPY OF
+  INVOICE includes historical charges and a settled City Ledger payment, omits
+  the later AR adjustment and reports zero outstanding, while displaying the
+  updated VAT. Therefore its complete footer does not reconcile and it is not
+  qualified as an automatic replacement or a selectively borrowed tax source.
+  Downloaded bytes were SHA-256 verified, independently extracted and rendered.
+  The exact test Workflow instance holding those bytes was deleted successfully;
+  the temporary byte-return and credential-suffix diagnostic branches were then
+  removed. No original preparation, user PDF or accounting record was deleted.
+
+## Remaining source dependency
+
 - Obtain authoritative printed invoice tax fields or equivalent explicit API
   evidence for AR adjustments. Do not replace missing evidence with a blanket
   percentage calculation or classify all Revenue adjustments the same way.
@@ -87,4 +113,5 @@ diagnostics. Existing preparations/reviewed bytes are not rewritten.
 
 Sources: [Oracle Data API request contract](https://docs.oracle.com/en/industries/hospitality/integration-platform/ohipu/c_oauth_token_api.htm),
 [Oracle gateway errors](https://docs.oracle.com/en/industries/hospitality/integration-platform/ohipu/c_common_error_messages.htm),
+[Data API prerequisites](https://docs.oracle.com/en/industries/hospitality/integration-platform/ohipu/r_prerequisites_oracle_hospitality_data_apis.htm),
 [official Postman collection](https://github.com/oracle/hospitality-api-docs/blob/main/postman-collections/reporting-and-analytics/R%26A%20Data%20APIs.postman_collection.json).
