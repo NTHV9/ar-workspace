@@ -2237,3 +2237,7 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - No mail, business history, Sheet or OPERA ledger changes. Temporary native PDF
   probe code and the exact six byte-holding test instances were removed after
   private evidence verification. Existing prepared/reviewed bytes stay unchanged.
+- Final expanded release: source `d5694185249924c44303c0eeb463bbce3a2b37b6`, Worker
+  `024dc96d-0b58-4ec0-a662-145dcbd40bae`. Exact-source health/database checks pass;
+  six anonymous protected routes reject access. All previous runtime bindings
+  match except COMMIT_SHA, with no added or missing binding. Draft PR139 updated.
