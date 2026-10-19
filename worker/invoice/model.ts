@@ -1,3 +1,4 @@
+import {verifyArSimulation,type ArSimulation} from './ar-tax';
 import {amountCents} from '../opera/normalize';
 import type {DocumentInvoice} from '../documents/native-invoice';
 import type {InvoiceModel,InvoiceLine} from './types';
@@ -25,7 +26,7 @@ function precise(v:unknown):bigint{
 const abs=(n:bigint)=>n<0n?-n:n;
 const rounded=(units:bigint)=>{const n=Number((abs(units)+CENT/2n)/CENT)*(units<0n?-1:1);if(!Number.isSafeInteger(n))return fail('amount_invalid');return n;};
 
-export interface InvoicePacket {manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
+export interface InvoicePacket {arSimulations?:ArSimulation[];nativeTaxControls?:{vat:number;nonTaxable:number};manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
 export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceModel{
  const {manifest:m}=packet,a=record(packet.account),i=record(packet.invoice),reservation=record(packet.reservation),postingData=record(packet.postings);
  if(a.hotelId!==m.hotel||text(record(a.accountId).id)!==m.account_id||i.hotelId!==m.hotel||id(i.transactionNo)!==m.id||text(i.invoiceNo)!==m.invoice_no||text(i.folioNo)!==m.folio_no||!m.reservation_id||!m.folio_no||!m.invoice_no||!['standalone','parent'].includes(m.collection_role)||m.open<=0||i.parentInvoiceNo!=null)return fail('scope_invalid');
@@ -63,6 +64,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    arRows.set(key,{posting:p,code:codes[0]});
   }
  }
+ const simulations=packet.arSimulations??[],simulationIds=new Set(simulations.map(e=>e.postingId));if(simulationIds.size!==simulations.length||simulations.some(e=>!arRows.has(e.postingId)))return fail('ar_tax_unverified');
  const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
  const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean}>();
  for(const line of lines){const root=byId.get(line.id);if(!root){
@@ -73,7 +75,9 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    // A complete includeGenerates response without generated rows does not prove
    // an AR adjustment is non-taxable. OPERA's current AR folio can include VAT
    // absent from this reservation-ledger response. Never fabricate a zero tax.
-   return fail('ar_tax_unverified');
+   const evidence=simulations.find(e=>e.postingId===line.id);if(!evidence||!packet.nativeTaxControls)return fail('ar_tax_unverified');
+   const calculated=verifyArSimulation(evidence,m.hotel,String(p.transactionCode),(line.debit-line.credit)/100);
+   vatUnits+=precise({amount:calculated.vat,currencyCode:'THB'});nonTaxableUnits+=precise({amount:calculated.nonTaxable,currencyCode:'THB'});continue;
   }const rootPosting=record(root.posting);
   if(rootPosting.hotelId!==m.hotel||text(rootPosting.folioNo)!==m.folio_no||text(record(record(rootPosting.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
   // OPERA groups both the visible wrapper and its component postings under the
@@ -111,6 +115,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
   }else nonTaxableUnits+=group.base;
  }
  const vat=rounded(vatUnits),nonTaxable=rounded(nonTaxableUnits),taxableNet=gross-vat-nonTaxable;if(!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
+ if(simulations.length&&(!packet.nativeTaxControls||packet.nativeTaxControls.vat!==vat||packet.nativeTaxControls.nonTaxable!==nonTaxable))return fail('ar_tax_unverified');
  const address=optional(optional(a.address).address),addressLines=address.addressLine==null?[]:rowsOfText(address.addressLine),country=optional(address.country);
  const billAddress=[text(a.accountName),...addressLines,[text(address.cityName),text(address.postalCode)].filter(Boolean).join(' '),text(country.value??country.code)].filter(Boolean);if(!billAddress[0])return fail('address_invalid');
  const stay=record(reservation.roomStay),ids=rows(reservation.reservationIdList),cashier=optional(i.cashierInfo);

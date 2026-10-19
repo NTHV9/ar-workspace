@@ -145,3 +145,28 @@ Sources: [Oracle Data API request contract](https://docs.oracle.com/en/industrie
 [Oracle gateway errors](https://docs.oracle.com/en/industries/hospitality/integration-platform/ohipu/c_common_error_messages.htm),
 [Data API prerequisites](https://docs.oracle.com/en/industries/hospitality/integration-platform/ohipu/r_prerequisites_oracle_hospitality_data_apis.htm),
 [official Postman collection](https://github.com/oracle/hospitality-api-docs/blob/main/postman-collections/reporting-and-analytics/R%26A%20Data%20APIs.postman_collection.json).
+
+## 20 October — bounded automatic tax candidate (diagnostic only)
+
+FOF charge simulation returns a signed inclusive base/service/VAT decomposition
+for the affected AR adjustment. Its VAT plus the verified original posted VAT
+matches the freshly downloaded current AR invoice. Configuration simulation
+alone is not historical tax evidence: the candidate also requires matching VAT
+and non-VAT controls from the uniquely scoped native folio PDF, and a complete
+AR posting fingerprint before/after. Only the independently compared TSAN
+`tsan_folio` single-page layout is qualified for this candidate. Unknown rules,
+conditional rules, unsupported layouts and mismatches retain the guard.
+
+Implemented separate simulation evidence, closed-rule/component validation,
+configuration rechecks, pinned in-process PDF extraction and exact control
+matching. Default `qualifyArTax=false` keeps normal generation guarded; only
+privileged selected-invoice model/render probes opt in during qualification.
+Unit cases cover signed debit/credit adjustments, rounding, partial payments,
+rule mutation, unsupported graphs, native mismatches and offsetting posting
+changes. Actual stored native PDF controls extract successfully locally.
+Astra High reviewed the candidate and independently passed 67 focused tests.
+Worker runtime qualification and production enablement remain pending.
+
+The experimental report-name-as-folio-type request did not produce a correct
+AR invoice and was not adopted. Its byte-return code and exact owned Workflow
+instance were removed; the downloaded evidence remains private outside Git.

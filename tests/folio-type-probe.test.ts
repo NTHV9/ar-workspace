@@ -2,13 +2,14 @@ import {it,expect,vi} from 'vitest';
 import {OperaReader,OperaError} from '../worker/opera/client';
 import {readFolioReportTypes} from '../worker/documents/folio-type-probe';
 
-it('reads only the two documented report groups from the exact property',async()=>{
+it('reads the documented report groups and folio-type configuration from the exact property',async()=>{
  const requests:Request[]=[];
  const reader=new OperaReader({origin:'https://opera.example',hotelId:'KAT',appKey:'synthetic'},async()=> 'synthetic',async request=>{requests.push(request);return Response.json({details:{hotelId:'KAT',folioTypeName:'Synthetic type',folioReportName:'Synthetic report',unrelated:'must not leave response'}});});
  const result=await readFolioReportTypes(reader,'KAT');
- expect(requests.map(r=>r.method)).toEqual(['GET','GET']);
- expect(requests.map(r=>new URL(r.url).pathname)).toEqual(Array(2).fill('/csh/v1/hotels/KAT/folioTypeNames'));
- expect(requests.map(r=>new URL(r.url).searchParams.get('folioReportGroup'))).toEqual(['Guest','AccountsReceivables']);
+ expect(requests.map(r=>r.method)).toEqual(['GET','GET','GET']);
+ expect(requests.map(r=>new URL(r.url).pathname)).toEqual(['/csh/v1/hotels/KAT/folioTypeNames','/csh/v1/hotels/KAT/folioTypeNames','/fof/config/v1/folioTypesConfig']);
+ expect(requests.map(r=>new URL(r.url).searchParams.get('folioReportGroup'))).toEqual(['Guest','AccountsReceivables',null]);
+ expect(new URL(requests[2].url).searchParams.get('hotelId')).toBe('KAT');
  expect(result.results.every(r=>r.hotelMatches===true)).toBe(true);expect(JSON.stringify(result)).not.toContain('unrelated');
 });
 it('does not expose mismatched hotel metadata or retry provider failure',async()=>{

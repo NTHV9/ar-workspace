@@ -1,3 +1,4 @@
+import {readArTaxEvidence,financialPostingFingerprint,type ArTaxReader} from './ar-tax-read';
 import {accountWithAddressee} from '../documents/addressee';
 import {OperaError,type OperaReader} from '../opera/client';
 import {historicalFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
@@ -5,10 +6,10 @@ import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {collectPages} from '../opera/pagination';
 import {invoiceModel,invoiceTaxEntries,record,type InvoicePacket} from './model';
-type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>&Partial<Pick<OperaReader,'profile'>>;
+type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>&Partial<Pick<OperaReader,'profile'|'folioReport'|'folioTypeName'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'>>;
 const fail=():never=>{throw Error('document_source_changed');};
 const list=(value:unknown)=>{if(!Array.isArray(value))return fail();return value.map(record);};
-export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):Promise<InvoicePacket>{
+export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,qualifyArTax=false):Promise<InvoicePacket>{
  if(!manifest.invoice_no)throw Error('document_invoice_selector_missing');
  const account=record(record(await reader.account(manifest.account_id)).accountDetails);if(account.hotelId!==manifest.hotel||record(account.accountId).id!==manifest.account_id)fail();
  let selected=list(account.invoices).filter(i=>String(i.transactionNo)===manifest.id);
@@ -65,6 +66,12 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  // Read their exact transaction identities, including all generated postings;
  // the model independently checks account/invoice/folio, amounts and tax facts.
  for(let offset=0;offset<missingIds.length;offset+=40){const ids=missingIds.slice(offset,offset+40);arDetails.push({ids,response:await reader.invoiceTransactionDetails(ids)});}
+ let arTax:Pick<InvoicePacket,'arSimulations'|'nativeTaxControls'>={};
+ if(qualifyArTax&&arDetails.length&&manifest.hotel==='TSAN'&&reader.folioReport&&reader.folioTypeName&&reader.invoiceTransactionCodeRules&&reader.invoiceChargeSimulation){
+  arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,postings,arDetails);
+  const finalPostings=await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string});
+  if(financialPostingFingerprint(finalPostings)!==financialPostingFingerprint(postings))throw Error('document_source_changed');
+ }
  // Recheck the AR balance after the slower postings/tax reads to fence a payment
  // or adjustment arriving during preparation. No write or print call is made.
  const addressedAccount=await accountWithAddressee(reader,manifest.hotel,manifest.account_id,account);
@@ -73,7 +80,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice):
  const payeeWindow=Array.isArray(folioInfo.folioWindows)?list(folioInfo.folioWindows).find(w=>w.folioWindowNo===window&&w.internalFolioWindowID===invoice.internalFolioWindowID):undefined;
  const payee=payeeWindow?.payeeInfo?record(payeeWindow.payeeInfo):undefined;
  const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
- return {manifest,account:addressedAccount,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,arDetails,payeeTaxNumber,customReference:customReference as string|undefined};
+ return {...arTax,manifest,account:addressedAccount,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,arDetails,payeeTaxNumber,customReference:customReference as string|undefined};
 }
 export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){
  let packet:InvoicePacket|undefined;
