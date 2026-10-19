@@ -47,6 +47,22 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         const selectedId=payload.invoiceAuditId??job.invoice_ids[0];if(!/^[1-9][0-9]{0,15}$/.test(selectedId)||!job.invoice_ids.includes(selectedId))throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===selectedId);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        if(payload.invoiceGuestProbe){
+          const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
+          const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord);
+          const dates=rows.map(r=>String(r.transactionDate)).sort();
+          const extra=await reader.invoiceGuestTransactions(invoice.reservation_id!,dates[0],dates.at(-1)!);
+          // Existing privileged control-plane diagnostic only; no public HTTP route,
+          // accounting mutation, document save or email. Returned text is hashed.
+          const digest=async(value:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value??''))))].map(n=>n.toString(16).padStart(2,'0')).join('');
+          const summarize=async(value:unknown,depth=0):Promise<unknown>=>{
+            if(depth>15)return 'depth_limit';
+            if(Array.isArray(value))return Promise.all(value.slice(0,4000).map(v=>summarize(v,depth+1)));
+            if(value&&typeof value==='object')return Object.fromEntries(await Promise.all(Object.entries(value).filter(([k])=>k!=='links').map(async([k,v])=>[k,typeof v==='string'&&!/^(?:transactionCode|transactionType|transactionGroup|transactionSubGroup|currencyCode|hotelId|transactionDate|postingDate|revenueDate|id|type|invoiceNo|accountNumber|folioNo|referenceTransactionNo|referencePackageTransactionNo|cashierId)$/.test(k)?{length:v.length,sha256:await digest(v)}:await summarize(v,depth+1)])));
+            return value;
+          };
+          return JSON.stringify({postings:await summarize(packet.postings),arDetails:await summarize(packet.arDetails),invoiceCashier:await summarize(invoiceRecord(packet.invoice).cashierInfo),extra:await summarize(extra)});
+        }
         // Exact selected-job diagnostic: renders in memory, never saves a PDF or changes the job.
         if(payload.invoiceRenderProbe){
           try{const packet=await readInvoicePacket(makeReader(runtime,hotel),invoice),model=invoiceModel(packet);

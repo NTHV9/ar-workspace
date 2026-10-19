@@ -109,6 +109,12 @@ export class OperaReader {
     if(!Number.isSafeInteger(window)||window<1||limit>50||![start,end].every(x=>/^\d{4}-\d{2}-\d{2}$/.test(x))||start>end)throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/financialPostingsNetVat`,[['reservationId',reservationId],['folioWindowNo',String(window)],['startDate',start],['endDate',end],...this.page(offset,limit)]);
   }
+  /** Read-only diagnostic alternative for posted AR generates; not a tax classification. */
+  invoiceGuestTransactions(reservationId:string,start:string,end:string) {
+    const day=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
+    if(!/^[1-9][0-9]{0,15}$/.test(reservationId)||!day(start)||!day(end)||start>end||Date.parse(end)-Date.parse(start)>=30*86400000)throw new OperaError('invalid_request');
+    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/transactions`,[['reservationList',reservationId],['includeGenerates','true'],['includeTransactionsWithARInvoiceNo','true'],['includeTransactionsWithFolioNo','true'],['startDate',start],['endDate',end]]);
+  }
   invoiceTransactionDetails(transactionIds:string[]) {
     if(!transactionIds.length||transactionIds.length>40||new Set(transactionIds).size!==transactionIds.length||transactionIds.some(id=>!/^[1-9][0-9]{0,15}$/.test(id)))throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/transactionDetails`,[['includeGenerates','true'],...transactionIds.map(id=>['transactionNo',id])]);
