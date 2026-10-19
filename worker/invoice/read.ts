@@ -85,7 +85,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
 export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){
  let packet:InvoicePacket|undefined;
  for(let attempt=0;attempt<3;attempt++){
-  try{packet=await readInvoicePacket(reader,manifest);break;}
+  try{packet=await readInvoicePacket(reader,manifest,true);break;}
   catch(error){
    // A paginated OPERA read can overlap or change while it is being read. Start
    // from the account again; never deduplicate, merge attempts, or retry rendering.

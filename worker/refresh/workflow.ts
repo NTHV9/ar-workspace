@@ -23,7 +23,7 @@ import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
 import {nativeFolioSelector} from '../documents/native-invoice';
 import {renderInvoice} from '../invoice/render';
 import type {InvoiceAssets} from '../invoice/types';
-import {readInvoicePacket} from '../invoice/read';
+import {readInvoicePacket,readInvoiceModel} from '../invoice/read';
 import {auditInvoiceRead} from '../invoice/read-audit';
 import {invoiceModel,record as invoiceRecord} from '../invoice/model';
 
@@ -90,9 +90,10 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         }
         // Exact selected-job diagnostic: renders in memory, never saves a PDF or changes the job.
         if(payload.invoiceRenderProbe){
-          try{const packet=await readInvoicePacket(makeReader(runtime,hotel),invoice,true),model=invoiceModel(packet);
+          try{const model=await readInvoiceModel(makeReader(runtime,hotel),invoice);
             const assets=await backendRpc<InvoiceAssets>(runtime,'ar_invoice_template',{p_hotel:hotel,p_version:job.invoice_template_version});
-            const bytes=await renderInvoice(model,assets);return JSON.stringify({ok:true,hotel,byteCount:bytes.length,voucherLength:model.voucher.length,lineCount:model.lines.length});
+            const bytes=await renderInvoice(model,assets);if(bytes.length>700000)throw Error('document_probe_scope_invalid');
+            return JSON.stringify({ok:true,hotel,byteCount:bytes.length,voucherLength:model.voucher.length,lineCount:model.lines.length,base64:btoa(Array.from(bytes,c=>String.fromCharCode(c)).join('')),sha256:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(n=>n.toString(16).padStart(2,'0')).join('')});
           }catch(error){return JSON.stringify({ok:false,hotel,error:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'});}
         }
         if(payload.invoiceReadAudit)return JSON.stringify(await auditInvoiceRead(makeReader(runtime,hotel),invoice));
