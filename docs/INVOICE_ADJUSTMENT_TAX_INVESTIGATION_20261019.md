@@ -1,5 +1,31 @@
 # Invoice adjustment tax discrepancy â€” investigation
 
+## Latest outcome — 20 October
+
+Automatic generation now reconciles supported TSAN AR adjustments using OPERA
+charge simulation plus fresh native VAT/non-VAT controls. The actual Worker
+model and generated one-page PDF were compared independently against a fresh
+OPERA AR print: taxable net, VAT, non-taxable total, gross and outstanding all
+match. The adjustment supplement is retained. The PDF was rendered and visually
+inspected, and its bytes were SHA-256 verified before private delivery.
+
+Scope remains explicit: TSAN's verified `tsan_folio` single-page report, uniquely
+selected folio, complete inclusive percentage/SVC/VAT rules and matching native
+controls. Other hotels/layouts, conditional rules, unverified non-taxable AR
+adjustments and conflicting data retain the guard. Synthetic tests cover negative
+and credit-side rebates, multiple adjustments, mixed ordinary non-taxable rows,
+partial payments and rounding; these are not claims of independent live AR print
+validation for every shape or hotel. Existing reviewed files are not rewritten.
+
+Normal generation enables this qualified path. Native tax-control printing
+propagates its start signal to document jobs; failures after that point are
+uncertain, with no automatic invoice-read retry. No business history, email,
+Sheet, ledger or provider subscription was changed. Temporary byte-return probe
+code and its exact owned Workflow instance were removed after the private PDF
+was saved. Two independent reviews approved after the print-uncertainty repair.
+
+The earlier diagnostic and unresolved-status sections below are historical.
+
 ## Confirmed
 
 An owner-supplied comparison shows the same gross invoice amount but different

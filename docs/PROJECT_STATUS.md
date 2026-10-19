@@ -2192,3 +2192,24 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - Deployed source `6835fbaad2e1fc30790e1f36f4bde1e0af30f7ea`, final Worker `968c130a-3876-4c89-bf96-c5e85ae94d9f`. Live exact-commit health and database verification passed; six anonymous protected routes rejected requests. Hosted native WASM/worker bytes match the tested build and the license notice is available. Draft PR138 records the implementation; later documentation-only commits do not change the deployed source.
 - Deployment configuration incident: the first release temporarily replaced live `TRACKER_PUSH_ENABLED` and `TRACKER_NATIVE_BEST_EFFORT_ENABLED` values with tracked false defaults despite `--keep-vars`. Both were restored to true in the final release about 3 minutes 27 seconds later. Immutable-version comparison confirms all prior plain bindings now match except COMMIT_SHA, and secret binding names are unchanged. No claim that this interval had zero synchronization impact; no live Sheet or accounting data was deliberately edited for this release.
 
+
+## 2026-10-20 — Automatic VAT for qualified TSAN AR adjustments
+
+- Implemented and enabled OPERA charge simulation for exact missing AR adjustments,
+  reconciled against fresh native VAT/non-VAT controls and unchanged complete AR
+  posting fingerprints. Only verified TSAN single-page layout and closed inclusive
+  percentage/SVC/VAT graphs are admitted. Unsupported cases retain the guard.
+- Actual Worker model and generated PDF succeeded. All five financial footer fields
+  match a fresh OPERA AR UI print; SHA-256, independent extraction and visual
+  rendering passed. Evidence and PDFs remain private outside Git. Existing reviewed
+  files are unchanged; regenerate a preparation to obtain corrected source bytes.
+- Full 2,050 tests / 204 files, TypeScript and Vite build pass. Signed/credit-side
+  rebates, multiple adjustments, mixed non-taxable charges, partial payment,
+  rounding, configuration changes and native-control mismatch tests are synthetic;
+  live print comparison is the affected TSAN case, not every hotel/shape.
+- Native tax-control printing forwards its start signal to document jobs, preserves
+  uncertain outcomes and prohibits automatic read retries after printing. Astra
+  High review found no remaining P0-P2 issue after this repair.
+- No mail, business history, Sheet, accounting or subscription mutation. Temporary
+  PDF-return code and exact owned test Workflow instance were removed. Other hotel
+  and report-layout qualification remains separate from this verified repair.

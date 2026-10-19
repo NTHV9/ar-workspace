@@ -6,7 +6,7 @@ import {amountCents} from '../opera/normalize';
 export type ArTaxReader=Pick<OperaReader,'account'|'reservationFolios'|'folioReport'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'|'folioTypeName'>;
 const fail=():never=>{throw Error('document_invoice_ar_tax_unverified');};
 const list=(v:unknown)=>Array.isArray(v)?v.map(record):fail();
-export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvoice,account:Record<string,unknown>,postings:Record<string,unknown>,details:NonNullable<InvoicePacket['arDetails']>){
+export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvoice,account:Record<string,unknown>,postings:Record<string,unknown>,details:NonNullable<InvoicePacket['arDetails']>,onRenderStart:()=>void=()=>{}){
  // Only this native report/layout has been compared against a current AR print.
  if(manifest.hotel!=='TSAN')return fail();
  const config=record(record(await reader.folioTypeName('Guest')).details);
@@ -28,7 +28,7 @@ export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvo
   if(canonical(generatedRules)!==canonical(generatedAfter))fail();
   const evidence={postingId:String(p.transactionNo),rules,rulesAfter,generatedRules,calculation};verifyArSimulation(evidence,manifest.hotel,code,amount);simulations.push(evidence);
  }
- const native=await getNativeInvoicePdf(reader,manifest);
+ const native=await getNativeInvoicePdf(reader,manifest,onRenderStart);
  const {readNativeTaxControls}=await import('./native-tax-controls');
  return {arSimulations:simulations,nativeTaxControls:await readNativeTaxControls(native.bytes,manifest.folio_no!)};
 }

@@ -92,8 +92,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         if(payload.invoiceRenderProbe){
           try{const model=await readInvoiceModel(makeReader(runtime,hotel),invoice);
             const assets=await backendRpc<InvoiceAssets>(runtime,'ar_invoice_template',{p_hotel:hotel,p_version:job.invoice_template_version});
-            const bytes=await renderInvoice(model,assets);if(bytes.length>700000)throw Error('document_probe_scope_invalid');
-            return JSON.stringify({ok:true,hotel,byteCount:bytes.length,voucherLength:model.voucher.length,lineCount:model.lines.length,base64:btoa(Array.from(bytes,c=>String.fromCharCode(c)).join('')),sha256:[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(n=>n.toString(16).padStart(2,'0')).join('')});
+            const bytes=await renderInvoice(model,assets);return JSON.stringify({ok:true,hotel,byteCount:bytes.length,voucherLength:model.voucher.length,lineCount:model.lines.length});
           }catch(error){return JSON.stringify({ok:false,hotel,error:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'});}
         }
         if(payload.invoiceReadAudit)return JSON.stringify(await auditInvoiceRead(makeReader(runtime,hotel),invoice));

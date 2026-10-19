@@ -9,7 +9,7 @@ import {invoiceModel,invoiceTaxEntries,record,type InvoicePacket} from './model'
 type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>&Partial<Pick<OperaReader,'profile'|'folioReport'|'folioTypeName'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'>>;
 const fail=():never=>{throw Error('document_source_changed');};
 const list=(value:unknown)=>{if(!Array.isArray(value))return fail();return value.map(record);};
-export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,qualifyArTax=false):Promise<InvoicePacket>{
+export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,qualifyArTax=false,onRenderStart:()=>void=()=>{}):Promise<InvoicePacket>{
  if(!manifest.invoice_no)throw Error('document_invoice_selector_missing');
  const account=record(record(await reader.account(manifest.account_id)).accountDetails);if(account.hotelId!==manifest.hotel||record(account.accountId).id!==manifest.account_id)fail();
  let selected=list(account.invoices).filter(i=>String(i.transactionNo)===manifest.id);
@@ -68,7 +68,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
  for(let offset=0;offset<missingIds.length;offset+=40){const ids=missingIds.slice(offset,offset+40);arDetails.push({ids,response:await reader.invoiceTransactionDetails(ids)});}
  let arTax:Pick<InvoicePacket,'arSimulations'|'nativeTaxControls'>={};
  if(qualifyArTax&&arDetails.length&&manifest.hotel==='TSAN'&&reader.folioReport&&reader.folioTypeName&&reader.invoiceTransactionCodeRules&&reader.invoiceChargeSimulation){
-  arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,postings,arDetails);
+  arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,postings,arDetails,onRenderStart);
   const finalPostings=await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string});
   if(financialPostingFingerprint(finalPostings)!==financialPostingFingerprint(postings))throw Error('document_source_changed');
  }
@@ -82,15 +82,15 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
  const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
  return {...arTax,manifest,account:addressedAccount,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,arDetails,payeeTaxNumber,customReference:customReference as string|undefined};
 }
-export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date){
- let packet:InvoicePacket|undefined;
+export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date,onRenderStart:()=>void=()=>{}){
+ let packet:InvoicePacket|undefined,printStarted=false;
  for(let attempt=0;attempt<3;attempt++){
-  try{packet=await readInvoicePacket(reader,manifest,true);break;}
+  try{packet=await readInvoicePacket(reader,manifest,true,()=>{printStarted=true;onRenderStart();});break;}
   catch(error){
    // A paginated OPERA read can overlap or change while it is being read. Start
    // from the account again; never deduplicate, merge attempts, or retry rendering.
    const unstable=error instanceof OperaError&&['duplicate_member','pagination_changed','pagination_incomplete'].includes(error.code)||error instanceof Error&&error.message==='document_invoice_pagination_changed';
-   if(!unstable)throw error;
+   if(!unstable||printStarted)throw error;
    if(attempt===2)throw Error('document_invoice_source_unstable',{cause:error});
   }
  }
