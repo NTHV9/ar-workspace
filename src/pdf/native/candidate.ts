@@ -1,4 +1,4 @@
-import {sourceStyle} from '../source-text';
+import {sourceStyle,measureLayerText} from '../source-text';
 import type {PdfProjectPage} from '../types';
 import type {NativeRequest,NativeResult} from './protocol';
 let activeWorkers=0;
@@ -7,8 +7,9 @@ export function nativeTextCandidate(bytes:Uint8Array,page:PdfProjectPage,signal?
  if(signal?.aborted)return Promise.resolve(undefined);
  if(activeWorkers>=2||typeof Worker==='undefined'||!page.sourcePage||page.rowEdits?.length||bytes.length>32*1024*1024)return Promise.resolve(undefined);
  const edits:NativeRequest['edits']=[];
- for(const l of page.layers){const s=sourceStyle(l),r=l.original;
-  if(l.sourceText?.sourceId!==page.sourceId||l.sourceText?.sourcePage!==page.sourcePage||!s||!r||l.kind!=='replacement'||l.deleted||l.maskOriginal===false||l.formField||l.text===r.text||!l.text||/[\r\n]/.test(l.text)||Math.abs(l.x-r.x)>.01||Math.abs(l.y-r.y)>.01||l.fontSize!==s.fontSize||l.bold!==!!s.run.bold||l.italic!==!!s.run.italic||l.color.toLowerCase()!==s.color.toLowerCase()||l.fill.toLowerCase()!=='#ffffff')continue;
+ for(const l of page.layers){const s=sourceStyle(l),r=l.original,metrics=measureLayerText(l);
+  if(l.sourceText?.sourceId!==page.sourceId||l.sourceText?.sourcePage!==page.sourcePage||!s?.supported||!r||metrics.unsupported||metrics.lines.length!==1||metrics.width>l.width+.5||metrics.height>l.height+.5||l.kind!=='replacement'||l.deleted||l.maskOriginal===false||l.formField||l.text===r.text||!l.text||/[\r\n]/.test(l.text)||Math.abs(l.x-r.x)>.01||Math.abs(l.y-r.y)>.01||l.fontSize!==s.fontSize||l.bold!==!!s.run.bold||l.italic!==!!s.run.italic||l.color.toLowerCase()!==s.color.toLowerCase()||l.fill.toLowerCase()!=='#ffffff')continue;
+  if(page.layers.filter(other=>other.original?.text===r.text&&Math.abs(other.original.x-r.x)<.01&&Math.abs(other.original.y-r.y)<.01&&other.maskOriginal!==false).length!==1)continue;
   edits.push({id:l.id,expectedText:r.text,text:l.text,x:r.x,baseline:page.height-r.y-s.baseline,fontSize:s.fontSize,fontLabel:s.run.fontLabel??'',color:s.color,bold:l.bold,italic:l.italic});
  }
  if(!edits.length)return Promise.resolve(undefined);

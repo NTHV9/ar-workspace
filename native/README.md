@@ -29,16 +29,20 @@ All-native pages retain native content. Other edits rasterize the same candidate
 
 The narrow guard intentionally excludes ordinary OPERA pages containing Forms;
 no broad native eligibility claim is made. Such edits retain the existing raster
-route, with a small local background ring check. Flat colored backgrounds are
-sampled; mixed artwork/nearby content produces a visible actionable refusal.
-An explicit user-selected nonwhite mask is still honored. The guard does not infer
-hidden artwork underneath text from a flat perimeter; a document-specific image
-review remains necessary for final approval, as before.
+route, with fixed-scale cached original-source inspection. Flat colored backgrounds
+are sampled from a small local ring; all interior nonbackground pixels must also
+match the original observed glyph matte shape/color within a bounded antialias
+tolerance. Unaccounted artwork/nearby content produces an actionable refusal.
+An explicit user-selected nonwhite mask is still honored. The check does not infer a clean interior from its perimeter alone. Artwork
+indistinguishable from the original glyph ink remains a limit of raster inspection;
+final rendered-image review remains necessary, as before.
 
 Worker lifetime is at most ten seconds, with at most two concurrent workers.
 Document disposal aborts workers, late replies cannot settle twice, and candidate
 promises are cached for at most three page states per source session. Original
-text extraction is cached per immutable source page. Candidates contain only
+text extraction is cached per immutable source page. Original inspection canvases
+use fixed scale 1.5 (capped at four million pixels), cached for two source pages,
+so thumbnail zoom cannot change background qualification. Candidates contain only
 in-memory transient bytes and are never uploaded by this module.
 
 Validation: `tests/pdf-native-*.test.ts`, plus existing PDF source/engine/browser
