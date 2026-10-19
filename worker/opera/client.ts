@@ -1,4 +1,5 @@
 import {isHotelId,type HotelId} from '../../src/domain/hotels';
+import {dataFailureReason,dataResponseEnvelopes} from './data-response';
 
 export type OperaErrorCode = 'invalid_configuration'|'invalid_request'|'redirect_rejected'|'provider_unavailable'|'provider_unauthorized'|'provider_rejected'|'response_too_large'|'invalid_response'|'timeout'|'duplicate_member'|'pagination_incomplete'|'pagination_changed';
 export class OperaError extends Error {
@@ -169,7 +170,7 @@ export class OperaReader {
     if(url.origin!==this.origin)throw new OperaError('invalid_request');
     const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),this.timeoutMs);
     try {
-      const response=await this.transport(new Request(url,{method:readQuery?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'x-app-key':this.config.appKey,'x-hotelid':this.config.hotelId,Accept:'application/json',...(readQuery?{'Content-Type':'application/json'}:{})},...(readQuery?{body:JSON.stringify(readQuery)}:{}),redirect:'manual',signal:controller.signal}));
+      const response=await this.transport(new Request(url,{method:readQuery?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'x-app-key':this.config.appKey,'x-hotelid':this.config.hotelId,Accept:readQuery?'multipart/mixed; deferSpec=20220824, application/json':'application/json',...(readQuery?{'Content-Type':'application/json','x-request-id':crypto.randomUUID()}:{})},...(readQuery?{body:JSON.stringify(readQuery)}:{}),redirect:'manual',signal:controller.signal}));
       if(response.status>=300&&response.status<400){await response.body?.cancel();throw new OperaError('redirect_rejected');}
       if(!response.ok){
         let providerMessage: string|undefined;
@@ -178,13 +179,15 @@ export class OperaReader {
         if((response.status===400&&(path==='/ars/v1/accounts'||/^\/csh\/v1\/hotels\/[^/]+\/(folioHistory|financialPostingsNetVat)$/.test(path))||readQuery&&[400,401,403,404].includes(response.status)&&path==='/rna/v1/graphql/')&&response.body){
           const reader=response.body.getReader();let text='';const decoder=new TextDecoder();let bytes=0;
           try{while(true){const p=await reader.read();if(p.done)break;bytes+=p.value.byteLength;if(bytes>4096){await reader.cancel();break;}text+=decoder.decode(p.value,{stream:true});}
-            const error=JSON.parse(text);providerMessage=[error.title,error.detail,error['o:errorCode'],...(readQuery?[error.message,error.error, error.description,...Array.isArray(error.errors)?error.errors.slice(0,3).map((e:unknown)=>e&&typeof e==='object'&&'message' in e?e.message:undefined):[]]:[])].filter(v=>typeof v==='string').join(' · ').replaceAll(token,'[redacted]').replaceAll(this.config.appKey,'[redacted]').replace(/Bearer\s+[^\s"']+/gi,'Bearer [redacted]').slice(0,400);
+            if(readQuery){let error:unknown=text;try{error=JSON.parse(text);}catch{/* HTML/plain gateway response: keep heading only. */}providerMessage=dataFailureReason(error,token,this.config.appKey);}
+            else{const error=JSON.parse(text);providerMessage=[error.title,error.detail,error['o:errorCode']].filter(v=>typeof v==='string').join(' · ').replaceAll(token,'[redacted]').replaceAll(this.config.appKey,'[redacted]').replace(/Bearer\s+[^\s"']+/gi,'Bearer [redacted]').slice(0,400);}
             if(providerMessage)for(const [,value]of query)if(value.length>3)providerMessage=providerMessage.replaceAll(value,'[redacted input]');
           }catch{/* only the categorical status survives unreadable errors */}finally{reader.releaseLock();}
         }else await response.body?.cancel();
         throw new OperaError(response.status===401||response.status===403?'provider_unauthorized':response.status>=500||response.status===429?'provider_unavailable':'provider_rejected',response.status,undefined,providerMessage);
       }
-      if(!response.headers.get('Content-Type')?.toLowerCase().includes('json')){await response.body?.cancel();throw new OperaError('invalid_response');}
+      const contentType=response.headers.get('Content-Type')??'';
+      if(!contentType.toLowerCase().includes('json')&&!(readQuery&&/^multipart\/mixed\b/i.test(contentType))){await response.body?.cancel();throw new OperaError('invalid_response');}
       const declared=Number(response.headers.get('Content-Length'));
       if(declared>this.maxResponseBytes){await response.body?.cancel();throw new OperaError('response_too_large');}
       if(!response.body)throw new OperaError('invalid_response');
@@ -193,7 +196,13 @@ export class OperaReader {
         while(true){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>this.maxResponseBytes){await reader.cancel();throw new OperaError('response_too_large');}chunks.push(part.value);}
       } finally { reader.releaseLock(); }
       const bytes=new Uint8Array(size);let cursor=0;for(const chunk of chunks){bytes.set(chunk,cursor);cursor+=chunk.byteLength;}
-      try {return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));} catch {throw new OperaError('invalid_response');}
+      let envelopes:unknown[];
+      try {const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);envelopes=readQuery?dataResponseEnvelopes(text,contentType):[JSON.parse(text)];} catch {throw new OperaError('invalid_response');}
+      if(readQuery){
+        for(const envelope of envelopes){const value=envelope as {errors?:unknown;data?:unknown};if(Array.isArray(value?.errors)&&value.errors.length)throw new OperaError('provider_rejected',response.status,'data_query_failed',dataFailureReason(value.errors,token,this.config.appKey),{partialData:value.data!=null});}
+        return envelopes.find(e=>e&&typeof e==='object'&&'data' in e)??envelopes[0];
+      }
+      return envelopes[0];
     } catch(error) {
       if(error instanceof OperaError)throw error;
       // Never propagate upstream response bodies, request URLs, headers or credentials into logs/errors.

@@ -27,3 +27,25 @@ it('returns a bounded redacted Data API rejection reason without conflating it w
  const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'private-key'},async()=> 'private-token',async()=>Response.json({title:'Route rejected',detail:'Bad request private-token private-key','o:errorCode':'ROUTE-001'},{status:403}));
  await expect(reader.invoiceTaxData('500')).rejects.toMatchObject({upstreamStatus:403,providerMessage:'Route rejected · Bad request [redacted] [redacted] · ROUTE-001'});
 });
+it('uses Oracle Data API accept headers and preserves HTTP-200 GraphQL rejection details',async()=>{
+ const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'private-key'},async()=> 'private-token',async r=>{
+ expect(r.headers.get('accept')).toBe('multipart/mixed; deferSpec=20220824, application/json');
+ expect(r.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
+ return Response.json({data:{partial:true},errors:[{message:'Unknown field private-token private-key'}]});});
+ await expect(reader.invoiceTaxData('500')).rejects.toMatchObject({upstreamStatus:200,stage:'data_query_failed',providerMessage:'Unknown field [redacted] [redacted]',diagnostics:{partialData:true}});
+});
+it('reads a complete bounded multipart Data API response',async()=>{
+ const body='--test-boundary\r\nContent-Type: application/json\r\n\r\n{"data":{"financialTransactionDetailsExtended":[]},"hasNext":false}\r\n--test-boundary--\r\n';
+ const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async()=>new Response(body,{headers:{'Content-Type':'multipart/mixed; boundary="test-boundary"'}}));
+ await expect(reader.invoiceTaxData('500')).resolves.toMatchObject({data:{financialTransactionDetailsExtended:[]}});
+});
+it('refuses incomplete or incremental multipart data instead of silently dropping tax evidence',async()=>{
+ for(const payload of ['{"data":{},"hasNext":true}','{"incremental":[{"data":{}}],"hasNext":false}']){
+ const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async()=>new Response('--b\r\nContent-Type: application/json\r\n\r\n'+payload+'\r\n--b--',{headers:{'Content-Type':'multipart/mixed; boundary=b'}}));
+ await expect(reader.invoiceTaxData('500')).rejects.toThrow('invalid_response');
+ }
+});
+it('captures a short HTML gateway rejection title without returning the response body',async()=>{
+ const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'private-key'},async()=> 'private-token',async()=>new Response('<html><title>Gateway route unavailable</title><body>Other response content</body></html>',{status:403,headers:{'Content-Type':'text/html'}}));
+ await expect(reader.invoiceTaxData('500')).rejects.toMatchObject({providerMessage:'Gateway route unavailable'});
+});
