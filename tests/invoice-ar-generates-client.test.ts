@@ -58,3 +58,10 @@ it('reads a bounded posting journal by cashier and posting day without a reserva
  expect(()=>reader.invoicePostingJournal('0','2026-10-19')).toThrow('invalid_request');
  expect(()=>reader.invoicePostingJournal('123','2026-02-30')).toThrow('invalid_request');
 });
+it('reads hotel folio type configuration and sends explicit bill/type report selectors',async()=>{
+ const requests:URL[]=[];const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async r=>{requests.push(new URL(r.url));return Response.json({});});
+ await reader.folioTypesConfig();expect(requests[0].pathname).toBe('/fof/config/v1/folioTypesConfig');expect(requests[0].searchParams.get('hotelId')).toBe('TSAN');
+ await reader.folioReport('777',2,'2026-10-17',{billNumber:'88',folioType:'AR-VERIFIED'});
+ expect(requests[1].searchParams.get('billNumber')).toBe('88');expect(requests[1].searchParams.get('folioType')).toBe('AR-VERIFIED');
+ expect(()=>reader.folioReport('777',2,'2026-10-17',{billNumber:'0',folioType:'AR-VERIFIED'})).toThrow('invalid_request');
+});
