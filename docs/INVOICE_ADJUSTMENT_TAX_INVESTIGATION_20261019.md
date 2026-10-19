@@ -57,8 +57,6 @@ mapping evidence; do not replace them from arbitrary latest rows.
   Application-key subscription/environment/route must be verified before
   prescribing any permission change. No subscription or permission was changed.
 
-## Remaining work
-
 ## Portal and alternative-source verification
 
 - Read-only Developer Portal inspection confirms the approved AR client and
@@ -106,8 +104,11 @@ Private diagnostic outputs remain under the primary
 checkout's ignored `.tmp/invoice-reliability/` directory. No real customer
 identities, documents or raw provider responses are included in this report.
 
-Deployed source `ba675c4f9b47c744d214340b322cbd5b3872483e`, Worker
-`16d38578-8d96-4c56-a4c0-add1226f2b42`. Only the supplement correction affects
+Final deployed source `7f9c86de511cc1b8d94aa4854528bcdca931657b`, Worker
+`f4184134-afc8-42e7-a39e-73fd4fd7e270`. Exact-commit health, database validation
+and six anonymous protected-route checks pass. Immutable binding comparison
+matches the pre-investigation production configuration except COMMIT_SHA.
+Only the supplement correction affects
 ordinary document generation; extra Data API reads are opt-in privileged
 diagnostics. Existing preparations/reviewed bytes are not rewritten.
 
