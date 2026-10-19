@@ -13,5 +13,5 @@ export async function readFolioReportTypes(reader:Pick<OperaReader,'folioTypeNam
  }
  let configuration:unknown;
  if(reader.folioTypesConfig)try{const raw=asObject(await reader.folioTypesConfig());configuration={keys:Object.keys(raw),types:Array.isArray(raw.folioTypes)?raw.folioTypes.slice(0,100).map(asObject).map(r=>({hotelId:r.hotelId,code:r.code,aRFolio:r.aRFolio,folioReports:r.folioReports})):undefined};}catch(error){configuration=error instanceof OperaError?{code:error.code,status:error.upstreamStatus}:{code:'invalid_response'};}
- return {hotel,kind:'folio_report_configuration',results,configuration};
+ return {hotel,kind:'folio_report_configuration',results,configuration:configuration===undefined?undefined:JSON.stringify(configuration)};
 }
