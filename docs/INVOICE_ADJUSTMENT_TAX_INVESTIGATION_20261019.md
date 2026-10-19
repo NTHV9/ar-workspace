@@ -104,6 +104,14 @@ Astra High review found no P0-P2 issue in the guard. This is a correction of
 unsafe classification and prevention of incorrect output, NOT completion of
 automatic VAT generation for unsupported AR adjustments.
 
+Deployed safety correction source `2c3eec9f10917bc38bb79a734ea7a9d4720e6568`,
+Worker `f069dfc0-4701-4714-b74d-fb772c1475a5`. A fresh exact-job production model
+probe now returns `document_invoice_ar_tax_unverified`, confirming the affected
+invoice is refused instead of receiving fabricated non-taxable classification.
+The probe does not change the existing preparation or its previously generated
+bytes. Live health/database checks pass; six anonymous protected routes reject
+access. All previous runtime bindings match except COMMIT_SHA.
+
 - Obtain authoritative printed invoice tax fields or equivalent explicit API
   evidence for AR adjustments. Do not replace missing evidence with a blanket
   percentage calculation or classify all Revenue adjustments the same way.
