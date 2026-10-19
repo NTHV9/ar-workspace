@@ -15,31 +15,33 @@ import { extractSourceText, extractSourceImages } from './source-extraction';
 import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, sourceAppearanceUnchanged, measureLayerText, measureLayerInk, SourceFontError } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
-const voucherScopes=new WeakMap<Map<string,PDFDocumentProxy>,VoucherBindings>();
-export const voucherBindings=(documents:Map<string,PDFDocumentProxy>)=>voucherScopes.get(documents)??new Map();
-const sourceScopes=new WeakMap<Map<string,PDFDocumentProxy>,{sources:PdfSourceDocument[];cache:Map<string,Promise<NativeResult|undefined>>;closed:boolean;abort:AbortController;text:Map<string,Promise<DetectedText[]>>;backgrounds:Map<string,Promise<{canvas:HTMLCanvasElement;scale:number}>>}>();
+type SourceScope={id:string;unsupportedPages:Set<string>;vouchers:VoucherBindings;sources:PdfSourceDocument[];cache:Map<string,Promise<NativeResult|undefined>>;closed:boolean;abort:AbortController;text:Map<string,Promise<DetectedText[]>>;backgrounds:Map<string,Promise<{canvas:HTMLCanvasElement;scale:number}>>};
+const sourceContexts=new WeakMap<PDFDocumentProxy,SourceScope>();
+export const voucherBindings=(documents:Map<string,PDFDocumentProxy>)=>new Map([...documents.values()].flatMap(doc=>[...(sourceContexts.get(doc)?.vouchers??new Map())]));
+function sourceScope(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){const doc=documents.get(page.sourceId);return doc?sourceContexts.get(doc):undefined;}
 async function candidateFor(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){
- const scope=sourceScopes.get(documents),bytes=scope?.sources.find(s=>s.id===page.sourceId)?.bytes;
+ const scope=sourceScope(page,documents),bytes=scope?.sources.find(s=>s.id===page.sourceId)?.bytes;
  if(!scope||scope.closed||!bytes)return undefined;
+ const pageKey=`${page.sourceId}:${page.sourcePage}`;if(scope.unsupportedPages.has(pageKey))return undefined;
  // Register source styles from original bytes before qualifying any candidate.
  if(page.layers.some(l=>l.sourceText))await detectText(page,documents);
  const key=JSON.stringify([page.id,page.layers,page.rowEdits]);let pending=scope.cache.get(key);
  if(!pending){if(scope.cache.size>=3)scope.cache.delete(scope.cache.keys().next().value!);pending=nativeTextCandidate(bytes,page,scope.abort.signal);scope.cache.set(key,pending);}
- const result=await pending;return scope.closed?undefined:result;
+ const result=await pending;if(result?.unsupportedPage){scope.unsupportedPages.add(pageKey);return undefined;}return scope.closed?undefined:result;
 }
 const documentScopes = new WeakMap<Map<string, PDFDocumentProxy>, string>();
 
 export async function loadSources(sources: PdfSourceDocument[]): Promise<{ documents: Map<string, PDFDocumentProxy>; project: PdfProject; dispose: () => void }> {
-  const documents = new Map<string, PDFDocumentProxy>();const vouchers:VoucherBindings=new Map();voucherScopes.set(documents,vouchers);
+  const documents = new Map<string, PDFDocumentProxy>();const vouchers:VoucherBindings=new Map();
   const scope = crypto.randomUUID(); documentScopes.set(documents, scope);
-  const nativeScope={sources,cache:new Map<string,Promise<NativeResult|undefined>>(),closed:false,abort:new AbortController(),text:new Map<string,Promise<DetectedText[]>>(),backgrounds:new Map<string,Promise<{canvas:HTMLCanvasElement;scale:number}>>()};sourceScopes.set(documents,nativeScope);
+  const nativeScope:SourceScope={id:scope,unsupportedPages:new Set<string>(),vouchers,sources,cache:new Map<string,Promise<NativeResult|undefined>>(),closed:false,abort:new AbortController(),text:new Map<string,Promise<DetectedText[]>>(),backgrounds:new Map<string,Promise<{canvas:HTMLCanvasElement;scale:number}>>()};
   const tasks: { destroy: () => Promise<void> }[] = [];
   const pages: PdfProjectPage[] = [];
   try {
     for (const source of sources) {
       if (documents.has(source.id)) throw new Error('Duplicate document identity. Reopen this job.');
       const task = loadPdf(source.bytes.slice(),{fontExtraProperties:true}); tasks.push(task); const doc = await task.promise;
-      documents.set(source.id, doc);const metadata=await PDFDocument.load(source.bytes).catch(()=>null);
+      documents.set(source.id, doc);sourceContexts.set(doc,nativeScope);const metadata=await PDFDocument.load(source.bytes).catch(()=>null);
       for (let n = 1; n <= doc.numPages; n++) {
         const fields=(metadata&&source.kind!=='attachment'?readVoucherFields(metadata.getPage(n-1)):[]).filter(f=>(!source.invoiceId||f.invoiceId===source.invoiceId)&&(!source.invoiceIds||source.invoiceIds.includes(f.invoiceId)));vouchers.set(`${source.id}:${n}`,fields);
         const viewport = (await doc.getPage(n)).getViewport({ scale: 1 });
@@ -52,9 +54,9 @@ export async function loadSources(sources: PdfSourceDocument[]): Promise<{ docum
 
 export async function detectText(page: PdfProjectPage, documents: Map<string, PDFDocumentProxy>): Promise<DetectedText[]> {
   if (!page.sourcePage) return [];
-  const scope=sourceScopes.get(documents),key=`${page.sourceId}:${page.sourcePage}`;
+  const scope=sourceScope(page,documents),key=`${page.sourceId}:${page.sourcePage}`;
   let pending=scope?.text.get(key);
-  if(!pending){pending=(async()=>{const pdfPage=await documents.get(page.sourceId)!.getPage(page.sourcePage!);return voucherRuns(await extractSourceText(page,pdfPage,documentScopes.get(documents)??'unregistered'),voucherBindings(documents).get(key)??[]);})();scope?.text.set(key,pending);}
+  if(!pending){pending=(async()=>{const pdfPage=await documents.get(page.sourceId)!.getPage(page.sourcePage!);return voucherRuns(await extractSourceText(page,pdfPage,scope?.id??documentScopes.get(documents)??'unregistered'),voucherBindings(documents).get(key)??[]);})();scope?.text.set(key,pending);}
   try{return await pending;}catch(error){scope?.text.delete(key);throw error;}
 }
 
@@ -123,16 +125,16 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
  }catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}}
  return {valid,issues,masks};
 }
-async function sourceRaster(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,scale:number,candidate?:NativeResult){
+async function sourceRaster(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,scale:number,candidate?:NativeResult,inspection=false){
  const canvas=document.createElement('canvas');canvas.width=Math.ceil(page.width*scale);canvas.height=Math.ceil(page.height*scale);
- const ctx=canvas.getContext('2d',{alpha:false})!;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+ const ctx=canvas.getContext('2d',{alpha:inspection})!;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
  if(page.sourcePage){const task=candidate?loadPdf(candidate.bytes.slice(),{fontExtraProperties:true}):undefined;try{const doc=task?await task.promise:documents.get(page.sourceId)!;const source=await doc.getPage(page.sourcePage);await renderPdfPage(source,{canvas,canvasContext:ctx,viewport:source.getViewport({scale}),background:'#ffffff'}).promise;}finally{if(task)await task.destroy();}}
  return canvas;
 }
 async function maskInspection(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){
- const scope=sourceScopes.get(documents),key=`${page.sourceId}:${page.sourcePage}`;
+ const scope=sourceScope(page,documents),key=`${page.sourceId}:${page.sourcePage}`;
  let pending=scope?.backgrounds.get(key);
- if(!pending){const scale=Math.min(1.5,Math.sqrt(4_000_000/(page.width*page.height)));pending=sourceRaster(page,documents,scale).then(canvas=>({canvas,scale}));
+ if(!pending){const scale=Math.min(1.5,Math.sqrt(4_000_000/(page.width*page.height)));pending=sourceRaster(page,documents,scale,undefined,true).then(canvas=>({canvas,scale}));
   // Keep at most two immutable inspection canvases. Evicted pending canvases
   // remain owned by their current render and can be reclaimed after that call.
   if(scope&&scope.backgrounds.size>=2)scope.backgrounds.delete(scope.backgrounds.keys().next().value!);scope?.backgrounds.set(key,pending);

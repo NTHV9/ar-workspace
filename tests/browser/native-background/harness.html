@@ -1,0 +1,10 @@
+<!doctype html><script type="module">
+import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';
+import * as source from '/src/pdf/source-text.ts';
+import * as engine from '/src/pdf/engine.ts';
+async function fixture(artwork,unsupported=false){const pdf=await PDFDocument.create(),page=pdf.addPage([400,300]),font=await pdf.embedFont(StandardFonts.Helvetica);
+ if(artwork){page.drawText('Invoice 123',{x:40,y:250,size:18,font});page.drawRectangle({x:68.5,y:254,width:2,height:2,color:rgb(0,0,0)});}
+ else{page.drawRectangle({x:0,y:220,width:400,height:80,color:rgb(.05,.2,.5)});page.drawText('INVOICE',{x:40,y:250,size:18,font,color:rgb(1,1,1),...(unsupported?{opacity:1}:{})});}
+ return [{id:artwork?'artwork':'blue',name:'Synthetic',kind:'invoice',bytes:await pdf.save()}];}
+window.fixture={...engine,...source,blue:await fixture(false),artwork:await fixture(true),unsupported:await fixture(false,true)};
+</script>

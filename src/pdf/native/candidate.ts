@@ -18,7 +18,7 @@ export function nativeTextCandidate(bytes:Uint8Array,page:PdfProjectPage,signal?
   activeWorkers++;let settled=false;const finish=(result?:NativeResult)=>{if(settled)return;settled=true;activeWorkers--;clearTimeout(timeout);signal?.removeEventListener('abort',abort);worker.terminate();resolve(result);};
   const abort=()=>finish();signal?.addEventListener('abort',abort,{once:true});
   const timeout=setTimeout(()=>finish(),10_000);
-  worker.onerror=()=>finish();worker.onmessage=(event:MessageEvent<NativeResult>)=>finish(event.data.applied?.length?event.data:undefined);
+  worker.onerror=()=>finish();worker.onmessage=(event:MessageEvent<NativeResult>)=>finish(event.data.applied?.length||event.data.unsupportedPage?event.data:undefined);
   const copy=bytes.slice();try{worker.postMessage({bytes:copy,page:page.sourcePage!-1,edits} satisfies NativeRequest,[copy.buffer]);}catch{finish();}
  });
 }

@@ -32,7 +32,10 @@ no broad native eligibility claim is made. Such edits retain the existing raster
 route, with fixed-scale cached original-source inspection. Flat colored backgrounds
 are sampled from a small local ring; all interior nonbackground pixels must also
 match the original observed glyph matte shape/color within a bounded antialias
-tolerance. Unaccounted artwork/nearby content produces an actionable refusal.
+tolerance and continuous source-color interpolation (opaque and transparent
+canvases can use different edge coverage). Inspection uses an alpha-enabled
+white-backed PDF.js canvas, avoiding LCD font color fringes without changing
+actual colored artwork. Unaccounted artwork/nearby content produces an actionable refusal.
 An explicit user-selected nonwhite mask is still honored. The check does not infer a clean interior from its perimeter alone. Artwork
 indistinguishable from the original glyph ink remains a limit of raster inspection;
 final rendered-image review remains necessary, as before.
@@ -42,7 +45,12 @@ Document disposal aborts workers, late replies cannot settle twice, and candidat
 promises are cached for at most three page states per source session. Original
 text extraction is cached per immutable source page. Original inspection canvases
 use fixed scale 1.5 (capped at four million pixels), cached for two source pages,
-so thumbnail zoom cannot change background qualification. Candidates contain only
+so thumbnail zoom cannot change background qualification. Document context follows
+PDFDocumentProxy identity, preserving native eligibility and runtime font scope
+when supplemental documents are merged into another document Map. Permanent
+page-level qualification refusals are cached per immutable source/page; target
+matching/font/box refusals do not disable other eligible edits. Image and Form
+XObjects remain conservative raster fallbacks in this version. Candidates contain only
 in-memory transient bytes and are never uploaded by this module.
 
 Validation: `tests/pdf-native-*.test.ts`, plus existing PDF source/engine/browser
