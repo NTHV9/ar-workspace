@@ -114,7 +114,7 @@ export class OperaReader {
   invoiceTaxData(transactionId:string) {
     if(!/^[1-9][0-9]{0,14}$/.test(transactionId))throw new OperaError('invalid_request');
     const query='query InvoiceTaxEvidence($input: FinancialTransactionDetailsExtendedQueryArgumentsType!) { financialTransactionDetailsExtended(input: $input) { financialUnifiedDetails { trxNo invoiceNumber folioNo grossAmount netAmount } folioTaxDetails { property billNumber invoiceNumber totalGrossAmount totalNetAmount totalNonTaxableAmount totalTax xtax1Amt netAmount1 } } }';
-    return this.read('/rna/v1/graphql/',[],{query,variables:{input:{financialunifiedDetailsResort:{_eq:this.config.hotelId},financialunifiedDetailsFtTrxNo:{_eq:Number(transactionId)}}}});
+    return this.read('/rna/v1/graphql',[],{query,variables:{input:{financialunifiedDetailsResort:{_eq:this.config.hotelId},financialunifiedDetailsFtTrxNo:{_eq:Number(transactionId)}}}});
   }
   invoiceGuestTransactions(reservationId:string,start:string,end:string) {
     const day=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
@@ -176,7 +176,7 @@ export class OperaReader {
         let providerMessage: string|undefined;
         // Discovery has only owner-confirmed hotel IDs and pagination inputs. Inspect bounded
         // validation title/detail only, never return account payloads or token endpoint bodies.
-        if((response.status===400&&(path==='/ars/v1/accounts'||/^\/csh\/v1\/hotels\/[^/]+\/(folioHistory|financialPostingsNetVat)$/.test(path))||readQuery&&[400,401,403,404].includes(response.status)&&path==='/rna/v1/graphql/')&&response.body){
+        if((response.status===400&&(path==='/ars/v1/accounts'||/^\/csh\/v1\/hotels\/[^/]+\/(folioHistory|financialPostingsNetVat)$/.test(path))||readQuery&&[400,401,403,404].includes(response.status)&&path==='/rna/v1/graphql')&&response.body){
           const reader=response.body.getReader();let text='';const decoder=new TextDecoder();let bytes=0;
           try{while(true){const p=await reader.read();if(p.done)break;bytes+=p.value.byteLength;if(bytes>4096){await reader.cancel();break;}text+=decoder.decode(p.value,{stream:true});}
             if(readQuery){let error:unknown=text;try{error=JSON.parse(text);}catch{/* HTML/plain gateway response: keep heading only. */}providerMessage=dataFailureReason(error,token,this.config.appKey);}

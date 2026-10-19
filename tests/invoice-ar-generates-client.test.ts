@@ -17,7 +17,7 @@ it('requests only exact invoice tax fields through the fixed read-only Data API 
  let request:Request|undefined;
  const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async r=>{request=r;return Response.json({});});
  await reader.invoiceTaxData('500');
- expect(new URL(request!.url).pathname).toBe('/rna/v1/graphql/');expect(request!.method).toBe('POST');expect(request!.redirect).toBe('manual');
+ expect(new URL(request!.url).pathname).toBe('/rna/v1/graphql');expect(request!.method).toBe('POST');expect(request!.redirect).toBe('manual');
  const body=await request!.json() as {query:string;variables:unknown};
  expect(body.query).not.toContain('mutation');expect(body.query).toContain('totalNonTaxableAmount');
  expect(body.variables).toEqual({input:{financialunifiedDetailsResort:{_eq:'TSAN'},financialunifiedDetailsFtTrxNo:{_eq:500}}});
