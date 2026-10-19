@@ -9,6 +9,7 @@ import {detectLines,detectRowBarriers,type GraphicTarget} from './native-graphic
 import {includeTouchedText,mapSourceRect,mapSourceTextRect} from './row-layout';
 import {createReplacementLayer,measureLayerText} from './source-text';
 import {tableTextFlows} from './text-scope';
+import {assertMoveDestinationClear,assertRasterDestinationClear,reflowStationery} from './layout-safety';
 import {renderPage} from './engine';
 import type {DetectedText,PdfLayer,PdfProjectPage,PdfRowEdit} from './types';
 
@@ -17,6 +18,7 @@ type Props={page?:PdfProjectPage;documents:Map<string,PDFDocumentProxy>;runs:Det
 export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,setBusy,onChange,onError}:Props){
  const [lines,setLines]=useState<GraphicTarget[]>([]),[area,setArea]=useState<Area|null>(null);
  const [barriers,setBarriers]=useState<GraphicTarget[]>([]),[geometryReady,setGeometryReady]=useState(false);
+ const [geometrySource,setGeometrySource]=useState<{id:string;documents:Map<string,PDFDocumentProxy>}|null>(null);const ready=geometryReady&&geometrySource?.id===page?.id&&geometrySource?.documents===documents;
  const [moving,setMoving]=useState(false);
  const [notice,setNotice]=useState('');
  const areaButton=useRef<HTMLButtonElement>(null),lineButton=useRef<HTMLButtonElement|null>(null),focusArea=useRef(false);
@@ -28,7 +30,7 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  useEffect(()=>{if(page?.rowEdits!==ownedEdits.current)setArea(null);ownedEdits.current=page?.rowEdits;},[page?.rowEdits]);
  const gesture=useRef<{start:{x:number;y:number};before:Area;pick:boolean;current:Area}|null>(null),alive=useRef(true),currentPage=useRef(page?.id);currentPage.current=page?.id;
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
- useEffect(()=>{let current=true;setArea(null);gesture.current=null;setLines([]);setBarriers([]);setGeometryReady(false);if(page)Promise.all([detectLines(page,documents),detectRowBarriers(page,documents)]).then(([value,bounds])=>{if(current){setLines(value);setBarriers(bounds);setGeometryReady(true);}}).catch(()=>{if(current)onError('The page boundaries could not be read. Reopen the document before adding or deleting rows.');});return()=>{current=false;};},[page?.id,documents]);
+ useEffect(()=>{let current=true;setArea(null);gesture.current=null;setLines([]);setBarriers([]);setGeometryReady(false);if(page)Promise.all([detectLines(page,documents),detectRowBarriers(page,documents)]).then(([value,bounds])=>{if(current){setLines(value);setBarriers(bounds);setGeometrySource({id:page.id,documents});setGeometryReady(true);}}).catch(()=>{if(current)onError('The page boundaries could not be read. Reopen the document before adding or deleting rows.');});return()=>{current=false;};},[page?.id,documents]);
  const shown=runs.flatMap(run=>{if(page&&replacementForRun(page,run))return [];const rect=mapSourceTextRect(run,page?.rowEdits??[],run.fontSize*.72);return rect?[{run,rect}]:[];});
  const selectionTargets=[...shown.map(c=>c.rect),...page?.layers.filter(l=>!l.deleted)??[]];
  const anchor=layer&&!layer.deleted&&(layer.sourceText||layer.original||layer.tableRow)?layer:undefined;
@@ -36,11 +38,11 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  const rowTop=row?.top??0,rowHeight=row?.height??0;
  const extent=page?pageCanvasHeight(page):1;
  const scope=useRef(page);scope.current=page;
- async function changePage(transform:(before:PdfProjectPage)=>PdfProjectPage){
+ async function changePage(transform:(before:PdfProjectPage)=>PdfProjectPage|Promise<PdfProjectPage>){
   if(!page||busy)return false;const before=page;
   setBusy(true);onError('');setNotice('');
   try{
-   const changed=transform(before);if(changed===before)return false;
+   const changed=await transform(before);if(changed===before)return false;
    if((changed.rowEdits?.length??0)>500)throw Error('This page has reached the editing limit. Undo an earlier edit before continuing.');
    if(changed.layers.some(l=>l.x<0||l.y<0||l.x+l.width>before.width+.5||l.y+l.height>MAX_FLOW_HEIGHT))throw Error('Keep edited objects within the document width.');
    const probe=document.createElement('canvas');try{await renderPage(changed,documents,probe,1,{tolerant:true});}finally{probe.width=probe.height=0;}
@@ -50,19 +52,25 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
   finally{if(alive.current)setBusy(false);}
  }
  async function apply(edit:PdfRowEdit,extra:PdfLayer[]=[],removeIds:string[]=[],excluded:string[]=[]){
-  return changePage(before=>{
+  return changePage(async before=>{
+   if(edit.kind==='move'){
+    assertMoveDestinationClear(before,edit,runs,[]);
+    const probe=document.createElement('canvas');
+    try{await renderPage(before,documents,probe,1);const context=probe.getContext('2d');if(!context)throw Error('The destination could not be checked. Try reopening the document.');assertRasterDestinationClear(edit,context.getImageData(0,0,probe.width,probe.height));}finally{probe.width=probe.height=0;}
+   }
    const flowed=applyFlowEdit({...before,layers:before.layers.filter(l=>!removeIds.includes(l.id))},edit,excluded);
    return {...flowed,layers:[...flowed.layers,...extra]};
   });
  }
  async function insertRow(){
-  if(!page||!anchor||!geometryReady)return;
+  if(!page||!anchor||!ready)return;
   const okay=await changePage(before=>{
    if(!tableTextFlows(before,anchor,runs)){
     // Stationery fields own only their source mask; never flow another column.
     const next={...anchor,text:anchor.text+'\n'};
     next.height=Math.max(anchor.height+anchor.fontSize*1.25,measureLayerText(next).height);
-    return {...before,layers:before.layers.map(l=>l.id===anchor.id?next:l)};
+    const flowed=reflowStationery(before,anchor,next,runs,barriers);
+    return {...flowed,layers:flowed.layers.map(l=>l.id===anchor.id?next:l)};
    }
    const compacted=compactEmptyRowLines(before,anchor,runs,barriers),base=compacted.page;
    const current=rowGeometry(base,compacted.anchor,runs,barriers),owned=anchor.tableRow?insertedRowBands(base,anchor.tableRow):[];
@@ -82,8 +90,9 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
   if(okay){setTool('replace');setArea(null);}
  }
  async function removeEmptyLines(){
-  if(!page||!anchor||!geometryReady)return;
+  if(!page||!anchor||!ready)return;
   const okay=await changePage(before=>{
+   if(!tableTextFlows(before,anchor,runs)){setNotice('Use − Line to remove empty lines within this text box.');return before;}
    const compacted=compactEmptyRowLines(before,anchor,runs,barriers);
    if(!compacted.removedLines){setNotice('There are no empty continuation lines to remove.');return before;}
    return compacted.page;
@@ -91,7 +100,7 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
   if(okay)setArea(null);
  }
  async function deleteRow(){
-  if(!page||!anchor||!geometryReady)return;
+  if(!page||!anchor||!ready)return;
   if(anchor.tableRow){
    let keptSpace=false;
    const okay=await changePage(before=>{const result=deleteInsertedRow(before,anchor.tableRow!);keptSpace=result.keptSpace;return result.page;});
@@ -135,8 +144,8 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  const controls=<>
   {notice&&<p role="status">{notice}</p>}
   {(tool==='objects'||tool==='area')&&<div className="pdf-object-help"><p>{tool==='area'?'Drag around the whole table or area, then drag it to a new position.':area?'Use arrow keys or drag the outlined area. Shift moves farther; Escape clears the selection.':'Drag a highlighted line, or use Move table / area for a group.'}</p>{area&&<button disabled={busy} onClick={()=>setArea(null)}>Clear area selection</button>}</div>}
-  {tool==='area'&&page&&<fieldset className="pdf-area-bounds" disabled={busy||!geometryReady}><legend>Area bounds · PDF points</legend>{(['x','y','width','height'] as const).map(key=><label key={key}>{key==='x'?'Left':key==='y'?'Top':key==='width'?'Width':'Height'}<input type="number" min={key==='x'||key==='y'?0:1} aria-invalid={!!boundsError} aria-describedby={boundsError?boundsErrorId:undefined} value={bounds[key]} onChange={event=>{setBounds({...bounds,[key]:event.target.value});setBoundsError('');}}/></label>)}<button type="button" onClick={selectBounds}>Select area</button>{boundsError&&<p role="alert" id={boundsErrorId}>{boundsError}</p>}</fieldset>}
+  {tool==='area'&&page&&<fieldset className="pdf-area-bounds" disabled={busy||!ready}><legend>Area bounds · PDF points</legend>{(['x','y','width','height'] as const).map(key=><label key={key}>{key==='x'?'Left':key==='y'?'Top':key==='width'?'Width':'Height'}<input type="number" min={key==='x'||key==='y'?0:1} aria-invalid={!!boundsError} aria-describedby={boundsError?boundsErrorId:undefined} value={bounds[key]} onChange={event=>{setBounds({...bounds,[key]:event.target.value});setBoundsError('');}}/></label>)}<button type="button" onClick={selectBounds}>Select area</button>{boundsError&&<p role="alert" id={boundsErrorId}>{boundsError}</p>}</fieldset>}
  </>;
- const rowControls=<section className="pdf-row-controls"><h3>Row tools</h3><p>{anchor?`${anchor.tableRow?page?.layers.filter(l=>l.tableRow===anchor.tableRow).length:row?.template.length||1} fields on this row`:'Select text in the row you want to change.'}</p><div><button disabled={busy||!geometryReady||!anchor} onClick={()=>void insertRow()}>Add row below</button><button disabled={busy||!geometryReady||!anchor} onClick={()=>void deleteRow()}>Delete row</button>{anchor&&!anchor.tableRow&&<button disabled={busy||!geometryReady} onClick={()=>void removeEmptyLines()}>Remove empty lines</button>}</div></section>;
- return {overlay,controls,rowControls};
+ const rowControls=<section className="pdf-row-controls"><h3>Row tools</h3><p>{anchor?`${anchor.tableRow?page?.layers.filter(l=>l.tableRow===anchor.tableRow).length:row?.template.length||1} fields on this row`:'Select text in the row you want to change.'}</p><div><button disabled={busy||!ready||!anchor} onClick={()=>void insertRow()}>Add row below</button><button disabled={busy||!ready||!anchor} onClick={()=>void deleteRow()}>Delete row</button>{anchor&&!anchor.tableRow&&<button disabled={busy||!ready} onClick={()=>void removeEmptyLines()}>Remove empty lines</button>}</div></section>;
+ return {overlay,controls,rowControls,geometryReady:ready,barriers:ready?barriers:[]};
 }
