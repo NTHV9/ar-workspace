@@ -1,0 +1,22 @@
+AR native PDF text bridge — production attribution
+
+This application uses only PdfCraft cos/content/model/edit and their dependencies,
+from v0.8.0 commit 9931329b9fae0b05373b4dc3ac7c58541f0891a4.
+PdfCraft: Copyright (c) 2026 ArtCraft Team and contributors; MIT OR Apache-2.0.
+Upstream source: https://github.com/storytold/pdfcraft/tree/9931329b9fae0b05373b4dc3ac7c58541f0891a4
+
+No PdfCraft application UI, logos, renderer, network services or optional
+craft-fonts package are included. Production exports only inventory and the
+qualified line replacement transaction. Inter and Dancing Script upstream license
+texts are included conservatively for embedded font-module constants, even though
+implicit font substitution and imported fonts are rejected by this adapter.
+
+LICENSE-MIT, LICENSE-APACHE: PdfCraft terms.
+NOTICE and ATTRIBUTION.md: preserved upstream notices (describe the full upstream
+application; this build includes only the subset described above).
+THIRD_PARTY_LICENSES.txt: locked dependency licenses, including build dependencies.
+OFL-Inter.txt and OFL-DancingScript.txt: upstream font module licenses.
+
+Reproducible source/build: native/pdfcraft/Cargo.toml, Cargo.lock, src/lib.rs and
+native/build.ps1 in the application source repository. Rust/Cargo 1.95.0,
+wasm-bindgen 0.2.129, wasm32-unknown-unknown, --release --locked.

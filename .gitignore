@@ -23,3 +23,7 @@ __pycache__/
 .tmp/
 test-results-*/
 
+/native/upstream/
+/native/pdfcraft/target/
+/native/pdfcraft-source.tar.gz
+/native/verified-*/

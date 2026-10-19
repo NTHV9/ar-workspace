@@ -1,3 +1,6 @@
+import {nativeTextCandidate} from './native/candidate';
+import {sourceMaskFill} from './mask-background';
+import type {NativeResult} from './native/protocol';
 import {validateInvoiceAttachments} from './invoice-attachments';
 import {readVoucherFields} from './voucher-metadata';
 import {voucherRuns,type VoucherBindings} from './linked-vouchers';
@@ -14,11 +17,22 @@ import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type S
 import { replacementForRun, validateDeletedLayer } from './source-edits';
 const voucherScopes=new WeakMap<Map<string,PDFDocumentProxy>,VoucherBindings>();
 export const voucherBindings=(documents:Map<string,PDFDocumentProxy>)=>voucherScopes.get(documents)??new Map();
+const sourceScopes=new WeakMap<Map<string,PDFDocumentProxy>,{sources:PdfSourceDocument[];cache:Map<string,Promise<NativeResult|undefined>>;closed:boolean;abort:AbortController;text:Map<string,Promise<DetectedText[]>>}>();
+async function candidateFor(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){
+ const scope=sourceScopes.get(documents),bytes=scope?.sources.find(s=>s.id===page.sourceId)?.bytes;
+ if(!scope||scope.closed||!bytes)return undefined;
+ // Register source styles from original bytes before qualifying any candidate.
+ if(page.layers.some(l=>l.sourceText))await detectText(page,documents);
+ const key=JSON.stringify([page.id,page.layers,page.rowEdits]);let pending=scope.cache.get(key);
+ if(!pending){if(scope.cache.size>=3)scope.cache.delete(scope.cache.keys().next().value!);pending=nativeTextCandidate(bytes,page,scope.abort.signal);scope.cache.set(key,pending);}
+ const result=await pending;return scope.closed?undefined:result;
+}
 const documentScopes = new WeakMap<Map<string, PDFDocumentProxy>, string>();
 
 export async function loadSources(sources: PdfSourceDocument[]): Promise<{ documents: Map<string, PDFDocumentProxy>; project: PdfProject; dispose: () => void }> {
   const documents = new Map<string, PDFDocumentProxy>();const vouchers:VoucherBindings=new Map();voucherScopes.set(documents,vouchers);
   const scope = crypto.randomUUID(); documentScopes.set(documents, scope);
+  const nativeScope={sources,cache:new Map<string,Promise<NativeResult|undefined>>(),closed:false,abort:new AbortController(),text:new Map<string,Promise<DetectedText[]>>()};sourceScopes.set(documents,nativeScope);
   const tasks: { destroy: () => Promise<void> }[] = [];
   const pages: PdfProjectPage[] = [];
   try {
@@ -32,17 +46,19 @@ export async function loadSources(sources: PdfSourceDocument[]): Promise<{ docum
         pages.push({ id: `${source.id}:${n}`, sourceId: source.id, sourcePage: n, width: viewport.width, height: viewport.height, layers: [] });
       }
     }
-    return { documents, dispose: () => { releaseSourceStyles(scope); for (const task of tasks) void task.destroy(); }, project: { version: 1, pages, content: sources.some(s => s.kind === 'statement') ? (sources.some(s => s.kind === 'invoice') ? 'both' : 'statement') : 'invoices', delivery: 'combined' } };
+    return { documents, dispose: () => { nativeScope.closed=true;nativeScope.abort.abort();nativeScope.cache.clear();nativeScope.text.clear();releaseSourceStyles(scope); for (const task of tasks) void task.destroy(); }, project: { version: 1, pages, content: sources.some(s => s.kind === 'statement') ? (sources.some(s => s.kind === 'invoice') ? 'both' : 'statement') : 'invoices', delivery: 'combined' } };
   } catch (error) { for (const task of tasks) void task.destroy(); throw error; }
 }
 
 export async function detectText(page: PdfProjectPage, documents: Map<string, PDFDocumentProxy>): Promise<DetectedText[]> {
   if (!page.sourcePage) return [];
-  const pdfPage = await documents.get(page.sourceId)!.getPage(page.sourcePage);
-  return voucherRuns(await extractSourceText(page, pdfPage, documentScopes.get(documents) ?? 'unregistered'),voucherBindings(documents).get(`${page.sourceId}:${page.sourcePage}`)??[]);
+  const scope=sourceScopes.get(documents),key=`${page.sourceId}:${page.sourcePage}`;
+  let pending=scope?.text.get(key);
+  if(!pending){pending=(async()=>{const pdfPage=await documents.get(page.sourceId)!.getPage(page.sourcePage!);return voucherRuns(await extractSourceText(page,pdfPage,documentScopes.get(documents)??'unregistered'),voucherBindings(documents).get(key)??[]);})();scope?.text.set(key,pending);}
+  try{return await pending;}catch(error){scope?.text.delete(key);throw error;}
 }
 
-type TextMask={x:number;y:number;width:number;height:number};
+type TextMask={x:number;y:number;width:number;height:number;sourceX:number;sourceY:number};
 async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer, mask?:TextMask) {
   validateDeletedLayer(layer);
   if (!layer.deleted) validateSourceText(layer);
@@ -76,10 +92,10 @@ export class PdfLayerEditError extends Error {
   this.kind=error instanceof SourceFontError?'source-font':'layer';
  }
 }
-async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,tolerant=false){
+async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,tolerant=false,applied:ReadonlySet<string>=new Set()){
  const issues:RenderIssue[]=[],valid:PdfLayer[]=[],masks=new Map<string,TextMask>();
  const runs=page.layers.some(l=>l.original||l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
- for(const layer of page.layers){try{
+ for(const layer of page.layers){if(applied.has(layer.id))continue;try{
   validateDeletedLayer(layer);
   if(layer.formField&&!runs.some(run=>run.field===layer.formField!.type&&run.sourceText?.runIndex===layer.formField!.runIndex))throw Error('Document field no longer matches this source. Reopen the original.');
   if(layer.sourceText||layer.deleted){
@@ -100,16 +116,16 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
    // Hit targets include font descent/padding. Mask only the original ink so
    // clearing or replacing a word cannot shave the next tightly spaced line.
    const ink=native&&sourceStyle(native)?.supported&&!measureLayerText(native).unsupported?measureLayerInk(native):{y:original.y-1,height:original.height+2};
-   masks.set(layer.id,{x:mapped.x-1,y:mapped.y+ink.y-original.y,width:mapped.width+2,height:ink.height});
+   masks.set(layer.id,{x:mapped.x-1,y:mapped.y+ink.y-original.y,width:mapped.width+2,height:ink.height,sourceX:original.x-1,sourceY:ink.y});
   }
   valid.push(layer);
  }catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}}
  return {valid,issues,masks};
 }
-async function sourceRaster(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,scale:number){
+async function sourceRaster(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,scale:number,candidate?:NativeResult){
  const canvas=document.createElement('canvas');canvas.width=Math.ceil(page.width*scale);canvas.height=Math.ceil(page.height*scale);
  const ctx=canvas.getContext('2d',{alpha:false})!;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
- if(page.sourcePage){const source=await documents.get(page.sourceId)!.getPage(page.sourcePage);await renderPdfPage(source,{canvas,canvasContext:ctx,viewport:source.getViewport({scale}),background:'#ffffff'}).promise;}
+ if(page.sourcePage){const task=candidate?loadPdf(candidate.bytes.slice(),{fontExtraProperties:true}):undefined;try{const doc=task?await task.promise:documents.get(page.sourceId)!;const source=await doc.getPage(page.sourcePage);await renderPdfPage(source,{canvas,canvasContext:ctx,viewport:source.getViewport({scale}),background:'#ffffff'}).promise;}finally{if(task)await task.destroy();}}
  return canvas;
 }
 function continuedRules(page:PdfProjectPage,source:HTMLCanvasElement,scale:number):SourceFragment[]{
@@ -170,16 +186,17 @@ async function paintSheet(page:PdfProjectPage,source:HTMLCanvasElement,canvas:HT
  for(const rule of continuedRules(page,source,sourceScale)){ctx.fillStyle=rule.fill!;ctx.fillRect(rule.x,rule.y,rule.width,rule.height);}
  for(const layer of layers){
   // Each layer is validated before its original pixels are covered.
-  try{await drawLayer(ctx,layer,masks.get(layer.id));}catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}
+  try{const mask=masks.get(layer.id);const fill=mask?sourceMaskFill(source,sourceScale,layer,mask):layer.fill;await drawLayer(ctx,{...layer,fill},mask);}catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}
  }
  ctx.restore();
 }
 export async function renderPage(page: PdfProjectPage, documents: Map<string, PDFDocumentProxy>, canvas: HTMLCanvasElement, scale = 1.5, options:RenderOptions={}) {
  const height=pageCanvasHeight(page);scale=Math.min(scale,Math.sqrt(20_000_000/(page.width*height)));
- const {valid,issues,masks}=await bindLayers(page,documents,options.tolerant);
- const source=await sourceRaster(page,documents,scale);
+ const candidate=await candidateFor(page,documents);
+ const {valid,issues,masks}=await bindLayers(page,documents,options.tolerant,new Set(candidate?.applied));
+ const source=await sourceRaster(page,documents,scale,candidate);
  try{await paintSheet(page,source,canvas,scale,scale,{top:0,height},valid,masks,!!options.tolerant,issues);}finally{source.width=source.height=0;}
- return {issues};
+ return {issues,scale};
 }
 
 export async function exportProject(project: PdfProject, sources: PdfSourceDocument[], documents: Map<string, PDFDocumentProxy>): Promise<PdfExportFile[]> {
@@ -192,7 +209,8 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
   for (const [index, group] of groups.entries()) {
     const output = await PDFDocument.create();
     for (const page of group.pages) {
-      const {valid,masks}=await bindLayers(page,documents);
+      const candidate=await candidateFor(page,documents);
+      const {valid,masks}=await bindLayers(page,documents,false,new Set(candidate?.applied));
       if (valid.some(layer=>hasLayerInk(layer)||!!layer.original&&layer.maskOriginal!==false) || page.rowEdits?.length || page.sourcePage === null) {
         // Only a new opaque bitmap is copied into edited pages. No source streams,
         // hidden OCR/text, annotations or attachments are retained on those pages.
@@ -201,7 +219,7 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         const renderedIds=new Set(valid.map(l=>l.id));
         const protectedAreas=[...images.flatMap(r=>{const mapped=mapSourceRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...runs.flatMap(r=>{const replacement=replacementForRun(page,r);if(replacement&&renderedIds.has(replacement.id))return [];const mapped=mapSourceTextRect(r,page.rowEdits??[]);return mapped?[mapped]:[];}),...valid.flatMap(l=>!hasLayerInk(l)?[]:['image','shape','whiteout','note','stamp'].includes(l.kind)?[l]:measureLayerText(l).lines.flatMap((line,n)=>line.trim()?[{y:l.y+n*l.fontSize*1.25,height:l.fontSize*1.25}]:[]))];
         const scale=Math.min(300/72,Math.sqrt(20_000_000/(page.width*page.height)));
-        const source=await sourceRaster(page,documents,scale),canvas=document.createElement('canvas');
+        const source=await sourceRaster(page,documents,scale,candidate),canvas=document.createElement('canvas');
         const sheets=paginateFlow({...page,rowEdits:[],flowHeight:paintedExtent(page,source,scale,valid,masks)},protectedAreas);
         try{for(const sheet of sheets){
           await paintSheet(page,source,canvas,scale,scale,sheet,valid,masks,false,[],page.height);
@@ -210,8 +228,9 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         }}finally{source.width=source.height=canvas.width=canvas.height=0;}
 
       } else {
-        if (!native.has(page.sourceId)) native.set(page.sourceId, await PDFDocument.load(sources.find(s => s.id === page.sourceId)!.bytes));
-        const [copy] = await output.copyPages(native.get(page.sourceId)!, [page.sourcePage - 1]); output.addPage(copy);
+        if (!candidate&&!native.has(page.sourceId)) native.set(page.sourceId, await PDFDocument.load(sources.find(s => s.id === page.sourceId)!.bytes));
+        const input=candidate?await PDFDocument.load(candidate.bytes):native.get(page.sourceId)!;
+        const [copy] = await output.copyPages(input, [page.sourcePage - 1]); output.addPage(copy);
       }
     }
     files.push({ name: filenames[index], bytes: await output.save() });
