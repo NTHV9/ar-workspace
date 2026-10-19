@@ -121,6 +121,10 @@ export class OperaReader {
     if(!/^[1-9][0-9]{0,15}$/.test(reservationId)||!day(start)||!day(end)||start>end||Date.parse(end)-Date.parse(start)>=30*86400000)throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/transactions`,[['reservationList',reservationId],['includeGenerates','true'],['includeTransactionsWithARInvoiceNo','true'],['includeTransactionsWithFolioNo','true'],['startDate',start],['endDate',end]]);
   }
+  invoicePostingJournal(cashierId:string,date:string,offset=0) {
+    if(!/^[1-9][0-9]{0,12}$/.test(cashierId)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date||!Number.isSafeInteger(offset)||offset<0||offset>450||offset%50!==0)throw new OperaError('invalid_request');
+    return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/financialPostings`,[['cashierId',cashierId],['startDate',date],['endDate',date],...this.page(offset,50)]);
+  }
   invoiceTransactionDetails(transactionIds:string[]) {
     if(!transactionIds.length||transactionIds.length>40||new Set(transactionIds).size!==transactionIds.length||transactionIds.some(id=>!/^[1-9][0-9]{0,15}$/.test(id)))throw new OperaError('invalid_request');
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/transactionDetails`,[['includeGenerates','true'],...transactionIds.map(id=>['transactionNo',id])]);

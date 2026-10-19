@@ -49,3 +49,12 @@ it('captures a short HTML gateway rejection title without returning the response
  const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'private-key'},async()=> 'private-token',async()=>new Response('<html><title>Gateway route unavailable</title><body>Other response content</body></html>',{status:403,headers:{'Content-Type':'text/html'}}));
  await expect(reader.invoiceTaxData('500')).rejects.toMatchObject({providerMessage:'Gateway route unavailable'});
 });
+it('reads a bounded posting journal by cashier and posting day without a reservation filter',async()=>{
+ let request:Request|undefined;
+ const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async r=>{request=r;return Response.json({});});
+ await reader.invoicePostingJournal('123','2026-10-19',50);
+ const u=new URL(request!.url);expect(request!.method).toBe('GET');expect(u.pathname).toBe('/csh/v1/hotels/TSAN/financialPostings');
+ expect(Object.fromEntries(u.searchParams)).toEqual({cashierId:'123',startDate:'2026-10-19',endDate:'2026-10-19',offset:'50',limit:'50'});
+ expect(()=>reader.invoicePostingJournal('0','2026-10-19')).toThrow('invalid_request');
+ expect(()=>reader.invoicePostingJournal('123','2026-02-30')).toThrow('invalid_request');
+});

@@ -51,7 +51,14 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
           const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
           const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord);
           const dates=rows.map(r=>String(r.transactionDate)).sort();
-          const extra=await reader.invoiceGuestTransactions(invoice.reservation_id!,dates[0],dates.at(-1)!);
+          let extra:unknown;
+          if(payload.invoiceLedgerProbe){
+            const roots=(packet.arDetails??[]).flatMap(d=>(invoiceRecord(d.response).transactions as unknown[]).map(invoiceRecord));
+            if(!roots.length||roots.some(p=>String(invoiceRecord(p.aRInfo).invoiceNo)!==invoice.invoice_no||String(invoiceRecord(p.aRInfo).accountNumber)!==String(invoiceRecord(packet.account).accountNo)||!rows.some(r=>r.transactionNo===p.transactionNo)))throw Error('document_probe_scope_invalid');
+            const scopes=[...new Map(roots.map(p=>[JSON.stringify([String(invoiceRecord(p.cashierInfo).cashierId),String(p.transactionDate)]),p])).values()];
+            if(scopes.length!==1)throw Error('document_probe_scope_invalid');
+            extra=await reader.invoicePostingJournal(String(invoiceRecord(scopes[0].cashierInfo).cashierId),String(scopes[0].transactionDate));
+          }else extra=await reader.invoiceGuestTransactions(invoice.reservation_id!,dates[0],dates.at(-1)!);
           // Existing privileged control-plane diagnostic only; no public HTTP route,
           // accounting mutation, document save or email. Returned text is hashed.
           const digest=async(value:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value??''))))].map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -61,7 +68,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
             if(value&&typeof value==='object')return Object.fromEntries(await Promise.all(Object.entries(value).filter(([k])=>k!=='links').map(async([k,v])=>[k,typeof v==='string'&&!/^(?:transactionCode|transactionType|transactionGroup|transactionSubGroup|currencyCode|hotelId|transactionDate|postingDate|revenueDate|id|type|invoiceNo|accountNumber|folioNo|referenceTransactionNo|referencePackageTransactionNo|cashierId)$/.test(k)?{length:v.length,sha256:await digest(v)}:await summarize(v,depth+1)])));
             return value;
           };
-          let taxData:unknown,taxFailure:unknown;try{taxData=await reader.invoiceTaxData(invoice.id);}catch(error){taxFailure=error instanceof OperaError?{code:error.code,status:error.upstreamStatus,reason:error.providerMessage}:{code:'unavailable'};}
+          let taxData:unknown,taxFailure:unknown;if(!payload.invoiceLedgerProbe)try{taxData=await reader.invoiceTaxData(invoice.id);}catch(error){taxFailure=error instanceof OperaError?{code:error.code,status:error.upstreamStatus,reason:error.providerMessage}:{code:'unavailable'};}
           return JSON.stringify({postings:await summarize(packet.postings),arDetails:await summarize(packet.arDetails),invoiceCashier:await summarize(invoiceRecord(packet.invoice).cashierInfo),extra:await summarize(extra),taxData:await summarize(taxData),taxFailure});
         }
         // Exact selected-job diagnostic: renders in memory, never saves a PDF or changes the job.
