@@ -2213,3 +2213,8 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - No mail, business history, Sheet, accounting or subscription mutation. Temporary
   PDF-return code and exact owned test Workflow instance were removed. Other hotel
   and report-layout qualification remains separate from this verified repair.
+- Final release: source `acbd01ccda2591804628fa614d897ef24817373a`, Worker
+  `2772e51b-9f55-4c3f-9c57-931979dcd073`. Exact-source live health/database checks
+  pass and six anonymous protected routes reject access. Immutable binding
+  comparison matches the previous production release except COMMIT_SHA; no
+  runtime setting or secret binding was dropped. PR139 contains this repair.
