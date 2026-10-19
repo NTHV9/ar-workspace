@@ -17,9 +17,9 @@ it('uses workspace rendering for new Invoice jobs without a native print call',a
  await runDocumentJob(env,job.id,step);expect(mocks.workspace).toHaveBeenCalledOnce();expect(mocks.native).not.toHaveBeenCalled();expect(mocks.storage).toHaveBeenCalledOnce();
 });
 it('preserves the native route for a pre-cutover job',async()=>{await runDocumentJob(env,job.id,step);expect(mocks.native).toHaveBeenCalledOnce();expect(mocks.workspace).not.toHaveBeenCalled();});
-it('never falls back to a native PDF when tax verification fails',async()=>{
- const current={...job,invoice_source:'workspace'};mocks.rpc.mockImplementation(async(_e,name)=>name==='ar_document_get'?current:name==='ar_document_claim_file'?{claimed:true,file:job.files[0]}:null);mocks.workspace.mockRejectedValue(Error('document_invoice_tax_coverage_missing'));
- await runDocumentJob(env,job.id,step);expect(mocks.native).not.toHaveBeenCalled();expect(mocks.storage).not.toHaveBeenCalled();expect(mocks.rpc).toHaveBeenCalledWith(env,'ar_document_fail_file',expect.objectContaining({p_code:'document_invoice_tax_coverage_missing',p_uncertain:false}));
+it.each(['document_invoice_tax_coverage_missing','document_invoice_ar_tax_unverified'])('never falls back or stores an Invoice when tax verification fails: %s',async(code)=>{
+ const current={...job,invoice_source:'workspace'};mocks.rpc.mockImplementation(async(_e,name)=>name==='ar_document_get'?current:name==='ar_document_claim_file'?{claimed:true,file:job.files[0]}:null);mocks.workspace.mockRejectedValue(Error(code));
+ await runDocumentJob(env,job.id,step);expect(mocks.native).not.toHaveBeenCalled();expect(mocks.storage).not.toHaveBeenCalled();expect(mocks.rpc).toHaveBeenCalledWith(env,'ar_document_fail_file',expect.objectContaining({p_code:code,p_uncertain:false}));
 });
 it('creates new preparations through the source-version snapshot RPC',async()=>{
  mocks.rpc.mockResolvedValue({...job,state:'ready',files:[]});await createDocumentJob(env,'owner',{hotel:'KAT',accountId:'101',ids:['500'],commandKey:'33333333-3333-4333-8333-333333333333',content:'invoices',layout:'combined',purpose:'billing'});expect(mocks.rpc).toHaveBeenCalledWith(env,'ar_document_create_v5',expect.objectContaining({p_statement_source:'native',p_hotel:'KAT',p_ids:['500']}));

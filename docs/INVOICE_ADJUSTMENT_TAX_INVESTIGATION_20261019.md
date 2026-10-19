@@ -83,6 +83,27 @@ mapping evidence; do not replace them from arbitrary latest rows.
 
 ## Remaining source dependency
 
+## 20 October — safety correction and journal result
+
+The exact adjustment cashier/day posting journal returned one entry, matching
+the selected adjustment transaction. Metadata reports one result, one page and
+hasMore=false; there are no linked tax entries in that response. This does not
+establish a zero-tax charge and does not authorize a percentage fallback.
+
+Removed the unsafe AR fallback that added the entire adjustment to non-taxable
+value solely because includeGenerates returned no taxes. After identity and
+amount checks, that unverified path now fails with
+`document_invoice_ar_tax_unverified` before rendering/upload. The document UI
+explains that the original OPERA invoice is required for that item. Explicit
+generated VAT, separately posted VAT and explicit non-taxable breakdown paths
+remain unchanged. Existing stored/reviewed PDFs are not rewritten.
+
+Three regressions failed before the change and passed afterward. Full local
+suite: 2,008 tests / 201 files; TypeScript and production build pass. Independent
+Astra High review found no P0-P2 issue in the guard. This is a correction of
+unsafe classification and prevention of incorrect output, NOT completion of
+automatic VAT generation for unsupported AR adjustments.
+
 - Obtain authoritative printed invoice tax fields or equivalent explicit API
   evidence for AR adjustments. Do not replace missing evidence with a blanket
   percentage calculation or classify all Revenue adjustments the same way.

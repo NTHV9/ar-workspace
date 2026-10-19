@@ -70,7 +70,10 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    if(!text(a.accountNo)||text(info.accountNumber)!==text(a.accountNo)||text(info.invoiceNo)!==m.invoice_no||text(p.folioNo)!==m.folio_no||p.transactionCode!==selected.transactionCode||p.transactionType!=='Revenue')return fail('ar_tax_scope_invalid');
    if(p.deferredTax!==false||p.subPostings!==undefined&&(!Array.isArray(p.subPostings)||p.subPostings.length>0)||!text(ar.code.transactionGroup)||['TAX','SVC'].includes(text(ar.code.transactionGroup)))return fail('ar_tax_unsupported');
    if(optionalCents(p.debitAmount)!==line.debit||optionalCents(p.creditAmount)!==line.credit||Math.abs(cents(p.postedAmount))!==Math.abs(line.debit-line.credit))return fail('tax_reconciliation_failed');
-   nonTaxableUnits+=(p.debitAmount==null?0n:precise(p.debitAmount))-(p.creditAmount==null?0n:precise(p.creditAmount));continue;
+   // A complete includeGenerates response without generated rows does not prove
+   // an AR adjustment is non-taxable. OPERA's current AR folio can include VAT
+   // absent from this reservation-ledger response. Never fabricate a zero tax.
+   return fail('ar_tax_unverified');
   }const rootPosting=record(root.posting);
   if(rootPosting.hotelId!==m.hotel||text(rootPosting.folioNo)!==m.folio_no||text(record(record(rootPosting.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
   // OPERA groups both the visible wrapper and its component postings under the
