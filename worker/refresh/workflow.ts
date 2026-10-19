@@ -48,6 +48,21 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         const selectedId=payload.invoiceAuditId??job.invoice_ids[0];if(!/^[1-9][0-9]{0,15}$/.test(selectedId)||!job.invoice_ids.includes(selectedId))throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===selectedId);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        if(payload.invoiceTaxRulesProbe){
+          const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
+          const roots=(packet.arDetails??[]).flatMap(d=>(invoiceRecord(d.response).transactions as unknown[]).map(invoiceRecord));
+          if(!roots.length||roots.length>5)throw Error('document_probe_scope_invalid');
+          const samples=[];
+          for(const p of roots){
+            const selected=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord).filter(r=>r.transactionNo===p.transactionNo);
+            if(selected.length!==1||String(invoiceRecord(p.aRInfo).invoiceNo)!==invoice.invoice_no||String(invoiceRecord(p.aRInfo).accountNumber)!==String(invoiceRecord(packet.account).accountNo)||String(p.folioNo)!==invoice.folio_no||p.transactionCode!==selected[0].transactionCode)throw Error('document_probe_scope_invalid');
+            const debit=p.debitAmount?invoiceRecord(p.debitAmount):undefined,credit=p.creditAmount?invoiceRecord(p.creditAmount):undefined;
+            if(debit&&debit.currencyCode!=='THB'||credit&&credit.currencyCode!=='THB')throw Error('document_probe_scope_invalid');
+            const amount=Number(debit?.amount??0)-Number(credit?.amount??0),code=String(p.transactionCode);
+            samples.push({code,amount,rules:await reader.invoiceTransactionCodeRules(code),calculation:await reader.invoiceChargeSimulation(code,amount)});
+          }
+          return JSON.stringify({hotel,samples});
+        }
         if(payload.invoiceArReportProbe){
           const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
           const settings=invoiceRecord(invoiceRecord(await reader.folioTypeName('AccountsReceivables')).details);

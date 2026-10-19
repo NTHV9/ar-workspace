@@ -65,3 +65,12 @@ it('reads hotel folio type configuration and sends explicit bill/type report sel
  expect(requests[1].searchParams.get('billNumber')).toBe('88');expect(requests[1].searchParams.get('folioType')).toBe('AR-VERIFIED');
  expect(()=>reader.folioReport('777',2,'2026-10-17',{billNumber:'0',folioType:'AR-VERIFIED'})).toThrow('invalid_request');
 });
+it('reads configured generates and performs a read-only OPERA charge calculation',async()=>{
+ const requests:Request[]=[];const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async r=>{requests.push(r);return Response.json({});});
+ await reader.invoiceTransactionCodeRules('1005');await reader.invoiceChargeSimulation('1005',-100);
+ expect(requests.every(r=>r.method==='GET'&&r.redirect==='manual')).toBe(true);
+ const a=new URL(requests[0].url),b=new URL(requests[1].url);
+ expect(a.pathname).toBe('/fof/config/v1/hotels/TSAN/transactionCodes/1005/hotelTransactionCode');expect(a.searchParams.getAll('fetchInstructions')).toEqual(['Header','Generates','AssociatedTrxCodes']);
+ expect(b.pathname).toBe('/fof/config/v1/hotels/TSAN/transactionCodes/1005/chargeSimulations');expect(b.searchParams.get('postingAmount')).toBe('-100');
+ expect(()=>reader.invoiceChargeSimulation('1005',NaN)).toThrow('invalid_request');
+});
