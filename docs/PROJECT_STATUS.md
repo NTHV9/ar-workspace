@@ -2175,14 +2175,12 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - Folio filename source 1db25c8 deployed as Worker b34e3fad-796e-49ad-92a5-ec979198add6; exact-source health verified. Twelve filename/source-loading tests and TypeScript pass. No user-edited preparation was reloaded or existing attachment renamed during verification.
 
 - Unbilled10 source 596fe7b deployed as Worker d8f8f99e-0bf1-4ead-b154-7a60c2011387; exact-source health verified. Database membership/matrix migration applied and period generation invalidated. Original user PDF preparation was left undisturbed during verification.
-## 2026-10-19 — PDF Workspace repair acceptance
-
 ## 2026-10-20 — Unverified AR adjustment VAT safeguard
 
 - The exact adjustment cashier/day posting journal returned one result and no linked tax rows. Replaced the disproven missing-generates-to-non-taxable fallback with `document_invoice_ar_tax_unverified`, preserving existing identity/amount checks and explicit-tax/non-tax paths. UI gives a specific recovery explanation. This prevents incorrect output; automatic VAT generation for these unsupported AR adjustments is still unresolved. Existing saved/reviewed files are not rewritten.
 - Three regressions failed before the fix, then passed. Full 2,008 tests / 201 files, TypeScript and production build pass. Astra High independently reviewed the guard with no P0-P2 findings. Deployed source `2c3eec9f10917bc38bb79a734ea7a9d4720e6568`, Worker `f069dfc0-4701-4714-b74d-fb772c1475a5`; fresh exact affected-job diagnostic confirms the new error before PDF output. Health/database/access checks pass; previous runtime bindings match except COMMIT_SHA. No business history, Sheet or accounting mutation.
 
-### Prior PDF repair and tax investigation checkpoints
+## 2026-10-19 — PDF Workspace repair acceptance
 
 - Final adjustment-tax investigation checkpoint: Portal confirms the deployed key's application, approved AR client and matching environment; subscribed plans do not include Hospitality Data APIs, which is also absent from offered edit choices. No access/subscription was changed. Native PDF alternative was actually tried and returns historical charges/settlement with updated VAT, so it is not a qualified current-AR replacement. Temporary PDF-return/credential-identity diagnostic branches and the exact byte-holding test Workflow instance were removed. Final source 7f9c86de511cc1b8d94aa4854528bcdca931657b / Worker f4184134-afc8-42e7-a39e-73fd4fd7e270; health/access checks pass and prior runtime bindings match except COMMIT_SHA. VAT remains unresolved pending an authoritative current-AR tax source; no financial calculation change is claimed.
 

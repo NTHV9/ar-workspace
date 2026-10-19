@@ -133,7 +133,7 @@ Private diagnostic outputs remain under the primary
 checkout's ignored `.tmp/invoice-reliability/` directory. No real customer
 identities, documents or raw provider responses are included in this report.
 
-Final deployed source `7f9c86de511cc1b8d94aa4854528bcdca931657b`, Worker
+Pre-safeguard deployed source `7f9c86de511cc1b8d94aa4854528bcdca931657b`, Worker
 `f4184134-afc8-42e7-a39e-73fd4fd7e270`. Exact-commit health, database validation
 and six anonymous protected-route checks pass. Immutable binding comparison
 matches the pre-investigation production configuration except COMMIT_SHA.
