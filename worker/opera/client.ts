@@ -110,6 +110,11 @@ export class OperaReader {
     return this.read(`/csh/v1/hotels/${this.id(this.config.hotelId)}/financialPostingsNetVat`,[['reservationId',reservationId],['folioWindowNo',String(window)],['startDate',start],['endDate',end],...this.page(offset,limit)]);
   }
   /** Read-only diagnostic alternative for posted AR generates; not a tax classification. */
+  invoiceTaxData(transactionId:string) {
+    if(!/^[1-9][0-9]{0,14}$/.test(transactionId))throw new OperaError('invalid_request');
+    const query='query InvoiceTaxEvidence($input: FinancialTransactionDetailsExtendedQueryArgumentsType!) { financialTransactionDetailsExtended(input: $input) { financialUnifiedDetails { trxNo invoiceNumber folioNo grossAmount netAmount } folioTaxDetails { property billNumber invoiceNumber totalGrossAmount totalNetAmount totalNonTaxableAmount totalTax xtax1Amt netAmount1 } } }';
+    return this.read('/rna/v1/graphql/',[],{query,variables:{input:{financialunifiedDetailsResort:{_eq:this.config.hotelId},financialunifiedDetailsFtTrxNo:{_eq:Number(transactionId)}}}});
+  }
   invoiceGuestTransactions(reservationId:string,start:string,end:string) {
     const day=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
     if(!/^[1-9][0-9]{0,15}$/.test(reservationId)||!day(start)||!day(end)||start>end||Date.parse(end)-Date.parse(start)>=30*86400000)throw new OperaError('invalid_request');
@@ -156,7 +161,7 @@ export class OperaReader {
   }
   statementHistory(accountId:string,profileId:string) { return this.read(`/ars/v1/hotels/${this.id(this.config.hotelId)}/profiles/${this.id(profileId)}/accounts/${this.id(accountId)}/statementsHistory`,[]); }
   businessDate() { return this.read(`/bof/v1/hotels/${this.id(this.config.hotelId)}/businessDate`,[]); }
-  private async read(path:string,query:string[][]):Promise<unknown> {
+  private async read(path:string,query:string[][],readQuery?:{query:string;variables:unknown}):Promise<unknown> {
     let token:string;
     try {token=await this.getToken();} catch(e) {throw e instanceof OperaError?e:new OperaError('provider_unauthorized');}
     if(!token)throw new OperaError('provider_unauthorized');
@@ -164,7 +169,7 @@ export class OperaReader {
     if(url.origin!==this.origin)throw new OperaError('invalid_request');
     const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),this.timeoutMs);
     try {
-      const response=await this.transport(new Request(url,{method:'GET',headers:{Authorization:`Bearer ${token}`,'x-app-key':this.config.appKey,'x-hotelid':this.config.hotelId,Accept:'application/json'},redirect:'manual',signal:controller.signal}));
+      const response=await this.transport(new Request(url,{method:readQuery?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'x-app-key':this.config.appKey,'x-hotelid':this.config.hotelId,Accept:'application/json',...(readQuery?{'Content-Type':'application/json'}:{})},...(readQuery?{body:JSON.stringify(readQuery)}:{}),redirect:'manual',signal:controller.signal}));
       if(response.status>=300&&response.status<400){await response.body?.cancel();throw new OperaError('redirect_rejected');}
       if(!response.ok){
         let providerMessage: string|undefined;

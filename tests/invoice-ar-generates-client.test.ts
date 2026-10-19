@@ -13,3 +13,13 @@ it.each([['0','2026-10-14','2026-10-19'],['123','2026-02-30','2026-03-01'],['123
  const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async()=>{throw Error('must not fetch');});
  expect(()=>reader.invoiceGuestTransactions(id,start,end)).toThrow('invalid_request');
 });
+it('requests only exact invoice tax fields through the fixed read-only Data API query',async()=>{
+ let request:Request|undefined;
+ const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'test'},async()=> 'test',async r=>{request=r;return Response.json({});});
+ await reader.invoiceTaxData('500');
+ expect(new URL(request!.url).pathname).toBe('/rna/v1/graphql/');expect(request!.method).toBe('POST');expect(request!.redirect).toBe('manual');
+ const body=await request!.json() as {query:string;variables:unknown};
+ expect(body.query).not.toContain('mutation');expect(body.query).toContain('totalNonTaxableAmount');
+ expect(body.variables).toEqual({input:{financialunifiedDetailsResort:{_eq:'TSAN'},financialunifiedDetailsFtTrxNo:{_eq:500}}});
+ expect(()=>reader.invoiceTaxData('500\"}')).toThrow('invalid_request');
+});

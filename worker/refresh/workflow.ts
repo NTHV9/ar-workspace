@@ -61,7 +61,8 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
             if(value&&typeof value==='object')return Object.fromEntries(await Promise.all(Object.entries(value).filter(([k])=>k!=='links').map(async([k,v])=>[k,typeof v==='string'&&!/^(?:transactionCode|transactionType|transactionGroup|transactionSubGroup|currencyCode|hotelId|transactionDate|postingDate|revenueDate|id|type|invoiceNo|accountNumber|folioNo|referenceTransactionNo|referencePackageTransactionNo|cashierId)$/.test(k)?{length:v.length,sha256:await digest(v)}:await summarize(v,depth+1)])));
             return value;
           };
-          return JSON.stringify({postings:await summarize(packet.postings),arDetails:await summarize(packet.arDetails),invoiceCashier:await summarize(invoiceRecord(packet.invoice).cashierInfo),extra:await summarize(extra)});
+          let taxData:unknown;try{taxData=await reader.invoiceTaxData(invoice.id);}catch(error){taxData=error instanceof OperaError?{code:error.code,status:error.upstreamStatus}:{code:'unavailable'};}
+          return JSON.stringify({postings:await summarize(packet.postings),arDetails:await summarize(packet.arDetails),invoiceCashier:await summarize(invoiceRecord(packet.invoice).cashierInfo),extra:await summarize(extra),taxData:await summarize(taxData)});
         }
         // Exact selected-job diagnostic: renders in memory, never saves a PDF or changes the job.
         if(payload.invoiceRenderProbe){
