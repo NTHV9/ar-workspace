@@ -70,6 +70,19 @@ is retained. New input classes require additional qualification.
 
 ## Release state
 
-Implemented and locally/browser/PDF tested. Production release evidence is
-recorded in PROJECT_STATUS after deployment verification; this paragraph alone
-does not assert deployment or provider-level email testing.
+Implemented, locally/browser/PDF tested and deployed on 19 October 2026.
+Deployed source: `6835fbaad2e1fc30790e1f36f4bde1e0af30f7ea`.
+Final Worker: `968c130a-3876-4c89-bf96-c5e85ae94d9f`.
+Live health confirmed that exact source and database verification; six protected
+anonymous routes rejected access. Hosted WASM and worker bytes match the tested
+build; the public license notice is available.
+
+The first deployment temporarily reset two tracker enablement flags from live
+true values to tracked false defaults. Both were restored in the final release
+about 3 minutes 27 seconds later. Version comparison verifies all previous plain
+bindings except COMMIT_SHA and unchanged secret binding names. The interruption
+is disclosed rather than claiming synchronization was unaffected.
+
+Browser editing and PDF acceptance used synthetic local fixtures. No actual
+email was sent and no production customer preparation was mutated for testing.
+See [PR138](https://github.com/NTHV9/ar-workspace/pull/138) and PROJECT_STATUS.
