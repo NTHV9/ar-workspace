@@ -20,7 +20,7 @@ import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
-import {nativeFolioSelector} from '../documents/native-invoice';
+import {nativeFolioSelector,getNativeInvoicePdf} from '../documents/native-invoice';
 import {renderInvoice} from '../invoice/render';
 import type {InvoiceAssets} from '../invoice/types';
 import {readInvoicePacket,readInvoiceModel} from '../invoice/read';
@@ -48,6 +48,15 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         const selectedId=payload.invoiceAuditId??job.invoice_ids[0];if(!/^[1-9][0-9]{0,15}$/.test(selectedId)||!job.invoice_ids.includes(selectedId))throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===selectedId);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        if(payload.invoiceNativeTaxProbe){
+          const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
+          const config=invoiceRecord(invoiceRecord(await reader.folioTypeName('Guest')).details);
+          if(config.hotelId!==hotel)throw Error('document_probe_scope_invalid');
+          let expected:unknown;try{const model=invoiceModel(packet);expected={vat:model.vat,nonTaxable:model.nonTaxable,gross:model.gross};}catch(error){expected={error:error instanceof Error&&/^document_[a-z_]+$/.test(error.message)?error.message:'invalid_response'};}
+          const native=await getNativeInvoicePdf(reader,invoice);
+          if(native.bytes.length>1_000_000)throw Error('document_probe_scope_invalid');
+          return JSON.stringify({hotel,report:config.folioReportName,folio:invoice.folio_no,pages:native.pages,byteCount:native.bytes.length,sha256:native.sha256,base64:btoa(Array.from(native.bytes,c=>String.fromCharCode(c)).join('')),expected,missingArRows:(packet.arDetails??[]).reduce((n,d)=>n+d.ids.length,0)});
+        }
         if(payload.invoiceTaxRulesProbe){
           const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
           const roots=(packet.arDetails??[]).flatMap(d=>(invoiceRecord(d.response).transactions as unknown[]).map(invoiceRecord));
