@@ -44,7 +44,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
   // Preserve OPERA's text exactly: never strip a numeric suffix from a room.
   // The observed nine-digit printed check can already be concatenated there.
   const printedCheckAtEnd=!!check&&narrative.endsWith(check)&&(/\s/.test(narrative.charAt(narrative.length-check.length-1))||!!joinedRoom&&/^\d{9}$/.test(check)&&joinedRoom.length>check.length);
-  const reference=narrative?[narrative,...check&&!printedCheckAtEnd?[check]:[]].join('\n'):check;
+  const reference=narrative?[narrative,...check&&!printedCheckAtEnd?[check]:[]].join('\n'):check||text(p.remark);
   return {id:postingId,date:dateText(p.transactionDate),description:text(code[0].description),reference,debit,credit};
  }).sort((x,y)=>postingDates.get(x.id)!.localeCompare(postingDates.get(y.id)!)||Number(x.id)-Number(y.id));
  const debit=sum(lines.map(l=>l.debit)),credit=sum(lines.map(l=>l.credit)),gross=debit-credit;if(!Number.isSafeInteger(gross)||gross!==currentAmount)throw Error('document_source_changed');

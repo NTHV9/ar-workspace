@@ -23,3 +23,7 @@ it('requests only exact invoice tax fields through the fixed read-only Data API 
  expect(body.variables).toEqual({input:{financialunifiedDetailsResort:{_eq:'TSAN'},financialunifiedDetailsFtTrxNo:{_eq:500}}});
  expect(()=>reader.invoiceTaxData('500\"}')).toThrow('invalid_request');
 });
+it('returns a bounded redacted Data API rejection reason without conflating it with missing permissions',async()=>{
+ const reader=new OperaReader({origin:'https://example.test',hotelId:'TSAN',appKey:'private-key'},async()=> 'private-token',async()=>Response.json({title:'Route rejected',detail:'Bad request private-token private-key','o:errorCode':'ROUTE-001'},{status:403}));
+ await expect(reader.invoiceTaxData('500')).rejects.toMatchObject({upstreamStatus:403,providerMessage:'Route rejected · Bad request [redacted] [redacted] · ROUTE-001'});
+});

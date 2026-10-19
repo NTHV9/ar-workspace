@@ -175,10 +175,10 @@ export class OperaReader {
         let providerMessage: string|undefined;
         // Discovery has only owner-confirmed hotel IDs and pagination inputs. Inspect bounded
         // validation title/detail only, never return account payloads or token endpoint bodies.
-        if(response.status===400&&(path==='/ars/v1/accounts'||/^\/csh\/v1\/hotels\/[^/]+\/(folioHistory|financialPostingsNetVat)$/.test(path))&&response.body){
+        if((response.status===400&&(path==='/ars/v1/accounts'||/^\/csh\/v1\/hotels\/[^/]+\/(folioHistory|financialPostingsNetVat)$/.test(path))||readQuery&&[400,401,403,404].includes(response.status)&&path==='/rna/v1/graphql/')&&response.body){
           const reader=response.body.getReader();let text='';const decoder=new TextDecoder();let bytes=0;
           try{while(true){const p=await reader.read();if(p.done)break;bytes+=p.value.byteLength;if(bytes>4096){await reader.cancel();break;}text+=decoder.decode(p.value,{stream:true});}
-            const error=JSON.parse(text);providerMessage=[error.title,error.detail,error['o:errorCode']].filter(v=>typeof v==='string').join(' · ').replaceAll(token,'[redacted]').replaceAll(this.config.appKey,'[redacted]').replace(/Bearer\s+[^\s"']+/gi,'Bearer [redacted]').slice(0,400);
+            const error=JSON.parse(text);providerMessage=[error.title,error.detail,error['o:errorCode'],...(readQuery?[error.message,error.error, error.description,...Array.isArray(error.errors)?error.errors.slice(0,3).map((e:unknown)=>e&&typeof e==='object'&&'message' in e?e.message:undefined):[]]:[])].filter(v=>typeof v==='string').join(' · ').replaceAll(token,'[redacted]').replaceAll(this.config.appKey,'[redacted]').replace(/Bearer\s+[^\s"']+/gi,'Bearer [redacted]').slice(0,400);
             if(providerMessage)for(const [,value]of query)if(value.length>3)providerMessage=providerMessage.replaceAll(value,'[redacted input]');
           }catch{/* only the categorical status survives unreadable errors */}finally{reader.releaseLock();}
         }else await response.body?.cancel();
