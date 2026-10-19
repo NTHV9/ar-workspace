@@ -20,6 +20,7 @@ import {stageRefreshAccounts} from './accounts';
 import {isHotelId} from '../../src/domain/hotels';
 import {readFolioReportTypes} from '../documents/folio-type-probe';
 import {readInvoiceFolioContract} from '../documents/invoice-contract-probe';
+import {nativeFolioSelector} from '../documents/native-invoice';
 import {renderInvoice} from '../invoice/render';
 import type {InvoiceAssets} from '../invoice/types';
 import {readInvoicePacket} from '../invoice/read';
@@ -47,6 +48,18 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         const selectedId=payload.invoiceAuditId??job.invoice_ids[0];if(!/^[1-9][0-9]{0,15}$/.test(selectedId)||!job.invoice_ids.includes(selectedId))throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===selectedId);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        if(payload.invoiceArReportProbe){
+          const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
+          const settings=invoiceRecord(invoiceRecord(await reader.folioTypeName('AccountsReceivables')).details);
+          if(settings.hotelId!==hotel||typeof settings.folioReportName!=='string')throw Error('document_probe_scope_invalid');
+          const window=nativeFolioSelector(await reader.reservationFolios(invoice.reservation_id!,invoice.folio_date!),invoice);
+          // Bounded experiment with an observed AR report name, not a qualified
+          // production source/type mapping. Caller independently inspects bytes.
+          const raw=invoiceRecord(invoiceRecord(await reader.folioReport(invoice.reservation_id!,window,invoice.folio_date!,{billNumber:invoice.folio_no!,folioType:settings.folioReportName})).folio);
+          if(raw.hotelId!==hotel||String(invoiceRecord(raw.reservationId).id)!==invoice.reservation_id||typeof raw.folio!=='string'||raw.folio.length>700000)throw Error('document_probe_scope_invalid');
+          const binary=atob(raw.folio),bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));if(!binary.startsWith('%PDF-'))throw Error('document_probe_scope_invalid');
+          return JSON.stringify({hotel,mode:'configured-ar-report-name-experiment',byteCount:bytes.length,sha256:[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join(''),base64:raw.folio,currentGross:invoiceRecord(packet.invoice).amount});
+        }
         if(payload.invoiceGuestProbe){
           const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
           const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord);
