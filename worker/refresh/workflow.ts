@@ -47,6 +47,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
         const selectedId=payload.invoiceAuditId??job.invoice_ids[0];if(!/^[1-9][0-9]{0,15}$/.test(selectedId)||!job.invoice_ids.includes(selectedId))throw Error('document_probe_scope_invalid');
         const invoice=job.manifest.find(i=>i.id===selectedId);
         if(!invoice||invoice.hotel!==hotel||invoice.account_id!==job.account_id)throw Error('document_probe_scope_invalid');
+        if(payload.invoiceCredentialIdentityProbe)return JSON.stringify({appKeyDisplaySuffix:runtime.OPERA_APP_KEY?.slice(-4)??null,approvedClientMatches:runtime.OPERA_CLIENT_ID==='KCTLK-Production-TSTLKL-mtcb2pr-AR-KAT',enterprise:runtime.OPERA_ENTERPRISE_ID,origin:runtime.OPERA_BASE_URL?new URL(runtime.OPERA_BASE_URL).origin:null});
         if(payload.invoiceGuestProbe){
           const reader=makeReader(runtime,hotel),packet=await readInvoicePacket(reader,invoice);
           const rows=(invoiceRecord(packet.postings).invoicePostingsDetails as unknown[]).map(invoiceRecord);
