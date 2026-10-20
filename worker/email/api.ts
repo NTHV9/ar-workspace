@@ -75,7 +75,11 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
   if(path==='/api/email/open'&&request.method==='POST'){
    const v=await jsonBody(request);
    if(typeof v.jobId!=='string'||!uuidPattern.test(v.jobId)||!Number.isSafeInteger(v.documentRevision)||Number(v.documentRevision)<0)return emailJson({error:'email_invalid'},400);
-   result=await emailRpc(env,'ar_email_open',{p_actor:actor,p_job_id:v.jobId,p_document_revision:v.documentRevision});
+   if(v.previousDraft!==undefined){
+    const prior=v.previousDraft as Record<string,unknown>|null;
+    if(!prior||typeof prior!=='object'||typeof prior.id!=='string'||!uuidPattern.test(prior.id)||!Number.isSafeInteger(prior.revision)||Number(prior.revision)<0||Object.keys(prior).some(k=>!['id','revision'].includes(k)))return emailJson({error:'email_invalid'},400);
+    result=await emailRpc(env,'ar_email_rebind',{p_actor:actor,p_id:prior.id,p_revision:prior.revision,p_job_id:v.jobId,p_document_revision:v.documentRevision,p_max_bytes:draftBudget(env)});
+   }else result=await emailRpc(env,'ar_email_open',{p_actor:actor,p_job_id:v.jobId,p_document_revision:v.documentRevision});
   }else{
    const match=/^\/api\/email\/([0-9a-f-]{36})$/.exec(path);
    if(!match||!uuidPattern.test(match[1]))return emailJson({error:'not_found'},404);

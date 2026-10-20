@@ -3,6 +3,16 @@ import {createBatch,loadBatch,saveBatch,assertBatchJob,freezeMail,sendBatch,type
 import type {BatchSelection} from '../src/batch/selection';
 const a:BatchSelection={key:'a',hotel:'KAT',accountId:'10',accountName:'Synthetic',ids:['1'],purpose:'billing',stage:'Billing',amount:100};
 const storage=()=>{const data=new Map<string,string>();return {getItem:(k:string)=>data.get(k)??null,setItem:(k:string,v:string)=>{data.set(k,v);},removeItem:(k:string)=>{data.delete(k);}};};
+it('keeps staff tab ownership separate from authorized shared document ownership',()=>{
+ const s=storage(),staff=crypto.randomUUID(),workspace=crypto.randomUUID();
+ const batch=createBatch(staff,'phuket',[a],{content:'both',layout:'combined'},workspace);
+ saveBatch(s,batch);
+ expect(loadBatch(s,workspace,batch.id,'phuket')).toBeNull();
+ expect(loadBatch(s,staff,batch.id,'phuket')?.workspaceOwner).toBe(workspace);
+ const job={id:crypto.randomUUID(),owner:workspace,hotel:'KAT',account_id:'10',invoice_ids:['1']};
+ expect(()=>assertBatchJob(batch,batch.entries[0],job)).not.toThrow();
+ expect(()=>assertBatchJob(batch,batch.entries[0],{...job,owner:staff})).toThrow();
+});
 it('persists stable creation commands scoped to the owner and region without credentials',()=>{
  const s=storage(),batch=createBatch('actor','phuket',[a,{...a,key:'b',accountId:'20'}],{content:'both',layout:'combined'});
  saveBatch(s,batch);expect(loadBatch(s,'actor',batch.id,'phuket')).toEqual(batch);expect(loadBatch(s,'another',batch.id,'phuket')).toBeNull();

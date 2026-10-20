@@ -4,7 +4,7 @@ import type {EmailDeliveryView} from '../../worker/email/shared';
 import type {BatchSelection} from './selection';
 export interface BatchOptions {content:'both'|'statement'|'invoices';layout:'combined'|'statement_bundle'|'separate'}
 export interface BatchEntry {selection:BatchSelection;commandKey:string;jobId?:string;requested?:boolean;error?:string;stage?:string;policyVersion?:number|null;mailDraftId?:string;mailRevision?:number;attempted?:boolean;delivery?:EmailDeliveryView}
-export interface BatchRecord {version:1;id:string;owner:string;region:RegionId;options:BatchOptions;entries:BatchEntry[]}
+export interface BatchRecord {version:1;id:string;owner:string;workspaceOwner?:string;region:RegionId;phase?:'pdf'|'email';options:BatchOptions;entries:BatchEntry[]}
 export interface BatchMailSnapshot {
  jobId:string;documentRevision:number;draftId:string;mailRevision:number;hotel:string;accountId:string;accountName:string;
  sender:string;purpose:'billing'|'collection';stage:string|null;policyVersion:number|null;
@@ -28,8 +28,8 @@ function validateGroups(region:RegionId,groups:BatchSelection[]){
  }
  if(count>4000)throw Error('Select up to 4,000 invoices per batch.');
 }
-export function createBatch(owner:string,region:RegionId,groups:BatchSelection[],options:BatchOptions):BatchRecord{
- validateGroups(region,groups);return {version:1,id:crypto.randomUUID(),owner,region,options:{...options},entries:groups.map(selection=>({selection:structuredClone(selection),commandKey:crypto.randomUUID(),stage:selection.stage}))};
+export function createBatch(owner:string,region:RegionId,groups:BatchSelection[],options:BatchOptions,workspaceOwner=owner):BatchRecord{
+ validateGroups(region,groups);return {version:1,id:crypto.randomUUID(),owner,workspaceOwner,region,options:{...options},entries:groups.map(selection=>({selection:structuredClone(selection),commandKey:crypto.randomUUID(),stage:selection.stage}))};
 }
 export function saveBatch(storage:StorageLike,batch:BatchRecord){storage.setItem(key(batch.owner,batch.id),JSON.stringify(batch));storage.setItem(activeKey(batch.owner,batch.region),batch.id);}
 export function removeBatch(storage:StorageLike,owner:string,id:string){const batch=loadBatch(storage,owner,id,'phuket')??loadBatch(storage,owner,id,'khao-lak');storage.removeItem(key(owner,id));if(batch&&storage.getItem(activeKey(owner,batch.region))===id)storage.removeItem(activeKey(owner,batch.region));}
@@ -38,13 +38,13 @@ export function loadBatch(storage:StorageLike,owner:string,id:string,region:Regi
  try{
   const raw=storage.getItem(key(owner,id));if(!raw||raw.length>1_000_000)return null;
   const batch:BatchRecord=JSON.parse(raw);
-  if(batch.version!==1||batch.id!==id||batch.owner!==owner||batch.region!==region||!isRegionId(batch.region)||!Array.isArray(batch.entries)||!['both','statement','invoices'].includes(batch.options?.content)||!['combined','statement_bundle','separate'].includes(batch.options?.layout)||batch.entries.some(e=>!uuid.test(e.commandKey)||e.jobId!==undefined&&!uuid.test(e.jobId)))return null;
+  if(batch.phase!==undefined&&!['pdf','email'].includes(batch.phase)||batch.version!==1||batch.id!==id||batch.owner!==owner||batch.region!==region||!isRegionId(batch.region)||!Array.isArray(batch.entries)||!['both','statement','invoices'].includes(batch.options?.content)||!['combined','statement_bundle','separate'].includes(batch.options?.layout)||batch.entries.some(e=>!uuid.test(e.commandKey)||e.jobId!==undefined&&!uuid.test(e.jobId)))return null;
   validateGroups(region,batch.entries.map(e=>e.selection));return batch;
  }catch{return null;}
 }
 export function assertBatchJob(batch:BatchRecord,entry:BatchEntry,job:Pick<DocumentJob,'id'|'owner'|'hotel'|'account_id'|'invoice_ids'>){
  const s=entry.selection;
- if(!uuid.test(job.id)||entry.jobId&&job.id!==entry.jobId||job.owner!==batch.owner||job.hotel!==s.hotel||job.account_id!==s.accountId||!Array.isArray(job.invoice_ids)||job.invoice_ids.length!==s.ids.length||new Set(job.invoice_ids).size!==job.invoice_ids.length||job.invoice_ids.some(id=>!s.ids.includes(id)))throw Error('Document identity does not match this batch account.');
+ if(!uuid.test(job.id)||entry.jobId&&job.id!==entry.jobId||job.owner!==(batch.workspaceOwner??batch.owner)||job.hotel!==s.hotel||job.account_id!==s.accountId||!Array.isArray(job.invoice_ids)||job.invoice_ids.length!==s.ids.length||new Set(job.invoice_ids).size!==job.invoice_ids.length||job.invoice_ids.some(id=>!s.ids.includes(id)))throw Error('Document identity does not match this batch account.');
 }
 export function freezeMail(rows:readonly BatchMailSnapshot[]):BatchMailSnapshot[]{
  if(!rows.length||rows.some(r=>r.blocked||!r.recipients.to.length||!r.subject.trim()||!r.files.length||r.purpose==='collection'&&(!r.stage||!r.policyVersion)))throw Error('Resolve each account’s email requirements before sending.');

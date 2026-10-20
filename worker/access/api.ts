@@ -19,7 +19,7 @@ export async function accessApi(request:Request,env:RefreshEnv,actor:string,emai
  sameOrigin(request);const url=new URL(request.url);
  if(url.pathname==='/api/access/signature')return signatureRequest(request,env,actor);
  if(url.pathname==='/api/access/me'&&request.method==='GET'){
-  if(email.toLowerCase()===administratorEmail)return json({email:administratorEmail,administrator:true,regions:['phuket','khao-lak'],revision:1});
+  if(email.toLowerCase()===administratorEmail)return json({workspaceOwnerId:actor,email:administratorEmail,administrator:true,regions:['phuket','khao-lak'],revision:1});
   if(acceptanceCookie(request))throw Error('access_forbidden');
   const data=await backendRpc<unknown>(env,'ar_access_self',{p_actor:actor});if(!data)throw Error('access_forbidden');return json(parseAccess(data));
  }
