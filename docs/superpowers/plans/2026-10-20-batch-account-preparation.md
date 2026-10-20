@@ -36,7 +36,7 @@
 - [x] **2. Batch preparation coordinator.** Add typed owner-scoped tab state and bounded creation helpers in `src/batch/`, a common preparation dialog and batch route. Reuse stable per-entry document command IDs and server identity checks. Wire App navigation/leave handling.
 - [x] **3. Editor/composer adapters.** Add optional embedded/suspend adapters to DocumentRoute, PdfWorkspace and EmailComposer. Preserve single-job behavior; expose snapshots and validated saved mail revisions without duplicating rendering or delivery code.
 - [x] **4. Batch review/send.** Render per-entry readiness and a final confirmation. Reuse existing send/check APIs, exact saved revisions and explicit stages; reconcile uncertain results without resend.
-- [ ] **5. Verification and release.** Run behavioral unit/browser regressions, actual interactive synthetic PDF/account switching and mail isolation tests, full tests/build, independent review, then scoped deployment and health verification. Record implemented/tested/deployed separately.
+- [x] **5. Verification and release.** Run behavioral unit/browser regressions, actual interactive synthetic PDF/account switching and mail isolation tests, full tests/build, independent review, then scoped deployment and health verification. Record implemented/tested/deployed separately.
 
 ## Execution ledger
 
@@ -45,4 +45,4 @@
 - Ruling: no new paid resources or database schema are required for the initial coordinator. Browser-tab batch metadata contains selectors and durable command/job IDs; it does not contain provider tokens or PDF bytes.
 - Ruling: tab-only PDF sessions require an explicit memory budget and a before-unload warning. They are not advertised as recoverable editor projects after browser closure.
 
-- Implemented tasks 1–4 using existing document/mail APIs; no schema changes. Verified 2,079 unit tests, TypeScript/build, actual synthetic browser workflows, PDF extraction/rendering and independent review. See `docs/BATCH_ACCOUNT_VERIFICATION_20261020.md`. Release checks pending.
+- Implemented tasks 1–4 using existing document/mail APIs; no schema changes. Verified 2,079 unit tests, TypeScript/build, actual synthetic browser workflows, PDF extraction/rendering and independent review. See `docs/BATCH_ACCOUNT_VERIFICATION_20261020.md`. Deployed source f7d3157; live health, anonymous access boundaries, deployed batch asset and runtime binding preservation passed. Authenticated production session was unavailable; no live Gmail send claimed.

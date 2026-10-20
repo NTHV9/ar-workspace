@@ -2,7 +2,7 @@
 
 - Implemented persistent Collections selection within a region, separate Hotel + Account + stage preparations, embedded PDF/email account switching and explicit batch review/send. Missing recipients do not block PDF work. No schema or provider configuration changes.
 - Tested: 2,079 tests / 209 files, TypeScript and production build; actual browser use with synthetic data verified edits/scans/names/Undo, missing-recipient completion, saved email isolation, navigation cancellation and uncertain-send recovery without resend. Independent review findings repaired and rechecked. [Verification and limits](BATCH_ACCOUNT_VERIFICATION_20261020.md).
-- Deployment pending. No real mail sent during feature verification.
+- Deployed/enabled source `f7d3157a6378ca56c2e0656cc8b9cd203e7db7ab`, Worker `d6515c75-da4e-45eb-aec3-725960ba3dba`. Public health reports database_verified; six unauthenticated email routes reject access. Production entry and batch chunk return the new UI. All 42 binding definitions match the previous release except COMMIT_SHA; tracker push/writeback flags remain true. Draft PR #140 contains the scoped change. No real mail sent during feature verification. The available production browser session was signed out, so authenticated production interaction is not claimed.
 
 ## 2026-10-15 — PdfCraft component reuse research
 
