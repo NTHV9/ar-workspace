@@ -3,7 +3,7 @@
 - Owner explicitly removed Confirm PDFs. Go to email now prepares the latest edited/default PDFs for every selected Account and enters shared email mode. Preview remains optional. Removed confirmation counter/button; existing send confirmation and account isolation remain.
 - Preserved exact-byte handoff retries, cached-source completeness checks, tab-only edits/scans/filenames and bounded memory. Handles a committed review with a lost response before stale editor restoration can block recovery.
 - Tested 2,089 tests / 213 files, TypeScript/build, independent review and actual synthetic UI use with edited text, scan, renamed output, unvisited Account, lost-response retry, downloaded PDF inspection and return to editing. [Evidence](BATCH_ACCOUNT_VERIFICATION_20261020.md). No real email/business writes; no database migration required.
-- Release pending.
+- Deployed/enabled source `6a3e689d701bf3194a51e734299c734441d5b843`, Worker `072fba55-576d-40c1-b200-59beac6465c7`. Public health/database and six anonymous email boundaries pass; production batch asset includes automatic PDF preparation without the confirmation gate. All 42 runtime bindings remain unchanged except COMMIT_SHA, including enabled tracker flags.
 
 ## 2026-10-20 — Simpler multi-account workspace
 
