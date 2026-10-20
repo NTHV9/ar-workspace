@@ -3,7 +3,7 @@
 - Implemented owner-approved top account strip, full-width work area, no Next-account buttons and one PDF/email mode for the entire batch. Source PDFs open directly; confirmed packages move together to email. Existing per-account draft/send behavior and server evidence checks remain.
 - Fixed saved email preservation across a newly confirmed PDF revision with an explicit atomic rebind of the same never-handed-off workspace draft. Preserves recipients/content/supplemental attachments/thread; prevents stale batch approval and handles already-sent accounts without trapping navigation. Separated staff tab ownership from shared document ownership.
 - Tested: 2,084 tests / 211 files, TypeScript/build, independent review, actual synthetic browser roundtrip/partial-send navigation and actual database rollback fixture. Applied migration `20261020091943_ar_batch_email_rebind`; no synthetic rows or business history retained. [Evidence and limits](BATCH_ACCOUNT_VERIFICATION_20261020.md).
-- Frontend/Worker release pending. No live email sent during this verification.
+- Deployed/enabled source `50ae79f2d349eb1ca2f68b056d1c818d324bca57`, Worker `75a3f14f-bb4a-490e-ab1f-5f985af95ae8`. Health/database verification and six anonymous email boundary checks pass. Production serves the top-tabs/shared-mode chunk. All 42 runtime bindings match the prior release except COMMIT_SHA; tracker push/writeback remain enabled. No live email sent during this verification.
 
 ## 2026-10-20 — Multi-account PDF and email preparation
 
