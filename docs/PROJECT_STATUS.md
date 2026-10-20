@@ -1,3 +1,10 @@
+## 2026-10-20 — Go to email prepares PDFs without per-account Confirm
+
+- Owner explicitly removed Confirm PDFs. Go to email now prepares the latest edited/default PDFs for every selected Account and enters shared email mode. Preview remains optional. Removed confirmation counter/button; existing send confirmation and account isolation remain.
+- Preserved exact-byte handoff retries, cached-source completeness checks, tab-only edits/scans/filenames and bounded memory. Handles a committed review with a lost response before stale editor restoration can block recovery.
+- Tested 2,089 tests / 213 files, TypeScript/build, independent review and actual synthetic UI use with edited text, scan, renamed output, unvisited Account, lost-response retry, downloaded PDF inspection and return to editing. [Evidence](BATCH_ACCOUNT_VERIFICATION_20261020.md). No real email/business writes; no database migration required.
+- Release pending.
+
 ## 2026-10-20 — Simpler multi-account workspace
 
 - Implemented owner-approved top account strip, full-width work area, no Next-account buttons and one PDF/email mode for the entire batch. Source PDFs open directly; confirmed packages move together to email. Existing per-account draft/send behavior and server evidence checks remain.

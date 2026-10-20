@@ -1,4 +1,6 @@
-import {pdfReadyForEmail,retainPdfSession,type BatchPhase} from './phase';
+import {createBatchPdfPreparation} from './prepare-pdfs';
+import {renderBatchPdfs} from './render-pdfs';
+import {retainPdfSession,type BatchPhase} from './phase';
 import {batchHasEdits,abandonVerifiedEntry} from './lifecycle';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {ArrowLeft,Check,FileText,RefreshCw,Send} from 'lucide-react';
@@ -17,10 +19,26 @@ const MAX_PAUSED_BYTES=192*1024*1024;
 const canSend=(mail:BatchMailSnapshot|undefined)=>!!mail&&!mail.blocked&&(!mail.delivery||mail.delivery.mode==='draft'&&mail.delivery.state==='created');
 export default function BatchRoute({owner,workspaceOwner,region,batchId,token,maxBytes,onClose,onRegisterLeave,onDirtyChange}:{owner:string;workspaceOwner:string;region:RegionId;batchId:string;token:string;maxBytes:number;onClose:()=>void;onRegisterLeave:(leave:(()=>Promise<boolean>)|null)=>void;onDirtyChange:(dirty:boolean,kind?:'pdf'|'email')=>void}){
  const [batch,setBatch]=useState(()=>{const saved=loadBatch(sessionStorage,owner,batchId,region);return saved?{...saved,workspaceOwner}:null;}),record=useRef(batch);
+ const [preparingPdf,setPreparingPdf]=useState('');
  const [active,setActive]=useState(0),[view,setView]=useState<'work'|'review'>('work'),[error,setError]=useState(''),[switching,setSwitching]=useState(false),[creating,setCreating]=useState(false),[sending,setSending]=useState(false),[,refresh]=useState(0),[sendIds,setSendIds]=useState<Set<string>>(new Set());
  const alive=useRef(true),tokenRef=useRef(token);tokenRef.current=token;
  const jobs=useRef(new Map<string,DocumentJob>()),sessions=useRef(new Map<string,DocumentBatchSession>()),mails=useRef(new Map<string,BatchMailSnapshot>()),controls=useRef(new Map<string,DocumentBatchControl>());
  const childDirty=useRef(false),busy=useRef(false),creationStarted=useRef(false),polling=useRef(false);
+ const pdfPreparation=useRef<ReturnType<typeof createBatchPdfPreparation>|null>(null);
+ if(!pdfPreparation.current)pdfPreparation.current=createBatchPdfPreparation({
+  canContinue:()=>alive.current,
+  render:async(job,session)=>{
+   const result=await renderBatchPdfs(job,session,tokenRef.current,maxBytes);
+   const other=[...sessions.current].filter(([id])=>id!==job.id).reduce((n,[,s])=>n+sessionBytes(s.sources??[],s.editor??null),0);
+   if(other+sessionBytes(result.session.sources??[],result.session.editor??null)>MAX_PAUSED_BYTES)throw Error('These accounts exceed the editing memory limit. Use a smaller batch.');
+   return result;
+  },
+  upload:(job,file)=>batchRequest(`/api/documents/${job.id}/upload?kind=export`,tokenRef.current,{method:'POST',headers:{'Content-Type':'application/pdf'},body:new Uint8Array(file.bytes).buffer}),
+  review:async(job,revision,exports)=>{
+   const result=await batchRequest<DocumentJob>(`/api/documents/${job.id}/review`,tokenRef.current,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision,exports,acknowledged:true})});
+   const current=record.current,entry=current?.entries.find(e=>e.jobId===job.id);if(!current||!entry)throw Error('The batch changed.');assertBatchJob(current,entry,result);return result;
+  }
+ });
  const {policy}=useCollectionPolicy();
  const phase:BatchPhase=batch?.phase??'pdf';
  const pdfDirty=useRef(new Map<string,boolean>());
@@ -85,16 +103,28 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   finally{if(alive.current)setSwitching(false);}
  }
  async function changePhase(next:BatchPhase){
-  if(busy.current||switching||sending)return;setSwitching(true);setError('');
+  if(busy.current||switching||sending)return;busy.current=true;setSwitching(true);setError('');
   try{
-   await captureActive();const current=record.current;if(!current||!alive.current)return;
+   const activeId=record.current?.entries[active]?.jobId,control=activeId?controls.current.get(activeId):undefined;
+   const recovering=next==='email'&&activeId&&pdfPreparation.current?.pending(activeId)&&(!control||control.sourceConflict()||control.unavailable());
+   if(!recovering)await captureActive();const current=record.current;if(!current||!alive.current)return;
    if(next==='email'){
-    const pending=current.entries.filter(e=>!e.jobId||!jobs.current.get(e.jobId)?.closed_at&&!pdfReadyForEmail(jobs.current.get(e.jobId),sessions.current.get(e.jobId)));
-    if(pending.length)throw Error(`Confirm PDFs for ${pending.map(e=>`${e.selection.accountName} (${e.selection.hotel})`).join(', ')} before opening email.`);
+    for(const [index,item] of current.entries.entries()){
+     if(!alive.current)return;
+     setPreparingPdf(`${index+1} of ${current.entries.length} · ${item.selection.accountName} (${item.selection.hotel})`);
+     try{
+      if(!item.jobId)throw Error('The source PDF request has not finished.');
+      const latest=await batchRequest<DocumentJob>(`/api/documents/${item.jobId}`,tokenRef.current);assertBatchJob(current,item,latest);
+      const prepared=await pdfPreparation.current!(latest,sessions.current.get(item.jobId));
+      if(!alive.current)return;
+      if(prepared.session)sessions.current.set(item.jobId,prepared.session);
+      pdfDirty.current.set(item.jobId,false);receiveJob(prepared.job);
+     }catch(e){if(alive.current)setActive(index);throw Error(`${item.selection.accountName} (${item.selection.hotel}): ${e instanceof Error?e.message:'PDF preparation failed. Retry Go to email.'}`);}
+    }
    }
    const updated={...current,phase:next};saveBatch(sessionStorage,updated);record.current=updated;setBatch(updated);setView('work');childDirty.current=false;
   }catch(e){setError(e instanceof Error?e.message:'Finish the current account before changing mode.');}
-  finally{if(alive.current)setSwitching(false);}
+  finally{busy.current=false;if(alive.current){setPreparingPdf('');setSwitching(false);}}
  }
 
  async function leave(){
@@ -146,17 +176,16 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
  }
  if(!batch)return <main className="page"><h1>Batch unavailable in this tab</h1><button onClick={onClose}>Back to Collections</button></main>;
  const sentCount=batch.entries.filter(e=>e.delivery?.state==='sent').length,complete=sentCount===batch.entries.length;
- const confirmedCount=batch.entries.filter(e=>e.jobId&&pdfReadyForEmail(jobs.current.get(e.jobId))&&!pdfDirty.current.get(e.jobId)).length;
  const entry=batch.entries[active],selectedMails=[...mails.current.values()].filter(m=>sendIds.has(m.jobId));
  return <section className="batch-workspace" aria-label="Selected account preparations">
-  <header className="batch-heading"><button disabled={creating||sending||switching} onClick={()=>{if(batchHasEdits(childDirty.current,sessions.current.values())){if(!confirm('Leave this batch and discard tab-only PDF edits? Draft and uncertain email files remain protected.'))return;}void leave().then(ok=>{if(ok)onClose();});}}><ArrowLeft size={17}/>Collections</button><div><h1>{complete?'Batch results':view==='review'?'Review & send':phase==='pdf'?'PDF Workspace':'Email preparation'}</h1><span>{phase==='pdf'?`${confirmedCount} of ${batch.entries.length} accounts confirmed`:`${batch.entries.length} accounts · separate emails`}</span></div>{phase==='email'&&view==='work'&&<button disabled={creating||sending||switching} onClick={()=>void changePhase('pdf')}>Back to PDFs</button>}<button className="primary-button" disabled={creating||sending||switching} onClick={()=>void (view==='review'?switchAccount(active):phase==='pdf'?changePhase('email'):reviewBatch())}>{view==='review'?'Back to emails':phase==='pdf'?'Go to email':'Review & send'}</button></header>
+  <header className="batch-heading"><button disabled={creating||sending||switching} onClick={()=>{if(batchHasEdits(childDirty.current,sessions.current.values())){if(!confirm('Leave this batch and discard tab-only PDF edits? Draft and uncertain email files remain protected.'))return;}void leave().then(ok=>{if(ok)onClose();});}}><ArrowLeft size={17}/>Collections</button><div><h1>{complete?'Batch results':view==='review'?'Review & send':phase==='pdf'?'PDF Workspace':'Email preparation'}</h1><span>{`${batch.entries.length} accounts · ${batch.entries.reduce((n,e)=>n+e.selection.ids.length,0)} invoices`}</span></div>{phase==='email'&&view==='work'&&<button disabled={creating||sending||switching} onClick={()=>void changePhase('pdf')}>Back to PDFs</button>}<button className="primary-button" disabled={creating||sending||switching} onClick={()=>void (view==='review'?switchAccount(active):phase==='pdf'?changePhase('email'):reviewBatch())}>{preparingPdf?'Preparing PDFs…':view==='review'?'Back to emails':phase==='pdf'?'Go to email':'Review & send'}</button></header>
   {error&&<p className="error-message batch-error" role="alert">{error}</p>}
   <div className="batch-layout"><nav className="batch-account-tabs" aria-label="Accounts in this batch">{batch.entries.map((item,index)=>{
    const itemJob=item.jobId?jobs.current.get(item.jobId):undefined,mail=item.jobId?mails.current.get(item.jobId):undefined;
-   const status=item.delivery?.state==='sent'?'Sent':item.error?'Needs attention':phase==='email'?(mailReady(mail)?'Ready to send':mail?.blocked?'Email needed':'Check email'):item.jobId&&pdfReadyForEmail(itemJob)&&!pdfDirty.current.get(item.jobId)?'PDFs confirmed':itemJob?.state==='ready'?'Review PDFs':itemJob?.state??(item.requested?'Preparing…':'Waiting');
+   const status=item.delivery?.state==='sent'?'Sent':item.error?'Needs attention':phase==='email'?(mailReady(mail)?'Ready to send':mail?.blocked?'Email needed':'Check email'):itemJob?.state==='ready'?(item.jobId&&pdfDirty.current.get(item.jobId)?'Editing PDF':'PDF ready'):itemJob?.state??(item.requested?'Preparing…':'Waiting');
    return <button key={item.commandKey} disabled={creating||switching||sending} aria-pressed={index===active} onClick={()=>void switchAccount(index)}><strong>{item.selection.accountName}</strong><span><b>{item.selection.hotel}</b><small>{stageLabel(item.stage??item.selection.stage,policy)} · {status}</small></span></button>;
   })}</nav><div className="batch-content">
-   {view==='work'?(entry?.jobId?<DocumentRoute key={`${entry.jobId}:${phase}`} token={token} jobId={entry.jobId} maxBytes={maxBytes} backLabel="Back to accounts" onClose={()=>void (phase==='email'?reviewBatch():changePhase('email'))} onDirtyChange={reportDirty} batch={{scope:{batch,entry},phase,onPdfDirtyChange:dirty=>reportPdfDirty(entry.jobId!,dirty),initialSession:sessions.current.get(entry.jobId),stage:entry.stage??entry.selection.stage,onJob:receiveJob,onRegisterControl:control=>{if(control)controls.current.set(entry.jobId!,control);else controls.current.delete(entry.jobId!);},onPhaseChange:next=>void changePhase(next),onReview:()=>void reviewBatch()}}/>:<section className="batch-wait"><FileText size={30}/><h2>{entry?.selection.accountName}</h2><p>{creating?'Preparing account requests…':entry?.error??'The request has not been confirmed.'}</p>{!creating&&<button onClick={()=>void createEntries(true)}>Retry existing preparation requests</button>}</section>):<section className="batch-review"><h2>{complete?'All selected emails sent':'Separate emails for each account'}</h2><div className="batch-review-table"><table><thead><tr><th>Select</th><th>Account / Hotel</th><th>Recipients / Files</th><th>Status</th><th></th></tr></thead><tbody>{batch.entries.map((item,index)=>{
+   {preparingPdf?<section className="batch-wait" role="status"><FileText size={30}/><h2>Preparing PDFs for email</h2><p>{preparingPdf}</p></section>:view==='work'?(entry?.jobId?<DocumentRoute key={`${entry.jobId}:${phase}`} token={token} jobId={entry.jobId} maxBytes={maxBytes} backLabel="Back to accounts" onClose={()=>void (phase==='email'?reviewBatch():changePhase('email'))} onDirtyChange={reportDirty} batch={{scope:{batch,entry},phase,onPdfDirtyChange:dirty=>reportPdfDirty(entry.jobId!,dirty),initialSession:sessions.current.get(entry.jobId),stage:entry.stage??entry.selection.stage,onJob:receiveJob,onRegisterControl:control=>{if(control)controls.current.set(entry.jobId!,control);else controls.current.delete(entry.jobId!);},onPhaseChange:next=>void changePhase(next),onReview:()=>void reviewBatch()}}/>:<section className="batch-wait"><FileText size={30}/><h2>{entry?.selection.accountName}</h2><p>{creating?'Preparing account requests…':entry?.error??'The request has not been confirmed.'}</p>{!creating&&<button onClick={()=>void createEntries(true)}>Retry existing preparation requests</button>}</section>):<section className="batch-review"><h2>{complete?'All selected emails sent':'Separate emails for each account'}</h2><div className="batch-review-table"><table><thead><tr><th>Select</th><th>Account / Hotel</th><th>Recipients / Files</th><th>Status</th><th></th></tr></thead><tbody>{batch.entries.map((item,index)=>{
     const mail=item.jobId?mails.current.get(item.jobId):undefined,delivery=item.delivery??mail?.delivery,status=delivery?.state==='sent'?'Sent and verified':delivery?delivery.state.replaceAll('_',' '):item.error?'Check outcome':mailReady(mail)?'Ready to send':mail?.blocked??'Review PDFs and email';
     return <tr key={item.commandKey}><td><input type="checkbox" aria-label={`Send ${item.selection.accountName} ${item.selection.hotel} ${item.selection.stage}`} checked={!!item.jobId&&sendIds.has(item.jobId)} disabled={sending||switching||!mailReady(mail)} onChange={e=>setSendIds(old=>{const next=new Set(old);if(item.jobId)e.target.checked?next.add(item.jobId):next.delete(item.jobId);return next;})}/></td><td><strong>{item.selection.accountName}</strong><small>{item.selection.hotel} · {stageLabel(mail?.stage??item.selection.stage,policy)}</small></td><td>{mail?<details><summary>{mail.recipients.to.join(', ')||'Email needed'} · {mail.files.length} files</summary><p>From: {mail.sender}</p><p>CC: {mail.recipients.cc.join(', ')||'None'}<br/>BCC: {mail.recipients.bcc.join(', ')||'None'}</p><p>{mail.subject}</p><ul>{mail.files.map((f,n)=><li key={n}>{f}</li>)}</ul></details>:<span>Not reviewed yet</span>}</td><td><span className={delivery?.state==='sent'?'batch-sent':''}>{delivery?.state==='sent'&&<Check size={14}/>} {status}</span>{item.error&&<small>{item.error}</small>}</td><td><button disabled={sending||switching} onClick={()=>void switchAccount(index)}>Review</button>{item.mailDraftId&&(item.attempted||delivery)&&<button disabled={sending||switching||delivery?.state==='sent'} onClick={()=>void checkEntry(item)}><RefreshCw size={14}/>Check status</button>}</td></tr>;
    })}</tbody></table></div><footer><span>{complete?`${sentCount} emails sent`:`${sentCount?`${sentCount} sent · `:''}${selectedMails.filter(mailReady).length} emails ready`}</span><button className="primary-button" disabled={sending||switching||!complete&&(!selectedMails.length||selectedMails.some(m=>!mailReady(m)))} onClick={()=>{if(complete)void leave().then(ok=>{if(ok)onClose();});else void sendSelected();}}>{complete?<ArrowLeft size={16}/>:<Send size={16}/>}{complete?'Back to Collections':sending?'Sending and verifying…':`Send ${selectedMails.length} emails`}</button></footer></section>}

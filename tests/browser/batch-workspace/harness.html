@@ -1,6 +1,6 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="connect-src 'self' blob:"><title>Synthetic batch workspace — no provider access</title></head>
-<body><div id="root"></div><details id="fixture-audit" style="position:fixed;right:8px;bottom:8px;z-index:100;background:white;border:1px solid #ccd9e8;padding:8px;font:12px Arial;max-width:420px;max-height:220px;overflow:auto"><summary>Synthetic test audit</summary><button id="download-scan">Download synthetic scan</button><label><input type="checkbox" id="allow-confirm">Allow confirmations</label><button id="test-navigation">Try main navigation</button><button id="uncertain-next">Make next send uncertain</button><pre id="audit-results"></pre></details>
+<body><div id="root"></div><details id="fixture-audit" style="position:fixed;right:8px;bottom:8px;z-index:100;background:white;border:1px solid #ccd9e8;padding:8px;font:12px Arial;max-width:420px;max-height:220px;overflow:auto"><summary>Synthetic test audit</summary><button id="download-scan">Download synthetic scan</button><label><input type="checkbox" id="allow-confirm">Allow confirmations</label><button id="test-navigation">Try main navigation</button><button id="uncertain-next">Make next send uncertain</button><button id="lost-pdf-review">Lose next PDF review response</button><pre id="audit-results"></pre></details>
 <script type="module">
 import React from 'react';import {createRoot} from 'react-dom/client';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
@@ -17,9 +17,10 @@ const storageKey='ar-batch-fixture-server-v1',fresh={jobs:{},commands:{},bytes:{
 let db=JSON.parse(sessionStorage.getItem(storageKey)||'null')||fresh;
 const encode=b=>btoa(Array.from(b,c=>String.fromCharCode(c)).join('')),decode=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const hash=async b=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(b)))].map(n=>n.toString(16).padStart(2,'0')).join('');
-function audit(){sessionStorage.setItem(storageKey,JSON.stringify(db));document.getElementById('audit-results').textContent=JSON.stringify({fixtureVersion:2,drafts:Object.values(db.drafts).map(d=>({hotel:d.hotel,documentRevision:d.document_revision,currentPdfRevision:db.jobs[d.document_job_id].revision,subject:d.subject})),createdJobs:Object.keys(db.jobs).length,confirmations:db.confirmations??[],uncertainNext:!!db.uncertainNext,sends:db.sends,requests:db.requests.slice(-12)},null,2);}
+function audit(){sessionStorage.setItem(storageKey,JSON.stringify(db));document.getElementById('audit-results').textContent=JSON.stringify({fixtureVersion:3,lostPdfReview:!!db.lostPdfReview,drafts:Object.values(db.drafts).map(d=>({hotel:d.hotel,documentRevision:d.document_revision,currentPdfRevision:db.jobs[d.document_job_id].revision,subject:d.subject})),createdJobs:Object.keys(db.jobs).length,confirmations:db.confirmations??[],uncertainNext:!!db.uncertainNext,sends:db.sends,requests:db.requests.slice(-12)},null,2);}
 window.confirm=message=>{(db.confirmations??=[]).push(message);audit();return document.getElementById('allow-confirm').checked;};
 document.getElementById('test-navigation').onclick=()=>Array.from(document.querySelectorAll('nav[aria-label="Main navigation"] button')).find(b=>b.textContent==='Aging')?.click();
+document.getElementById('lost-pdf-review').onclick=()=>{db.lostPdfReview=true;audit();};
 document.getElementById('uncertain-next').onclick=()=>{db.uncertainNext=true;audit();};
 const sourcePdf=await PDFDocument.create(),font=await sourcePdf.embedFont(StandardFonts.Helvetica),bold=await sourcePdf.embedFont(StandardFonts.HelveticaBold),page=sourcePdf.addPage([595,842]);
 page.drawText('SYNTHETIC INVOICE — TEST ONLY'.replace('—','-'),{x:45,y:790,size:16,font:bold});
@@ -69,8 +70,9 @@ window.fetch=async(input,init={})=>{
    const bytes=new Uint8Array(await req.arrayBuffer()),key=`jobs/${job.id}/exports/${crypto.randomUUID()}.pdf`;db.bytes[key]=encode(bytes);return json({storage_key:key,byte_count:bytes.length,sha256:await hash(bytes)});
   }
   if(doc[2]==='review'){
+   if(body.revision+1===job.revision&&JSON.stringify(body.exports)===JSON.stringify(job.exports))return json(job);
    if(body.revision!==job.revision)return json({error:'document_revision_conflict'},409);
-   job.revision++;job.exports=body.exports;job.acknowledged=true;return json(job);
+   job.revision++;job.exports=body.exports;job.acknowledged=true;if(db.lostPdfReview){db.lostPdfReview=false;return json({error:'simulated_lost_pdf_response'},503);}return json(job);
   }
   if(doc[2]==='abandon'||doc[2]==='discard'){job.closed_at=new Date().toISOString();job.closed_reason='discarded';return json(doc[2]==='abandon'?{job,outcome:'discarded'}:job);}
   if(doc[2]?.startsWith('exports/')){const file=job.exports[Number(doc[2].split('/')[1])];return new Response(decode(db.bytes[file.storage_key]),{headers:{'Content-Type':'application/pdf'}});}
