@@ -94,17 +94,29 @@ export class PdfLayerEditError extends Error {
   this.kind=error instanceof SourceFontError?'source-font':'layer';
  }
 }
+function rebindSourceLayer(page:PdfProjectPage,layer:PdfLayer,runs:DetectedText[]){
+ validateDeletedLayer(layer);
+ if(layer.formField&&!runs.some(run=>run.field===layer.formField!.type&&run.sourceText?.runIndex===layer.formField!.runIndex))throw Error('Document field no longer matches this source. Reopen the original.');
+ if(!layer.sourceText&&!layer.deleted)return undefined;
+ const ref=layer.sourceText;
+ const run=ref?runs.find(r=>r.sourceText?.runIndex===ref.runIndex):runs.find(r=>layer.original&&r.text===layer.original.text&&Math.abs(r.x-layer.original.x)<.01&&Math.abs(r.y-layer.original.y)<.01);
+ if(ref&&(ref.sourceId!==page.sourceId||ref.sourcePage!==page.sourcePage)||!run||!layer.original||run.text!==layer.original.text||Math.abs(run.x-layer.original.x)>.01||Math.abs(run.y-layer.original.y)>.01)throw Error('Source text no longer matches this document. Reopen the original.');
+ if(run.sourceText)layer.sourceText={...run.sourceText};return run;
+}
+/** Rebind only source identity/fonts; unfinished geometry remains editable. */
+export async function rebindProjectSources(project:PdfProject,documents:Map<string,PDFDocumentProxy>){
+ for(const page of project.pages){
+  if(!page.layers.some(l=>l.sourceText||l.deleted||l.formField))continue;
+  const runs=await detectText(page,documents);for(const layer of page.layers)rebindSourceLayer(page,layer,runs);
+ }
+}
 async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,tolerant=false,applied:ReadonlySet<string>=new Set()){
  const issues:RenderIssue[]=[],valid:PdfLayer[]=[],masks=new Map<string,TextMask>();
  const runs=page.layers.some(l=>l.original||l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
  for(const layer of page.layers){try{
-  validateDeletedLayer(layer);
-  if(layer.formField&&!runs.some(run=>run.field===layer.formField!.type&&run.sourceText?.runIndex===layer.formField!.runIndex))throw Error('Document field no longer matches this source. Reopen the original.');
+  const run=rebindSourceLayer(page,layer,runs);
   if(layer.sourceText||layer.deleted){
-   const ref=layer.sourceText;
-   const run=ref?runs.find(r=>r.sourceText?.runIndex===ref.runIndex):runs.find(r=>layer.original&&r.text===layer.original.text&&Math.abs(r.x-layer.original.x)<.01&&Math.abs(r.y-layer.original.y)<.01);
-   if(ref&&(ref.sourceId!==page.sourceId||ref.sourcePage!==page.sourcePage)||!run||!layer.original||run.text!==layer.original.text||Math.abs(run.x-layer.original.x)>.01||Math.abs(run.y-layer.original.y)>.01)throw Error('Source text no longer matches this document. Reopen the original.');
-   if(run.sourceText)layer.sourceText={...run.sourceText};
+   if(!run)throw Error('Source text could not be restored.');
    const alreadyReplaced=valid.some(previous=>replacementForRun({...page,layers:[previous]},run));
    if(!alreadyReplaced&&sourceAppearanceUnchanged(layer,run,mapSourceTextRect(run,page.rowEdits??[],sourceStyle(layer)?.baseline)))continue;
   }

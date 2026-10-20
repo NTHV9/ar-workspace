@@ -1,3 +1,4 @@
+import {restoreEditorSession,type PdfEditorSession,type PdfEditorControl} from './editor-session';
 import {InvoiceAttachments} from './InvoiceAttachments';
 import {FilenameField} from './FilenameField';
 import {defaultPdfFilename,deliveryFilenames} from './filenames';
@@ -20,14 +21,14 @@ import {deleteTextLayer,replacementForRun,sourceRunDeleted} from './source-edits
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import { ArrowDown, ArrowUp, Check, ChevronDown, ImagePlus, Plus, Redo2, Trash2, Undo2, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { detectText, exportProject, loadSources, renderPage, PdfLayerEditError } from './engine';
+import { detectText, exportProject, loadSources, renderPage, rebindProjectSources, PdfLayerEditError } from './engine';
 import { deliveryGroups, movePage, restoreProject } from './model';
 import {displayScale,observeDisplay} from './display';
 import type { DetectedText, PdfExportFile, PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument } from './types';
 import './pdf-workspace.css';
 export type { PdfExportFile, PdfProject, PdfSourceDocument } from './types';
 
-type Props = { maxBytes?:number; onDirtyChange?:(dirty:boolean)=>void; transient?:boolean; onReview?:(files:PdfExportFile[],next:'email'|'download')=>Promise<void|(()=>void)>; documents: PdfSourceDocument[]; initialProject?: PdfProject; initialDelivery?: PdfProject['delivery']; initialReviewed?:boolean; onContinueToEmail?:()=>void; accountName: string; hotel: string; selectedCount: number; onClose: () => void|Promise<void>; onSave?: (files: PdfExportFile[], project: PdfProject) => Promise<void>; onSaveDraft?: (project: PdfProject) => Promise<void> };
+type Props = { embedded?:boolean;initialSession?:PdfEditorSession;onRegisterControl?:(control:PdfEditorControl|null)=>void; maxBytes?:number; onDirtyChange?:(dirty:boolean)=>void; transient?:boolean; onReview?:(files:PdfExportFile[],next:'email'|'download')=>Promise<void|(()=>void)>; documents: PdfSourceDocument[]; initialProject?: PdfProject; initialDelivery?: PdfProject['delivery']; initialReviewed?:boolean; onContinueToEmail?:()=>void; accountName: string; hotel: string; selectedCount: number; onClose: () => void|Promise<void>; onSave?: (files: PdfExportFile[], project: PdfProject) => Promise<void>; onSaveDraft?: (project: PdfProject) => Promise<void> };
 const fonts = ['Arial', 'Georgia', 'Courier New', 'Tahoma', 'Plus Jakarta Sans'];
 const uid = () => crypto.randomUUID();
 
@@ -46,7 +47,7 @@ function PageCanvas({ page, documents, className = '', scale = 1.5 }: { page: Pd
   return <div className={`pdf-canvas ${className}`} data-render-state={rendered===page?'ready':'rendering'} aria-label="PDF page"><div className="pdf-canvas-art" ref={container}/>{error&&<span className="pdf-canvas-warning" title={error} aria-label={error}>!</span>}</div>;
 }
 
-export function PdfWorkspace({ maxBytes=67108864,onDirtyChange, transient=false, onReview, documents: sources, initialProject, initialDelivery='combined', initialReviewed=false,onContinueToEmail, accountName, hotel, selectedCount, onClose, onSave, onSaveDraft }: Props) {
+export function PdfWorkspace({ embedded=false,initialSession,onRegisterControl,maxBytes=67108864,onDirtyChange, transient=false, onReview, documents: sources, initialProject, initialDelivery='combined', initialReviewed=false,onContinueToEmail, accountName, hotel, selectedCount, onClose, onSave, onSaveDraft }: Props) {
   const [companion,setCompanion]=useState(()=>matchMedia('(max-width:899px)').matches);
   useEffect(()=>{const media=matchMedia('(max-width:899px)'),change=()=>setCompanion(media.matches);media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
   const [attachedSources,setAttachedSources]=useState<PdfSourceDocument[]>([]);
@@ -89,11 +90,20 @@ export function PdfWorkspace({ maxBytes=67108864,onDirtyChange, transient=false,
   useEffect(() => { if (!dirty && !busy && !(transient && past.length > 0)) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [dirty, busy, transient, past.length]);
   useEffect(() => {
     let current = true; let dispose: (() => void) | undefined;
-    revision.current++; reviewedProject.current = null;setAttachedSources([]);attachmentDisposers.current=[];
+    revision.current++; reviewedProject.current = null;setAttachedSources(initialSession?.attachedSources??[]);attachmentDisposers.current=[];
     setProject(null); setPersistedProject(null); setDraftSaved(false); setCloseConfirm(false); setError(''); setPreview(null); setViewed([]); setSaved(false); setSelected('');
-    loadSources(sources).then(result => { dispose = result.dispose; if (current) { sourceModel.current=result.project; const restored = initialProject ? restoreProject(initialProject, result.project,sources) : {...result.project,delivery:initialDelivery}; setLoaded(result.documents); setProject(restored); setPersistedProject(restored); setActiveId(restored.pages[0]?.id || ''); setPast([]); setFuture([]); } else dispose(); }).catch(e => { dispose?.(); if (current) setError(e instanceof Error ? e.message : 'Unable to open PDF.'); });
+    const catalog=[...sources,...initialSession?.attachedSources??[]];
+    loadSources(catalog).then(async result => { dispose=result.dispose;if(!current){dispose();return;}sourceModel.current=result.project;
+      const session=initialSession?await restoreEditorSession(initialSession,result.project,catalog,p=>rebindProjectSources(p,result.documents)):null;
+      const restored=session?.project??(initialProject?restoreProject(initialProject,result.project,catalog):{...result.project,delivery:initialDelivery});
+      if(!current){dispose();return;}setLoaded(result.documents);setProject(restored);setPersistedProject(session?session.persistedProject:restored);setActiveId(session?.activeId??restored.pages[0]?.id??'');setPast(session?.past??[]);setFuture(session?.future??[]);
+    }).catch(e=>{dispose?.();if(current)setError(e instanceof Error?e.message:'Unable to open PDF.');});
     return () => { current = false; revision.current++; dispose?.();for(const release of attachmentDisposers.current)release();attachmentDisposers.current=[]; };
-  }, [sources, initialProject, initialDelivery]);
+  }, [sources, initialProject, initialDelivery,initialSession]);
+  useEffect(()=>{onRegisterControl?.({busy:()=>busy||attachmentLoading.current||!project||!!preview&&previewRendering,capture:()=>{
+    if(!project||!loaded.size||busy||attachmentLoading.current||pendingNames.size||drag.current||preview&&previewRendering)throw Error('Finish the current PDF operation before switching accounts.');
+    return {project,persistedProject,past,future,attachedSources,activeId,dirty:project!==persistedProject};
+  }});return()=>onRegisterControl?.(null);});
   const outputGroups=project?deliveryGroups(project,allSources):[];
   let outputNames:string[]=[],outputNameError='';
   if(project)try{outputNames=deliveryFilenames(project,outputGroups);}catch(e){outputNameError=e instanceof Error?e.message:'Choose valid output filenames before previewing.';outputNames=outputGroups.map((group,index)=>project.outputNames?.[group.id]??defaultPdfFilename(group,index));}
@@ -276,7 +286,7 @@ export function PdfWorkspace({ maxBytes=67108864,onDirtyChange, transient=false,
     const added = current.filter(p => p.sourcePage === null).length;
     return [...(removed.length ? [`${source.name}: removed original page${removed.length > 1 ? 's' : ''} ${removed.join(', ')}`] : []), ...(reordered ? [`${source.name}: original page order ${order.join(' → ')}`] : []), ...(added ? [`${source.name}: ${added} blank page${added > 1 ? 's' : ''} added`] : [])];
   }) : [];
-  return <div className="pdf-workspace" data-companion={companion} data-guides={showGuides} data-package-open={packageOpen} ref={workspace} role="dialog" aria-modal={!preview&&!closeConfirm} aria-label="PDF Workspace" onKeyDown={event => {
+  return <div className={`pdf-workspace${embedded?' batch-embedded':''}`} data-companion={companion} data-guides={showGuides} data-package-open={packageOpen} ref={workspace} role="dialog" aria-modal={!embedded&&!preview&&!closeConfirm} aria-label="PDF Workspace" onKeyDown={event => {
     if (event.key === 'Escape' && closeConfirm) { event.preventDefault(); setCloseConfirm(false); return; }
     if (event.key === 'Escape' && busy) { event.preventDefault();return; }
     if (event.key === 'Escape' && preview) { event.preventDefault(); setPreview(null); return; }

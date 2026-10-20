@@ -1,0 +1,6 @@
+export async function batchRequest<T>(path:string,token:string,init:RequestInit={}):Promise<T>{
+ const response=await fetch(path,{...init,headers:{Authorization:`Bearer ${token}`,...init.headers}});
+ const result=await response.json();
+ if(!response.ok){const code=result&&typeof result==='object'&&'error' in result&&typeof result.error==='string'?result.error:null;const messages:Record<string,string>={email_policy_revision_conflict:'Collection rules changed. Reload this batch and review the stage again.',email_revision_conflict:'This email changed in another session. Reopen the account and review it again.',email_incomplete:'Add recipients, subject and message before sending.',email_handoff_pending:'A previous Gmail request needs verification. Check its existing status.',email_invoice_on_hold:'An invoice is now on hold. Review the account before sending.',email_invoice_review_required:'An invoice needs review before sending.',email_package_changed:'The reviewed PDFs changed. Review the current package before sending.'};throw Error(code?(messages[code]??code.replaceAll('_',' ')):'This request could not be confirmed. Check its existing result before retrying.');}
+ return result as T;
+}

@@ -1,3 +1,9 @@
+## 2026-10-20 — Multi-account PDF and email preparation
+
+- Implemented persistent Collections selection within a region, separate Hotel + Account + stage preparations, embedded PDF/email account switching and explicit batch review/send. Missing recipients do not block PDF work. No schema or provider configuration changes.
+- Tested: 2,079 tests / 209 files, TypeScript and production build; actual browser use with synthetic data verified edits/scans/names/Undo, missing-recipient completion, saved email isolation, navigation cancellation and uncertain-send recovery without resend. Independent review findings repaired and rechecked. [Verification and limits](BATCH_ACCOUNT_VERIFICATION_20261020.md).
+- Deployment pending. No real mail sent during feature verification.
+
 ## 2026-10-15 — PdfCraft component reuse research
 
 - Inspected tagged v0.8.0 source modules and current Workspace exporter. Strong candidates are text-plus-visual comparison, opt-in pre-review optimization and a selectively qualified native text-edit/export path. Existing edited-page export is rasterized; native editing could preserve selectable text but must retain redaction/full-rewrite safeguards. No code integration or production changes made.

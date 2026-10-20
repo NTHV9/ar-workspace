@@ -1,0 +1,103 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="connect-src 'self' blob:"><title>Synthetic batch workspace — no provider access</title></head>
+<body><div id="root"></div><details id="fixture-audit" style="position:fixed;right:8px;bottom:8px;z-index:100;background:white;border:1px solid #ccd9e8;padding:8px;font:12px Arial;max-width:420px;max-height:220px;overflow:auto"><summary>Synthetic test audit</summary><button id="download-scan">Download synthetic scan</button><label><input type="checkbox" id="allow-confirm">Allow confirmations</label><button id="test-navigation">Try main navigation</button><button id="uncertain-next">Make next send uncertain</button><pre id="audit-results"></pre></details>
+<script type="module">
+import React from 'react';import {createRoot} from 'react-dom/client';
+import {PDFDocument,StandardFonts} from 'pdf-lib';
+import {App} from '/src/App.tsx';
+import {tabAuthOptions} from '/src/access/tab-session.ts';
+import {policyFixture} from '../fixtures/collection-policy.ts';
+import '@fontsource/plus-jakarta-sans/latin-400.css';import '@fontsource/plus-jakarta-sans/latin-500.css';import '@fontsource/plus-jakarta-sans/latin-600.css';import '@fontsource/plus-jakarta-sans/latin-700.css';
+import '/src/styles.css';import '/src/ui-depth.css';import '/src/ui-typography.css';
+const owner='11111111-1111-4111-8111-111111111111',user={id:owner,email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-01T00:00:00Z'};
+const auth=tabAuthOptions('https://example.supabase.co');
+sessionStorage.setItem(auth.storageKey,JSON.stringify({access_token:'synthetic',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+86400,token_type:'bearer',user}));
+if(!location.search)history.replaceState(null,'','?collections=1&region=phuket');
+const storageKey='ar-batch-fixture-server-v1',fresh={jobs:{},commands:{},bytes:{},drafts:{},opened:{},sends:[],requests:[]};
+let db=JSON.parse(sessionStorage.getItem(storageKey)||'null')||fresh;
+const encode=b=>btoa(Array.from(b,c=>String.fromCharCode(c)).join('')),decode=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const hash=async b=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(b)))].map(n=>n.toString(16).padStart(2,'0')).join('');
+function audit(){sessionStorage.setItem(storageKey,JSON.stringify(db));document.getElementById('audit-results').textContent=JSON.stringify({createdJobs:Object.keys(db.jobs).length,confirmations:db.confirmations??[],uncertainNext:!!db.uncertainNext,sends:db.sends,requests:db.requests.slice(-12)},null,2);}
+window.confirm=message=>{(db.confirmations??=[]).push(message);audit();return document.getElementById('allow-confirm').checked;};
+document.getElementById('test-navigation').onclick=()=>Array.from(document.querySelectorAll('nav[aria-label="Main navigation"] button')).find(b=>b.textContent==='Aging')?.click();
+document.getElementById('uncertain-next').onclick=()=>{db.uncertainNext=true;audit();};
+const sourcePdf=await PDFDocument.create(),font=await sourcePdf.embedFont(StandardFonts.Helvetica),bold=await sourcePdf.embedFont(StandardFonts.HelveticaBold),page=sourcePdf.addPage([595,842]);
+page.drawText('SYNTHETIC INVOICE — TEST ONLY'.replace('—','-'),{x:45,y:790,size:16,font:bold});
+page.drawText('EDIT THIS ADDRESS',{x:45,y:735,size:12,font});
+page.drawText('100 Sample Road',{x:45,y:714,size:12,font});
+page.drawText('DATE          DESCRIPTION                          AMOUNT',{x:45,y:660,size:10,font:bold});
+page.drawText('01/10/26       Accommodation                          100.00',{x:45,y:636,size:10,font});
+page.drawText('Total amount                                                100.00 THB',{x:45,y:590,size:11,font:bold});
+const sourceBytes=await sourcePdf.save(),sourceHash=await hash(sourceBytes);
+const canvas=document.createElement('canvas');canvas.width=900;canvas.height=1100;const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,900,1100);ctx.fillStyle='#18324c';ctx.font='28px Arial';ctx.fillText('SYNTHETIC SCANNED SUPPORT',50,100);ctx.font='22px Arial';ctx.fillText('Attachment must stay with its account.',50,155);const scan=await PDFDocument.create(),scanImage=await scan.embedPng(canvas.toDataURL('image/png'));scan.addPage([595,750]).drawImage(scanImage,{x:0,y:0,width:595,height:750});const scanBytes=await scan.save();
+document.getElementById('download-scan').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([scanBytes],{type:'application/pdf'}));a.download='Synthetic scan.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
+const accounts=[{id:'10',hotel:'KAT',name:'Azure Travel · Synthetic',type:'OTA',open:200,items:2,over90:0},{id:'10',hotel:'TSK',name:'Bay Travel · Synthetic',type:'OTA',open:100,items:1,over90:0},{id:'20',hotel:'KAT',name:'Coral Travel · Synthetic',type:'OTA',open:100,items:1,over90:0}];
+const rows=accounts.flatMap((a,index)=>Array.from({length:a.items},(_,i)=>({hotel:a.hotel,account_id:a.id,account_name:a.name,account_type:'OTA',id:String(index===0?101+i:index===1?101:201),guest:'Synthetic Guest '+(i+1),invoice_no:String(index===0?1001+i:index===1?2001:3001),folio_no:String(index===0?5001+i:index===1?6001:7001),open:100,transaction_date:'2026-09-01',collection_role:'standalone',collection_selectable:true,verification_state:'verified',workflow:{revision:1,billing_required:true,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:null}})));
+const originalFetch=window.fetch.bind(window);
+window.fetch=async(input,init={})=>{
+ const url=new URL(input instanceof Request?input.url:String(input),location.origin),path=url.pathname,method=init.method??(input instanceof Request?input.method:'GET');
+ if(url.hostname==='example.supabase.co')return Response.json(path.includes('/user')?{user}:{});
+ if(url.origin===location.origin&&!path.startsWith('/api/'))return originalFetch(input,init);
+ if(url.origin!==location.origin)throw Error('Synthetic harness blocks external provider access');
+ const req=new Request(url,input instanceof Request?input:init),body=method==='GET'?null:(req.headers.get('Content-Type')??'').includes('application/json')?await req.json():null;
+ db.requests.push(method+' '+path);const json=(value,status=200)=>{audit();return Response.json(value,{status});};
+ if(path==='/api/config')return json({supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',documentEditorMaxBytes:67108864});
+ if(path==='/api/access/me')return json({memberId:owner,email:user.email,administrator:true,regions:['phuket','khao-lak'],revision:1});
+ if(path==='/api/access/signature')return json({revision:1,enabled:false,signature:{staffId:owner,name:'Synthetic Staff',title:'AR',workplace:''}});
+ if(path==='/api/collection-policy')return json(policyFixture);
+ if(path==='/api/portfolio')return json({status:'connected',accounts,refresh:{running:false,hotels:[]}});
+ if(path==='/api/refresh')return json({jobs:[],running:false,hotels:[]});
+ if(path==='/api/collection-queue')return json({rows});
+ if(path==='/api/mail-reconciliation')return json({enabled:false,intervalMinutes:15,waiting:0,needsReview:0,last:null});
+ if(path==='/api/gmail/status')return json({region:'phuket',expectedEmail:'ar@katathani.com',email:'ar@katathani.com',configured:true,connected:true,canRead:true,maxAttachmentBytes:10485760});
+ if(path==='/api/documents'&&method==='POST'){
+  if(db.commands[body.commandKey])return json(db.jobs[db.commands[body.commandKey]]);
+  const account=accounts.find(a=>a.id===body.accountId&&a.hotel===body.hotel);if(!account)return json({error:'document_scope_invalid'},403);
+  const chosen=rows.filter(r=>r.hotel===body.hotel&&r.account_id===body.accountId&&body.ids.includes(r.id));if(chosen.length!==body.ids.length)return json({error:'document_selection_invalid'},409);
+  const id=crypto.randomUUID(),manifest=chosen.map(r=>({id:r.id,hotel:r.hotel,account_id:r.account_id,invoice_no:r.invoice_no,folio_no:r.folio_no,reservation_id:'1',folio_date:'2026-10-01',open:r.open,collection_role:'standalone'}));
+  const definitions=[...body.content!=='invoices'?[{kind:'statement',invoice_id:null}]:[],...body.content!=='statement'?chosen.map(r=>({kind:'invoice',invoice_id:r.id})):[]];
+  const files=definitions.map((d,i)=>{const fileId=crypto.randomUUID(),key=`jobs/${id}/originals/${fileId}.pdf`;db.bytes[key]=encode(sourceBytes);return {...d,id:fileId,ordinal:i+1,state:'ready',storage_key:key,error_code:null,byte_count:sourceBytes.length,sha256:sourceHash};});
+  const job={id,owner,hotel:body.hotel,account_id:body.accountId,account_name:account.name,invoice_ids:body.ids,manifest,content:body.content,layout:body.layout,purpose:body.purpose,state:'ready',revision:0,project_key:null,exports:[],acknowledged:false,files,lifecycle:'transient',invoice_source:'workspace',invoice_template_version:'invoice-rtf-20260921-v2',statement_source:'workspace',created_at:new Date().toISOString()};
+  db.jobs[id]=job;db.commands[body.commandKey]=id;return json(job);
+ }
+ const doc=/^\/api\/documents\/([^/]+)(?:\/(.*))?$/.exec(path);
+ if(doc){
+  const job=db.jobs[doc[1]];if(!job)return json({error:'document_missing'},404);
+  if(!doc[2]&&method==='GET')return json(job);
+  if(doc[2]?.startsWith('files/')){const file=job.files.find(f=>f.id===doc[2].split('/')[1]);return file?new Response(decode(db.bytes[file.storage_key]),{headers:{'Content-Type':'application/pdf'}}):json({error:'missing'},404);}
+  if(doc[2]==='upload'){
+   const bytes=new Uint8Array(await req.arrayBuffer()),key=`jobs/${job.id}/exports/${crypto.randomUUID()}.pdf`;db.bytes[key]=encode(bytes);return json({storage_key:key,byte_count:bytes.length,sha256:await hash(bytes)});
+  }
+  if(doc[2]==='review'){
+   if(body.revision!==job.revision)return json({error:'document_revision_conflict'},409);
+   job.revision++;job.exports=body.exports;job.acknowledged=true;return json(job);
+  }
+  if(doc[2]==='abandon'||doc[2]==='discard'){job.closed_at=new Date().toISOString();job.closed_reason='discarded';return json(doc[2]==='abandon'?{job,outcome:'discarded'}:job);}
+  if(doc[2]?.startsWith('exports/')){const file=job.exports[Number(doc[2].split('/')[1])];return new Response(decode(db.bytes[file.storage_key]),{headers:{'Content-Type':'application/pdf'}});}
+ }
+ if(path==='/api/email/open'){
+  const job=db.jobs[body.jobId];if(!job||!job.acknowledged||job.revision!==body.documentRevision)return json({error:'email_package_not_reviewed'},409);
+  if(db.opened[job.id])return json(db.drafts[db.opened[job.id]]);
+  const id=crypto.randomUUID(),draft={id,owner,document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:job.purpose,recipients:{to:job.account_id==='20'?[]:[`${job.hotel.toLowerCase()}@synthetic.example`],cc:[],bcc:[]},subject:`Synthetic ${job.hotel} ${job.account_name}`,body:'Synthetic billing message. No real email is sent.',rich_body:null,exports:job.exports,attachments:[],revision:0,package_changed:false,gmail_handoff:null,delivery:null,billing_method:'email'};
+  db.drafts[id]=draft;db.opened[job.id]=id;return json(draft);
+ }
+ const check=/^\/api\/email\/deliveries\/([^/]+)\/check$/.exec(path);
+ if(check){const d=Object.values(db.drafts).find(d=>d.delivery?.id===check[1]);if(!d)return json({error:'missing'},404);d.delivery.state='sent';d.delivery.recorded=true;d.gmail_handoff='sent';db.jobs[d.document_job_id].closed_at=new Date().toISOString();db.jobs[d.document_job_id].closed_reason='sent';return json(d.delivery);}
+ const email=/^\/api\/email\/([^/]+)(?:\/(.*))?$/.exec(path);
+ if(email&&db.drafts[email[1]]){
+  const draft=db.drafts[email[1]],job=db.jobs[draft.document_job_id];
+  if(!email[2]&&method==='GET')return json(draft);
+  if(!email[2]&&method==='PUT'){if(body.revision!==draft.revision)return json({error:'email_revision_conflict'},409);Object.assign(draft,{purpose:body.purpose,recipients:body.recipients,subject:body.subject,body:body.body,rich_body:body.richBody,revision:draft.revision+1});return json(draft);}
+  if(email[2]?.startsWith('exports/')){const file=draft.exports[Number(email[2].split('/')[1])];return new Response(decode(db.bytes[file.storage_key]),{headers:{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${file.name}"`}});}
+  if(email[2]==='send'){
+   if(draft.delivery)return json(draft.delivery);
+   if(body.revision!==draft.revision||body.confirmed!==true||!draft.recipients.to.length)return json({error:'email_incomplete'},409);
+   db.sends.push({draftId:draft.id,jobId:job.id,hotel:job.hotel,accountId:job.account_id,recipients:draft.recipients,files:draft.exports.map(f=>f.name),stage:body.stage,revision:body.revision});
+   if(db.uncertainNext){db.uncertainNext=false;draft.delivery={id:crypto.randomUUID(),mode:'send',state:'awaiting_evidence',recorded:false,stage:body.stage};draft.gmail_handoff='awaiting_evidence';return json({error:'simulated_lost_response'},503);}
+   draft.delivery={id:crypto.randomUUID(),mode:'send',state:'sent',recorded:true,stage:body.stage};draft.gmail_handoff='sent';job.closed_at=new Date().toISOString();job.closed_reason='sent';return json(draft.delivery);
+  }
+ }
+ return json({error:'blocked_unmocked_fixture_route'},501);
+};
+audit();createRoot(document.getElementById('root')).render(React.createElement(App));
+</script></body></html>
