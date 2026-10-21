@@ -27,7 +27,7 @@ async function candidateFor(page:PdfProjectPage,documents:Map<string,PDFDocument
  if(page.layers.some(l=>l.sourceText))await detectText(page,documents);
  const key=JSON.stringify([page.id,page.layers,page.rowEdits]);let pending=scope.cache.get(key);
  if(!pending){if(scope.cache.size>=3)scope.cache.delete(scope.cache.keys().next().value!);pending=nativeTextCandidate(bytes,page,scope.abort.signal);scope.cache.set(key,pending);}
- const result=await pending;if(result?.unsupportedPage){scope.unsupportedPages.add(pageKey);return undefined;}return scope.closed?undefined:result;
+ const result=await pending;if(!result&&scope.cache.get(key)===pending)scope.cache.delete(key);if(result?.unsupportedPage){scope.unsupportedPages.add(pageKey);return undefined;}return scope.closed?undefined:result;
 }
 const documentScopes = new WeakMap<Map<string, PDFDocumentProxy>, string>();
 

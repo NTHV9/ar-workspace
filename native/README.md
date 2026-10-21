@@ -14,15 +14,20 @@ checked-in `src/pdf/native/wasm` web bindings. No global installation is require
 `native/upstream`, build output and extracted verification source are ignored.
 
 The generated WASM SHA-256 for this build is
-`5c30e0287ce404292a7bb9d6a34ac552302be60895662a6f6e2f08603e6d0ee4`.
+`9b0f9bee8a55cd476b113db92720e9188f00d6f22aeb662088a912e47ecdb291`.
 Licenses and attribution ship at `public/licenses/pdf-native`.
 
 The runtime matches original page/text/baseline/size/font/style, then supplies the
 complete exact Rust inventory target to a clone-before-write transaction. It
 refuses substitution, invisible/stroked text, graphics-state transparency,
-clipping, tagged/ActualText content, annotations, forms/signatures, Forms/images/shading, non-unit transforms/scales/rise, Type3 fonts,
+text clipping, tagged/ActualText content, annotations, forms/signatures, Forms/shading, non-unit text transforms/scales/rise, Type3 fonts,
 visual-order scripts, newlines, growth and changed neighboring text. Serialized
-output is re-opened and all pages' native text plus non-text operators are checked.
+output is re-opened and all pages' native text, non-text operators and complete
+resolved resource graphs are checked against the original. Empty replacement
+removes only the exact target line; every surviving line keeps its text/style/geometry.
+Image painting is admitted only inside balanced image-only q/Q blocks containing
+bounded Image resources and finite placement/clipping operations. Text, Forms,
+transparency and unqualified operators inside those blocks remain refused.
 The original bytes and source detection stay untouched. A candidate is used for
 both editor source raster and final export; accepted layers are suppressed.
 All-native pages retain native content. Other edits rasterize the same candidate.
@@ -40,7 +45,10 @@ An explicit user-selected nonwhite mask is still honored. The check does not inf
 indistinguishable from the original glyph ink remains a limit of raster inspection;
 final rendered-image review remains necessary, as before.
 
-Worker lifetime is at most ten seconds, with at most two concurrent workers.
+Worker execution is at most ten seconds, with at most two concurrent workers and
+eight waiting page states. The latest queued state replaces the previous state
+of that page; bytes are copied only at admission. Transient worker misses are
+removed from the candidate cache so a later Preview can retry.
 Document disposal aborts workers, late replies cannot settle twice, and candidate
 promises are cached for at most three page states per source session. Original
 text extraction is cached per immutable source page. Original inspection canvases
@@ -49,11 +57,17 @@ so thumbnail zoom cannot change background qualification. Document context follo
 PDFDocumentProxy identity, preserving native eligibility and runtime font scope
 when supplemental documents are merged into another document Map. Permanent
 page-level qualification refusals are cached per immutable source/page; target
-matching/font/box refusals do not disable other eligible edits. Image and Form
-XObjects remain conservative raster fallbacks in this version. Candidates contain only
+matching/font/box refusals do not disable other eligible edits. Form XObjects and
+unqualified image operations remain conservative raster fallbacks. Native edits
+after row movement require the whole original text rectangle to belong to one
+intact source fragment at the current overlay position. Earlier overlapping
+overlays also exclude a target to preserve paint order. Candidates contain only
 in-memory transient bytes and are never uploaded by this module.
 
 Validation: `tests/pdf-native-*.test.ts`, plus existing PDF source/engine/browser
 regressions. Tests include real WASM rewriting of a synthetic blue/white header,
 stale target and invisible/stroke/opacity/clip/transform/Form refusals. Browser
 and independent exported-PDF visual checks are recorded by integration acceptance.
+See `docs/PDF_NATIVE_REFERENCE_20261021.md` for the six-template and actual-source
+qualification. Mixed layout edits still use the existing raster composition path;
+this is not general native editing of every PDF.

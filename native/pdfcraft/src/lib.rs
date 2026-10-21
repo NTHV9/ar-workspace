@@ -4,6 +4,7 @@ use pdfcraft_edit::{TextLine,text_lines,replace_line};
 use pdfcraft_content::Pieces;
 use serde_json::{Value,json};
 use wasm_bindgen::prelude::*;
+mod preservation;
 fn err(s:impl std::fmt::Display)->JsValue{JsValue::from_str(&s.to_string())}
 fn same(a:&Value,b:&Value)->bool{match (a,b){(Value::Number(x),Value::Number(y))=>x.as_f64().zip(y.as_f64()).is_some_and(|(x,y)|(x-y).abs()<1e-8),(Value::Array(x),Value::Array(y))=>x.len()==y.len()&&x.iter().zip(y).all(|(a,b)|same(a,b)),(Value::Object(x),Value::Object(y))=>x.len()==y.len()&&x.iter().all(|(k,a)|y.get(k).is_some_and(|b|same(a,b))),_=>a==b}}
 fn line(l:&TextLine)->Value{json!({"text":l.text,"rect":l.rect,"baseline":l.baseline(),"font":l.font,"baseFont":l.base_font,"size":l.size,"bold":l.bold,"italic":l.italic,"color":l.color,"decodable":l.decodable,"visualOrder":l.visual_order})}
@@ -22,8 +23,14 @@ fn guard(doc:&Document,page:usize)->Result<(),JsValue>{
  if p.dict.get(b"Annots").is_some_and(|o|doc.resolve(o).as_array().is_none_or(|a|!a.is_empty())){return Err(err("Annotated pages are not qualified"));}
  if p.rotation(doc)!=0||p.user_unit(doc)!=1.0||p.crop(doc)[0]!=0.0||p.crop(doc)[1]!=0.0{return Err(err("Unsupported page transform"));}
  if let Some(resources)=p.dict.get(b"Resources").and_then(|o|doc.dict(o)){if let Some(fonts)=resources.get(b"Font").and_then(|o|doc.dict(o)){for (_,font) in fonts.iter(){if doc.dict(font).and_then(|d|d.get(b"Subtype").and_then(Object::as_name).map(|v|v.to_vec())).as_deref()==Some(b"Type3"){return Err(err("Type3 fonts are not qualified"));}}}}
- for op in content_ops(doc,page)?{
+ let resources=p.dict.get(b"Resources").and_then(|o|doc.dict(o)).ok_or_else(||err("Missing page resources"))?;
+ let ops=content_ops(doc,page)?;let mut i=0;let mut depth=0usize;
+ while i<ops.len(){
+  if let Some(end)=preservation::image_block(doc,&resources,&ops,i){i=end+1;continue;}
+  let op=&ops[i];
   match op.op.as_slice(){
+   b"q"=>{depth+=1;if depth>256{return Err(err("Graphics nesting limit"));}},
+   b"Q"=>{depth=depth.checked_sub(1).ok_or_else(||err("Unbalanced graphics state"))?;},
    b"gs"|b"W"|b"W*"|b"Do"|b"BI"|b"sh"|b"BDC"|b"BMC"|b"'"|b"\""=>return Err(err("Unsupported transparency, clipping or artwork resource")),
    b"Tr" if op.num(0)!=Some(0.0)=>return Err(err("Only visible opaque fill text is qualified")),
    b"cm"|b"Tm"=>{let m=op.nums::<6>().ok_or_else(||err("Invalid matrix"))?;if m[0]!=1.0||m[1]!=0.0||m[2]!=0.0||m[3]!=1.0{return Err(err("Unsupported text transform"));}},
@@ -31,7 +38,9 @@ fn guard(doc:&Document,page:usize)->Result<(),JsValue>{
    b"Ts" if op.num(0)!=Some(0.0)=>return Err(err("Unsupported text rise")),
    _=>{}
   }
+  i+=1;
  }
+ if depth!=0{return Err(err("Unbalanced graphics state"));}
  Ok(())
 }
 /// One transaction, no persisted document handles, networking, block rewrite or font import.
@@ -43,7 +52,7 @@ pub fn inventory(bytes:Vec<u8>,page:usize)->Result<String,JsValue>{
 fn open(bytes:Vec<u8>)->Result<Document,JsValue>{if bytes.len()>32*1024*1024{return Err(err("PDF exceeds native edit limit"));}if bytes.windows(10).any(|v|v==b"/ByteRange"){return Err(err("Signed PDFs are not qualified"));}let doc=Document::open(Arc::new(bytes)).map_err(err)?;if let Some(root)=doc.root(){if let Some(catalog)=doc.get(root).as_dict(){if catalog.get(b"AcroForm").is_some()||catalog.get(b"Perms").is_some(){return Err(err("Interactive or signed PDFs are not qualified"));}}}if doc.security().is_some(){return Err(err("Encrypted PDF unsupported"));}Ok(doc)}
 #[wasm_bindgen]
 pub fn replace(bytes:Vec<u8>,page:usize,expected:&str,text:&str)->Result<Vec<u8>,JsValue>{
- if text.is_empty()||text.len()>4096||text.contains(['\r','\n']){return Err(err("Only nonempty single-line replacements are qualified"));}
+ if text.len()>4096||text.contains(['\r','\n']){return Err(err("Only single-line replacements are qualified"));}
  let doc=open(bytes)?;guard(&doc,page)?;
  let before=text_lines(&doc,page).map_err(err)?;
  let expected:Value=serde_json::from_str(expected).map_err(err)?;
@@ -53,7 +62,12 @@ pub fn replace(bytes:Vec<u8>,page:usize,expected:&str,text:&str)->Result<Vec<u8>
  let mut draft=doc.clone();let result=replace_line(&mut draft,page,index,text).map_err(err)?;
  if result.substituted.is_some(){return Err(err("Font substitution refused"));}
  if nontext(&doc,page)?!=nontext(&draft,page)?{return Err(err("Untouched graphics operators changed"));}
+ if !preservation::resources_unchanged(&doc,&draft,page){return Err(err("Page resources changed"));}
  let after=text_lines(&draft,page).map_err(err)?;
+ if text.is_empty(){
+  let survivors:Vec<_>=before.iter().enumerate().filter(|(i,_)|*i!=index).map(|(_,line)|line).collect();
+  if after.len()!=survivors.len()||survivors.iter().zip(&after).any(|(a,b)|!same(&line(a),&line(b))){return Err(err("Clearing changed other text"));}
+ }else{
  if after.len()!=before.len(){return Err(err("Unexpected line count"));}
  for (i,(a,b)) in before.iter().zip(&after).enumerate(){
   if i!=index {if !same(&line(a),&line(b)){return Err(err("Untouched text changed"));}continue;}
@@ -61,10 +75,11 @@ pub fn replace(bytes:Vec<u8>,page:usize,expected:&str,text:&str)->Result<Vec<u8>
   if actual!=expected{return Err(err("Replacement text or styling changed"));}
   if b.rect.iter().any(|v|!v.is_finite())||b.rect[0]<a.rect[0]-0.75||b.rect[1]<a.rect[1]-0.75||b.rect[2]>a.rect[2]+0.75||b.rect[3]>a.rect[3]+0.75{return Err(err("Replacement exceeds original bounds"));}
  }
+ }
  let bytes=write_full(&draft,&SaveOptions::default()).map_err(err)?;
  // Validate the serialized candidate too, including all other pages' text.
  let reopened=open(bytes.clone())?;
- for p in 0..pdfcraft_model::pages(&doc).len(){let wanted=if p==page{after.clone()}else{text_lines(&doc,p).map_err(err)?};if nontext(&draft,p)?!=nontext(&reopened,p)?{return Err(err("Serialized graphics differ"));}let actual=text_lines(&reopened,p).map_err(err)?;if actual.len()!=wanted.len()||actual.iter().zip(&wanted).any(|(a,b)|!same(&line(a),&line(b))){return Err(err("Serialized text differs"));}}
+ for p in 0..pdfcraft_model::pages(&doc).len(){let wanted=if p==page{after.clone()}else{text_lines(&doc,p).map_err(err)?};if nontext(&doc,p)?!=nontext(&reopened,p)?{return Err(err("Serialized graphics differ"));}if !preservation::resources_unchanged(&doc,&reopened,p){return Err(err("Serialized resources differ"));}let actual=text_lines(&reopened,p).map_err(err)?;if actual.len()!=wanted.len()||actual.iter().zip(&wanted).any(|(a,b)|!same(&line(a),&line(b))){return Err(err("Serialized text differs"));}}
  Ok(bytes)
 }
 
