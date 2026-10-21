@@ -173,3 +173,39 @@ it('marks native control printing before a timeout and does not restart the invo
 it.each(['KAT','TSK','TLKL','WAKL','TLFO'])('automatically qualifies an adjustment for %s with its own report and tax definitions',async hotel=>{const {p,reader}=await qualifiedTsAnReader(hotel);const model=await readInvoiceModel(reader,p.manifest);expect(model.hotel).toBe(hotel);expect(model.vat).toBe(22341);expect(reader.folioTypeName).toHaveBeenCalledWith('Guest');expect(reader.folioReport).toHaveBeenCalledOnce();});
 it('rejects a configured native report from another hotel before requesting a PDF',async()=>{const {p,reader}=await qualifiedTsAnReader('KAT');reader.folioTypeName.mockResolvedValue({details:{hotelId:'KAT',folioReportName:'tsan_folio'}});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_invoice_ar_tax_unverified');expect(reader.folioReport).not.toHaveBeenCalled();});
 it('does not activate a pre-opening hotel through the tax fallback',async()=>{const {p,reader}=await qualifiedTsAnReader('TSUN');await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_invoice_ar_tax_unverified');expect(reader.folioReport).not.toHaveBeenCalled();});
+async function nativeGroupReader(){
+ const p=mixedTaxPacket();p.postings.invoicePostingsDetails.at(-1)!.checkNo='POS-CHECK';const {reader,detail}=fixture(1,p);
+ const {PDFDocument,StandardFonts}=await import('pdf-lib'),pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica),page=pdf.addPage([612,792]);
+ for(const [label,value,y]of [['Folio No.','88',650],['Total VAT 7%','293.87',380],['Total Non VAT Amount','0.00',366]] as const){page.drawText(label,{x:320,y,size:9,font});page.drawText(value,{x:520,y,size:9,font});if(y<400)page.drawText('THB',{x:570,y,size:9,font});}
+ const bytes=await pdf.save();return {p,detail,reader:{...reader,folioTypeName:vi.fn().mockResolvedValue({details:{hotelId:'KAT',folioReportName:'kat_folio'}}),folioReport:vi.fn().mockResolvedValue({folio:{hotelId:'KAT',reservationId:{id:'777'},folio:Buffer.from(bytes).toString('base64')}})}};
+}
+it('automatically obtains native controls for a nonuniform posted-tax group',async()=>{
+ const {reader,p}=await nativeGroupReader();const model=await readInvoiceModel(reader,p.manifest);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(0);expect(model.gross).toBe(454200);expect(reader.folioReport).toHaveBeenCalledOnce();
+});
+it('obtains native controls for food-and-beverage service generates and verifies unchanged postings',async()=>{
+ const {reader,p}=await nativeGroupReader(),svc=p.taxCodes.find(c=>c.transactionGroup==='SVC')!;
+ svc.transactionGroup='F&B';svc.description='Restaurant SVC *';
+ const model=await readInvoiceModel(reader,p.manifest);expect(model.vat).toBe(29387);expect(reader.folioReport).toHaveBeenCalledOnce();expect(reader.invoicePostings).toHaveBeenCalledTimes(2);
+});
+it('rejects same-balance posting changes while native group controls are read',async()=>{
+ const {reader,p}=await nativeGroupReader(),changed=structuredClone(p.postings);changed.invoicePostingsDetails[0].debitAmount.amount+=1;changed.invoicePostingsDetails[1].debitAmount.amount-=1;
+ reader.invoicePostings.mockResolvedValueOnce(p.postings).mockResolvedValueOnce(changed);await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');
+});
+it('rejects a payment arriving during native group control extraction',async()=>{
+ const {reader,p,detail}=await nativeGroupReader(),changed=structuredClone(detail);changed.details[0].invoices[0].balance=money(p.manifest.open-1);
+ reader.financialTransactionDetail.mockResolvedValueOnce(detail).mockResolvedValueOnce(detail).mockResolvedValueOnce(changed);await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');
+});
+it.each(['reservation','window'] as const)('rejects changed invoice identity during native group control extraction (%s)',async kind=>{
+ const {reader,p,detail}=await nativeGroupReader(),changed=structuredClone(detail);
+ if(kind==='reservation')changed.details[0].invoices[0].reservationId.id='OTHER';else changed.details[0].invoices[0].internalFolioWindowID='OTHER';
+ reader.financialTransactionDetail.mockResolvedValueOnce(detail).mockResolvedValueOnce(detail).mockResolvedValueOnce(changed);await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');
+});
+it('accepts financial detail rows that omit the reservation object already verified on the account',async()=>{
+ const {reader,p,detail}=await nativeGroupReader();const {reservationId:_reservation,...invoice}=detail.details[0].invoices[0];
+ reader.financialTransactionDetail.mockResolvedValue({details:[{...detail.details[0],invoices:[invoice]}]});
+ const model=await readInvoiceModel(reader,p.manifest);expect(model.vat).toBe(29387);expect(model.outstanding).toBe(454200);
+});
+it('does not repeat a native report after an uncertain group-control request',async()=>{
+ const {reader,p}=await nativeGroupReader(),started=vi.fn();reader.folioReport.mockRejectedValue(new OperaError('timeout'));
+ await expect(readInvoiceModel(reader,p.manifest,undefined,started)).rejects.toMatchObject({code:'timeout'});expect(started).toHaveBeenCalledOnce();expect(reader.folioReport).toHaveBeenCalledOnce();
+});

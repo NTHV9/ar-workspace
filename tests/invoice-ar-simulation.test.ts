@@ -6,6 +6,20 @@ function evidence(amount=1350){
  return {rules:base,rulesAfter:structuredClone(base),generatedRules:[rules('SVC','SVC'),rules('VAT','TAX')],calculation:{result:{totalAmount:amount,charges:[{transactionCode:'ROOM',amount,basePosting:true,sequence:0},{transactionCode:'ROOM',amount:amount/1.177,basePosting:false,sequence:0},{transactionCode:'SVC',amount:amount/1.177*.1,basePosting:false,sequence:1},{transactionCode:'VAT',amount:amount*7/107,basePosting:false,sequence:2}]}}};
 }
 describe('qualified OPERA AR charge decomposition',()=>{
+ it.each(['toString','constructor','__proto__'])('rejects a nonnumeric inherited rule base (%s)',name=>{
+  const e=evidence(1170),generates=e.rules.transactionCode.generatesSetup.generates as any[];
+  generates[1].rule.percentage.calculatedOn=name;e.rulesAfter=structuredClone(e.rules);
+  const parts=e.calculation.result.charges;parts[1].amount=990;parts[2].amount=99;parts[3].amount=81;
+  expect(()=>verifyArSimulation(e,'TSAN','ROOM',1170)).toThrow('document_invoice_ar_tax_unverified');
+ });
+ it.each([1170,-1170])('uses the explicit net-only VAT rule when service is outside the base (%s)',amount=>{
+  const e=evidence(amount),generates=e.rules.transactionCode.generatesSetup.generates as any[];
+  generates[1].rule.percentage.calculatedOn='Base';e.rulesAfter=structuredClone(e.rules);
+  const parts=e.calculation.result.charges;parts[1].amount=amount/1.17;parts[2].amount=amount/1.17*.1;parts[3].amount=amount/1.17*.07;
+  expect(verifyArSimulation(e,'TSAN','ROOM',amount).vat).toBeCloseTo(amount/1.17*.07,10);
+  parts[2].amount-=1;parts[3].amount+=1;
+  expect(()=>verifyArSimulation(e,'TSAN','ROOM',amount)).toThrow('document_invoice_ar_tax_unverified');
+ });
  it.each([1350,-1350,0.01,537.43])('preserves signed fractional VAT without double counting input echo (%s)',amount=>{expect(verifyArSimulation(evidence(amount),'TSAN','ROOM',amount).vat).toBeCloseTo(amount*7/107,10);});
  it.each(['unknown','missing','duplicate','sign','gross','changed','udf','schedule','taxType','bracket','exclusive','advanced','rate','nested'] as const)('rejects incomplete or unsupported evidence (%s)',kind=>{
   const e:any=evidence();const root=e.rules.transactionCode,g=root.generatesSetup.generates;

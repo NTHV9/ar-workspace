@@ -5,6 +5,8 @@ import noto from '../statement/fonts/noto-thai';
 import {supportedInvoiceTemplate,type InvoiceAssets,type InvoiceModel} from './types';
 
 const fail=():never=>{throw Error('document_invoice_layout_invalid');};
+// Tabs are display whitespace, not printable font glyphs. Keep identifiers and source records untouched.
+const printable=(value:string)=>value.normalize('NFC').replace(/\t/g,' ');
 const money=(cents:number)=>{if(!Number.isSafeInteger(cents))return fail();return(cents/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
 function words(n:number):string{
  const ones=['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE','TEN','ELEVEN','TWELVE','THIRTEEN','FOURTEEN','FIFTEEN','SIXTEEN','SEVENTEEN','EIGHTEEN','NINETEEN'],tens=['','','TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];
@@ -21,18 +23,19 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
  const supported=(s:string,chars:Set<number>)=>[...s].every(c=>chars.has(c.codePointAt(0)!));
  const runs=(value:string,b=false):{text:string;font:PDFFont}[]=>{
   const result:{text:string;font:PDFFont}[]=[];
-  for(const {segment}of new Intl.Segmenter('th',{granularity:'grapheme'}).segment(value.normalize('NFC'))){const font=supported(segment,latinChars)?b?bold:latin:supported(segment,thaiChars)?thai:null;if(!font)throw Error('document_invoice_character_unsupported');const last=result.at(-1);if(last?.font===font)last.text+=segment;else result.push({text:segment,font});}return result;
+  for(const {segment}of new Intl.Segmenter('th',{granularity:'grapheme'}).segment(printable(value))){const font=supported(segment,latinChars)?b?bold:latin:supported(segment,thaiChars)?thai:null;if(!font)throw Error('document_invoice_character_unsupported');const last=result.at(-1);if(last?.font===font)last.text+=segment;else result.push({text:segment,font});}return result;
  };
  const width=(s:string,size:number,b=false)=>runs(s,b).reduce((n,r)=>n+r.font.widthOfTextAtSize(r.text,size),0);
- const wrap=(s:string,max:number,size=8,b=false)=>{if(s.length>2000)fail();const lines:string[]=[];let line='';for(const {segment}of new Intl.Segmenter('th',{granularity:'grapheme'}).segment(s.normalize('NFC'))){if(segment==='\n'){lines.push(line);line='';continue;}if(width(line+segment,size,b)>max){const space=line.lastIndexOf(' ');if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);}else{if(!line)fail();lines.push(line);line='';}}line+=segment;}lines.push(line);return lines;};
+ const wrap=(s:string,max:number,size=8,b=false)=>{if(s.length>2000)fail();const lines:string[]=[];let line='';for(const {segment}of new Intl.Segmenter('th',{granularity:'grapheme'}).segment(printable(s))){if(segment==='\n'){lines.push(line);line='';continue;}if(width(line+segment,size,b)>max){const space=line.lastIndexOf(' ');if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);}else{if(!line)fail();lines.push(line);line='';}}line+=segment;}lines.push(line);return lines;};
  const entries=await Promise.all((['header','closing','signature','footer'] as const).map(async key=>{const a=assets[key];if(a.width!==612||!Number.isFinite(a.height)||a.height<1||a.height>400||a.png.length>2000000)fail();const bytes=Uint8Array.from(atob(a.png),c=>c.charCodeAt(0));const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');if(hash!==a.sha256)throw Error('document_invoice_template_invalid');return [key,await doc.embedPng(bytes)] as const;}));
  const images=Object.fromEntries(entries),p=assets.layout.positions,pos=(key:string)=>{const hit=p[key]?.[0];if(!hit||![hit.x0,hit.x1,hit.top,hit.size].every(Number.isFinite)||hit.x0<0||hit.x1>612||hit.top<0||hit.top>792||hit.size<5||hit.size>18)return fail();return hit;};
+ const voucher=printable(model.voucher);
  const voucherKey=p.EXTERNAL_REFERENCE?'EXTERNAL_REFERENCE':'CUSTOM_REFERENCE',v=pos(voucherKey),voucherBox=Math.min(132,605-v.x0);
  let voucherSize=8;
- if(!model.voucher.includes('\n'))while(voucherSize>6&&width(model.voucher,voucherSize,true)>voucherBox-6)voucherSize-=.25;
- const multiline=model.voucher.includes('\n')||width(model.voucher,voucherSize,true)>voucherBox-6;
+ if(!voucher.includes('\n'))while(voucherSize>6&&width(voucher,voucherSize,true)>voucherBox-6)voucherSize-=.25;
+ const multiline=voucher.includes('\n')||width(voucher,voucherSize,true)>voucherBox-6;
  if(multiline)voucherSize=8;
- const voucherLines=multiline?wrap(model.voucher,voucherBox-6,voucherSize,true):[model.voucher];
+ const voucherLines=multiline?wrap(voucher,voucherBox-6,voucherSize,true):[voucher];
  const headerShift=(voucherLines.length-1)*10;
  const headingTop=Math.min(...assets.fixedText.filter(f=>f.text!=='INVOICE').map(f=>f.top));
  const leftFields=[['TAX1_NO',model.taxId],['GUEST_COMPANY',model.company],['FIRST_NAME',model.guest]].map(([key,value])=>({x:pos(key).x0,top:pos(key).top,width:width(value,8),height:8}));
@@ -47,7 +50,7 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
  const rightBottom=Math.max(...tops.map(top=>top+rightOffset(top)+9));
  const tableShift=Math.max(0,rightBottom+6-headingTop),rowTop=assets.layout.rowTop+tableShift;
  const headerCut=headingTop-4;
- if(headerCut<=v.top||headerCut>=assets.header.height||model.voucher.length>1000)fail();
+ if(headerCut<=v.top||headerCut>=assets.header.height||voucher.length>1000)fail();
  const cashier=pos('CASHIER_NAME'),cashierLines=wrap(model.cashierName,215,9),cashierOffset=cashier.top-assets.layout.signatureTop;
  // Continuation pages retain the source signature position. The final signature
  // may move below the totals, but neither the image nor cashier may reach the footer.
@@ -71,7 +74,7 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
   const a=pos('ADDRESSEE_FULL_ADDRESS'),address=model.address.flatMap(s=>wrap(s,290,8));if(address.length>11)fail();address.forEach((s,i)=>write(s,a.x0,a.top+i*9.2));
   for(const [name,value]of [['BILL_NUMBER_HEADER',model.folio],['ROOM_NUMBER',model.room],['ARRIVAL_DATE_SHORT',model.arrival],['DEPARTURE_DATE_SHORT',model.departure],['CONFIRMATION_NO',model.confirmation],['CASHIER_NO',model.cashierNo]] as const)field(name,value,rightOffset(pos(name).top));
   voucherLines.forEach((line,index)=>write(line,v.x0,v.top+index*10,voucherSize,true));
-  addVoucherField(page,{hotel:model.hotel,accountId:model.accountId,invoiceId:model.invoiceId,align:'left',text:model.voucher,x:v.x0-3,y:v.top-.5,width:voucherBox,height:12+headerShift,fontSize:voucherSize,bold:true});
+  addVoucherField(page,{hotel:model.hotel,accountId:model.accountId,invoiceId:model.invoiceId,align:'left',text:voucher,x:v.x0-3,y:v.top-.5,width:voucherBox,height:12+headerShift,fontSize:voucherSize,bold:true});
   const guests=pos('NO_OF_ADULTS');write([model.adults,model.children].join(' / '),guests.x0,guests.top+rightOffset(guests.top));
   const dt=pos('SYSTEM_DATE');write(model.printDate+' : '+model.printTime,dt.x0,dt.top+rightOffset(dt.top));
   const guest=pos('FIRST_NAME'),company=pos('GUEST_COMPANY'),tax=pos('TAX1_NO');

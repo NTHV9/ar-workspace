@@ -48,7 +48,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
   const reference=narrative?[narrative,...check&&!printedCheckAtEnd?[check]:[]].join('\n'):check||text(p.remark);
   return {id:postingId,date:dateText(p.transactionDate),description:text(code[0].description),reference,debit,credit};
  }).sort((x,y)=>postingDates.get(x.id)!.localeCompare(postingDates.get(y.id)!)||Number(x.id)-Number(y.id));
- const debit=sum(lines.map(l=>l.debit)),credit=sum(lines.map(l=>l.credit)),gross=debit-credit;if(!Number.isSafeInteger(gross)||gross!==currentAmount)throw Error('document_source_changed');
+ const rawDebit=sum(lines.map(l=>l.debit)),rawCredit=sum(lines.map(l=>l.credit)),sourceNet=rawDebit-rawCredit;if(!Number.isSafeInteger(sourceNet)||sourceNet!==currentAmount)throw Error('document_source_changed');
  const netRows=packet.taxRows.map(record),byId=new Map<string,Row>();
  for(const entry of netRows){const p=record(entry.posting),key=id(p.transactionNo);if(byId.has(key))return fail('tax_duplicate');byId.set(key,entry);}
  const childRows=new Map<string,Row[]>();for(const e of netRows){const p=record(e.posting),parent=text(p.referencePackageTransactionNo);if(parent){const group=childRows.get(parent)??[];group.push(e);childRows.set(parent,group);}}
@@ -66,7 +66,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  }
  const simulations=packet.arSimulations??[],simulationIds=new Set(simulations.map(e=>e.postingId));if(simulationIds.size!==simulations.length||simulations.some(e=>!arRows.has(e.postingId)))return fail('ar_tax_unverified');
  const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
- const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean}>();
+ const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean}>();let needsNativeControls=false;const paymentAmounts:number[]=[];
  for(const line of lines){const root=byId.get(line.id);if(!root){
    const ar=arRows.get(line.id);if(!ar)return fail('tax_coverage_missing');const p=ar.posting,info=record(p.aRInfo),selected=postings.find(row=>String(row.transactionNo)===line.id)!;
    if(!text(a.accountNo)||text(info.accountNumber)!==text(a.accountNo)||text(info.invoiceNo)!==m.invoice_no||text(p.folioNo)!==m.folio_no||p.transactionCode!==selected.transactionCode||p.transactionType!=='Revenue')return fail('ar_tax_scope_invalid');
@@ -80,6 +80,16 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    vatUnits+=precise({amount:calculated.vat,currencyCode:'THB'});nonTaxableUnits+=precise({amount:calculated.nonTaxable,currencyCode:'THB'});continue;
   }const rootPosting=record(root.posting);
   if(rootPosting.hotelId!==m.hotel||text(rootPosting.folioNo)!==m.folio_no||text(record(record(rootPosting.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
+  if(rootPosting.transactionType==='Payment'){
+   const selected=postings.find(p=>String(p.transactionNo)===line.id)!;
+   if(rootPosting.transactionCode!==selected.transactionCode||componentSeen.has(line.id))return fail('payment_scope_invalid');
+   if(root.postingBreakdown!==undefined)return fail('payment_tax_unsupported');
+   const paidDebit=optionalCents(rootPosting.debitAmount),paidCredit=optionalCents(rootPosting.creditAmount),signed=paidDebit-paidCredit;
+   if(!signed||paidDebit&&paidCredit||!Number.isSafeInteger(signed)||signed!==line.debit-line.credit||Math.abs(cents(rootPosting.postedAmount))!==Math.abs(signed))return fail('payment_reconciliation_failed');
+   // AR can express a deposit as a negative debit. Its reservation ledger
+   // supplies the printed debit/credit side; payment never reduces charge VAT.
+   componentSeen.add(line.id);paymentAmounts.push(signed);line.debit=paidDebit;line.credit=paidCredit;continue;
+  }
   // OPERA groups both the visible wrapper and its component postings under the
   // original package reference; this is distinct from the wrapper's posting ID.
   const components=rootPosting.transactionType==='Wrapper'?(childRows.get(id(rootPosting.referencePackageTransactionNo))??[]).filter(e=>record(e.posting).transactionType!=='Wrapper'):[root];if(!components.length)return fail('tax_coverage_missing');let rootGross=0n;
@@ -88,19 +98,35 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    const breakdown=record(component.postingBreakdown),grossAmount=precise(breakdown.grossAmount),net=precise(breakdown.netAmount);let generated=0n,vat=0n;
    const taxes=invoiceTaxEntries(breakdown);
    for(const raw of taxes){const key=id(raw.transactionNo);if(taxSeen.has(key)||text(raw.referenceTransactionNo)!==text(p.transactionNo))return fail('tax_scope_invalid');taxSeen.add(key);const definitions=taxCodes.filter(c=>c.hotelId===m.hotel&&c.transactionCode===raw.transactionCode);if(definitions.length!==1)return fail('tax_code_invalid');const code=definitions[0],amount=precise(raw.amount);generated+=amount;
-    if(code.transactionGroup==='TAX'&&/\bvat\b/i.test(text(code.description)))vat+=amount;else if(code.transactionGroup!=='SVC')return fail('tax_code_unsupported');
+    if(code.transactionGroup==='TAX'&&/\bvat\b/i.test(text(code.description)))vat+=amount;else if(code.transactionGroup!=='SVC'){
+     // Some OPERA restaurant SVC generates retain the F&B accounting group.
+     // Its label alone is insufficient: the whole invoice must match native tax
+     // controls before this generate can be treated as service rather than VAT.
+     if(code.transactionGroup!=='F&B'||!/\bSVC\b/i.test(text(code.description))||!packet.nativeTaxControls)return fail('tax_code_unsupported');
+     needsNativeControls=true;
+    }
    }
    if(abs(grossAmount-net-generated)>10000000n)return fail('tax_reconciliation_failed');
    if(!taxes.length&&rootPosting.transactionType!=='Wrapper'){
     const selected=postings.find(row=>String(row.transactionNo)===line.id)!,definitions=codes.filter(c=>c.hotelId===m.hotel&&c.transactionCode===selected.transactionCode);
     if(definitions.length!==1||p.transactionCode!==selected.transactionCode)return fail('tax_scope_invalid');
-    const code=definitions[0],isTax=code.transactionGroup==='TAX',isVat=isTax&&/\bvat\b/i.test(text(code.description));
+    const code=definitions[0],isTax=code.transactionGroup==='TAX',restaurantVat=code.transactionGroup==='F&B'&&/\bvat\b/i.test(text(code.description)),isVat=(isTax||restaurantVat)&&/\bvat\b/i.test(text(code.description));
+    if(restaurantVat){if(!packet.nativeTaxControls)return fail('tax_code_unsupported');needsNativeControls=true;}
     if(isTax&&!isVat)return fail('tax_code_unsupported');
     const check=text(selected.checkNo),groupKey=JSON.stringify([text(selected.transactionDate),check?'check':'posting',check||line.id]),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check};
     if(isVat){if(taxSeen.has(key))return fail('tax_scope_invalid');taxSeen.add(key);group.vat+=grossAmount;group.taxCount++;vatUnits+=grossAmount;}
     else{group.base+=grossAmount;group.baseCount++;}
     directGroups.set(groupKey,group);
-   }else if(vat!==0n){if(abs(vat*107n-grossAmount*7n)>100000000n)return fail('tax_rate_unsupported');vatUnits+=vat;}else nonTaxableUnits+=grossAmount;
+   }else if(vat!==0n){
+    // OPERA generates VAT either on net + service or on net alone. Both bases
+    // retain the posted VAT; the reconciled SVC generate is never guessed as VAT.
+    const rateTolerance=vat%CENT===0n?CENT*107n/2n:100000000n;
+    if(abs(vat*107n-grossAmount*7n)>rateTolerance&&abs(vat*100n-net*7n)>rateTolerance){
+     if(!packet.nativeTaxControls)return fail('tax_rate_unsupported');
+     needsNativeControls=true;
+    }
+    vatUnits+=vat;
+   }else nonTaxableUnits+=grossAmount;
    rootGross+=grossAmount;
   }
   if(rounded(rootGross)!==line.debit-line.credit)return fail('tax_reconciliation_failed');
@@ -111,11 +137,15 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    // each exact date/check group within one satang; sum its actual VAT, never
    // calculate replacement VAT or infer a taxable base from a tax percentage.
    if(!group.hasCheck||!group.baseCount)return fail('tax_scope_invalid');
-   if(abs(group.vat*100n-group.base*7n)>CENT*100n)return fail('tax_rate_unsupported');
+   if(abs(group.vat*100n-group.base*7n)>CENT*100n){
+    if(!packet.nativeTaxControls)return fail('tax_rate_unsupported');
+    needsNativeControls=true;
+   }
   }else nonTaxableUnits+=group.base;
  }
- const vat=rounded(vatUnits),nonTaxable=rounded(nonTaxableUnits),taxableNet=gross-vat-nonTaxable;if(!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
- if(simulations.length&&(!packet.nativeTaxControls||packet.nativeTaxControls.vat!==vat||packet.nativeTaxControls.nonTaxable!==nonTaxable))return fail('ar_tax_unverified');
+ const debit=sum(lines.map(l=>l.debit)),credit=sum(lines.map(l=>l.credit)),gross=debit-credit-sum(paymentAmounts);
+ const vat=rounded(vatUnits),nonTaxable=rounded(nonTaxableUnits),taxableNet=gross-vat-nonTaxable;if(!Number.isSafeInteger(gross)||!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
+ if((simulations.length||needsNativeControls)&&(!packet.nativeTaxControls||packet.nativeTaxControls.vat!==vat||packet.nativeTaxControls.nonTaxable!==nonTaxable))return fail('ar_tax_unverified');
  const address=optional(optional(a.address).address),addressLines=address.addressLine==null?[]:rowsOfText(address.addressLine),country=optional(address.country);
  const billAddress=[text(a.accountName),...addressLines,[text(address.cityName),text(address.postalCode)].filter(Boolean).join(' '),text(country.value??country.code)].filter(Boolean);if(!billAddress[0])return fail('address_invalid');
  const stay=record(reservation.roomStay),ids=rows(reservation.reservationIdList),cashier=optional(i.cashierInfo);

@@ -24,8 +24,10 @@ export function verifyArSimulation(e:Omit<ArSimulation,'postingId'>,hotel:string
   if(seen.has(generatedCode)||part.transactionCode!==generatedCode)fail();seen.add(generatedCode);
   // Unknown rule properties cannot silently introduce conditional calculation.
   if(Object.keys(rule).some(k=>!['percentage','posting','uDFFunctionName','uDF'].includes(k))||rule.uDF||rule.uDFFunctionName||Object.keys(posting).some(k=>k!=='adjustmentType')||posting.adjustmentType!=='NoAdjustment'||percentage.useTaxBracket!==false||Object.keys(percentage).some(k=>!['amount','calculatedOn','useTaxBracket'].includes(k)))fail();
-  const rate=number(percentage.amount),basis=bucket[String(percentage.calculatedOn)],amount=number(part.amount);
-  if(rate<=0||rate>100||basis===undefined||Math.abs(amount-basis*rate/100)>1e-7)fail();
+  const rate=number(percentage.amount),basisName=percentage.calculatedOn,amount=number(part.amount);
+  if(typeof basisName!=='string'||!['Base','Bucket1','Bucket2','Bucket3'].includes(basisName)||!Object.hasOwn(bucket,basisName))fail();
+  const basis=number(bucket[basisName as string]);
+  if(rate<=0||rate>100||Math.abs(amount-basis*rate/100)>1e-7)fail();
   const definitions=e.generatedRules.map(v=>object(object(v).transactionCode)).filter(d=>d.hotelId===hotel&&d.code===generatedCode);if(definitions.length!==1)fail();
   const definition=definitions[0],group=object(object(definition.classification).group).code;
   const nested=definition.generatesSetup?object(definition.generatesSetup).generates:undefined;
@@ -34,6 +36,9 @@ export function verifyArSimulation(e:Omit<ArSimulation,'postingId'>,hotel:string
   else if(group!=='SVC')fail();
   total+=amount;add(g.addGeneratedAmtTo,amount);
  }
- if(Math.abs(total-gross)>1e-7||!vat||Math.abs(vat*107-gross*7)>1e-6)fail();
+ // Each generate was checked against its explicit 7% rule and named base above.
+ // Service may be outside that base; an inclusive gross ratio would contradict
+ // such a valid rule. The caller still requires exact native invoice controls.
+ if(Math.abs(total-gross)>1e-7||!vat)fail();
  return {vat,nonTaxable:0};
 }

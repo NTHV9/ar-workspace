@@ -1,3 +1,11 @@
+2026-10-22 — Shared invoice generation repairs (release validation)
+
+- Implemented shared Payment/revenue separation, VAT base/rounding qualification with native controls, F&B VAT/service classification, printed Tab normalization, stable-source fences and strict calculator bucket validation. No per-invoice overrides.
+- Fresh authenticated Worker generation succeeds for 87 of the previous 96 blocked invoices. All 87 PDFs / 241 pages pass Folio/outstanding/page-bound and independent footer reconciliation; 29 include Payments. Eight match independent native tax controls, and a true OPERA AR print confirms Payment/gross/VAT/outstanding semantics.
+- Actual-byte native editing passes 1,138 shorten/clear operations with zero independent PDFium differences outside targets. New Edge browser audit attachment failed, so a new click-flow pass is not claimed. Prior full-corpus browser results remain separate.
+- Nine remain refused: four ambiguous Folio selectors, two native non-VAT classification mismatches, two current-versus-posted account mismatches and one unsupported exclusive AR adjustment/reversal shape. [Repair evidence and limits](INVOICE_GENERATION_REPAIRS_20261022.md).
+- All 2,155 tests / 217 files, TypeScript, Vite build and independent review pass. Deployment verification is pending. No actual email, billing/Sheet changes or accounting-ledger write.
+
 ## 2026-10-21 — Current Invoice corpus audit and uploaded-file preservation
 
 - Inspected the current snapshot of 2,387 nonzero AR rows across six active hotels. Attempted every one of the 1,720 positive selectable invoices with full Folio selectors: 1,624 generated successfully after bounded read rechecks, 96 remain blocked. Separately classified 617 missing-selector rows (616 CCR, one BTA), 38 credits and 12 nonselectable positive rows; none counted as PDF passes. TSUN has no current rows.
@@ -2304,3 +2312,4 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
   `024dc96d-0b58-4ec0-a662-145dcbd40bae`. Exact-source health/database checks pass;
   six anonymous protected routes reject access. All previous runtime bindings
   match except COMMIT_SHA, with no added or missing binding. Draft PR139 updated.
+##

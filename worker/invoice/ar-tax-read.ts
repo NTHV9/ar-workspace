@@ -7,6 +7,14 @@ import {amountCents} from '../opera/normalize';
 export type ArTaxReader=Pick<OperaReader,'account'|'reservationFolios'|'folioReport'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'|'folioTypeName'>;
 const fail=():never=>{throw Error('document_invoice_ar_tax_unverified');};
 const list=(v:unknown)=>Array.isArray(v)?v.map(record):fail();
+export async function readNativeInvoiceTaxControls(reader:Pick<ArTaxReader,'account'|'reservationFolios'|'folioReport'|'folioTypeName'>,manifest:DocumentInvoice,onRenderStart:()=>void=()=>{}){
+ const report=nativeTaxReport(manifest.hotel);if(!report)return fail();
+ const config=record(record(await reader.folioTypeName('Guest')).details);
+ if(config.hotelId!==manifest.hotel||config.folioReportName!==report)fail();
+ const native=await getNativeInvoicePdf(reader,manifest,onRenderStart);
+ const {readNativeTaxControls}=await import('./native-tax-controls');
+ return readNativeTaxControls(native.bytes,manifest.folio_no!);
+}
 export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvoice,account:Record<string,unknown>,postings:Record<string,unknown>,details:NonNullable<InvoicePacket['arDetails']>,onRenderStart:()=>void=()=>{}){
  const report=nativeTaxReport(manifest.hotel);if(!report)return fail();
  const config=record(record(await reader.folioTypeName('Guest')).details);
@@ -28,9 +36,8 @@ export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvo
   if(canonical(generatedRules)!==canonical(generatedAfter))fail();
   const evidence={postingId:String(p.transactionNo),rules,rulesAfter,generatedRules,calculation};verifyArSimulation(evidence,manifest.hotel,code,amount);simulations.push(evidence);
  }
- const native=await getNativeInvoicePdf(reader,manifest,onRenderStart);
- const {readNativeTaxControls}=await import('./native-tax-controls');
- return {arSimulations:simulations,nativeTaxControls:await readNativeTaxControls(native.bytes,manifest.folio_no!)};
+ const nativeTaxControls=await readNativeInvoiceTaxControls(reader,manifest,onRenderStart);
+ return {arSimulations:simulations,nativeTaxControls};
 }
 export function financialPostingFingerprint(raw:unknown){
  const rows=list(record(raw).invoicePostingsDetails).map(p=>({id:p.transactionNo,code:p.transactionCode,date:p.transactionDate,debit:p.debitAmount??null,credit:p.creditAmount??null,check:p.checkNo??null,reference:p.reference??null,remark:p.remark??null})).sort((a,b)=>String(a.id).localeCompare(String(b.id)));

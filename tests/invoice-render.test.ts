@@ -2,6 +2,18 @@ import {it,expect} from 'vitest';
 import {PDFDocument,StandardFonts,PDFRawStream,PDFContentStream,decodePDFRawStream} from 'pdf-lib';
 import {syntheticInvoice} from './browser/fixtures/invoice-pdf';
 import {readVoucherFields} from '../src/pdf/voucher-metadata';
+it('prints horizontal tabs as spaces in display fields and keeps Voucher edit metadata aligned',async()=>{
+ const overrides={cashierName:'First\tLast',address:['TRAVEL\tLTD','Example Road'],guest:'Guest\tName'};
+ const pdf=await PDFDocument.load(await syntheticInvoice(3,'VCH\t001','TAB',false,overrides));
+ const commands=pdf.getPages().flatMap(page=>page.node.normalizedEntries().Contents!.asArray().map(ref=>pdf.context.lookup(ref))).map(s=>new TextDecoder().decode(s instanceof PDFRawStream?decodePDFRawStream(s).decode():s instanceof PDFContentStream?s.getUnencodedContents():new Uint8Array())).join('\n');
+ const printed=[...commands.matchAll(/<([\dA-F]+)> Tj/g)].map(m=>Buffer.from(m[1],'hex').toString());
+ expect(printed).toContain('First Last');expect(printed).toContain('TRAVEL LTD');expect(printed).toContain('Guest Name');
+ expect(readVoucherFields(pdf.getPage(0))[0].text).toBe('VCH 001');
+ expect(overrides.cashierName).toBe('First\tLast');
+});
+it('still rejects non-printing controls other than supported whitespace',async()=>{
+ await expect(syntheticInvoice(1,'VCH','CONTROL',false,{cashierName:'First\u0001Last'})).rejects.toThrow('document_invoice_character_unsupported');
+});
 it('fits a long voucher in the original single header row without dropping characters',async()=>{
  const value='VOUCHER-ABCDEFGH-1234567890123';
  const pdf=await PDFDocument.load(await syntheticInvoice(10,value,'A',true));

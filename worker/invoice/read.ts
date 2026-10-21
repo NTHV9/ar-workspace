@@ -1,5 +1,5 @@
 import {nativeTaxReport} from './tax-report-profile';
-import {readArTaxEvidence,financialPostingFingerprint,type ArTaxReader} from './ar-tax-read';
+import {readArTaxEvidence,readNativeInvoiceTaxControls,financialPostingFingerprint,type ArTaxReader} from './ar-tax-read';
 import {accountWithAddressee} from '../documents/addressee';
 import {OperaError,type OperaReader} from '../opera/client';
 import {historicalFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
@@ -74,7 +74,7 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
   if(financialPostingFingerprint(finalPostings)!==financialPostingFingerprint(postings))throw Error('document_source_changed');
  }
  // Recheck the AR balance after the slower postings/tax reads to fence a payment
- // or adjustment arriving during preparation. No write or print call is made.
+ // or adjustment arriving during preparation; accounting records remain read-only.
  const addressedAccount=await accountWithAddressee(reader,manifest.hotel,manifest.account_id,account);
  const ending=list(record(await reader.financialTransactionDetail(scope)).details);if(ending.length!==1||ending[0].hotelId!==manifest.hotel||record(ending[0].accountId).id!==manifest.account_id)fail();const last=list(ending[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(last.length!==1||!valid(last[0])||amountCents(last[0].amount,'THB')!==amountCents(invoice.amount,'THB'))fail();
  const profileId=account.profileId&&record(account.profileId).id;
@@ -96,5 +96,17 @@ export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,no
   }
  }
  if(!packet)throw Error('document_invoice_source_unstable');
- return invoiceModel(packet,now);
+ try{return invoiceModel(packet,now);}catch(error){
+  // Only tax-base/service classification can request this independent proof. Identity,
+  // coverage, duplicate and monetary mismatches retain their original failures.
+  if(!(error instanceof Error)||!['document_invoice_tax_rate_unsupported','document_invoice_tax_code_unsupported'].includes(error.message)||packet.nativeTaxControls||!reader.folioReport||!reader.folioTypeName)throw error;
+  const nativeTaxControls=await readNativeInvoiceTaxControls(reader as Reader&Pick<ArTaxReader,'folioReport'|'folioTypeName'>,manifest,onRenderStart);
+  const invoice=record(packet.invoice),scope={hotel:manifest.hotel as Parameters<OperaReader['financialTransactionDetail']>[0]['hotel'],accountId:manifest.account_id,transactionId:manifest.id};
+  const postings=await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no!,folioNo:manifest.folio_no!,internalFolioWindowId:String(invoice.internalFolioWindowID)});
+  if(financialPostingFingerprint(postings)!==financialPostingFingerprint(packet.postings))fail();
+  const ending=list(record(await reader.financialTransactionDetail(scope)).details);if(ending.length!==1||ending[0].hotelId!==manifest.hotel||record(ending[0].accountId).id!==manifest.account_id)fail();
+  const current=list(ending[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);
+  if(current.length!==1||String(current[0].invoiceNo)!==manifest.invoice_no||String(current[0].folioNo)!==manifest.folio_no||current[0].folioDate!==manifest.folio_date||current[0].parentInvoiceNo!=null||current[0].reservationId!=null&&String(record(current[0].reservationId).id)!==manifest.reservation_id||current[0].internalFolioWindowID!==invoice.internalFolioWindowID||amountCents(current[0].amount,'THB')!==amountCents(invoice.amount,'THB')||amountCents(current[0].balance,'THB')!==Math.round(manifest.open*100))fail();
+  return invoiceModel({...packet,nativeTaxControls},now);
+ }
 }
