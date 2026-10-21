@@ -1,3 +1,10 @@
+## 2026-10-21 — Total editing beside table rules
+
+- Implemented a verified interior-background fallback when a sampling ring intersects a table rule outside the actual text mask. Full original-glyph and mixed-interior checks remain enforced; document edits do not change accounting data.
+- Reproduced staff's Total edit failure in the real Workspace UI using the installed TSAN template and synthetic data, plus upper totals on three other hotel templates. The exact reported preparation was already closed; its original bytes were not used.
+- Tested UI edit/Preview/download and visually inspected the output. Both normal and forced-fallback six-hotel matrices passed 18 cases each, with no raster changes outside the edited field's padded bounds. Full suite 2,104 tests / 215 files, typecheck/build and independent review passed. [Evidence and limits](PDF_TOTAL_MASK_20261021.md).
+- Release pending at this entry; no actual email, Sheet date or business record changed.
+
 ## 2026-10-21 — Real-source Voucher mask verification
 
 - Investigated the reported Page 4 artwork-mask error using the exact private source Invoice and its linked Statement, downloaded through the authenticated source Preview. No business/email records or saved preparations were modified.

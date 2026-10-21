@@ -33,6 +33,28 @@ export function assertMaskInterior(data:Uint8ClampedArray,matte:Uint8ClampedArra
   if(!accounted)throw Error('The original text area contains artwork or other content. Restore original text, then use Whiteout and a new text box.');
  }
 }
+/** Nearby rules outside the paint footprint must not prevent editing its text.
+ * If the outer ring is mixed, prove a flat surface from every clear interior
+ * pixel instead. Original glyph ink is still checked over the entire mask. */
+export function verifiedMaskBackground(data:Uint8ClampedArray,matte:Uint8ClampedArray,width:number,height:number,rect:{x:number;y:number;width:number;height:number},radius:number,foreground?:string):string{
+ let background:string;
+ try{background=flatMaskBackground(data,width,height,rect);}catch{
+  const colors:number[][]=[];
+  for(let y=Math.max(0,Math.floor(rect.y));y<Math.min(height,Math.ceil(rect.y+rect.height));y++)for(let x=Math.max(0,Math.floor(rect.x));x<Math.min(width,Math.ceil(rect.x+rect.width));x++){
+   let glyph=false;
+   for(let dy=-radius;dy<=radius&&!glyph;dy++)for(let dx=-radius;dx<=radius;dx++){
+    const mx=x+dx,my=y+dy;if(mx>=0&&my>=0&&mx<width&&my<height&&matte[(my*width+mx)*4+3]){glyph=true;break;}
+   }
+   if(!glyph){const i=(y*width+x)*4;colors.push([data[i],data[i+1],data[i+2]]);}
+  }
+  if(colors.length<4)throw Error('The source background cannot be verified safely. Restore original text, then use Whiteout and a new text box.');
+  const center=[0,1,2].map(c=>colors.map(v=>v[c]).sort((a,b)=>a-b)[Math.floor(colors.length/2)]);
+  if(colors.some(c=>c.some((v,i)=>Math.abs(v-center[i])>8)))throw Error('The source background contains artwork or nearby content. Restore original text, then use Whiteout and a new text box.');
+  background=`rgb(${center.join(',')})`;
+ }
+ assertMaskInterior(data,matte,width,height,rect,background,radius,foreground);
+ return background;
+}
 export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLayer,mask:{x:number;y:number;width:number;height:number;sourceX?:number;sourceY?:number;sourceHeight?:number;sourceLayer?:PdfLayer}):string{
  if(!layer.original||layer.maskOriginal===false)return layer.fill;
  // The user can still request an explicit colored mask. Automatic masks preserve
@@ -46,7 +68,7 @@ export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLa
  const width=Math.min(source.width-x,Math.ceil(rect.x+rect.width)+4-x),height=Math.min(source.height-y,Math.ceil(rect.y+rect.height)+4-y);
  if(width<1||height<1)throw Error('The source background is outside the page. Restore this edit before Preview.');
  const pixels=ctx.getImageData(x,y,width,height);
- const local={...rect,x:rect.x-x,y:rect.y-y},background=flatMaskBackground(pixels.data,width,height,local);
+ const local={...rect,x:rect.x-x,y:rect.y-y};
  const original=mask.sourceLayer,style=original&&sourceStyle(original);
  if(!original||!style||style.run.rotated||(!style.maskRuns&&style.sequence.filter(g=>typeof g!=='number').map(g=>g.unicode).join('')!==original.text))throw Error('The original text background cannot be verified safely. Restore original text, then use Whiteout and a new text box.');
  const matte=document.createElement('canvas');matte.width=width;matte.height=height;
@@ -67,7 +89,6 @@ export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLa
     advance+=(glyph.width*face.fontSize/1000+face.charSpacing+(glyph.isSpace?face.wordSpacing:0))*face.hScale;
    }
   }
-  assertMaskInterior(pixels.data,context.getImageData(0,0,width,height).data,width,height,local,background,Math.ceil(scale*.75),style.color);
+  return verifiedMaskBackground(pixels.data,context.getImageData(0,0,width,height).data,width,height,local,Math.ceil(scale*.75),style.color);
  }finally{matte.width=matte.height=0;}
- return background;
 }

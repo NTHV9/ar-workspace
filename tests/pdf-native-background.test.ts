@@ -1,7 +1,35 @@
 import {describe,it,expect,vi} from 'vitest';
-import {flatMaskBackground,sourceMaskFill,assertMaskInterior} from '../src/pdf/mask-background';
+import {flatMaskBackground,sourceMaskFill,assertMaskInterior,verifiedMaskBackground} from '../src/pdf/mask-background';
 import type {PdfLayer} from '../src/pdf/types';
 describe('safe source replacement backgrounds',()=>{
+ it('allows a nearby table rule outside the painted mask but rejects it inside',()=>{
+  const data=new Uint8ClampedArray(20*20*4).fill(255),matte=new Uint8ClampedArray(20*20*4),rect={x:4,y:5,width:12,height:8};
+  for(let x=0;x<20;x++)data.set([0,0,0,255],(14*20+x)*4);
+  for(let y=7;y<11;y++)for(let x=8;x<11;x++){const i=(y*20+x)*4;data.set([0,0,0,255],i);matte.set([0,0,0,255],i);}
+  expect(()=>flatMaskBackground(data,20,20,rect)).toThrow(/background/i);
+  expect(verifiedMaskBackground(data,matte,20,20,rect,1,'#000000')).toBe('rgb(255,255,255)');
+  for(let x=4;x<16;x++)data.set([0,0,0,255],(12*20+x)*4);
+  expect(()=>verifiedMaskBackground(data,matte,20,20,rect,1,'#000000')).toThrow(/background|artwork/i);
+ });
+ it('keeps colored backgrounds and refuses mixed or unprovable interior surfaces',()=>{
+  const data=new Uint8ClampedArray(20*20*4),matte=new Uint8ClampedArray(20*20*4),rect={x:4,y:5,width:12,height:8};
+  for(let i=0;i<data.length;i+=4)data.set([12,60,130,255],i);
+  for(let x=0;x<20;x++)data.set([0,0,0,255],(14*20+x)*4);
+  const i=(8*20+9)*4;data.set([255,255,255,255],i);matte.set([255,255,255,255],i);
+  expect(verifiedMaskBackground(data,matte,20,20,rect,1,'#ffffff')).toBe('rgb(12,60,130)');
+  data.set([100,100,100,255],(7*20+5)*4);
+  expect(()=>verifiedMaskBackground(data,matte,20,20,rect,1,'#ffffff')).toThrow(/background|artwork/i);
+  matte.fill(255);expect(()=>verifiedMaskBackground(data,matte,20,20,rect,1,'#ffffff')).toThrow(/background/i);
+ });
+ it('protects fractional mask edges at the 1.5x inspection scale',()=>{
+  const data=new Uint8ClampedArray(30*30*4).fill(255),matte=new Uint8ClampedArray(30*30*4),rect={x:4.2*1.5,y:5.1*1.5,width:10.4*1.5,height:6.2*1.5};
+  const edge=Math.ceil(rect.y+rect.height);
+  for(let x=0;x<30;x++)data.set([0,0,0,255],(edge*30+x)*4);
+  for(let y=10;y<13;y++)for(let x=12;x<15;x++){const i=(y*30+x)*4;data.set([0,0,0,255],i);matte.set([0,0,0,255],i);}
+  expect(verifiedMaskBackground(data,matte,30,30,rect,2,'#000000')).toBe('rgb(255,255,255)');
+  for(let x=6;x<23;x++)data.set([0,0,0,255],((edge-1)*30+x)*4);
+  expect(()=>verifiedMaskBackground(data,matte,30,30,rect,2,'#000000')).toThrow(/background|artwork/i);
+ });
  it('refuses artwork fully inside a flat perimeter while allowing known original glyph ink',()=>{const data=new Uint8ClampedArray(16*16*4).fill(255),matte=new Uint8ClampedArray(16*16*4);data.set([0,0,0,255],(8*16+8)*4);expect(flatMaskBackground(data,16,16,{x:3,y:3,width:9,height:9})).toBe('rgb(255,255,255)');expect(()=>assertMaskInterior(data,matte,16,16,{x:3,y:3,width:9,height:9},'rgb(255,255,255)',0)).toThrow(/artwork/i);matte[(8*16+8)*4+3]=255;expect(()=>assertMaskInterior(data,matte,16,16,{x:3,y:3,width:9,height:9},'rgb(255,255,255)',0)).not.toThrow();});
  it('samples a bounded original source region even when the replacement moved',()=>{
   const getImageData=vi.fn((_x:number,_y:number,w:number,h:number)=>{const data=new Uint8ClampedArray(w*h*4);for(let i=0;i<data.length;i+=4)data.set([12,60,130,255],i);return {data};});
