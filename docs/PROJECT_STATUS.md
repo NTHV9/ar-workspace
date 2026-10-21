@@ -4,7 +4,7 @@
 - Found and repaired an actual UI regression: shrinking a linked Voucher after adding a line falsely detected artwork because a zero-area fractional intersection became a sampled pixel. Empty intersections are now excluded before rounding; positive-area checks remain. Exact real-source add/remove/Preview/download passed, with left-header pixel difference zero and Room label/value restored together.
 - Tested batch address edits, Undo/Redo, renamed output/scans, reassignment of scan to an Invoice, account switching, all three delivery modes and mock PDF-to-email recovery after a lost review response. Downloaded scan and untouched Invoice rendered pixel-identically to their controls. No real send/history/Sheet/OPERA write.
 - **Open:** dense REFERENCE editing remains unqualified. Experimental side-strip/topology fallbacks were rejected by independent artwork counterexamples and moved out of runtime; a fail-closed regression protects 10 cases. PdfCraft qualification was tested separately and not broadly expanded or disabled.
-- Final tests: 2,106 / 215 files, TypeScript/build and independent review passed. Deployment pending at this entry.
+- Final tests: 2,106 / 215 files, TypeScript/build and independent review passed. Deployed/enabled source `c5ed42decd75edf6ef10b2704f7957b3ace9c5e4`, Worker `bdeb1510-7590-44ab-91e5-e1826890b768`. Health/database and six anonymous email boundaries pass. All 42 runtime bindings match the prior release except COMMIT_SHA; tracker push/writeback remain enabled.
 
 ## 2026-10-21 — Total editing beside table rules
 
