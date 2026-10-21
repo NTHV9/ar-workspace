@@ -2,7 +2,7 @@
 
 - Implemented direct replacement/clear for qualified image-bearing PDFs while preserving resources, non-text operators and all other text. Intact source-fragment and overlay-order checks protect mixed edits; bounded worker queue prevents rapid typing from flooding workers. No raster heuristic relaxation or extra UI step.
 - Tested real-source UI replace/Delete/Undo/Redo/Preview/download, combined linked Voucher line edits, 16 independent native/pixel cases, and 74 browser field edits with 74 exports across six templates plus multipage and actual source files. Left header unchanged; right label/value positions match. All 2,120 automated tests / 215 files and TypeScript passed; independent review passed. [Evidence and limits](PDF_NATIVE_REFERENCE_20261021.md).
-- Implemented/tested locally; build and deployment verification pending. The earlier dense REFERENCE refusal is qualified for these sources, not every uploaded PDF. No real email, Sheet or ledger changes.
+- Deployed/enabled source `1d050776db722a73796ceeeb396c7de726d0e96b`, Worker `ada34fb0-5ce2-49bc-89c6-eaf67ee17568`. Build passed; health/database and six anonymous email boundaries passed. All 42 runtime bindings match the previous release except COMMIT_SHA, tracker push/writeback remain enabled, and hosted WASM/worker bytes match the tested build. The earlier dense REFERENCE refusal is qualified for these sources, not every uploaded PDF. No real email, Sheet or ledger changes.
 
 ## 2026-10-21 — PDF stability audit with real-source workflow
 

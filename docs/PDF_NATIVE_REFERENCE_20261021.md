@@ -62,4 +62,8 @@ adapter modifies PDF presentation only, never the underlying accounting records.
 
 ## Release
 
-Implemented and tested locally; deployment evidence is recorded in PROJECT_STATUS.
+Deployed/enabled source `1d050776db722a73796ceeeb396c7de726d0e96b`, Worker
+`ada34fb0-5ce2-49bc-89c6-eaf67ee17568`. Build, public health/database and six
+unauthenticated email boundary checks passed. All 42 runtime bindings match the
+previous release except COMMIT_SHA; tracker push/writeback remain enabled.
+Hosted native worker and WASM bytes match the locally tested production build.

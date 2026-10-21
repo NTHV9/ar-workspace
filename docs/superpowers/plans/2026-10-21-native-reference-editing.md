@@ -18,7 +18,7 @@
 - [x] Add failing native image/clear/identity/resource tests; qualify isolated image blocks and deletion with complete surviving-text/resource checks.
 - [x] Connect qualified empty/direct edits to editor rendering/export, retaining source identity and lifecycle; test current box and mixed edits.
 - [x] Test actual real REFERENCE replace/delete/Undo/Redo/Preview/download and six templates, including unaffected pixels/resources and multiple pages.
-- [ ] Independent review, regression/typecheck/build, evidence and conditional deployment only after qualification.
+- [x] Independent review, regression/typecheck/build, evidence and conditional deployment only after qualification.
 
 ## Open qualification boundaries
 Form XObjects, signed/forms/annotations, ambiguous shared text, transformed text and unsupported fonts remain refused. Do not claim every uploaded PDF is supported. Existing page/row transforms must be explicitly tested before enabling their native route.
