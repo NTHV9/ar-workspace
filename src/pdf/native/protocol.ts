@@ -1,5 +1,5 @@
 export type NativeLine={index:number;style:{text:string;rect:number[];baseline:number[];font:string;baseFont:string;size:number;bold:boolean;italic:boolean;color:number[];decodable:boolean;visualOrder:boolean}};
-export type NativeRequest={bytes:Uint8Array;page:number;edits:{id:string;expectedText:string;text:string;x:number;baseline:number;fontSize:number;fontLabel:string;color:string;bold:boolean;italic:boolean}[]};
+export type NativeRequest={bytes:Uint8Array;page:number;edits:{id:string;expectedText:string;text:string;x:number;baseline:number;fontSize:number;fontLabel:string;color:string;bold:boolean;italic:boolean;maxRight?:number}[]};
 export type NativeResult={bytes:Uint8Array;applied:string[];unsupportedPage?:true};
 export function matchNativeLine(lines:NativeLine[],edit:NativeRequest['edits'][number]):NativeLine|undefined{
  const hex=(color:number[])=>'#'+color.map(v=>Math.round(v*255).toString(16).padStart(2,'0')).join('');

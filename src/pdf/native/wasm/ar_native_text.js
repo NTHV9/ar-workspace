@@ -32,16 +32,17 @@ export function inventory(bytes, page) {
  * @param {number} page
  * @param {string} expected
  * @param {string} text
+ * @param {number | null} [max_right]
  * @returns {Uint8Array}
  */
-export function replace(bytes, page, expected, text) {
+export function replace(bytes, page, expected, text, max_right) {
     const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ptr1 = passStringToWasm0(expected, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len1 = WASM_VECTOR_LEN;
     const ptr2 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.replace(ptr0, len0, page, ptr1, len1, ptr2, len2);
+    const ret = wasm.replace(ptr0, len0, page, ptr1, len1, ptr2, len2, !isLikeNone(max_right), isLikeNone(max_right) ? 0 : max_right);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
@@ -88,6 +89,10 @@ function getUint8ArrayMemory0() {
         cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
     }
     return cachedUint8ArrayMemory0;
+}
+
+function isLikeNone(x) {
+    return x === undefined || x === null;
 }
 
 function passArray8ToWasm0(arg, malloc) {

@@ -13,6 +13,41 @@ async function fixture(extra=''){
  return doc.save();
 }
 describe('actual qualified native WASM',()=>{
+ it('permits single-line growth within the explicitly authorized editor right edge',async()=>{
+  const bytes=await fixture(),original=bytes.slice(),lines=JSON.parse(inventory(bytes,0)),target=lines.find((l:any)=>l.style.text==='INVOICE');
+  expect(()=>replace(bytes,0,JSON.stringify(target.style),'INVOICE REFERENCE')).toThrow();
+  const output=replace(bytes,0,JSON.stringify(target.style),'INVOICE REFERENCE',300),after=JSON.parse(inventory(output,0));
+  expect(after[0].style.text).toBe('INVOICE REFERENCE');expect(after[0].style.rect[2]).toBeGreaterThan(target.style.rect[2]);expect(after[0].style.rect[2]).toBeLessThanOrEqual(300);expect(after[0].style.baseline).toEqual(target.style.baseline);expect(after[1]).toEqual(lines[1]);expect(bytes).toEqual(original);
+ });
+ it.each([Number.NaN,Number.POSITIVE_INFINITY,-1,401,50])('rejects an invalid or insufficient authorized right edge (%s)',async maxRight=>{
+  const bytes=await fixture(),target=JSON.parse(inventory(bytes,0))[0].style;
+  expect(()=>replace(bytes,0,JSON.stringify(target),'INVOICE REFERENCE',maxRight)).toThrow();
+ });
+ it.each(['rectangle','image'])('does not place new text beneath later source %s painting',async kind=>{
+  const doc=await PDFDocument.load(await fixture()),page=doc.getPage(0);
+  if(kind==='rectangle')page.drawRectangle({x:120,y:240,width:180,height:40,color:rgb(.05,.2,.5)});
+  else{const image=await doc.embedPng('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==');page.drawImage(image,{x:120,y:240,width:180,height:40});}
+  const bytes=await doc.save(),target=JSON.parse(inventory(bytes,0))[0].style;
+  expect(()=>replace(bytes,0,JSON.stringify(target),'INVOICE REFERENCE',300)).toThrow();
+ });
+ it('permits growth when later graphics paint only outside the new text footprint',async()=>{
+  const doc=await PDFDocument.load(await fixture());doc.getPage(0).drawRectangle({x:120,y:20,width:180,height:40,color:rgb(.05,.2,.5)});
+  const bytes=await doc.save(),target=JSON.parse(inventory(bytes,0))[0].style;
+  expect(JSON.parse(inventory(replace(bytes,0,JSON.stringify(target),'INVOICE REFERENCE',300),0))[0].style.text).toBe('INVOICE REFERENCE');
+ });
+ it('does not grow into another source text line with a different paint color',async()=>{
+  const doc=await PDFDocument.load(await fixture()),font=await doc.embedFont(StandardFonts.HelveticaBold);doc.getPage(0).drawText('XXXXXXXXXX',{x:120,y:250,size:20,font,color:rgb(.05,.2,.5)});
+  const bytes=await doc.save(),target=JSON.parse(inventory(bytes,0)).find((l:any)=>l.style.text==='INVOICE').style;
+  expect(()=>replace(bytes,0,JSON.stringify(target),'INVOICE REFERENCE',300)).toThrow();
+ });
+ it('accounts for square caps on later diagonal source strokes',async()=>{
+  const bytes=await fixture('q 1 1 1 RG 2 J 20 w 242 260 m 300 318 l S Q'),target=JSON.parse(inventory(bytes,0))[0].style;
+  expect(()=>replace(bytes,0,JSON.stringify(target),'INVOICE REFERENCE',300)).toThrow();
+ });
+ it('does not treat repeated move-to commands as joined stroke corners',async()=>{
+  const bytes=await fixture('q 0.5 w 20 244.25 m 20 244.25 m 350 244.25 l S Q'),target=JSON.parse(inventory(bytes,0))[0].style;
+  expect(JSON.parse(inventory(replace(bytes,0,JSON.stringify(target),'INVOICE REFERENCE',300),0))[0].style.text).toBe('INVOICE REFERENCE');
+ });
  it('clears only the selected page when contents and resources are shared',async()=>{
   const pdf=await PDFDocument.load(await fixture()),original=pdf.getPage(0),shared=pdf.addPage([400,300]);
   shared.node.set(PDFName.of('Contents'),original.node.get(PDFName.of('Contents'))!);shared.node.set(PDFName.of('Resources'),original.node.get(PDFName.of('Resources'))!);

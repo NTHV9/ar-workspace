@@ -1,3 +1,16 @@
+## 2026-10-22 — PDF Workspace longer text and row insertion (qualified locally)
+
+- Fixed bounded single-line native growth and unnecessary footer overflow after row insertion. The native/source/resource fences remain; row compaction consumes only rendered and geometrically verified whitespace. Separate independent reviews found no concrete P0–P2 findings.
+- All 87 private repaired PDFs / 241 pages passed 328 longer field edits with zero independent PDFium changes outside targets. Real application UI passed longer text/account switching, actual Total editing, add/delete row, Undo/Redo, one-page Preview/download, multiline right-side Voucher and three-account transition to email. Downloaded email attachment retained the amount edit with zero outside-field pixels. [Detailed evidence and limits](PDF_WORKSPACE_TEXT_AND_ROWS_20261022.md).
+- Full current worktree: 2,219 tests / 219 files passed. This includes the separate unqualified source-classification work; release isolation and deployment verification remain pending. Current production is still `7abeba866a463bd8d795c85badb9dcfcf81fdfcc`. No live email, accounting, Sheet or business-history mutation.
+
+## 2026-10-22 — Direct OPERA AR-total investigation (ongoing goal)
+
+- Fresh Data API read still returns 403 `No Subscribed Plan or API found`; no subscription/access change. Fixed a local Folio History query contract after a live differential proved `reservationIdId`/type/context succeeds while generic `id` causes an unrelated Void-function validation error. All nine unresolved cases plus one Payment reference return one exact history record. Red/green client regression and 26 client/probe tests pass; not deployed yet.
+- Retrieved a true two-page current AR print for a remaining TSAN case. VAT agrees with the existing model, but the native Non-VAT total is zero while the model assigned 800.00 from absent generates. A shared classification path now passes both affected TSAN cases locally, using explicit stable code metadata plus native parity. It also refuses five previous baseline cases with ambiguous native selectors, so this financial change is not release-qualified or deployed.
+- Report metadata identifies the separate native AR report, but exposes no parameters and says it cannot run separately. History supplies a tax-record sequence, not a Stored Folio ID or complete footer. These findings do not yet establish a public current-AR total/PDF replacement endpoint. [Evidence and pending work](OPERA_DIRECT_AR_TOTALS_20261022.md).
+- A controlled MED report experiment with explicit Folio number produced a valid historical Guest Folio, whose Payment/outstanding fields differ from current AR. Supplying the configured AR report name returned a short non-PDF handle with no retrieval links. No documented exact current-AR retrieval contract has been established. Several different AR Invoices share the same reservation/Folio/date, so Folio number alone cannot safely remove the ambiguity fence.
+
 ## 2026-10-22 — Shared invoice generation repairs
 
 - Implemented shared Payment/revenue separation, VAT base/rounding qualification with native controls, F&B VAT/service classification, printed Tab normalization, stable-source fences and strict calculator bucket validation. No per-invoice overrides.

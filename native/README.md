@@ -14,14 +14,14 @@ checked-in `src/pdf/native/wasm` web bindings. No global installation is require
 `native/upstream`, build output and extracted verification source are ignored.
 
 The generated WASM SHA-256 for this build is
-`9b0f9bee8a55cd476b113db92720e9188f00d6f22aeb662088a912e47ecdb291`.
+`18e2d1d26f744ab7d5a816e344701f4177486500bee9875fdfc29436d6320f8f`.
 Licenses and attribution ship at `public/licenses/pdf-native`.
 
 The runtime matches original page/text/baseline/size/font/style, then supplies the
 complete exact Rust inventory target to a clone-before-write transaction. It
 refuses substitution, invisible/stroked text, graphics-state transparency,
 text clipping, tagged/ActualText content, annotations, forms/signatures, Forms/shading, non-unit text transforms/scales/rise, Type3 fonts,
-visual-order scripts, newlines, growth and changed neighboring text. Serialized
+visual-order scripts, newlines, unqualified growth and changed neighboring text. Serialized
 output is re-opened and all pages' native text, non-text operators and complete
 resolved resource graphs are checked against the original. Empty replacement
 removes only the exact target line; every surviving line keeps its text/style/geometry.
@@ -31,6 +31,16 @@ transparency and unqualified operators inside those blocks remain refused.
 The original bytes and source detection stay untouched. A candidate is used for
 both editor source raster and final export; accepted layers are suppressed.
 All-native pages retain native content. Other edits rasterize the same candidate.
+
+Single-line growth accepts an explicit finite editor right edge, bounded by the
+page and the intact source fragment. Without that argument, the original bound
+remains. Baseline, font/style and every other source line stay fixed. The growing
+footprint cannot cross other source text, later-painted source paths/images, or
+earlier editor overlays. Source-paint checks track graphics state/transforms,
+conservative curve/join/cap bounds and subpaths; earlier page backgrounds and
+later artwork outside the footprint do not prevent editing. No source operator
+or resource is removed to make a growing edit pass. This remains single-line
+qualification, not native multiline or arbitrary font rewriting.
 
 The narrow guard intentionally excludes ordinary OPERA pages containing Forms;
 no broad native eligibility claim is made. Such edits retain the existing raster

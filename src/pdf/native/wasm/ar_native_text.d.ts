@@ -6,14 +6,14 @@
  */
 export function inventory(bytes: Uint8Array, page: number): string;
 
-export function replace(bytes: Uint8Array, page: number, expected: string, text: string): Uint8Array;
+export function replace(bytes: Uint8Array, page: number, expected: string, text: string, max_right?: number | null): Uint8Array;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly inventory: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly replace: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
+    readonly replace: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __externref_table_dealloc: (a: number) => void;

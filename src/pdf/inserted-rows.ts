@@ -1,6 +1,7 @@
 import {applyFlowEdit,sourceBandIsEmpty} from './flow';
 import {measureLayerInk,sourceAppearanceUnchanged,sourceStyle} from './source-text';
 import {mapSourceTextRect} from './row-layout';
+import {restoreConsumedRowSpace} from './row-whitespace';
 import type {PdfProjectPage} from './types';
 
 type Band={y:number;height:number};
@@ -51,16 +52,25 @@ export function deleteInsertedRow(page:PdfProjectPage,rowId:string):{page:PdfPro
  const members=page.layers.filter(l=>l.tableRow===rowId);
  if(!members.length)return {page,keptSpace:false};
  if(members.some(l=>l.original&&l.maskOriginal!==false))throw Error('This row contains a source-text edit. Restore its row grouping before deleting it.');
- const bands=insertedRowBands(page,rowId);
+ let bands=insertedRowBands(page,rowId);
  let next={...page,layers:page.layers.filter(l=>l.tableRow!==rowId)},keptSpace=!bands.length;
- for(const band of bands.reverse()){
+ const reclaimable=(band:Band)=>{
   const overlaps=(r:Band)=>r.y<band.y+band.height-epsilon&&r.y+r.height>band.y+epsilon;
   const occupied=next.layers.some(l=>{
    const native=sourceStyle(l);
    if(native&&sourceAppearanceUnchanged(l,native.run,mapSourceTextRect(native.run,next.rowEdits??[],native.baseline)))return false;
    return overlaps(l.sourceText||l.deleted?measureLayerInk(l):l);
   });
-  if(occupied||!sourceBandIsEmpty(next,band.y,band.height)){keptSpace=true;continue;}
+  return !occupied&&sourceBandIsEmpty(next,band.y,band.height);
+ };
+ if(page.rowEdits?.some(e=>e.kind==='delete'&&e.spaceFor===rowId)){
+  if(!bands.length||bands.some(b=>!reclaimable(b)))return {page:next,keptSpace:true};
+  const restored=restoreConsumedRowSpace(next,rowId);
+  if(!restored)return {page:next,keptSpace:true};
+  next=restored;bands=insertedRowBands(next,rowId);
+ }
+ for(const band of bands.reverse()){
+  if(!reclaimable(band)){keptSpace=true;continue;}
   try{next=applyFlowEdit(next,{id:crypto.randomUUID(),kind:'delete',...band});}
   catch{keptSpace=true;}
  }

@@ -80,7 +80,7 @@ export function restoreProject(input: unknown, original: PdfProject, sources?:Pd
       if (!Array.isArray(p.rowEdits) || p.rowEdits.length > 500) return fail();
       const rowIds = new Set<string>();
       const insertedIds = new Set<string>();
-      rowEdits = p.rowEdits.map(raw => {
+      rowEdits = p.rowEdits.map((raw,index) => {
         if (!raw || typeof raw !== 'object') return fail();
         const r = raw as Record<string, unknown>, rowId = string(r.id, 200);
         if (!rowId || rowIds.has(rowId) || !['insert','delete','move'].includes(String(r.kind))) return fail();
@@ -89,6 +89,13 @@ export function restoreProject(input: unknown, original: PdfProject, sources?:Pd
         const owner=r.rowId===undefined?undefined:string(r.rowId,200);
         if(owner!==undefined&&(r.kind!=='insert'||!owner||!insertedIds.has(owner)))return fail();
         const y = number(r.y, 0, extent), rowHeight = number(r.height, .1, MAX_FLOW_HEIGHT);
+        const spaceFor=r.spaceFor===undefined?undefined:string(r.spaceFor,200);
+        if(spaceFor!==undefined){
+          const previous=(p.rowEdits as Record<string,unknown>[])[index-1];
+          // A consumed source band belongs only to the immediately preceding
+          // row insertion, with exactly the same height and a later boundary.
+          if(!spaceFor||r.kind!=='delete'||!previous||previous.kind!=='insert'||previous.id!==spaceFor||previous.height!==rowHeight||y<Number(previous.y)+rowHeight)return fail();
+        }
         if (r.kind!=='insert' && y + rowHeight > extent) return fail();
         if (r.kind === 'move') {
           const x=number(r.x,0,width), areaWidth=number(r.width,.1,width),dx=number(r.dx,-width,width),dy=number(r.dy,-extent,extent);
@@ -96,7 +103,7 @@ export function restoreProject(input: unknown, original: PdfProject, sources?:Pd
           return {id:rowId,kind:'move' as const,x,y,width:areaWidth,height:rowHeight,dx,dy};
         }
         extent=Math.max(height,extent+(r.kind==='insert'?rowHeight:-rowHeight));if(extent>MAX_FLOW_HEIGHT)return fail();
-        return { id: rowId, kind: r.kind as 'insert' | 'delete', y, height: rowHeight,...(owner?{rowId:owner}:{}) };
+        return { id: rowId, kind: r.kind as 'insert' | 'delete', y, height: rowHeight,...(owner?{rowId:owner}:{}),...(spaceFor?{spaceFor}:{}) };
       });
     }
     const page={ id, sourceId, sourcePage, width, height, layers, ...(rowEdits ? { rowEdits } : {}),...(flowHeight===undefined?{}:{flowHeight}) };

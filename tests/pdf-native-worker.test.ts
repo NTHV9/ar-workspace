@@ -12,6 +12,20 @@ class FakeWorker{
 }
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();FakeWorker.instances=[];});
 describe('bounded native worker lifecycle',()=>{
+ it('passes the expanded editor right edge to native rewriting',async()=>{
+  vi.stubGlobal('Worker',FakeWorker);const p=page();p.layers[0].text='INVOICE BILL';p.layers[0].width=160;
+  // Register a space in the same source font, as observed on real invoice pages.
+  const run=p.layers[0].original!;registerSourceStyle(p.layers[0].sourceText!,{font:'font',fontSize:20,bold:true,italic:false,color:'#ffffff',baseline:18,hScale:1,charSpacing:0,wordSpacing:0,glyphs:new Map(Array.from('INVOICE BILL').map(c=>[c,{unicode:c,fontChar:c,width:600,isInFont:true}])),sequence:[],supported:true,run:{...run,fontSize:20,rotated:false,bold:true,italic:false,fontLabel:'Helvetica-Bold',color:'#ffffff',sourceText:p.layers[0].sourceText}});
+  const pending=nativeTextCandidate(new Uint8Array([1]),p),worker=FakeWorker.instances[0],edge=worker?.postMessage.mock.calls[0]?.[0].edits[0].maxRight;worker?.onerror?.();await pending;expect(worker).toBeDefined();expect(edge).toBe(180);
+ });
+ it('keeps a growing native edit above preceding overlays in the newly occupied area',async()=>{
+  vi.stubGlobal('Worker',FakeWorker);const p=page();p.layers[0].width=160;p.layers[0].text='INVOICEBILLIN';p.layers.unshift({...p.layers[0],id:'cover',kind:'whiteout',sourceText:undefined,original:undefined,text:'',x:140,width:20});
+  const pending=nativeTextCandidate(new Uint8Array([1]),p),created=FakeWorker.instances.length;for(const w of FakeWorker.instances)w.onerror?.();await pending;expect(created).toBe(0);
+ });
+ it('refuses text growth across a moved source fragment boundary',async()=>{
+  vi.stubGlobal('Worker',FakeWorker);const p=applyFlowEdit(page(),{id:'move',kind:'move',x:0,y:20,width:120,height:40,dx:0,dy:40});p.layers[0].width=160;p.layers[0].text='INVOICEBILLIN';
+  const pending=nativeTextCandidate(new Uint8Array([1]),p),created=FakeWorker.instances.length;for(const w of FakeWorker.instances)w.onerror?.();await pending;expect(created).toBe(0);
+ });
  it('keeps the latest queued typing state and cancels superseded work',async()=>{
   vi.stubGlobal('Worker',FakeWorker);const a=nativeTextCandidate(new Uint8Array([1]),page()),b=nativeTextCandidate(new Uint8Array([1]),page()),old=nativeTextCandidate(new Uint8Array([1]),page()),latestPage=page();latestPage.layers[0].text='BI';const latest=nativeTextCandidate(new Uint8Array([1]),latestPage);
   expect(await old).toBeUndefined();expect(FakeWorker.instances).toHaveLength(2);FakeWorker.instances[0].onerror?.();expect(FakeWorker.instances[2].postMessage.mock.calls[0][0].edits[0].text).toBe('BI');FakeWorker.instances[1].onerror?.();FakeWorker.instances[2].onerror?.();await Promise.all([a,b,latest]);

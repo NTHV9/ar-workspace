@@ -1,5 +1,6 @@
 import {rowGeometry} from './row-geometry';
 import {compactEmptyRowLines} from './row-compaction';
+import {insertRowUsingWhitespace} from './row-whitespace';
 import {deleteInsertedRow,insertedRowBands} from './inserted-rows';
 import {prepareRowDeletion,replacementForRun} from './source-edits';
 import {applyFlowEdit,pageCanvasHeight,MAX_FLOW_HEIGHT} from './flow';
@@ -64,7 +65,7 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  }
  async function insertRow(){
   if(!page||!anchor||!ready)return;
-  const okay=await changePage(before=>{
+  const okay=await changePage(async before=>{
    if(!tableTextFlows(before,anchor,runs)){
     // Stationery fields own only their source mask; never flow another column.
     const next={...anchor,text:anchor.text+'\n'};
@@ -84,7 +85,12 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
    const fontSize=Math.max(...templates.map(l=>l.fontSize));
    const blank:PdfLayer[]=templates.map(l=>({...l,id:crypto.randomUUID(),kind:'text',x:l.x,y:y+2+(fontSize-l.fontSize)*.85,text:'',height:2+l.fontSize*1.25,tableRow,sourceText:undefined,original:undefined,maskOriginal:undefined,formField:undefined,deleted:undefined,textFlow:undefined}));
    const height=Math.max(anchor.tableRow||standalone?0:current.spacing,...blank.map(l=>l.y+l.height-y+2));
-   const flowed=applyFlowEdit(base,{id:tableRow,kind:'insert',y,height},current.members.map(l=>l.id));
+   const probe=document.createElement('canvas');let flowed:PdfProjectPage;
+   try{
+    const rendered=await renderPage(base,documents,probe,2),context=probe.getContext('2d');
+    if(!context)throw Error('The empty page space could not be checked. Reopen the document before adding a row.');
+    flowed=insertRowUsingWhitespace(base,{id:tableRow,kind:'insert',y,height},current.members.map(l=>l.id),{raster:context.getImageData(0,0,probe.width,probe.height),scale:rendered.scale,runs,barriers});
+   }finally{probe.width=probe.height=0;}
    return {...flowed,layers:[...flowed.layers,...blank]};
   });
   if(okay){setTool('replace');setArea(null);}

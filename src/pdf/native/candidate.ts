@@ -15,17 +15,21 @@ export function nativeTextCandidate(bytes:Uint8Array,page:PdfProjectPage,signal?
   if(page.layers.filter(other=>other.original?.text===r.text&&Math.abs(other.original.x-r.x)<.01&&Math.abs(other.original.y-r.y)<.01&&other.maskOriginal!==false).length!==1)continue;
   // Baseline ownership alone can span a split row. Every source pixel of the
   // original text box must still map together to this overlay's destination.
-  if(!fragments.some(f=>r.x>=f.sx-1e-6&&r.y>=f.sy-1e-6&&r.x+r.width<=f.sx+f.width+1e-6&&r.y+r.height<=f.sy+f.height+1e-6&&Math.abs(f.x+r.x-f.sx-position.x)<1e-6&&Math.abs(f.y+r.y-f.sy-position.y)<1e-6))continue;
+  const paintedWidth=Math.max(r.width,metrics.width);
+  const fragment=fragments.find(f=>r.x>=f.sx-1e-6&&r.y>=f.sy-1e-6&&r.x+paintedWidth<=f.sx+f.width+1e-6&&r.y+r.height<=f.sy+f.height+1e-6&&Math.abs(f.x+r.x-f.sx-position.x)<1e-6&&Math.abs(f.y+r.y-f.sy-position.y)<1e-6);
+  if(!fragment)continue;
+  const maxRight=Math.min(r.x+l.width,fragment.sx+fragment.width,page.width);
+  if(!Number.isFinite(maxRight)||maxRight<r.x)continue;
   // Native text is painted with the source, below editor overlays. Preserve the
   // requested z-order if a preceding edit paints/masks over this source field.
-  const target={x:position.x-2,y:position.y-2,width:position.width+4,height:position.height+4};
+  const target={x:position.x-2,y:position.y-2,width:paintedWidth+4,height:position.height+4};
   const touches=(a:{x:number;y:number;width:number;height:number})=>a.x<target.x+target.width&&a.x+a.width>target.x&&a.y<target.y+target.height&&a.y+a.height>target.y;
   if(page.layers.slice(0,index).some(other=>{
    if((!other.deleted&&other.text.trim()||['image','shape','whiteout','note','stamp'].includes(other.kind))&&touches(other))return true;
    if(other.original&&other.maskOriginal!==false){const mask=mapSourceTextRect(other.original,page.rowEdits??[],sourceStyle(other)?.baseline);return !mask||touches(mask);}
    return false;
   }))continue;
-  edits.push({id:l.id,expectedText:r.text,text,x:r.x,baseline:page.height-r.y-s.baseline,fontSize:s.fontSize,fontLabel:s.run.fontLabel??'',color:s.color,bold:l.bold,italic:l.italic});
+  edits.push({id:l.id,expectedText:r.text,text,x:r.x,baseline:page.height-r.y-s.baseline,fontSize:s.fontSize,fontLabel:s.run.fontLabel??'',color:s.color,bold:l.bold,italic:l.italic,maxRight});
  }
  if(!edits.length)return Promise.resolve(undefined);
  const scope=page.layers.find(l=>l.id===edits[0].id)?.sourceText?.scope??'';

@@ -51,7 +51,7 @@ pub fn inventory(bytes:Vec<u8>,page:usize)->Result<String,JsValue>{
 }
 fn open(bytes:Vec<u8>)->Result<Document,JsValue>{if bytes.len()>32*1024*1024{return Err(err("PDF exceeds native edit limit"));}if bytes.windows(10).any(|v|v==b"/ByteRange"){return Err(err("Signed PDFs are not qualified"));}let doc=Document::open(Arc::new(bytes)).map_err(err)?;if let Some(root)=doc.root(){if let Some(catalog)=doc.get(root).as_dict(){if catalog.get(b"AcroForm").is_some()||catalog.get(b"Perms").is_some(){return Err(err("Interactive or signed PDFs are not qualified"));}}}if doc.security().is_some(){return Err(err("Encrypted PDF unsupported"));}Ok(doc)}
 #[wasm_bindgen]
-pub fn replace(bytes:Vec<u8>,page:usize,expected:&str,text:&str)->Result<Vec<u8>,JsValue>{
+pub fn replace(bytes:Vec<u8>,page:usize,expected:&str,text:&str,max_right:Option<f64>)->Result<Vec<u8>,JsValue>{
  if text.len()>4096||text.contains(['\r','\n']){return Err(err("Only single-line replacements are qualified"));}
  let doc=open(bytes)?;guard(&doc,page)?;
  let before=text_lines(&doc,page).map_err(err)?;
@@ -59,6 +59,9 @@ pub fn replace(bytes:Vec<u8>,page:usize,expected:&str,text:&str)->Result<Vec<u8>
  let matches:Vec<usize>=before.iter().enumerate().filter(|(_,l)|same(&line(l),&expected)).map(|(i,_)|i).collect();
  if matches.len()!=1{return Err(err("Stale or ambiguous native target"));}let index=matches[0];let target=&before[index];
  if !target.decodable||target.visual_order{return Err(err("Unsupported source font"));}
+ let crop=pdfcraft_model::pages(&doc)[page].crop(&doc);
+ let right=match max_right{Some(right) if right.is_finite()&&right>=target.rect[0]&&right<=crop[2]=>right,Some(_)=>return Err(err("Invalid authorized text bounds")),None=>target.rect[2]};
+ let right_tolerance=if max_right.is_some(){1e-6}else{0.75};
  let mut draft=doc.clone();let result=replace_line(&mut draft,page,index,text).map_err(err)?;
  if result.substituted.is_some(){return Err(err("Font substitution refused"));}
  if nontext(&doc,page)?!=nontext(&draft,page)?{return Err(err("Untouched graphics operators changed"));}
@@ -73,7 +76,15 @@ pub fn replace(bytes:Vec<u8>,page:usize,expected:&str,text:&str)->Result<Vec<u8>
   if i!=index {if !same(&line(a),&line(b)){return Err(err("Untouched text changed"));}continue;}
   let mut expected= line(a);let mut actual=line(b);expected["text"]=json!(text);expected.as_object_mut().unwrap().remove("rect");actual.as_object_mut().unwrap().remove("rect");
   if actual!=expected{return Err(err("Replacement text or styling changed"));}
-  if b.rect.iter().any(|v|!v.is_finite())||b.rect[0]<a.rect[0]-0.75||b.rect[1]<a.rect[1]-0.75||b.rect[2]>a.rect[2]+0.75||b.rect[3]>a.rect[3]+0.75{return Err(err("Replacement exceeds original bounds"));}
+  if b.rect.iter().any(|v|!v.is_finite())||b.rect[0]<a.rect[0]-0.75||b.rect[1]<a.rect[1]-0.75||b.rect[2]>right+right_tolerance||b.rect[3]>a.rect[3]+0.75||max_right.is_some()&&b.rect[2]>crop[2]{return Err(err("Replacement exceeds authorized bounds"));}
+  if b.rect[2]>a.rect[2]+1e-6{
+   let old_ops=content_ops(&doc,page)?;let new_ops=content_ops(&draft,page)?;
+   let changed=old_ops.iter().zip(&new_ops).position(|(a,b)|a.op!=b.op||a.operands!=b.operands).ok_or_else(||err("Missing replacement operation"))?;
+   if !matches!(new_ops[changed].op.as_slice(),b"Tj"|b"TJ"){return Err(err("Unverified replacement operation"));}
+   let region=[a.rect[2],a.rect[1].min(b.rect[1]),b.rect[2],a.rect[3].max(b.rect[3])];
+   if before.iter().enumerate().any(|(n,l)|n!=index&&l.rect[0]<region[2]&&l.rect[2]>region[0]&&l.rect[1]<region[3]&&l.rect[3]>region[1]){return Err(err("Text growth overlaps another source line"));}
+   if preservation::later_paint_overlaps(&new_ops,changed,region){return Err(err("Text growth crosses later source artwork"));}
+  }
  }
  }
  let bytes=write_full(&draft,&SaveOptions::default()).map_err(err)?;
