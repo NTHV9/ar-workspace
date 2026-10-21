@@ -1,8 +1,8 @@
-## 2026-10-22 — PDF Workspace longer text and row insertion (qualified locally)
+## 2026-10-22 — PDF Workspace longer text and row insertion (deployed)
 
 - Fixed bounded single-line native growth and unnecessary footer overflow after row insertion. The native/source/resource fences remain; row compaction consumes only rendered and geometrically verified whitespace. Separate independent reviews found no concrete P0–P2 findings.
 - All 87 private repaired PDFs / 241 pages passed 328 longer field edits with zero independent PDFium changes outside targets. Real application UI passed longer text/account switching, actual Total editing, add/delete row, Undo/Redo, one-page Preview/download, multiline right-side Voucher and three-account transition to email. Downloaded email attachment retained the amount edit with zero outside-field pixels. [Detailed evidence and limits](PDF_WORKSPACE_TEXT_AND_ROWS_20261022.md).
-- Full current worktree: 2,219 tests / 219 files passed. This includes the separate unqualified source-classification work; release isolation and deployment verification remain pending. Current production is still `7abeba866a463bd8d795c85badb9dcfcf81fdfcc`. No live email, accounting, Sheet or business-history mutation.
+- Full investigative worktree: 2,219 tests / 219 files passed. Clean release checkout excluding the unqualified source-classification changes: 2,186 tests / 218 files, TypeScript and Vite build pass. Deployed/enabled source `6d137c12b1ee6eb2520842b594aab536772b527c`, Worker `adfd8e68-c3ea-4e87-bd51-8a7fc4e6a31c`. Health/database, six anonymous protected routes and production WASM hash verified; all 42 bindings unchanged except COMMIT_SHA, tracker flags remain enabled. No live email, accounting, Sheet or business-history mutation.
 
 ## 2026-10-22 — Direct OPERA AR-total investigation (ongoing goal)
 

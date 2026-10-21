@@ -1,6 +1,14 @@
 # PDF Workspace: longer text and row insertion
 
-## Implemented, locally tested; deployment pending
+## Implemented, tested, deployed and enabled
+
+Released source `6d137c12b1ee6eb2520842b594aab536772b527c`, Worker version
+`adfd8e68-c3ea-4e87-bd51-8a7fc4e6a31c`. The clean release checkout excludes the
+unqualified financial-classification changes. Its 2,186 tests / 218 files,
+TypeScript and Vite build pass. Public health/database and six unauthenticated
+email boundaries pass. All 42 runtime bindings match the prior deployment except
+COMMIT_SHA; tracker push/writeback remain enabled. The downloaded production WASM
+hash matches the tested artifact.
 
 The actual application reproduced two defects with private generated Invoice PDFs:
 longer REFERENCE text failed Preview, and adding one row to a one-page Invoice
