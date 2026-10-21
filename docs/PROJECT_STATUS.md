@@ -1,3 +1,10 @@
+## 2026-10-21 — Real-source Voucher mask verification
+
+- Investigated the reported Page 4 artwork-mask error using the exact private source Invoice and its linked Statement, downloaded through the authenticated source Preview. No business/email records or saved preparations were modified.
+- Reproduced the exact error with the prior virtual-field geometry: original glyphs began 3pt right of the metadata field edge. The old mask matte used the field edge and misclassified original text as unrelated artwork. Current observed-glyph mask geometry passes on the same source.
+- Verified actual Workspace editing from Statement, linked Invoice update, final Preview and downloaded two-page PDF. The Invoice left-header pixel comparison found zero changes; Room label/value positions matched. Added a focused regression assertion retaining physical glyph coordinates and excluding the next header row; 13 focused tests passed.
+- Production health still identifies source `d02361c977bbd4c10d2a60229736763cc397a54c`, which already contains this repair. This follow-up adds evidence/tests only; no new runtime deployment. An already-open older client may require reopening after preserving its in-progress work.
+
 ## 2026-10-21 — Long Voucher rendering and independent right header editing
 
 - Fixed the one-line Voucher limit that rejected long references. Long values wrap without truncation, right-side labels/values move together, and left identity/address positions remain fixed. Actual left extents and table/signature/footer boundaries constrain layout.

@@ -20,6 +20,12 @@ Workspace edits now update linked Voucher fields as one Undo operation across St
 
 ## Limits and release
 
+### Follow-up: reported original-text artwork error
+
+A private original Invoice and its linked Statement were obtained from the reported preparation through authenticated Preview. In that Invoice, the metadata Voucher field starts 3pt left of the physical original glyph run. A browser differential harness using prior virtual-field geometry reproduced the exact reported artwork/content error; retaining current observed glyph runs passed on the identical bytes. This establishes a mask-position false positive, not evidence of an image actually covering the Voucher.
+
+The real PdfWorkspace UI was then exercised with these two source files locally: edit the linked Voucher on the Statement, Preview both pages, export and download. Both linked fields changed together; the original Invoice's left header had zero changed pixels and Room label/value positions remained aligned. The exported Invoice was visually inspected, including its visible financial totals. Production remained on the already-deployed repair `d02361c977bbd4c10d2a60229736763cc397a54c`; this follow-up did not change runtime code. Focused regression checks (13 tests across linked Voucher and right-header suites) passed. Private sources, output and screenshots remain ignored under `.tmp/voucher-mask`; no actual email, Sheet date or saved preparation was changed.
+
 No email, ledger entry, Google Sheet cell or cloud schema was changed. These tests establish renderer/editor behavior, not a fresh live OPERA generation of the user's failed preparation. That failed job must be prepared again after deployment; opening available files only still omits its unavailable source.
 
 Arbitrary references exceeding the supported metadata/page layout budget remain rejected rather than truncated. Header movement fails closed when source artwork or geometry cannot be verified. Deployment is recorded separately in PROJECT_STATUS.

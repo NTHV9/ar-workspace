@@ -18,6 +18,11 @@ it('does not consume the next header row when its text box overlaps the Voucher 
  const result=voucherRuns([room,voucher],[{...field('B','OLD'),height:12,bold:true}]);
  expect(result).toContain(room);expect(result).not.toContain(voucher);
  expect(sourceStyle(createReplacementLayer(result.find(r=>r.field)!,'edit'))?.baseline).toBe(8);
+ // The editable field starts at x=100, but the original ink starts at x=103.
+ // Mask verification must redraw the observed ink, not the field's padded edge.
+ const maskRuns=sourceStyle(createReplacementLayer(result.find(r=>r.field)!,'edit'))?.maskRuns;
+ expect(maskRuns?.map(item=>({text:item.run.text,x:item.run.x,y:item.run.y,baseline:item.style.baseline}))).toEqual([{text:'OLD',x:103,y:202,baseline:6}]);
+ expect(maskRuns?.some(item=>item.run===room)).toBe(false);
  releaseSourceStyles(scope);
 });
 it('updates matching identities on all pages as one restorable project, without touching other invoices',()=>{
