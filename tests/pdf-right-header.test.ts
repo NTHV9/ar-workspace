@@ -32,6 +32,18 @@ it('reclaims only its inserted table space after a large expansion is removed',(
  expect(mapSourceTextRect(runs[11],restored.rowEdits??[])?.y).toBe(268);
  expect(mapSourceTextRect(runs[8],restored.rowEdits??[])?.y).toBe(145);
 });
+it('does not inspect pixels from an empty fractional intersection when restoring header space',()=>{
+ const scale=1.5,width=918,height=1188,pixels=new Uint8Array(width*height);
+ // The source fragment above the moved band ends at 144.75pt. Its last pixel
+ // touches that boundary but the fragment has no area in the vacated space.
+ pixels[Math.floor(144.75*scale)*width+Math.floor(400*scale)]=1;
+ const evidence={x:0,y:0,width,height,pixels,scale},expanded={...original,height:original.height+10};
+ const grown=reflowRightHeader(page,original,expanded,runs,evidence)!;
+ const current={...grown,layers:grown.layers.map(l=>l.id===original.id?expanded:l)};
+ const restored=reflowRightHeader(current,expanded,original,runs,evidence)!;
+ expect(mapSourceTextRect(runs[3],restored.rowEdits??[])?.y).toBe(145);
+ expect(mapSourceTextRect(runs[5],restored.rowEdits??[])?.y).toBe(145);
+});
 it('uses the moved geometry when editing a second field below an expanded voucher',()=>{
  const arrival=run('Arrival',384,160),arrivalValue=run('04/09/26',474,160),all=[...runs,arrival,arrivalValue];
  const expanded={...original,height:50};const first=reflowRightHeader(page,original,expanded,all,ink)!;

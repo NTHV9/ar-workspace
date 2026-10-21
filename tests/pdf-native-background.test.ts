@@ -2,6 +2,19 @@ import {describe,it,expect,vi} from 'vitest';
 import {flatMaskBackground,sourceMaskFill,assertMaskInterior,verifiedMaskBackground} from '../src/pdf/mask-background';
 import type {PdfLayer} from '../src/pdf/types';
 describe('safe source replacement backgrounds',()=>{
+ it('keeps dense text unqualified when there is insufficient clear background evidence',()=>{
+  const width=160,height=16,rect={x:5,y:5,width:150,height:5},original=new Uint8ClampedArray(width*height*4).fill(255),matte=new Uint8ClampedArray(width*height*4);
+  for(let x=0;x<width;x++)original.set([0,0,0,255],(3*width+x)*4);
+  for(let x=6;x<155;x+=3)for(let y=5;y<10;y++){const i=(y*width+x)*4;original.set([0,0,0,255],i);matte.set([0,0,0,255],i);}
+  // Side strips and aggregate ink similarity do not prove the interior safe.
+  for(const faintBridge of [false,true])for(const mark of ['none','black','gray','light','solid']){
+   const data=original.slice(),expected=matte.slice();
+   if(faintBridge)for(let x=6;x<155;x++){const i=(5*width+x)*4;if(!expected[i+3]){data.set([223,223,223,255],i);expected.set([0,0,0,32],i);}}
+   if(mark==='solid')for(let y=5;y<10;y++)for(let x=5;x<155;x++)data.set([0,0,0,255],(y*width+x)*4);
+   else if(mark!=='none'){const color=mark==='black'?0:mark==='gray'?150:230;for(let x=6;x<16;x++){const i=(7*width+x)*4;if(!expected[i+3])data.set([color,color,color,255],i);}}
+   expect(()=>verifiedMaskBackground(data,expected,width,height,rect,2,'#000000')).toThrow(/background|artwork/i);
+  }
+ });
  it('allows a nearby table rule outside the painted mask but rejects it inside',()=>{
   const data=new Uint8ClampedArray(20*20*4).fill(255),matte=new Uint8ClampedArray(20*20*4),rect={x:4,y:5,width:12,height:8};
   for(let x=0;x<20;x++)data.set([0,0,0,255],(14*20+x)*4);

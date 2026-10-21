@@ -1,3 +1,11 @@
+## 2026-10-21 — PDF stability audit with real-source workflow
+
+- Audited recent editor changes and ran 2,091 independent shorten/clear attempts across six private hotel templates, a multipage example and an actual Invoice/Statement pair: 2,075 successful attempts, 16 dense REFERENCE-heading refusals, 88 export checks. This is bounded evidence, not a universal pass. [Full findings and limits](PDF_STABILITY_AUDIT_20261021.md).
+- Found and repaired an actual UI regression: shrinking a linked Voucher after adding a line falsely detected artwork because a zero-area fractional intersection became a sampled pixel. Empty intersections are now excluded before rounding; positive-area checks remain. Exact real-source add/remove/Preview/download passed, with left-header pixel difference zero and Room label/value restored together.
+- Tested batch address edits, Undo/Redo, renamed output/scans, reassignment of scan to an Invoice, account switching, all three delivery modes and mock PDF-to-email recovery after a lost review response. Downloaded scan and untouched Invoice rendered pixel-identically to their controls. No real send/history/Sheet/OPERA write.
+- **Open:** dense REFERENCE editing remains unqualified. Experimental side-strip/topology fallbacks were rejected by independent artwork counterexamples and moved out of runtime; a fail-closed regression protects 10 cases. PdfCraft qualification was tested separately and not broadly expanded or disabled.
+- Final tests: 2,106 / 215 files, TypeScript/build and independent review passed. Deployment pending at this entry.
+
 ## 2026-10-21 — Total editing beside table rules
 
 - Implemented a verified interior-background fallback when a sampling ring intersects a table rule outside the actual text mask. Full original-glyph and mixed-interior checks remain enforced; document edits do not change accounting data.

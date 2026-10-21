@@ -11,6 +11,9 @@ function verifyInk(page:PdfProjectPage,edit:Extract<PdfRowEdit,{kind:'move'}>,in
  const erased=[...page.layers,before].flatMap(l=>{const mask=sourceMaskBounds(l,runs);return mask?[mask]:[];});
  for(const part of subtractRect(destination,edit))for(const fragment of sourceFragments(page)){
   const x=Math.max(part.x,fragment.x),y=Math.max(part.y,fragment.y),right=Math.min(part.x+part.width,fragment.x+fragment.width),bottom=Math.min(part.y+part.height,fragment.y+fragment.height);
+  // A shared fractional edge has no area; rounding it would invent one pixel
+  // from the neighboring fragment and falsely report artwork when shrinking.
+  if(right<=x||bottom<=y)continue;
   for(let py=Math.floor(y*scale);py<Math.ceil(bottom*scale);py++)for(let px=Math.floor(x*scale);px<Math.ceil(right*scale);px++){
    const sx=Math.floor((fragment.sx+px/scale-fragment.x)*scale),sy=Math.floor((fragment.sy+py/scale-fragment.y)*scale);
    if(erased.some(r=>sx>=Math.floor(r.x*scale)&&sx<Math.ceil((r.x+r.width)*scale)&&sy>=Math.floor(r.y*scale)&&sy<Math.ceil((r.y+r.height)*scale)))continue;
