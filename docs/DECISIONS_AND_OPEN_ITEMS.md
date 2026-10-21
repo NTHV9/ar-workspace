@@ -1,3 +1,17 @@
+## PDF corpus qualification and uploaded originals — 21 October 2026
+
+The owner requests testing all of our current bills, beyond representative hotel
+templates. Use an explicit snapshot and report every generation candidate,
+successful source, failed/uncertain source and non-Folio ledger row separately.
+Do not turn unreadable, expired or untested sources into passes. Test private
+copies without recording billing/sending activity or changing accounting data.
+
+Externally uploaded PDFs should keep their original pages and content by default;
+most are not edited. Do not automatically rewrite text, resize pages, rasterize
+untouched pages or apply repair heuristics. Combining files may change the PDF
+container, but must preserve each untouched page's content and appearance.
+This does not request removing the user's existing optional editing tools.
+
 ## Sheet dates determine current billing and Follow 1–3 status — 13 October 2026
 
 The owner makes verified Google Sheet R/U/V/W dates authoritative for current billing and Follow-up 1–3 status, including changing or clearing dates. This supersedes the confirmed-Sent billing floor and automatic preservation of those current status fields when the corresponding verified Sheet value differs or is blank. Actual sent-mail evidence remains immutable and separate from current status. Friendly/Final (and unmapped reminder stages) remain based on web sending; the owner explicitly confirms the four-column scope. Credit terms and billing requirements still follow Account/Account Type settings; S/T remain reference fields.
