@@ -1,10 +1,10 @@
-2026-10-22 — Shared invoice generation repairs (release validation)
+## 2026-10-22 — Shared invoice generation repairs
 
 - Implemented shared Payment/revenue separation, VAT base/rounding qualification with native controls, F&B VAT/service classification, printed Tab normalization, stable-source fences and strict calculator bucket validation. No per-invoice overrides.
 - Fresh authenticated Worker generation succeeds for 87 of the previous 96 blocked invoices. All 87 PDFs / 241 pages pass Folio/outstanding/page-bound and independent footer reconciliation; 29 include Payments. Eight match independent native tax controls, and a true OPERA AR print confirms Payment/gross/VAT/outstanding semantics.
 - Actual-byte native editing passes 1,138 shorten/clear operations with zero independent PDFium differences outside targets. New Edge browser audit attachment failed, so a new click-flow pass is not claimed. Prior full-corpus browser results remain separate.
 - Nine remain refused: four ambiguous Folio selectors, two native non-VAT classification mismatches, two current-versus-posted account mismatches and one unsupported exclusive AR adjustment/reversal shape. [Repair evidence and limits](INVOICE_GENERATION_REPAIRS_20261022.md).
-- All 2,155 tests / 217 files, TypeScript, Vite build and independent review pass. Deployment verification is pending. No actual email, billing/Sheet changes or accounting-ledger write.
+- All 2,155 tests / 217 files, TypeScript, Vite build and independent review pass. Deployed/enabled source `7abeba866a463bd8d795c85badb9dcfcf81fdfcc`, Worker `a134b5f5-c498-433f-aa0e-401a2761cfcb`. Health/database and six anonymous protected routes pass; all 42 runtime bindings match the previous release except COMMIT_SHA. Tracker push/writeback remain enabled. Temporary diagnostic sessions stopped and local credentials removed. No actual email, billing/Sheet changes or accounting-ledger write.
 
 ## 2026-10-21 — Current Invoice corpus audit and uploaded-file preservation
 
