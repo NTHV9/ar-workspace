@@ -60,7 +60,7 @@ export async function detectText(page: PdfProjectPage, documents: Map<string, PD
   try{return await pending;}catch(error){scope?.text.delete(key);throw error;}
 }
 
-type TextMask={x:number;y:number;width:number;height:number;sourceX:number;sourceY:number;sourceLayer?:PdfLayer};
+type TextMask={x:number;y:number;width:number;height:number;sourceX:number;sourceY:number;sourceHeight?:number;sourceLayer?:PdfLayer};
 async function drawLayer(ctx: CanvasRenderingContext2D, layer: PdfLayer, mask?:TextMask) {
   validateDeletedLayer(layer);
   if (!layer.deleted) validateSourceText(layer);
@@ -131,7 +131,13 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
    // Hit targets include font descent/padding. Mask only the original ink so
    // clearing or replacing a word cannot shave the next tightly spaced line.
    const ink=native&&sourceStyle(native)?.supported&&!measureLayerText(native).unsupported?measureLayerInk(native):{y:original.y-1,height:original.height+2};
-   masks.set(layer.id,{x:mapped.x-1,y:mapped.y+ink.y-original.y,width:mapped.width+2,height:ink.height,sourceX:original.x-1,sourceY:ink.y,sourceLayer:native});
+   masks.set(layer.id,{x:mapped.x-1,y:mapped.y+ink.y-original.y,width:mapped.width+2,height:ink.height,sourceX:original.x-1,sourceY:ink.y,sourceHeight:ink.height,sourceLayer:native});
+  }
+  const mask=masks.get(layer.id);
+  if(mask)for(const [index,edit] of (page.rowEdits??[]).entries())if(edit.kind==='move'&&edit.dy<0&&edit.id.startsWith(`rh:${layer.id}:`)){
+   const destination=mapSourceRect({x:edit.x+edit.dx,y:edit.y+edit.dy,width:edit.width,height:edit.height},(page.rowEdits??[]).slice(index+1));
+   if(!destination)throw Error('The header spacing changed after this edit. Restore the field before moving it again.');
+   if(destination.x<=mask.x&&destination.x+destination.width>=mask.x+mask.width&&destination.y>mask.y&&destination.y<mask.y+mask.height)mask.height=destination.y-mask.y;
   }
   valid.push(layer);
  }catch(error){if(!tolerant)throw new PdfLayerEditError(page.id,layer.id,error);issues.push({layerId:layer.id,message:error instanceof Error?error.message:'This edit could not be rendered.'});}}

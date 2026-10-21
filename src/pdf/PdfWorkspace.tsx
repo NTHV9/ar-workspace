@@ -1,3 +1,5 @@
+import {editLinkedVoucher} from './linked-voucher-flow';
+import {reflowRightHeader,type HeaderInk} from './right-header';
 import {restoreEditorSession,type PdfEditorSession,type PdfEditorControl} from './editor-session';
 import {InvoiceAttachments} from './InvoiceAttachments';
 import {FilenameField} from './FilenameField';
@@ -83,6 +85,8 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
   const activePage = useRef('');
   const reviewedProject = useRef<PdfProject | null>(null);
   const sourceModel = useRef<PdfProject | null>(null);
+  const linkedSourceRuns=useRef(new Map<string,DetectedText[]>());
+  const linkedHeaderInk=useRef(new Map<string,HeaderInk>());
   const drag = useRef<{ id: string; x: number; y: number; layer: PdfLayer; resize: boolean; before: PdfProject } | null>(null);
   useEffect(() => { const previous = document.activeElement as HTMLElement | null; workspace.current?.querySelector<HTMLButtonElement>('.pdf-close')?.focus(); return () => previous?.focus(); }, []);
   useEffect(() => { if (!preview) return; const previous = document.activeElement as HTMLElement | null; workspace.current?.querySelector<HTMLButtonElement>('.pdf-preview-dialog button')?.focus(); return () => previous?.focus(); }, [preview]);
@@ -97,7 +101,14 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
     loadSources(catalog).then(async result => { dispose=result.dispose;if(!current){dispose();return;}sourceModel.current=result.project;
       const session=initialSession?await restoreEditorSession(initialSession,result.project,catalog,p=>rebindProjectSources(p,result.documents)):null;
       const restored=session?.project??(initialProject?restoreProject(initialProject,result.project,catalog):{...result.project,delivery:initialDelivery});
-      if(!current){dispose();return;}setLoaded(result.documents);setProject(restored);setPersistedProject(session?session.persistedProject:restored);setActiveId(session?.activeId??restored.pages[0]?.id??'');setPast(session?.past??[]);setFuture(session?.future??[]);
+      const linkedRuns=new Map<string,DetectedText[]>(),headerInk=new Map<string,HeaderInk>(),bindings=voucherBindings(result.documents);let headerInkBytes=0;
+      for(const p of result.project.pages){const key=`${p.sourceId}:${p.sourcePage}`;if(!bindings.get(key)?.length)continue;const text=await detectText(p,result.documents);linkedRuns.set(key,text);
+       if(p.width<=2000&&p.height<=3000&&headerInkBytes+p.width*p.height*.5625<=64*1024*1024&&text.some(r=>/^(?:COPY OF )?INVOICE$/i.test(r.text.trim())&&r.x>p.width*.55)){
+        const scale=Math.min(1.5,Math.sqrt(4_000_000/(p.width*p.height))),canvas=document.createElement('canvas');await renderPage(p,result.documents,canvas,scale);const x=Math.floor(p.width*.5*scale),width=canvas.width-x,height=Math.min(Math.ceil(p.height*.5*scale),Math.ceil((Math.min(...text.filter(r=>r.text.trim().toUpperCase()==='DATE').map(r=>r.y))+12)*scale));
+        const rgba=canvas.getContext('2d')!.getImageData(x,0,width,height).data,pixels=new Uint8Array(width*height);for(let i=0;i<pixels.length;i++)pixels[i]=Math.min(rgba[i*4],rgba[i*4+1],rgba[i*4+2])<240?1:0;headerInk.set(key,{x,y:0,width,height,pixels,scale});headerInkBytes+=pixels.byteLength;canvas.width=canvas.height=0;
+       }
+      }
+      if(!current){dispose();return;}linkedSourceRuns.current=linkedRuns;linkedHeaderInk.current=headerInk;setLoaded(result.documents);setProject(restored);setPersistedProject(session?session.persistedProject:restored);setActiveId(session?.activeId??restored.pages[0]?.id??'');setPast(session?.past??[]);setFuture(session?.future??[]);
     }).catch(e=>{dispose?.();if(current)setError(e instanceof Error?e.message:'Unable to open PDF.');});
     return () => { current = false; revision.current++; dispose?.();for(const release of attachmentDisposers.current)release();attachmentDisposers.current=[]; };
   }, [sources, initialProject, initialDelivery,initialSession]);
@@ -140,18 +151,19 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
     } catch (e) { if (startedAt === revision.current && session === sourceSession.current) setError(e instanceof Error ? e.message : 'Draft save failed. Your edits are still open.'); }
     finally { setBusy(false); }
   }
-  function commit(next: PdfProject,catalog:PdfSourceDocument[]=allSources) { if (!project||!sourceModel.current) return; try{next=syncVouchers(project,next,voucherBindings(loaded));}catch(e){setError(e instanceof Error?e.message:'This edit could not be applied.');return;}try{deliveryFilenames(next,deliveryGroups(next,catalog));}catch(e){setError(e instanceof Error?e.message:'Choose different output filenames.');return;}try{restoreProject(next,sourceModel.current,catalog);validateInvoiceAttachments(next,catalog);}catch{setError('This change exceeds safe page, layer, text or image limits and was not applied.');return;} setError('');setPast(p => [...p.slice(-49), project]); setFuture([]); setProject(next); invalidate();return true; }
+  function commit(next: PdfProject,catalog:PdfSourceDocument[]=allSources,linkedPrepared=false) { if (!project||!sourceModel.current) return; try{if(!linkedPrepared)next=syncVouchers(project,next,voucherBindings(loaded));}catch(e){setError(e instanceof Error?e.message:'This edit could not be applied.');return;}try{deliveryFilenames(next,deliveryGroups(next,catalog));}catch(e){setError(e instanceof Error?e.message:'Choose different output filenames.');return;}try{restoreProject(next,sourceModel.current,catalog);validateInvoiceAttachments(next,catalog);}catch{setError('This change exceeds safe page, layer, text or image limits and was not applied.');return;} setError('');setPast(p => [...p.slice(-49), project]); setFuture([]); setProject(next); invalidate();return true; }
   function fitText(next:PdfLayer):PdfLayer {
     if(!page||['image','shape','whiteout'].includes(next.kind))return next;
     const nextColumn=next.tableRow?Math.min(page.width,...page.layers.filter(l=>l.tableRow===next.tableRow&&l.x>next.x+1).map(l=>l.x-4)):page.width;
     const natural=measureLayerText(next);const width=Math.max(.1,Math.min(nextColumn-next.x,Math.max(next.original?.width??next.width,natural.naturalWidth+(next.sourceText?1:0))));
     const measured=measureLayerText({...next,width});return {...next,width,height:Math.min(MAX_FLOW_HEIGHT-next.y,Math.max(next.original?.height??next.fontSize*1.25,measured.height))};
   }
+  function changeVoucher(text:string){if(!page||!layer||!project||busy)return;const field=linkedVoucher(page,layer,voucherBindings(loaded));if(!field)return;try{commit(editLinkedVoucher(project,field,text,voucherBindings(loaded),linkedSourceRuns.current,linkedHeaderInk.current),allSources,true);}catch(e){setError(e instanceof Error?e.message:'Unable to space the linked Voucher fields.');}}
   function updateLayer(change:Partial<PdfLayer>){
     if(!page||!layer||layer.deleted||!project||busy)return;let next={...layer,...change},changed=page;
     if(layer.kind==='image'&&('width'in change||'height'in change))next={...next,...resizeImage(layer,change,page.width-next.x,canvasHeight-next.y)};
     const textChange='text'in change||'fontSize'in change||'font'in change||'bold'in change||'italic'in change;
-    if('text'in change&&linkedVoucher(page,layer,voucherBindings(loaded))){commit({...project,pages:project.pages.map(p=>p.id===page.id?{...p,layers:p.layers.map(l=>l.id===layer.id?{...l,text:change.text!}:l)}:p)});return;}
+    if('text'in change&&linkedVoucher(page,layer,voucherBindings(loaded))){changeVoucher(change.text!);return;}
     if(textChange){
       next=fitText(next);
       const siblings=layer.tableRow?page.layers.filter(l=>l.tableRow===layer.tableRow):[layer];
@@ -163,7 +175,7 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
       const nextY=Math.min(rowBelow?.y??Infinity,otherBelow?.y??Infinity);
       if(!tableTextFlows(page,layer,runs)){
         if(!native.geometryReady){setError('Wait for the page geometry before changing text spacing.');return;}
-        try{changed=reflowStationery(page,layer,next,runs,native.barriers);}catch(e){setError(e instanceof Error?e.message:'Unable to space this column.');return;}
+        try{changed=reflowRightHeader(page,layer,next,runs,linkedHeaderInk.current.get(`${page.sourceId}:${page.sourcePage}`))??reflowStationery(page,layer,next,runs,native.barriers);}catch(e){setError(e instanceof Error?e.message:'Unable to space this column.');return;}
       }else if(delta>.1){
         const at=layer.textFlow?layer.textFlow.at+layer.textFlow.height:layer.tableRow?beforeBottom:Math.min(Number.isFinite(nextY)?nextY-.1:Infinity,layer.y+layer.height);
         try{changed=applyFlowEdit(page,{id:uid(),kind:'insert',y:at,height:delta,...(layer.tableRow&&page.rowEdits?.some(e=>e.kind==='insert'&&e.id===layer.tableRow)?{rowId:layer.tableRow}:{})},siblings.map(l=>l.id));next.textFlow={at:layer.textFlow?.at??at,height:(layer.textFlow?.height??0)+delta};}catch(e){setError(e instanceof Error?e.message:'Unable to flow this text.');return;}
@@ -185,12 +197,12 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
     try{return applyFlowEdit(before,{id:uid(),kind:'delete',y:flow.at,height:flow.height},[removed.id]);}catch{return before;}
   }
   function deleteSelected(){
-    if(!page||!layer||!project||busy)return;
+    if(!page||!layer||!project||busy)return;if(linkedVoucher(page,layer,voucherBindings(loaded))){changeVoucher('');return;}
     let changed:PdfProjectPage;try{changed=deleteTextLayer(releaseTextSpace(page,layer),layer);}catch(e){setError(e instanceof Error?e.message:'Unable to restore the column spacing.');return;}
     commit({...project,pages:project.pages.map(p=>p.id===page.id?changed:p)});setSelected('');
   }
   function restoreOriginalText(){
-    if(!page||!layer||!originalRun||!project||busy)return;
+    if(!page||!layer||!originalRun||!project||busy)return;const linked=linkedVoucher(page,layer,voucherBindings(loaded));if(linked){changeVoucher(linked.text);return;}
     let changed:PdfProjectPage;try{changed=releaseTextSpace(page,layer);}catch(e){setError(e instanceof Error?e.message:'Unable to restore the column spacing.');return;}
     const position=mapSourceTextRect(originalRun,changed.rowEdits??[],originalRun.fontSize*.72);if(!position)return;
     const restored={...createReplacementLayer(originalRun,layer.id),x:position.x,y:position.y,...(layer.formField?{formField:layer.formField}:{})};

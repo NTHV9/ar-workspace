@@ -11,6 +11,14 @@ it('fits a long voucher in the original single header row without dropping chara
  expect(pdf.getPageCount()).toBe(1);
 });
 it('keeps ordinary vouchers at the existing size',async()=>{const doc=await PDFDocument.load(await syntheticInvoice());expect(readVoucherFields(doc.getPage(0))[0].fontSize).toBe(8);});
+it('keeps a wide left guest name fixed and places the right date below it without overlap',async()=>{
+ const guest='C'.repeat(60),doc=await PDFDocument.load(await syntheticInvoice(3,'VCH-'+'12345678901'.repeat(5),'A',true,{guest}));
+ const commands=doc.getPage(0).node.normalizedEntries().Contents!.asArray().map(ref=>doc.context.lookup(ref)).map(s=>new TextDecoder().decode(s instanceof PDFRawStream?decodePDFRawStream(s).decode():s instanceof PDFContentStream?s.getUnencodedContents():new Uint8Array())).join('\n');
+ const texts=[...commands.matchAll(/BT\n([\s\S]*?)ET/g)].map(block=>({text:Buffer.from(block[1].match(/<([\dA-F]+)> Tj/)?.[1]??'','hex').toString(),top:792-Number(block[1].match(/1 0 0 1 [\d.]+ ([\d.]+) Tm/)![1])-Number(block[1].match(/ ([\d.]+) Tf/)![1])}));
+ expect(texts.find(t=>t.text===guest)!.top).toBe(254);
+ expect(texts.find(t=>t.text==='Date/Time')!.top).toBeGreaterThanOrEqual(265);
+ expect(texts.find(t=>t.text==='DATE')!.top).toBeGreaterThan(texts.find(t=>t.text==='Date/Time')!.top+8);
+});
 it('keeps routed reference continuations together across a page break and preserves an eleven-line address',async()=>{
  const address=Array.from({length:11},(_,i)=>`ADDRESS-${i+1}`),lines=Array.from({length:20},(_,i)=>({id:String(i+1),date:'01/09/26',description:`CHARGE-${i+1}`,reference:i===19?'ROUTE-REF\nvia ROUTED-GUEST':`REF-${i+1}`,debit:321000,credit:0}));
  const doc=await PDFDocument.load(await syntheticInvoice(20,'VCH-001','A',false,{address,lines}));expect(doc.getPageCount()).toBeGreaterThan(1);
@@ -49,4 +57,20 @@ it.each([21,60])('repeats signature and cashier on every page while keeping %i c
   expect(commands).toContain('612 0 0 105 0 0 cm');
  }
  expect(rows).toBe(count);
+});
+
+it.each([44,59,120])('renders a %i-character voucher completely without overlapping the following header rows',async length=>{
+ const voucher='VCH-'+Array.from({length:length-4},(_,i)=>String(i%10)).join('');
+ const doc=await PDFDocument.load(await syntheticInvoice(25,voucher,'LONG',true));
+ for(const page of doc.getPages()){
+  const field=readVoucherFields(page)[0];expect(field.text).toBe(voucher);expect(field.fontSize).toBeGreaterThanOrEqual(6);expect(field.height).toBeGreaterThan(12);
+  const commands=page.node.normalizedEntries().Contents!.asArray().map(ref=>doc.context.lookup(ref)).map(s=>new TextDecoder().decode(s instanceof PDFRawStream?decodePDFRawStream(s).decode():s instanceof PDFContentStream?s.getUnencodedContents():new Uint8Array())).join('\n');
+  const texts=[...commands.matchAll(/BT\n([\s\S]*?)ET/g)].map(block=>({text:Buffer.from(block[1].match(/<([\dA-F]+)> Tj/)?.[1]??'','hex').toString(),top:792-Number(block[1].match(/1 0 0 1 [\d.]+ ([\d.]+) Tm/)![1])-Number(block[1].match(/ ([\d.]+) Tf/)![1])}));
+  const printed=texts.filter(t=>t.top>=field.y&&t.top<field.y+field.height&&/^(VCH-|[0-9]{5,})/.test(t.text));
+  expect(printed.map(t=>t.text).join('')).toBe(voucher);
+  expect(texts.find(t=>t.text==='101')!.top).toBeGreaterThan(printed.at(-1)!.top+field.fontSize);
+  expect(texts.find(t=>t.text==='Example Guest')!.top).toBe(254);
+  expect(texts.find(t=>t.text==='SYNTHETIC TRAVEL')!.top).toBe(130);
+  expect(texts.find(t=>t.text==='DATE')!.top).toBeGreaterThan(texts.find(t=>t.text==='Example Guest')!.top+8);
+ }
 });

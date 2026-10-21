@@ -33,7 +33,7 @@ export function assertMaskInterior(data:Uint8ClampedArray,matte:Uint8ClampedArra
   if(!accounted)throw Error('The original text area contains artwork or other content. Restore original text, then use Whiteout and a new text box.');
  }
 }
-export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLayer,mask:{x:number;y:number;width:number;height:number;sourceX?:number;sourceY?:number;sourceLayer?:PdfLayer}):string{
+export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLayer,mask:{x:number;y:number;width:number;height:number;sourceX?:number;sourceY?:number;sourceHeight?:number;sourceLayer?:PdfLayer}):string{
  if(!layer.original||layer.maskOriginal===false)return layer.fill;
  // The user can still request an explicit colored mask. Automatic masks preserve
  // a verified flat source surface; mixed artwork requires an explicit decision.
@@ -41,26 +41,31 @@ export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLa
  const ctx=source.getContext('2d')!,r=layer.original;
  // Read a small source-space rectangle, never a whole 300-DPI page per layer.
  // Binding supplies source coordinates before any column/row/layer move.
- const rect={x:(mask.sourceX??r.x-1)*scale,y:(mask.sourceY??r.y-1)*scale,width:mask.width*scale,height:mask.height*scale};
+ const rect={x:(mask.sourceX??r.x-1)*scale,y:(mask.sourceY??r.y-1)*scale,width:mask.width*scale,height:(mask.sourceHeight??mask.height)*scale};
  const x=Math.max(0,Math.floor(rect.x)-4),y=Math.max(0,Math.floor(rect.y)-4);
  const width=Math.min(source.width-x,Math.ceil(rect.x+rect.width)+4-x),height=Math.min(source.height-y,Math.ceil(rect.y+rect.height)+4-y);
  if(width<1||height<1)throw Error('The source background is outside the page. Restore this edit before Preview.');
  const pixels=ctx.getImageData(x,y,width,height);
  const local={...rect,x:rect.x-x,y:rect.y-y},background=flatMaskBackground(pixels.data,width,height,local);
  const original=mask.sourceLayer,style=original&&sourceStyle(original);
- if(!original||!style||style.run.rotated||style.sequence.filter(g=>typeof g!=='number').map(g=>g.unicode).join('')!==original.text)throw Error('The original text background cannot be verified safely. Restore original text, then use Whiteout and a new text box.');
+ if(!original||!style||style.run.rotated||(!style.maskRuns&&style.sequence.filter(g=>typeof g!=='number').map(g=>g.unicode).join('')!==original.text))throw Error('The original text background cannot be verified safely. Restore original text, then use Whiteout and a new text box.');
  const matte=document.createElement('canvas');matte.width=width;matte.height=height;
  try{
   const context=matte.getContext('2d')!;context.scale(scale,scale);context.translate(-x/scale,-y/scale);
   // Draw only the original observed glyph sequence. This never invents missing
   // characters or approves the edited font; the interior comparison still must
   // match every nonbackground pixel of the actual PDF.js source raster.
-  let advance=0;context.fillStyle=style.color;context.textBaseline='alphabetic';
-  for(const glyph of style.sequence){
-   if(typeof glyph==='number'){advance-=glyph*style.fontSize/1000*style.hScale;continue;}
-   if(glyph.accent)throw Error('The original glyph background cannot be verified safely. Restore original text, then use Whiteout and a new text box.');
-   context.save();context.font=sourceFont(original,glyph.fallbackFont?{...style,font:glyph.fallbackFont}:style);context.translate(original.x+advance,original.y+style.baseline);context.scale(style.hScale,1);if(glyph.isInFont!==false)context.fillText(glyph.fontChar,0,0);context.restore();
-   advance+=(glyph.width*style.fontSize/1000+style.charSpacing+(glyph.isSpace?style.wordSpacing:0))*style.hScale;
+  context.textBaseline='alphabetic';
+  const originals=style.maskRuns??[{run:style.run,style}];
+  for(const observed of originals){
+   const face=observed.style;if(!face?.supported||face.run.rotated||face.sequence.filter(g=>typeof g!=='number').map(g=>g.unicode).join('')!==observed.run.text)throw Error('The original glyph background could not be verified.');
+   let advance=0;context.fillStyle=face.color;
+   for(const glyph of face.sequence){
+    if(typeof glyph==='number'){advance-=glyph*face.fontSize/1000*face.hScale;continue;}
+    if(glyph.accent)throw Error('The original glyph background cannot be verified safely. Restore original text, then use Whiteout and a new text box.');
+    context.save();context.font=sourceFont({...original,fontSize:observed.run.fontSize,bold:!!observed.run.bold,italic:!!observed.run.italic},glyph.fallbackFont?{...face,font:glyph.fallbackFont}:face);context.translate(observed.run.x+advance,observed.run.y+face.baseline);context.scale(face.hScale,1);if(glyph.isInFont!==false)context.fillText(glyph.fontChar,0,0);context.restore();
+    advance+=(glyph.width*face.fontSize/1000+face.charSpacing+(glyph.isSpace?face.wordSpacing:0))*face.hScale;
+   }
   }
   assertMaskInterior(pixels.data,context.getImageData(0,0,width,height).data,width,height,local,background,Math.ceil(scale*.75),style.color);
  }finally{matte.width=matte.height=0;}

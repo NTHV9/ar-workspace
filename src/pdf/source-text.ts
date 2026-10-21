@@ -3,7 +3,7 @@ import type { DetectedText, PdfLayer } from './types';
 
 export type SourceTextReference = { sourceId: string; sourcePage: number; runIndex: number; scope?: string };
 export type SourceGlyph = { unicode: string; fontChar: string; width: number; isSpace?: boolean; isInFont?: boolean; accent?: unknown; fallbackFont?:string };
-export type SourceStyle = { font: string; fontSize: number; bold: boolean; italic: boolean; color: string; baseline: number; hScale: number; charSpacing: number; wordSpacing: number; glyphs: Map<string, SourceGlyph>; sequence: (SourceGlyph | number)[]; supported: boolean; run: DetectedText };
+export type SourceStyle = { maskRuns?:{run:DetectedText;style:SourceStyle}[];font: string; fontSize: number; bold: boolean; italic: boolean; color: string; baseline: number; hScale: number; charSpacing: number; wordSpacing: number; glyphs: Map<string, SourceGlyph>; sequence: (SourceGlyph | number)[]; supported: boolean; run: DetectedText };
 export class SourceFontError extends Error {
  constructor(){super('This source font cannot reproduce the edited characters. Choose a replacement font in formatting, or use characters available in the source document.');this.name='SourceFontError';}
 }
@@ -86,6 +86,7 @@ export function measureLayerText(layer: PdfLayer): {lines:string[];height:number
 export function measureLayerInk(layer:PdfLayer):{y:number;height:number}{
  const layout=measureLayerText(layer),s=sourceStyle(layer);
  const fallback={y:layer.y,height:layout.height};
+ if(s?.maskRuns?.length&&layer.text===s.run.text){const ink=s.maskRuns.map(({run})=>measureLayerInk(createReplacementLayer(run,'voucher-original-ink')));const y=Math.min(...ink.map(r=>r.y));return {y,height:Math.max(...ink.map(r=>r.y+r.height))-y};}
  if(!layer.text||!s?.supported||layout.unsupported||typeof document==='undefined')return fallback;
  const cache=inkBounds.get(s)??new Map<string,{y:number;height:number}>(),cacheKey=JSON.stringify([layer.text,layer.fontSize,layer.bold,layer.italic]),cached=cache.get(cacheKey);
  if(cached)return {y:layer.y+cached.y,height:cached.height};
@@ -121,4 +122,12 @@ export function drawSourceText(ctx: CanvasRenderingContext2D,layer: PdfLayer): b
   }
  }
  return true;
+}
+
+/** Exact source-space region the verified automatic text mask erases. */
+export function sourceMaskBounds(layer:PdfLayer,runs:DetectedText[]){
+ const original=layer.original;if(!original||layer.maskOriginal===false||layer.fill.toLowerCase()!=='#ffffff')return undefined;
+ const run=runs.find(r=>r.text===original.text&&Math.abs(r.x-original.x)<.01&&Math.abs(r.y-original.y)<.01);if(!run)return undefined;
+ const native=createReplacementLayer(run,'source-mask-proof'),style=sourceStyle(native);if(!style?.supported||measureLayerText(native).unsupported)return undefined;
+ const ink=measureLayerInk(native);return {x:original.x-1,y:ink.y,width:original.width+2,height:ink.height};
 }

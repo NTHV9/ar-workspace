@@ -13,9 +13,11 @@ export function voucherRuns(runs:DetectedText[],fields:VoucherField[]):DetectedT
  const inside=(r:DetectedText,f:VoucherField)=>{const baseline=r.y+(sourceStyle(createReplacementLayer(r,'voucher-row'))?.baseline??r.fontSize*.85);return r.x>=f.x-.5&&r.x+r.width<=f.x+f.width+1&&baseline>=f.y&&baseline<f.y+f.height;};
  const result=runs.filter(r=>!fields.some(f=>inside(r,f)));
  for(const f of fields){
-  const r=run(f),base=runs.find(r=>inside(r,f)&&r.sourceText)??runs.filter(r=>!r.rotated&&r.sourceText&&Math.abs(r.fontSize-f.fontSize)<.1&&!!r.bold===f.bold).sort((a,b)=>Math.abs(a.y-f.y)-Math.abs(b.y-f.y))[0];
+  const r={...run(f),height:Math.max(f.fontSize*1.25+1,f.height-1)},base=runs.find(r=>inside(r,f)&&r.sourceText)??runs.filter(r=>!r.rotated&&r.sourceText&&Math.abs(r.fontSize-f.fontSize)<.1&&!!r.bold===f.bold).sort((a,b)=>Math.abs(a.y-f.y)-Math.abs(b.y-f.y))[0];
   const style=base?sourceStyle(createReplacementLayer(base,'voucher-style')):undefined;
-  if(style&&base?.sourceText){r.sourceText={...base.sourceText,runIndex:index++};registerSourceStyle(r.sourceText,{...style,baseline:base.y+style.baseline-f.y,run:r,sequence:[...f.text].flatMap(c=>style.glyphs.get(c)?[style.glyphs.get(c)!]:[])});}
+  const observed=runs.filter(v=>inside(v,f)&&v.sourceText),maskRuns=observed.map(run=>({run,style:sourceStyle(createReplacementLayer(run,'voucher-original'))!}));
+  if(observed.map(v=>v.text).join('').replace(/\s/g,'')!==f.text.replace(/\s/g,''))throw Error('Voucher text does not match the visible source.');
+  if(style&&base?.sourceText){r.sourceText={...base.sourceText,runIndex:index++};registerSourceStyle(r.sourceText,{...style,maskRuns,baseline:base.y+style.baseline-f.y,run:r,sequence:[...f.text].flatMap(c=>style.glyphs.get(c)?[style.glyphs.get(c)!]:[])});}
   result.push(r);
  }
  return result;

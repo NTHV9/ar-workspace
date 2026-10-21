@@ -1,3 +1,10 @@
+## 2026-10-21 — Long Voucher rendering and independent right header editing
+
+- Fixed the one-line Voucher limit that rejected long references. Long values wrap without truncation, right-side labels/values move together, and left identity/address positions remain fixed. Actual left extents and table/signature/footer boundaries constrain layout.
+- Added atomic linked Voucher line edits across Statement/Invoice pages with bounded right-column source moves, safe spacing reclamation, full source-glyph/mask verification and artwork destination checks. Preserved tall Statement rows and Undo behavior.
+- Tested 2,101 tests / 215 files, TypeScript/build and independent review. Real-template private renders across all six hotels succeeded. Actual synthetic browser add/delete/Undo and original-long-to-short exports retained all fields; left header pixel differences were zero on both Invoice pages. [Evidence and limits](INVOICE_VOUCHER_WRAP_20261021.md).
+- Release pending; the user's existing failed preparation has not been regenerated automatically.
+
 ## 2026-10-20 — Go to email prepares PDFs without per-account Confirm
 
 - Owner explicitly removed Confirm PDFs. Go to email now prepares the latest edited/default PDFs for every selected Account and enters shared email mode. Preview remains optional. Removed confirmation counter/button; existing send confirmation and account isolation remain.
