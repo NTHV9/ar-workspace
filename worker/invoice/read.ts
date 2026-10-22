@@ -1,3 +1,4 @@
+import {readEmbeddedGenerateEvidence} from './embedded-generate-read';
 import {nativeTaxReport} from './tax-report-profile';
 import {readArTaxEvidence,readNativeInvoiceTaxControls,financialPostingFingerprint,type ArTaxReader} from './ar-tax-read';
 import {accountWithAddressee} from '../documents/addressee';
@@ -99,6 +100,10 @@ export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,no
  try{return invoiceModel(packet,now);}catch(error){
   // Only tax-base/service classification can request this independent proof. Identity,
   // coverage, duplicate and monetary mismatches retain their original failures.
+  if(error instanceof Error&&error.message==='document_invoice_tax_code_unsupported'&&!packet.nativeTaxControls&&reader.invoiceTransactionCodeRules){
+   const qualified=await readEmbeddedGenerateEvidence(packet,code=>reader.invoiceTransactionCodeRules!(code),()=>readInvoicePacket(reader,manifest));
+   if(qualified)return invoiceModel(qualified,now);
+  }
   if(!(error instanceof Error)||!['document_invoice_tax_rate_unsupported','document_invoice_tax_code_unsupported'].includes(error.message)||packet.nativeTaxControls||!reader.folioReport||!reader.folioTypeName)throw error;
   const nativeTaxControls=await readNativeInvoiceTaxControls(reader as Reader&Pick<ArTaxReader,'folioReport'|'folioTypeName'>,manifest,onRenderStart);
   const invoice=record(packet.invoice),scope={hotel:manifest.hotel as Parameters<OperaReader['financialTransactionDetail']>[0]['hotel'],accountId:manifest.account_id,transactionId:manifest.id};

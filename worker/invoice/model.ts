@@ -1,3 +1,6 @@
+import {qualifyNativeNonVat} from './native-nonvat';
+import type {NativeTaxControls} from './native-tax-controls';
+import {verifyEmbeddedGenerateProof,type EmbeddedGenerateProof} from './embedded-generates';
 import {verifyArSimulation,type ArSimulation} from './ar-tax';
 import {discoverPostedGenerates,verifyPostedGenerates,type ArPostedGenerates} from './posted-generates';
 import {revalidateArTransfer,type ArTransferEvidence} from './ar-transfer';
@@ -28,7 +31,7 @@ function precise(v:unknown):bigint{
 const abs=(n:bigint)=>n<0n?-n:n;
 const rounded=(units:bigint)=>{const n=Number((abs(units)+CENT/2n)/CENT)*(units<0n?-1:1);if(!Number.isSafeInteger(n))return fail('amount_invalid');return n;};
 
-export interface InvoicePacket {arTransfer?:ArTransferEvidence;arPostedGenerates?:ArPostedGenerates[];arSimulations?:ArSimulation[];nativeTaxControls?:{vat:number;nonTaxable:number};manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
+export interface InvoicePacket {embeddedGenerateProof?:EmbeddedGenerateProof;arTransfer?:ArTransferEvidence;arPostedGenerates?:ArPostedGenerates[];arSimulations?:ArSimulation[];nativeTaxControls?:NativeTaxControls;manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
 export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceModel{
  const {manifest:m}=packet,a=record(packet.account),i=record(packet.invoice),reservation=record(packet.reservation),postingData=record(packet.postings);
  if(a.hotelId!==m.hotel||text(record(a.accountId).id)!==m.account_id||i.hotelId!==m.hotel||id(i.transactionNo)!==m.id||text(i.invoiceNo)!==m.invoice_no||text(i.folioNo)!==m.folio_no||!m.reservation_id||!m.folio_no||!m.invoice_no||!['standalone','parent'].includes(m.collection_role)||m.open<=0||i.parentInvoiceNo!=null)return fail('scope_invalid');
@@ -73,7 +76,8 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  for(const graph of graphs){const rootId=String(graph.root.transactionNo),e=postedEvidence.find(p=>p.postingId===rootId);if(!e)return fail('ar_tax_unverified');const verified=verifyPostedGenerates(graph,e,m.hotel);for(const key of verified.ids){if(postedById.has(key))return fail('ar_tax_unverified');postedById.set(key,{rootId,vatCents:verified.vatCents});}}
  const simulations=packet.arSimulations??[],simulationIds=new Set(simulations.map(e=>e.postingId));if(simulationIds.size!==simulations.length||simulations.some(e=>!arRows.has(e.postingId)||postedById.has(e.postingId)))return fail('ar_tax_unverified');
  const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(postedById.keys()),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
- const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean}>();let needsNativeControls=false;const paymentAmounts:number[]=[];
+ const verifiedEmbeddedNonTax=packet.embeddedGenerateProof?verifyEmbeddedGenerateProof(packet,packet.embeddedGenerateProof):new Set<string>();
+ const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean;candidates:{id:string;signedCents:number}[];eligible:boolean}>();let needsNativeControls=false,allNonTaxableDirect=true;const nonVatCandidates:{id:string;signedCents:number}[]=[];const paymentAmounts:number[]=[];
  for(const line of lines){const root=byId.get(line.id);if(!root){
    const posted=postedById.get(line.id);if(posted){if(posted.rootId===line.id)vatUnits+=BigInt(posted.vatCents)*CENT;continue;}
    const ar=arRows.get(line.id);if(!ar)return fail('tax_coverage_missing');const p=ar.posting,info=record(p.aRInfo),selected=postings.find(row=>String(row.transactionNo)===line.id)!;
@@ -86,6 +90,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    // absent from this reservation-ledger response. Never fabricate a zero tax.
    const evidence=simulations.find(e=>e.postingId===line.id);if(!evidence||!packet.nativeTaxControls)return fail('ar_tax_unverified');
    const calculated=verifyArSimulation(evidence,m.hotel,String(p.transactionCode),(line.debit-line.credit)/100);
+   if(calculated.nonTaxable!==0)allNonTaxableDirect=false;
    vatUnits+=precise({amount:calculated.vat,currencyCode:'THB'});nonTaxableUnits+=precise({amount:calculated.nonTaxable,currencyCode:'THB'});continue;
   }const rootPosting=record(root.posting);
   if(rootPosting.hotelId!==m.hotel||text(rootPosting.folioNo)!==m.folio_no||text(record(record(rootPosting.guestInfo).reservationId).id)!==m.reservation_id)return fail('tax_scope_invalid');
@@ -107,7 +112,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    const breakdown=record(component.postingBreakdown),grossAmount=precise(breakdown.grossAmount),net=precise(breakdown.netAmount);let generated=0n,vat=0n;
    const taxes=invoiceTaxEntries(breakdown);
    for(const raw of taxes){const key=id(raw.transactionNo);if(taxSeen.has(key)||text(raw.referenceTransactionNo)!==text(p.transactionNo))return fail('tax_scope_invalid');taxSeen.add(key);const definitions=taxCodes.filter(c=>c.hotelId===m.hotel&&c.transactionCode===raw.transactionCode);if(definitions.length!==1)return fail('tax_code_invalid');const code=definitions[0],amount=precise(raw.amount);generated+=amount;
-    if(code.transactionGroup==='TAX'&&/\bvat\b/i.test(text(code.description)))vat+=amount;else if(code.transactionGroup!=='SVC'){
+    if(code.transactionGroup==='TAX'&&/\bvat\b/i.test(text(code.description)))vat+=amount;else if(code.transactionGroup!=='SVC'&&!verifiedEmbeddedNonTax.has(key)){
      // Some OPERA restaurant SVC generates retain the F&B accounting group.
      // Its label alone is insufficient: the whole invoice must match native tax
      // controls before this generate can be treated as service rather than VAT.
@@ -122,9 +127,17 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
     const code=definitions[0],isTax=code.transactionGroup==='TAX',restaurantVat=code.transactionGroup==='F&B'&&/\bvat\b/i.test(text(code.description)),isVat=(isTax||restaurantVat)&&/\bvat\b/i.test(text(code.description));
     if(restaurantVat){if(!packet.nativeTaxControls)return fail('tax_code_unsupported');needsNativeControls=true;}
     if(isTax&&!isVat)return fail('tax_code_unsupported');
-    const check=text(selected.checkNo),groupKey=JSON.stringify([text(selected.transactionDate),check?'check':'posting',check||line.id]),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check};
+    const check=text(selected.checkNo),groupKey=JSON.stringify([text(selected.transactionDate),check?'check':'posting',check||line.id]),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check,candidates:[],eligible:true};
     if(isVat){if(taxSeen.has(key))return fail('tax_scope_invalid');taxSeen.add(key);group.vat+=grossAmount;group.taxCount++;vatUnits+=grossAmount;}
-    else{group.base+=grossAmount;group.baseCount++;}
+    else{
+     group.base+=grossAmount;group.baseCount++;
+     // The native aggregate may qualify only whole, fully scoped direct charge
+     // atoms. A check group can contain multiple charges with different tax
+     // treatment; retain each signed amount instead of only the group's net.
+     let eligible=false;
+     try{const d=optionalCents(p.debitAmount),c=optionalCents(p.creditAmount);eligible=p.transactionType==='Revenue'&&text(p.transactionDate)===text(selected.transactionDate)&&d-c===line.debit-line.credit&&!(d&&c)&&Math.abs(cents(p.postedAmount))===Math.abs(d-c)&&grossAmount===BigInt(d-c)*CENT;}catch{/* Legacy classification remains; this row cannot support replacement. */}
+     group.eligible&&=eligible;group.candidates.push({id:key,signedCents:line.debit-line.credit});
+    }
     directGroups.set(groupKey,group);
    }else if(vat!==0n){
     // OPERA generates VAT either on net + service or on net alone. Both bases
@@ -135,7 +148,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
      needsNativeControls=true;
     }
     vatUnits+=vat;
-   }else nonTaxableUnits+=grossAmount;
+   }else{nonTaxableUnits+=grossAmount;allNonTaxableDirect=false;}
    rootGross+=grossAmount;
   }
   if(rounded(rootGross)!==line.debit-line.credit)return fail('tax_reconciliation_failed');
@@ -150,10 +163,15 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
     if(!packet.nativeTaxControls)return fail('tax_rate_unsupported');
     needsNativeControls=true;
    }
-  }else nonTaxableUnits+=group.base;
+  }else{nonTaxableUnits+=group.base;allNonTaxableDirect&&=group.eligible;nonVatCandidates.push(...group.candidates);}
  }
  const debit=sum(lines.map(l=>l.debit)),credit=sum(lines.map(l=>l.credit)),gross=debit-credit-sum(paymentAmounts);
- const vat=rounded(vatUnits),nonTaxable=rounded(nonTaxableUnits),taxableNet=gross-vat-nonTaxable;if(!Number.isSafeInteger(gross)||!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
+ const vat=rounded(vatUnits);let nonTaxable=rounded(nonTaxableUnits),taxableNet=gross-vat-nonTaxable;
+ if(packet.nativeTaxControls?.fullTotals&&packet.nativeTaxControls.nonTaxable!==nonTaxable&&allNonTaxableDirect&&nonVatCandidates.length){
+  const qualified=qualifyNativeNonVat({chargeGross:gross,postedVAT:vat,inferredNonVAT:nonTaxable,candidates:nonVatCandidates,fullTotals:packet.nativeTaxControls.fullTotals});
+  nonTaxable=qualified.nonTaxable;taxableNet=qualified.taxableNet;needsNativeControls=true;
+ }
+ if(!Number.isSafeInteger(gross)||!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
  if((simulations.length||graphs.length||transfer||needsNativeControls)&&(!packet.nativeTaxControls||packet.nativeTaxControls.vat!==vat||packet.nativeTaxControls.nonTaxable!==nonTaxable))return fail('ar_tax_unverified');
  const address=optional(optional(a.address).address),addressLines=address.addressLine==null?[]:rowsOfText(address.addressLine),country=optional(address.country);
  const billAddress=[text(a.accountName),...addressLines,[text(address.cityName),text(address.postalCode)].filter(Boolean).join(' '),text(country.value??country.code)].filter(Boolean);if(!billAddress[0])return fail('address_invalid');

@@ -16,7 +16,7 @@ export async function readNativeInvoiceTaxControls(reader:Pick<ArTaxReader,'acco
  if(config.hotelId!==manifest.hotel||config.folioReportName!==report)fail();
  const native=await getNativeInvoicePdf(reader,manifest,onRenderStart);
  const {readNativeTaxControls}=await import('./native-tax-controls');
- return readNativeTaxControls(native.bytes,manifest.folio_no!);
+ return readNativeTaxControls(native.bytes,manifest.folio_no!,{includeFullTotals:true});
 }
 export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvoice,account:Record<string,unknown>,invoice:Record<string,unknown>,postings:Record<string,unknown>,details:NonNullable<InvoicePacket['arDetails']>,onRenderStart:()=>void=()=>{}){
  const report=nativeTaxReport(manifest.hotel);if(!report)return fail();

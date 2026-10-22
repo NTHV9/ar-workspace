@@ -2,8 +2,10 @@ import {getDocument} from 'pdfjs-dist/legacy/build/pdf.mjs';
 // The backend uses the pinned parser in-process, without worker URLs or network fetches.
 // @ts-expect-error PDF.js publishes this runtime module without TypeScript declarations.
 import {WorkerMessageHandler} from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+import type {NativeInvoiceFullTotals} from './native-nonvat';
+export interface NativeTaxControls {vat:number;nonTaxable:number;fullTotals?:NativeInvoiceFullTotals}
 const fail=():never=>{throw Error('document_invoice_ar_tax_unverified');};
-export async function readNativeTaxControls(bytes:Uint8Array,folio:string):Promise<{vat:number;nonTaxable:number}>{
+export async function readNativeTaxControls(bytes:Uint8Array,folio:string,options:{includeFullTotals?:boolean}={}):Promise<NativeTaxControls>{
  if(bytes.length>4_000_000||bytes.length<5||new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')fail();
  (globalThis as typeof globalThis&{pdfjsWorker:unknown}).pdfjsWorker={WorkerMessageHandler};
  const task=getDocument({data:bytes.slice(),disableFontFace:true,useSystemFonts:false,useWorkerFetch:false,enableXfa:false,stopAtErrors:true,verbosity:0});
@@ -27,7 +29,18 @@ export async function readNativeTaxControls(bytes:Uint8Array,folio:string):Promi
    all.push(...items);page.cleanup();
   }
   const amount=(s:string)=>{if(!/^-?(?:0|[1-9]\d{0,2}(?:,\d{3})*|[1-9]\d*)\.\d{2}$/.test(s))fail();const n=Number(s.replaceAll(',',''))*100,r=Math.round(n);if(!Number.isSafeInteger(r)||Math.abs(n-r)>1e-5)fail();return r;};
-  return {vat:amount(field(all,'Total VAT 7%',true)),nonTaxable:amount(field(all,'Total Non VAT Amount',true))};
+  const controls:NativeTaxControls={vat:amount(field(all,'Total VAT 7%',true)),nonTaxable:amount(field(all,'Total Non VAT Amount',true))};
+  if(options.includeFullTotals)try{
+   const names=['Total Amount Before VAT 7%','Total VAT 7%','Total Non VAT Amount','Total Amount'];
+   const labels=names.map(name=>{const matches=all.filter(i=>i.text===name);if(matches.length!==1)fail();return matches[0];});
+   // Optional full evidence must come from one ordered footer on one page.
+   // Legacy VAT/NonVAT controls can still span pages, as before.
+   if(new Set(labels.map(l=>l.page)).size!==1||labels.some((l,n)=>!Number.isFinite(l.x+l.y+l.width)||n>0&&l.y>=labels[n-1].y-1))fail();
+   const gross=amount(field(all,'Total Amount',true)),net=amount(field(all,'Total Amount Before VAT 7%',true));
+   if(BigInt(net)+BigInt(controls.vat)+BigInt(controls.nonTaxable)!==BigInt(gross))fail();
+   controls.fullTotals={currency:'THB',gross,net,vat:controls.vat,nonTaxable:controls.nonTaxable};
+  }catch{/* Missing or malformed optional totals never weaken or replace legacy controls. */}
+  return controls;
  };
  try{return await Promise.race([extract(),deadline]);}catch{return fail();}
  finally{
