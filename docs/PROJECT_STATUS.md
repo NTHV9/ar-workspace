@@ -1,3 +1,9 @@
+## 2026-10-22 — Remaining exact-source audit (goal incomplete)
+
+- Obtained the final independent current AR PDF for the remaining WAKL adjustment/payment case. It confirms invoice charge/VAT totals and separately confirms why printed outstanding must not replace the API's applied-payment balance. This adds reference evidence, not an automatic runtime source or a per-invoice override.
+- [Requirement-by-requirement audit](PDF_REPAIR_COMPLETION_AUDIT_20261022.md): six of nine original source cases resolved; three still need a callable exact current-AR source or historical posted tax/exemption evidence. UI/source preservation and deployment evidence remain separately qualified. The goal is not complete.
+- Updated the unsent Oracle follow-up to focus on existing Property APIs and identifier/tax-field contracts. No new plan/access/cost requested or enabled. Production remains `32f42163aa667340d456e0857f9256bdf5a50ddd`; this round has no runtime edits.
+
 ## 2026-10-22 — Embedded posted VAT and native Non-VAT totals (deployed)
 
 - Implemented complete embedded posted-generate proof and authoritative native full-footer qualification for three further original cases. Current code flags are not treated as historical tax evidence. The native identity guard and API outstanding remain unchanged. [Evidence](INVOICE_EMBEDDED_AND_NATIVE_TOTALS_20261022.md).

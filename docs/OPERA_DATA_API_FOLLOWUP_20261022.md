@@ -27,21 +27,31 @@ subscription, permission, credential or paid service has been changed.
 
 ## Questions for Oracle / the hotel's Oracle administrator
 
-1. Does the existing production contract/environment include R&A Data Access and
-   the required OAS/identity versions? If included, why is the Data APIs plan
-   absent from this application, and what supported configuration is required?
-   Please identify any extra cost before proposing a change.
-2. Which supported API returns current AR Invoice net/VAT/non-VAT amounts using
+The owner has instructed us to treat Data APIs as unavailable and continue with
+existing callable services. The questions below seek a supported Property API
+path; they do not request activation, entitlement changes or additional cost.
+
+1. Which supported Property API returns current AR Invoice net/VAT/non-VAT amounts using
    exact property, account and AR invoice transaction identity, including AR
    adjustments, transfers, applied payments and split/reused Folios?
-3. Can MED `getFolioReport` select an exact current AR Invoice? Its public
+2. Can MED `getFolioReport` select an exact current AR Invoice? Its public
    selectors do not expose AR account/transaction identity, and distinct AR
    invoices can share the same reservation/window/Folio/date. If supported,
    provide the documented selector mapping and current-versus-historical rules.
-4. Supplying the configured AR report name through `folioType` returned a short
+3. Supplying the configured AR report name through `folioType` returned a short
    base64-encoded report handle rather than PDF bytes, with no retrieval links.
    Is this an unsupported report context or a configuration issue? What
    documented retrieval operation, if any, consumes that response?
+4. What supported field/API supplies the path `folioId` for CSH
+   `getStoredFolioDetails` when exact AR details omit `storedFolioId`? How does
+   this relate to Folio number and Folio sequence? Scoped read-only probes with
+   those source-observed values and exact invoice/date/window qualifiers returned
+   no stored file. We have not accepted either as a proven identifier mapping.
+5. Which Property response exposes historical non-taxable treatment of an exact
+   Revenue transaction? NetVat can return gross equal to net with no generates,
+   while current code `nonTaxable` flags do not match the current AR print's
+   aggregate classification. A current configuration or charge simulation alone
+   is insufficient evidence for these historical postings.
 
 Please do not request keys, secrets, PINs or customer PDFs in an ordinary email.
 Exact private reproductions can be supplied through an approved support channel
