@@ -1,8 +1,8 @@
-## 2026-10-22 — Printed Invoice balance correction (qualified)
+## 2026-10-22 — Printed Invoice balance correction (deployed)
 
 - Owner clarified Invoice amount versus remaining Statement balance. Both requested current OPERA PDFs were read and rendered; confirmed a shared defect where the PDF footer used current AR balance even though separately applied payments were absent from the Invoice's lines.
 - Model now prints the fully reconciled Invoice posting net/amount, retaining actual selected Payment credits and all AR freshness checks. Statement/dashboard/ledger and tax calculations remain unchanged. [Evidence](INVOICE_PRINTED_BALANCE_20261022.md).
-- Two RED-to-GREEN cases, full 2,443 tests / 227 files, TypeScript/build and independent review pass. Actual qualified partial-payment and unpaid PDFs match OPERA footer evidence. Deployment pending. The three automatic tax-source cases remain unresolved; no per-invoice override.
+- Two RED-to-GREEN cases, full 2,443 tests / 227 files, TypeScript/build and independent review pass. Actual qualified partial-payment and unpaid PDFs match OPERA footer evidence. Deployed/enabled source `b01c7f19746bea972c16e7414617cfc3a2e8bc72`, Worker `805beea3-17e8-4395-aa19-ada9af4fb139`; health/database and six anonymous boundaries pass, all 42 bindings unchanged except COMMIT_SHA. The three automatic tax-source cases remain unresolved; no per-invoice override.
 
 ## 2026-10-22 — Remaining exact-source audit (goal incomplete)
 

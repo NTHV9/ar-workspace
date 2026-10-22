@@ -1,6 +1,11 @@
 # Printed Invoice balance and applied AR payments
 
-## Implemented and tested; deployment pending
+## Implemented, tested, deployed and enabled
+
+Source `b01c7f19746bea972c16e7414617cfc3a2e8bc72`, Worker
+`805beea3-17e8-4395-aa19-ada9af4fb139`. Production health/database and six anonymous
+protected email routes pass; all 42 bindings are unchanged except COMMIT_SHA.
+Tracker push/writeback remain enabled.
 
 The owner identified that the current OPERA AR Invoice still shows its full
 invoice amount, although its Statement shows a smaller remaining receivable.
