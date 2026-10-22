@@ -1,3 +1,9 @@
+## 2026-10-22 — Final shared tax-source rules (qualified)
+
+- All three final cases pass fresh actual Worker models and independently checked generated PDFs. Missing AR adjustments use a bounded current OPERA-calculator proof only for a complete all-VAT7 shape when native selection is ambiguous. Mixed NonVAT uses explicit code provenance plus posted-row, rule and effective-calculation rereads. No Invoice IDs/amounts are hardcoded. [Full evidence and limits](INVOICE_FINAL_TAX_RULES_20261022.md).
+- TSAN 6002 remains nonTaxable=false in OPERA and no setting was changed. Its named owner-confirmed Taxi policy also requires unchanged exact base-only calculator results and zero posted tax. Unknown codes and food-code counterexamples do not qualify merely because no generates appear.
+- Final 2,535 tests / 231 files, TypeScript/build and independent reviews pass. Five prior still-open cases pass fresh live regression; the sixth is now explicitly paid to zero and correctly rejects its stale positive selection. The 87 captured baseline outcomes are unchanged from the printed-balance release. Deployment pending.
+
 ## 2026-10-22 — Current-rule adjustment investigation (not enabled)
 
 - Exact OPERA AR XML confirms account/Invoice/transaction identity and footer values. Scoped stored-folio and alternate-window reads still do not supply an automatic exact tax source.

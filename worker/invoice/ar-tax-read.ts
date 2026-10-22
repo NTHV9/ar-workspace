@@ -18,14 +18,15 @@ export async function readNativeInvoiceTaxControls(reader:Pick<ArTaxReader,'acco
  const {readNativeTaxControls}=await import('./native-tax-controls');
  return readNativeTaxControls(native.bytes,manifest.folio_no!,{includeFullTotals:true});
 }
-export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvoice,account:Record<string,unknown>,invoice:Record<string,unknown>,postings:Record<string,unknown>,details:NonNullable<InvoicePacket['arDetails']>,onRenderStart:()=>void=()=>{}){
+export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvoice,account:Record<string,unknown>,invoice:Record<string,unknown>,postings:Record<string,unknown>,details:NonNullable<InvoicePacket['arDetails']>,onRenderStart:()=>void=()=>{},currentRulesOnly=false){
  const report=nativeTaxReport(manifest.hotel);if(!report)return fail();
- const config=record(record(await reader.folioTypeName('Guest')).details);
- if(config.hotelId!==manifest.hotel||config.folioReportName!==report)fail();
+ if(!currentRulesOnly){const config=record(record(await reader.folioTypeName('Guest')).details);if(config.hotelId!==manifest.hotel||config.folioReportName!==report)fail();}
  const roots=details.flatMap(d=>list(record(d.response).transactions));if(!roots.length||roots.length>20)fail();
  const graphs=discoverPostedGenerates(manifest,account,postings,details),claimed=new Set(graphs.flatMap(g=>[String(g.root.transactionNo),...g.children.map(c=>String(c.transactionNo))]));
+ if(currentRulesOnly&&graphs.length)throw Error('document_invoice_current_ar_tax_unverified');
  let arTransfer:ArTransferEvidence|undefined;
  if(roots.some(p=>!claimed.has(String(p.transactionNo))&&String(record(p.aRInfo).accountNumber)!==String(account.accountNo))){
+  if(currentRulesOnly)throw Error('document_invoice_current_ar_tax_unverified');
   if(!reader.accountsByNumber||!reader.invoiceHistory||!reader.invoicePostings||!reader.financialTransactionDetail||!reader.invoiceTransactionDetails)throw Error('document_invoice_ar_transfer_unverified');
   arTransfer=await readArTransfer(reader as ArTransferReader,manifest,account,invoice,postings,roots);
  }
@@ -50,8 +51,9 @@ export async function readArTaxEvidence(reader:ArTaxReader,manifest:DocumentInvo
   const after=await Promise.allSettled([reader.invoiceTransactionCodeRules(code),...codes.map(c=>reader.invoiceTransactionCodeRules(c))]);
   const [rulesAfter,...generatedAfter]=after.map(r=>{if(r.status==='rejected')throw r.reason;return r.value;});
   if(canonical(generatedRules)!==canonical(generatedAfter))fail();
-  const evidence={postingId:String(p.transactionNo),rules,rulesAfter,generatedRules,calculation};verifyArSimulation(evidence,manifest.hotel,code,amount);simulations.push(evidence);
+  const evidence={postingId:String(p.transactionNo),rules,rulesAfter,generatedRules,generatedRulesAfter:generatedAfter,calculation};verifyArSimulation(evidence,manifest.hotel,code,amount);simulations.push(evidence);
  }
+ if(currentRulesOnly)return {arSimulations:simulations,arPostedGenerates:[]};
  const nativeTaxControls=await readNativeInvoiceTaxControls(reader,manifest,onRenderStart);
  const arPostedGenerates=graphEvidence(await readGraphRules());arPostedGenerates.forEach((e,n)=>verifyPostedGenerates(graphs[n],e,manifest.hotel));
  if(arTransfer)arTransfer=await refreshArTransfer(reader as ArTransferReader,manifest,arTransfer);

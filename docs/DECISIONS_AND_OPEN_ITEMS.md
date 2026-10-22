@@ -1,3 +1,19 @@
+## Shared current-rule and NonVAT qualification — 22 October 2026
+
+The owner delegates the choice of a correct automatic rule and confirms it must
+apply to future matching cases, not individual Invoice IDs. Prefer original posted
+VAT; when exact native selection is ambiguous, allow a bounded all-VAT7 current
+OPERA-calculator proof only with complete source coverage and stable rereads.
+Do not relabel calculated tax as historical posted VAT or apply VAT7 to mixed
+NonVAT invoices. See `INVOICE_FINAL_TAX_RULES_20261022.md` for the full contract.
+
+For direct NonVAT, retain explicit OPERA flags and a named owner-confirmed TSAN
+6002 Taxi Service policy, with strict metadata, zero posted tax and unchanged
+base-only effective OPERA calculations at actual signed amounts. The owner
+confirmed Airport and Taxi treatment and separately verified TSAN6002's flag is
+unchecked; no checkbox change is authorized or made. Zero calculator tax alone
+does not classify other codes. No per-invoice override or broad description match.
+
 ## Printed Invoice amount versus remaining AR balance — 22 October 2026
 
 The owner clarified that an OPERA Invoice retains its invoice amount while the

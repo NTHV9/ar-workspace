@@ -1,14 +1,19 @@
 import {amountCents} from '../opera/normalize';
 import {canonical} from './ar-tax';
+import {directNonVatProvenance,type DirectNonVatProvenance} from './direct-nonvat-policy';
 import type {InvoicePacket} from './model';
 type Row=Record<string,unknown>;
 export type EmbeddedSource=Pick<InvoicePacket,'manifest'|'account'|'invoice'|'postings'|'taxRows'|'taxCodes'|'arDetails'>;
 export interface EmbeddedGenerateGroup {postingId:string;generateIds:string[];rules:unknown;rulesAfter:unknown;generatedRules:unknown[];generatedRulesAfter:unknown[]}
-export interface EmbeddedGenerateProof {version:1;sourceBefore:EmbeddedSource;sourceAfter:EmbeddedSource;groups:EmbeddedGenerateGroup[]}
+export interface EmbeddedNonVatGroup {postingId:string;rules:unknown;rulesAfter:unknown;calculation:unknown;calculationAfter:unknown;provenance:DirectNonVatProvenance|undefined}
+export interface EmbeddedGenerateProof {version:1;sourceBefore:EmbeddedSource;sourceAfter:EmbeddedSource;groups:EmbeddedGenerateGroup[];nonVatGroups?:EmbeddedNonVatGroup[]}
 export class EmbeddedGenerateUnverified extends Error {constructor(){super('document_invoice_embedded_generates_unverified');}}
 const fail=():never=>{throw new EmbeddedGenerateUnverified();};
 const object=(v:unknown):Row=>v&&typeof v==='object'&&!Array.isArray(v)?v as Row:fail();
 const list=(v:unknown):Row[]=>Array.isArray(v)?v.map(object):fail();
+// OPERA omits taxes on direct NonVAT breakdowns. Only absence means an empty
+// list; null or malformed explicit values remain unverified.
+const taxList=(v:unknown):Row[]=>v===undefined?[]:list(v);
 const id=(v:unknown)=>{if(typeof v==='number'&&!Number.isSafeInteger(v))return fail();const s=String(v);return /^[1-9][0-9]{0,15}$/.test(s)?s:fail();};
 const code=(v:unknown)=>typeof v==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(v)?v:fail();
 const day=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v?v:fail();
@@ -22,24 +27,29 @@ const units=(v:unknown)=>{const a=object(v);if(a.currencyCode!=='THB')return fai
 const rounded=(v:bigint)=>Number((abs(v)+CENT/2n)/CENT)*sign(v);
 const signed=(v:Row)=>{const d=v.debitAmount===undefined?0:amountCents(v.debitAmount,'THB'),c=v.creditAmount===undefined?0:amountCents(v.creditAmount,'THB');if(!d&&!c||d&&c)return fail();return d-c;};
 const sorted=(rows:Row[])=>[...rows].sort((a,b)=>String(a.transactionNo??a.transactionCode).localeCompare(String(b.transactionNo??b.transactionCode)));
-export interface EmbeddedPlan {groups:{posting:Row;breakdown:Row;taxes:Row[]}[];codes:string[];fingerprint:string;source:EmbeddedSource}
+export interface EmbeddedPlan {groups:{posting:Row;breakdown:Row;taxes:Row[]}[];nonVatGroups:{posting:Row;definition:Row;signedCents:number}[];codes:string[];fingerprint:string;source:EmbeddedSource}
 /** Narrow initial profile: complete direct Revenue/Payment coverage, and every
- * Revenue amount already has explicit VAT covering its entire before-VAT base.
- * Wrappers, AR-only rows, zero-VAT/taxless charges and partial bases stay outside. */
+ * taxable Revenue amount has explicit VAT covering its entire before-VAT base.
+ * Taxless Revenue is only a candidate until current explicit NonVAT policy is
+ * proved per posting. Wrappers, AR-only rows and partial bases stay outside. */
 export function inspectEmbeddedSource(packet:EmbeddedSource):EmbeddedPlan{
  const m=packet.manifest,a=object(packet.account),invoice=object(packet.invoice),data=object(packet.postings);
  if(packet.arDetails?.length||a.hotelId!==m.hotel||String(object(a.accountId).id)!==m.account_id||invoice.hotelId!==m.hotel||id(invoice.transactionNo)!==m.id||String(invoice.invoiceNo)!==m.invoice_no||String(invoice.folioNo)!==m.folio_no||invoice.folioDate!==m.folio_date||invoice.parentInvoiceNo!=null||!m.reservation_id||amountCents(invoice.balance,'THB')!==Math.round(m.open*100))fail();
  const selected=list(data.invoicePostingsDetails),definitions=list(data.trxCodesInfo),taxDefinitions=packet.taxCodes.map(object),sourceRows=packet.taxRows.map(object),byId=new Map(sourceRows.map(e=>[id(object(e.posting).transactionNo),e]));
  if(!selected.length||selected.length>=4000||new Set(selected.map(p=>id(p.transactionNo))).size!==selected.length||byId.size!==sourceRows.length)fail();
  if(selected.reduce((n,p)=>n+signed(p),0)!==amountCents(invoice.amount,'THB'))fail();
- const groups:EmbeddedPlan['groups']=[],relevant:Row[]=[],allTaxIds=new Set<string>(),selectedIds=new Set(selected.map(p=>id(p.transactionNo))),requiredCodes=new Set<string>();let hasException=false;
+ const groups:EmbeddedPlan['groups']=[],nonVatGroups:EmbeddedPlan['nonVatGroups']=[],relevant:Row[]=[],allTaxIds=new Set<string>(),selectedIds=new Set(selected.map(p=>id(p.transactionNo))),requiredCodes=new Set<string>();let hasException=false;
  for(const row of selected){
   const entry=byId.get(id(row.transactionNo));if(!entry)return fail();const p=object(entry.posting),rootCode=code(p.transactionCode),rootDefinitions=definitions.filter(d=>d.hotelId===m.hotel&&d.transactionCode===rootCode);
   if(rootDefinitions.length!==1||row.transactionCode!==rootCode||p.hotelId!==m.hotel||String(p.folioNo)!==m.folio_no||String(object(object(p.guestInfo).reservationId).id)!==m.reservation_id||day(p.transactionDate)!==day(row.transactionDate)||signed(p)!==signed(row)||abs(units(p.postedAmount))!==BigInt(Math.abs(signed(row)))*CENT)fail();
   relevant.push(entry);
   if(p.transactionType==='Payment'){if(entry.postingBreakdown!==undefined)fail();continue;}
   if(p.transactionType!=='Revenue')fail();
-  const b=object(entry.postingBreakdown),taxes=list(b.taxes),gross=units(b.grossAmount),net=units(b.netAmount);if(!taxes.length||taxes.length>5||rounded(gross)!==signed(row)||!net||sign(net)!==sign(gross))fail();
+  const b=object(entry.postingBreakdown),taxes=taxList(b.taxes),gross=units(b.grossAmount),net=units(b.netAmount);if(taxes.length>5||rounded(gross)!==signed(row)||!net||sign(net)!==sign(gross))fail();
+  if(!taxes.length){
+   if(net!==gross||gross!==BigInt(signed(row))*CENT)fail();
+   requiredCodes.add(rootCode);nonVatGroups.push({posting:p,definition:rootDefinitions[0],signedCents:signed(row)});continue;
+  }
   let sum=0n,vat=0n,vatCount=0;
   const seenCodes=new Set<string>();
   for(const t of taxes){
@@ -59,13 +69,13 @@ export function inspectEmbeddedSource(packet:EmbeddedSource):EmbeddedPlan{
   if(abs(vat*100n-(gross-vat)*7n)>tolerance)fail();
   requiredCodes.add(rootCode);groups.push({posting:p,breakdown:b,taxes});
  }
- if(!hasException||!groups.length||requiredCodes.size>30)fail();
+ if(!hasException||!groups.length||requiredCodes.size>30||new Set(nonVatGroups.map(g=>JSON.stringify([g.posting.transactionCode,g.signedCents]))).size>40)fail();
  const usedTaxCodes=new Set(groups.flatMap(g=>g.taxes.map(t=>String(t.transactionCode)))),usedPostingCodes=new Set(selected.map(p=>String(p.transactionCode)));
  const postingFields=['transactionNo','transactionCode','transactionDate','transactionType','folioNo','folioWindowNo','internalFolioWindowID','hotelId','debitAmount','creditAmount','postedAmount','referenceTransactionNo','referencePackageTransactionNo'];
- const netVatFacts=sorted(relevant.map(e=>({transactionNo:object(e.posting).transactionNo,posting:{...Object.fromEntries(postingFields.map(k=>[k,object(e.posting)[k]??null])),reservationId:object(object(e.posting).guestInfo).reservationId},postingBreakdown:e.postingBreakdown===undefined?null:{...object(e.postingBreakdown),taxes:sorted(list(object(e.postingBreakdown).taxes))}})));
+ const netVatFacts=sorted(relevant.map(e=>({transactionNo:object(e.posting).transactionNo,posting:{...Object.fromEntries(postingFields.map(k=>[k,object(e.posting)[k]??null])),reservationId:object(object(e.posting).guestInfo).reservationId},postingBreakdown:e.postingBreakdown===undefined?null:{...object(e.postingBreakdown),taxes:sorted(taxList(object(e.postingBreakdown).taxes))}})));
  const fingerprint=canonical({manifest:m,account:{hotelId:a.hotelId,accountId:a.accountId,accountNo:a.accountNo??null},invoice:{hotelId:invoice.hotelId,transactionNo:invoice.transactionNo,invoiceNo:invoice.invoiceNo,folioNo:invoice.folioNo,folioDate:invoice.folioDate,internalFolioWindowID:invoice.internalFolioWindowID??null,reservationId:invoice.reservationId??null,amount:invoice.amount,balance:invoice.balance,parentInvoiceNo:invoice.parentInvoiceNo??null},postings:sorted(selected),netVatFacts,postingCodes:sorted(definitions.filter(d=>usedPostingCodes.has(String(d.transactionCode)))),taxCodes:sorted(taxDefinitions.filter(d=>usedTaxCodes.has(String(d.transactionCode))))});
  const source:EmbeddedSource={manifest:structuredClone(m),account:{hotelId:a.hotelId,accountId:structuredClone(a.accountId),accountNo:a.accountNo},invoice:structuredClone(invoice),postings:structuredClone(data),taxRows:structuredClone(relevant),taxCodes:structuredClone(packet.taxCodes),arDetails:[]};
- return {groups,codes:[...requiredCodes].sort(),fingerprint,source};
+ return {groups,nonVatGroups,codes:[...requiredCodes].sort(),fingerprint,source};
 }
 const sameSet=(a:Set<string>,b:Set<string>)=>a.size===b.size&&[...a].every(x=>b.has(x));
 function verifyGroup(plan:EmbeddedPlan,group:EmbeddedPlan['groups'][number],e:EmbeddedGenerateGroup,hotel:string):string[]{
@@ -102,5 +112,17 @@ function verifyGroup(plan:EmbeddedPlan,group:EmbeddedPlan['groups'][number],e:Em
 export function verifyEmbeddedGenerateProof(packet:EmbeddedSource,proof:EmbeddedGenerateProof):Set<string>{
  const plan=inspectEmbeddedSource(packet),before=inspectEmbeddedSource(proof.sourceBefore),after=inspectEmbeddedSource(proof.sourceAfter);
  if(proof.version!==1||plan.fingerprint!==before.fingerprint||plan.fingerprint!==after.fingerprint||proof.groups.length!==plan.groups.length||new Set(proof.groups.map(g=>g.postingId)).size!==plan.groups.length)fail();
+ const nonVat=proof.nonVatGroups??[];
+ if(nonVat.length!==plan.nonVatGroups.length||new Set(nonVat.map(g=>g.postingId)).size!==plan.nonVatGroups.length)fail();
+ for(const group of plan.nonVatGroups){
+  const e=nonVat.find(g=>g.postingId===id(group.posting.transactionNo));if(!e||canonical(e.rules)!==canonical(e.rulesAfter))return fail();
+  const provenance=directNonVatProvenance(e.rules,packet.manifest.hotel,code(group.posting.transactionCode),group.definition);
+  if(!provenance||e.provenance!==provenance||canonical(e.calculation)!==canonical(e.calculationAfter))fail();
+  const calculation=object(e.calculation),result=object(calculation.result),charges=list(result.charges),amount=group.signedCents/100;
+  if(charges.length!==1||result.totalAmount!==amount)fail();
+  const charge=charges[0];
+  if(charge.transactionCode!==group.posting.transactionCode||charge.level!=='TransactionCode'||charge.basePosting!==true||charge.sequence!==0||charge.amount!==amount)fail();
+  for(const scoped of [calculation,result,charge])if(Object.hasOwn(scoped,'hotelId')&&scoped.hotelId!==packet.manifest.hotel||Object.hasOwn(scoped,'currencyCode')&&scoped.currencyCode!=='THB')fail();
+ }
  const result=new Set<string>();for(const group of plan.groups){const e=proof.groups.find(g=>g.postingId===id(group.posting.transactionNo));if(!e)return fail();for(const key of verifyGroup(plan,group,e,packet.manifest.hotel))result.add(key);}return result;
 }

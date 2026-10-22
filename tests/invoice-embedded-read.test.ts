@@ -26,7 +26,7 @@ it.each(['tax','selected','balance','rules','leaf-role','reservation','window'] 
 });
 it('preserves ambiguous-native refusal when a root has no posted VAT even with current nonTaxable false',async()=>{
  const {p,reader}=fixture();const other=structuredClone(p.taxRows[0]);other.posting.transactionNo=10002;other.posting.transactionCode='DIRECT';other.postingBreakdown.netAmount.amount=other.postingBreakdown.grossAmount.amount;other.postingBreakdown.taxes=[];p.taxRows.push(other);p.postings.invoicePostingsDetails.push({...p.postings.invoicePostingsDetails[0],transactionNo:10002,transactionCode:'DIRECT'});p.postings.trxCodesInfo.push({...p.postings.trxCodesInfo[0],transactionCode:'DIRECT'});p.invoice.amount.amount*=2;p.invoice.balance.amount*=2;p.manifest.open*=2;
- await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow();expect(reader.invoiceTransactionCodeRules).not.toHaveBeenCalled();expect(reader.folioReport).not.toHaveBeenCalled();
+ await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow();expect(reader.invoiceTransactionCodeRules).not.toHaveBeenCalled();expect(reader.invoicePostingBreakdown).toHaveBeenCalledOnce();expect(reader.folioReport).not.toHaveBeenCalled();
 });
 
 it.each(['rules-before','rules-after','source'] as const)('propagates provider failures without native fallback or retries (%s)',async kind=>{

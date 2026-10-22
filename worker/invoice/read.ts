@@ -1,9 +1,11 @@
 import {readEmbeddedGenerateEvidence} from './embedded-generate-read';
+import {currentArTaxSource,refreshCurrentArRules} from './current-ar-tax';
+import {canonical} from './ar-tax';
 import {nativeTaxReport} from './tax-report-profile';
 import {readArTaxEvidence,readNativeInvoiceTaxControls,financialPostingFingerprint,type ArTaxReader} from './ar-tax-read';
 import {accountWithAddressee} from '../documents/addressee';
 import {OperaError,type OperaReader} from '../opera/client';
-import {historicalFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
+import {historicalFolioSelector,nativeFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
 import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {collectPages} from '../opera/pagination';
@@ -70,6 +72,19 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
  for(let offset=0;offset<missingIds.length;offset+=40){const ids=missingIds.slice(offset,offset+40);arDetails.push({ids,response:await reader.invoiceTransactionDetails(ids)});}
  let arTax:Pick<InvoicePacket,'arTransfer'|'arSimulations'|'arPostedGenerates'|'nativeTaxControls'>={};
  if(qualifyArTax&&arDetails.length&&nativeTaxReport(manifest.hotel)&&reader.folioReport&&reader.folioTypeName&&reader.invoiceTransactionCodeRules&&reader.invoiceChargeSimulation){
+  let ambiguousNative=false;
+  try{nativeFolioSelector(historical,manifest);}catch(error){if(error instanceof OperaError&&error.stage==='folio_window_ambiguous')ambiguousNative=true;else throw error;}
+  if(ambiguousNative){
+   // Only an ambiguous native selector invokes this alternative. Network/auth,
+   // source changes and invalid native PDFs never trigger a weaker fallback.
+   const before=structuredClone(currentArTaxSource({manifest,account,invoice,postings,taxRows,taxCodes:uniqueCodes,arDetails}));
+   const evidence=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,invoice,postings,arDetails,onRenderStart,true);
+   const reads=await Promise.allSettled([readInvoicePacket(reader,manifest,false),refreshCurrentArRules(evidence.arSimulations,code=>reader.invoiceTransactionCodeRules!(code))] as const);
+   if(reads[0].status==='rejected')throw reads[0].reason;if(reads[1].status==='rejected')throw reads[1].reason;
+   const fresh=reads[0].value,after=structuredClone(currentArTaxSource(fresh));if(canonical(before)!==canonical(after))throw Error('document_source_changed');
+   const qualified:InvoicePacket={...fresh,arSimulations:reads[1].value,currentArTaxProof:{version:1,sourceBefore:before,sourceAfter:after}};
+   invoiceModel(qualified);return qualified;
+  }
   arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,invoice,postings,arDetails,onRenderStart);
   const finalPostings=await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string});
   if(financialPostingFingerprint(finalPostings)!==financialPostingFingerprint(postings))throw Error('document_source_changed');
@@ -101,7 +116,7 @@ export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,no
   // Only tax-base/service classification can request this independent proof. Identity,
   // coverage, duplicate and monetary mismatches retain their original failures.
   if(error instanceof Error&&error.message==='document_invoice_tax_code_unsupported'&&!packet.nativeTaxControls&&reader.invoiceTransactionCodeRules){
-   const qualified=await readEmbeddedGenerateEvidence(packet,code=>reader.invoiceTransactionCodeRules!(code),()=>readInvoicePacket(reader,manifest));
+   const qualified=await readEmbeddedGenerateEvidence(packet,code=>reader.invoiceTransactionCodeRules!(code),()=>readInvoicePacket(reader,manifest),reader.invoiceChargeSimulation?(code,amount)=>reader.invoiceChargeSimulation!(code,amount):undefined);
    if(qualified)return invoiceModel(qualified,now);
   }
   if(!(error instanceof Error)||!['document_invoice_tax_rate_unsupported','document_invoice_tax_code_unsupported'].includes(error.message)||packet.nativeTaxControls||!reader.folioReport||!reader.folioTypeName)throw error;
