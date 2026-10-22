@@ -91,12 +91,20 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
  }
  // Recheck the AR balance after the slower postings/tax reads to fence a payment
  // or adjustment arriving during preparation; accounting records remain read-only.
- const addressedAccount=await accountWithAddressee(reader,manifest.hotel,manifest.account_id,account);
+ // Reuse the exact linked-profile response already checked for the AR
+ // stationery. Consume its tax identity only after those scope checks pass;
+ // this adds no second lookup and never uses another folio payee's profile.
+ let stationeryProfile:unknown;const readProfile=reader.profile?.bind(reader);
+ const addressedAccount=await accountWithAddressee(readProfile?{profile:async profileId=>{const response=await readProfile(profileId);stationeryProfile=response;return response;}}:{},manifest.hotel,manifest.account_id,account);
+ const linkedTaxInfo=stationeryProfile===undefined?undefined:record(record(stationeryProfile).profileDetails).taxInfo;
+ const linkedTaxNumber=linkedTaxInfo==null?undefined:record(linkedTaxInfo).tax1No;
+ if(linkedTaxNumber!=null&&typeof linkedTaxNumber!=='string')throw Error('document_invoice_header_invalid');
  const ending=list(record(await reader.financialTransactionDetail(scope)).details);if(ending.length!==1||ending[0].hotelId!==manifest.hotel||record(ending[0].accountId).id!==manifest.account_id)fail();const last=list(ending[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(last.length!==1||!valid(last[0])||amountCents(last[0].amount,'THB')!==amountCents(invoice.amount,'THB'))fail();
  const profileId=account.profileId&&record(account.profileId).id;
  const payeeWindow=Array.isArray(folioInfo.folioWindows)?list(folioInfo.folioWindows).find(w=>w.folioWindowNo===window&&w.internalFolioWindowID===invoice.internalFolioWindowID):undefined;
  const payee=payeeWindow?.payeeInfo?record(payeeWindow.payeeInfo):undefined;
- const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
+ const folioPayeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
+ const payeeTaxNumber=folioPayeeTaxNumber?.trim()||(typeof linkedTaxNumber==='string'?linkedTaxNumber.trim():undefined);
  return {...arTax,manifest,account:addressedAccount,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,arDetails,payeeTaxNumber,customReference:customReference as string|undefined};
 }
 export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date,onRenderStart:()=>void=()=>{}){
