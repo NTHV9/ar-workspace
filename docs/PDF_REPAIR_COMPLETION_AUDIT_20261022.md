@@ -1,4 +1,4 @@
-# PDF/Invoice repair goal — completion audit
+# PDF/Invoice repair goal — completion and blocked audit
 
 The goal is **not complete**. Production source is
 `32f42163aa667340d456e0857f9256bdf5a50ddd`, Worker
@@ -40,3 +40,26 @@ Completion needs a documented, callable exact AR source or historical posted
 tax/exemption fields for these cases. Purchasing or enabling another plan, copying
 browser credentials, manually injecting each invoice's totals, or removing the
 identity check would not satisfy the authorized goal.
+
+## Blocked audit
+
+The same exact-source gap has remained through three consecutive goal turns:
+the three-case release turn, the remaining WAKL current-AR reference turn, and
+this current-state audit. The first two made concrete progress; they did not
+resolve the remaining automatic-source dependency. This audit rechecked the
+clean release checkout, current source guards and deployed commit, health,
+database and six anonymous boundaries. The deployed service is healthy; a running
+job or login wait is not the blocker.
+
+All three references are available privately, but none supplies a proven automatic
+Property API integration. Inspected contracts, scoped stored-folio probes and UI
+report observation have not established that integration. There is no further
+qualified shared repair to implement from the evidence presently accessible.
+Repeated printing, repeating unchanged tests, or rewording the same investigation
+would not advance the objective.
+
+The goal must remain incomplete and is blocked pending a supported exact-source
+contract or external access change within the owner's permitted scope. The
+reviewable next artifact is `OPERA_DATA_API_FOLLOWUP_20261022.md`, focused on
+existing Property APIs and historical tax fields. It has not been sent. No new
+service, permission, subscription or cost is authorized by this blocked status.
