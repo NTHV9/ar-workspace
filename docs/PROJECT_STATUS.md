@@ -1,8 +1,8 @@
-## 2026-10-22 — Embedded posted VAT and native Non-VAT totals (qualified)
+## 2026-10-22 — Embedded posted VAT and native Non-VAT totals (deployed)
 
 - Implemented complete embedded posted-generate proof and authoritative native full-footer qualification for three further original cases. Current code flags are not treated as historical tax evidence. The native identity guard and API outstanding remain unchanged. [Evidence](INVOICE_EMBEDDED_AND_NATIVE_TOTALS_20261022.md).
 - Fresh live reader/models pass: one without a native print, two with exactly one native print each. Generated PDFs pass Folio/footer/bounds checks and every page was independently rendered and visually inspected. All 87 baseline packet outcomes are unchanged; this is not a fresh regeneration claim.
-- Final 2,442 tests / 227 files, TypeScript and production build pass. A review finding for optional child scope was reproduced, repaired and independently rechecked. Deployment is pending. Three original source cases remain unresolved; no new service/access/cost, ledger, billing/Sheet date or email-history change.
+- Final 2,442 tests / 227 files, TypeScript and production build pass. A review finding for optional child scope was reproduced, repaired and independently rechecked. Deployed/enabled source `32f42163aa667340d456e0857f9256bdf5a50ddd`, Worker `486b2e70-e49a-4266-8063-02878efe4446`; health/database and six anonymous protected routes pass, all 42 bindings unchanged except COMMIT_SHA. Three original source cases remain unresolved; no new service/access/cost, ledger, billing/Sheet date or email-history change.
 
 ## 2026-10-22 — AR account-transfer qualification (deployed)
 

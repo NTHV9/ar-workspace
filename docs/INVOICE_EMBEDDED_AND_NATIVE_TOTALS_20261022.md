@@ -1,6 +1,11 @@
 # Embedded posted VAT and native Non-VAT totals
 
-## Implemented and tested; deployment pending
+## Implemented, tested, deployed and enabled
+
+Source `32f42163aa667340d456e0857f9256bdf5a50ddd` is deployed as Worker
+`486b2e70-e49a-4266-8063-02878efe4446`. Health/database and six anonymous protected
+email routes pass. All 42 runtime bindings are unchanged except COMMIT_SHA;
+tracker push/writeback remain enabled.
 
 This shared repair qualifies three more of the original nine source cases. It
 contains no invoice-specific overrides and does not change accounting records.
