@@ -1,3 +1,9 @@
+## 2026-10-22 — Current-rule adjustment investigation (not enabled)
+
+- Exact OPERA AR XML confirms account/Invoice/transaction identity and footer values. Scoped stored-folio and alternate-window reads still do not supply an automatic exact tax source.
+- A new bounded calculation replay combines original posted VAT with fresh OPERA charge simulations for two AR adjustments. Both rounded VAT totals match independent current AR PDFs; the WAKL rebate's unrounded net also matches its XML exactly. This supports a current-rule fallback candidate, not a claim of historical posted-tax retrieval. [Evidence and limitations](AR_ADJUSTMENT_CURRENT_RULE_PROBE_20261022.md).
+- Owner preference is pending: permit current-rule calculation only for fully verified all-VAT-7%/no-Non-VAT shapes, or require original recorded tax totals exclusively. No dependent runtime change or deployment in this investigation. Mixed Non-VAT remains outside the candidate. Production remains the printed-balance release below.
+
 ## 2026-10-22 — Printed Invoice balance correction (deployed)
 
 - Owner clarified Invoice amount versus remaining Statement balance. Both requested current OPERA PDFs were read and rendered; confirmed a shared defect where the PDF footer used current AR balance even though separately applied payments were absent from the Invoice's lines.
