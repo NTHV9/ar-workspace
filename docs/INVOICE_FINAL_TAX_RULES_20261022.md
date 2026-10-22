@@ -1,6 +1,12 @@
 # Shared AR adjustment and direct NonVAT qualification
 
-## Implemented and tested; deployment pending
+## Implemented, tested, deployed and enabled
+
+Source `b743e2e5865cc65419f923f60f5e8bf6246ce125`, Worker
+`a14f853c-9f0c-4ea4-bb80-e62fa54b9453`. Production health/database and six anonymous
+protected routes pass. All 42 runtime bindings match the previous release except
+COMMIT_SHA; tracker push/writeback remain enabled. Existing reviewed documents
+are not silently rewritten; new preparations use the repaired source rules.
 
 The owner delegated the source-policy choice in favor of correct automatic
 generation, confirmed that rules must apply by source shape/code rather than
