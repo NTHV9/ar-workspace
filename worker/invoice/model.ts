@@ -1,4 +1,5 @@
 import {verifyArSimulation,type ArSimulation} from './ar-tax';
+import {discoverPostedGenerates,verifyPostedGenerates,type ArPostedGenerates} from './posted-generates';
 import {amountCents} from '../opera/normalize';
 import type {DocumentInvoice} from '../documents/native-invoice';
 import type {InvoiceModel,InvoiceLine} from './types';
@@ -26,7 +27,7 @@ function precise(v:unknown):bigint{
 const abs=(n:bigint)=>n<0n?-n:n;
 const rounded=(units:bigint)=>{const n=Number((abs(units)+CENT/2n)/CENT)*(units<0n?-1:1);if(!Number.isSafeInteger(n))return fail('amount_invalid');return n;};
 
-export interface InvoicePacket {arSimulations?:ArSimulation[];nativeTaxControls?:{vat:number;nonTaxable:number};manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
+export interface InvoicePacket {arPostedGenerates?:ArPostedGenerates[];arSimulations?:ArSimulation[];nativeTaxControls?:{vat:number;nonTaxable:number};manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
 export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceModel{
  const {manifest:m}=packet,a=record(packet.account),i=record(packet.invoice),reservation=record(packet.reservation),postingData=record(packet.postings);
  if(a.hotelId!==m.hotel||text(record(a.accountId).id)!==m.account_id||i.hotelId!==m.hotel||id(i.transactionNo)!==m.id||text(i.invoiceNo)!==m.invoice_no||text(i.folioNo)!==m.folio_no||!m.reservation_id||!m.folio_no||!m.invoice_no||!['standalone','parent'].includes(m.collection_role)||m.open<=0||i.parentInvoiceNo!=null)return fail('scope_invalid');
@@ -64,10 +65,14 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
    arRows.set(key,{posting:p,code:codes[0]});
   }
  }
- const simulations=packet.arSimulations??[],simulationIds=new Set(simulations.map(e=>e.postingId));if(simulationIds.size!==simulations.length||simulations.some(e=>!arRows.has(e.postingId)))return fail('ar_tax_unverified');
- const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
+ const graphs=arRows.size?discoverPostedGenerates(m,a,postingData,packet.arDetails??[]):[],postedEvidence=packet.arPostedGenerates??[],postedById=new Map<string,{rootId:string;vatCents:number}>();
+ if(postedEvidence.length!==graphs.length||new Set(postedEvidence.map(e=>e.postingId)).size!==postedEvidence.length||graphs.length&&!packet.nativeTaxControls)return fail('ar_tax_unverified');
+ for(const graph of graphs){const rootId=String(graph.root.transactionNo),e=postedEvidence.find(p=>p.postingId===rootId);if(!e)return fail('ar_tax_unverified');const verified=verifyPostedGenerates(graph,e,m.hotel);for(const key of verified.ids){if(postedById.has(key))return fail('ar_tax_unverified');postedById.set(key,{rootId,vatCents:verified.vatCents});}}
+ const simulations=packet.arSimulations??[],simulationIds=new Set(simulations.map(e=>e.postingId));if(simulationIds.size!==simulations.length||simulations.some(e=>!arRows.has(e.postingId)||postedById.has(e.postingId)))return fail('ar_tax_unverified');
+ const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(postedById.keys()),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
  const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean}>();let needsNativeControls=false;const paymentAmounts:number[]=[];
  for(const line of lines){const root=byId.get(line.id);if(!root){
+   const posted=postedById.get(line.id);if(posted){if(posted.rootId===line.id)vatUnits+=BigInt(posted.vatCents)*CENT;continue;}
    const ar=arRows.get(line.id);if(!ar)return fail('tax_coverage_missing');const p=ar.posting,info=record(p.aRInfo),selected=postings.find(row=>String(row.transactionNo)===line.id)!;
    if(!text(a.accountNo)||text(info.accountNumber)!==text(a.accountNo)||text(info.invoiceNo)!==m.invoice_no||text(p.folioNo)!==m.folio_no||p.transactionCode!==selected.transactionCode||p.transactionType!=='Revenue')return fail('ar_tax_scope_invalid');
    if(p.deferredTax!==false||p.subPostings!==undefined&&(!Array.isArray(p.subPostings)||p.subPostings.length>0)||!text(ar.code.transactionGroup)||['TAX','SVC'].includes(text(ar.code.transactionGroup)))return fail('ar_tax_unsupported');
@@ -145,7 +150,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  }
  const debit=sum(lines.map(l=>l.debit)),credit=sum(lines.map(l=>l.credit)),gross=debit-credit-sum(paymentAmounts);
  const vat=rounded(vatUnits),nonTaxable=rounded(nonTaxableUnits),taxableNet=gross-vat-nonTaxable;if(!Number.isSafeInteger(gross)||!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
- if((simulations.length||needsNativeControls)&&(!packet.nativeTaxControls||packet.nativeTaxControls.vat!==vat||packet.nativeTaxControls.nonTaxable!==nonTaxable))return fail('ar_tax_unverified');
+ if((simulations.length||graphs.length||needsNativeControls)&&(!packet.nativeTaxControls||packet.nativeTaxControls.vat!==vat||packet.nativeTaxControls.nonTaxable!==nonTaxable))return fail('ar_tax_unverified');
  const address=optional(optional(a.address).address),addressLines=address.addressLine==null?[]:rowsOfText(address.addressLine),country=optional(address.country);
  const billAddress=[text(a.accountName),...addressLines,[text(address.cityName),text(address.postalCode)].filter(Boolean).join(' '),text(country.value??country.code)].filter(Boolean);if(!billAddress[0])return fail('address_invalid');
  const stay=record(reservation.roomStay),ids=rows(reservation.reservationIdList),cashier=optional(i.cashierInfo);
