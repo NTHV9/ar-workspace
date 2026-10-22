@@ -1,3 +1,4 @@
+import {directGroupKey,directVatDefinition,verifyDirectZeroTaxProof,type DirectZeroTaxProof} from './direct-zero-tax';
 import {qualifyNativeNonVat} from './native-nonvat';
 import {verifyCurrentArTaxProof,type CurrentArTaxProof} from './current-ar-tax';
 import type {NativeTaxControls} from './native-tax-controls';
@@ -32,7 +33,7 @@ function precise(v:unknown):bigint{
 const abs=(n:bigint)=>n<0n?-n:n;
 const rounded=(units:bigint)=>{const n=Number((abs(units)+CENT/2n)/CENT)*(units<0n?-1:1);if(!Number.isSafeInteger(n))return fail('amount_invalid');return n;};
 
-export interface InvoicePacket {currentArTaxProof?:CurrentArTaxProof;embeddedGenerateProof?:EmbeddedGenerateProof;arTransfer?:ArTransferEvidence;arPostedGenerates?:ArPostedGenerates[];arSimulations?:ArSimulation[];nativeTaxControls?:NativeTaxControls;manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
+export interface InvoicePacket {directZeroTaxProof?:DirectZeroTaxProof;currentArTaxProof?:CurrentArTaxProof;embeddedGenerateProof?:EmbeddedGenerateProof;arTransfer?:ArTransferEvidence;arPostedGenerates?:ArPostedGenerates[];arSimulations?:ArSimulation[];nativeTaxControls?:NativeTaxControls;manifest:DocumentInvoice;account:unknown;invoice:unknown;reservation:unknown;postings:unknown;taxRows:unknown[];taxCodes:unknown[];arDetails?:{ids:string[];response:unknown}[];payeeTaxNumber?:string;customReference?:string}
 export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceModel{
  const {manifest:m}=packet,a=record(packet.account),i=record(packet.invoice),reservation=record(packet.reservation),postingData=record(packet.postings);
  if(a.hotelId!==m.hotel||text(record(a.accountId).id)!==m.account_id||i.hotelId!==m.hotel||id(i.transactionNo)!==m.id||text(i.invoiceNo)!==m.invoice_no||text(i.folioNo)!==m.folio_no||!m.reservation_id||!m.folio_no||!m.invoice_no||!['standalone','parent'].includes(m.collection_role)||m.open<=0||i.parentInvoiceNo!=null)return fail('scope_invalid');
@@ -78,6 +79,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  const simulations=packet.arSimulations??[],simulationIds=new Set(simulations.map(e=>e.postingId));if(simulationIds.size!==simulations.length||simulations.some(e=>!arRows.has(e.postingId)||postedById.has(e.postingId)))return fail('ar_tax_unverified');
  const currentRules=packet.currentArTaxProof?verifyCurrentArTaxProof(packet):false;
  const taxCodes=packet.taxCodes.map(record),taxSeen=new Set<string>(postedById.keys()),componentSeen=new Set<string>();let vatUnits=0n,nonTaxableUnits=0n;
+ const directQualification=packet.directZeroTaxProof?verifyDirectZeroTaxProof(packet):undefined;
  const verifiedEmbeddedNonTax=packet.embeddedGenerateProof?verifyEmbeddedGenerateProof(packet,packet.embeddedGenerateProof):new Set<string>();
  const directGroups=new Map<string,{base:bigint;vat:bigint;baseCount:number;taxCount:number;hasCheck:boolean;candidates:{id:string;signedCents:number}[];eligible:boolean}>();let needsNativeControls=false,allNonTaxableDirect=true;const nonVatCandidates:{id:string;signedCents:number}[]=[];const paymentAmounts:number[]=[];
  for(const line of lines){const root=byId.get(line.id);if(!root){
@@ -132,10 +134,10 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
     if(currentRules)return fail('current_ar_tax_unverified');
     const selected=postings.find(row=>String(row.transactionNo)===line.id)!,definitions=codes.filter(c=>c.hotelId===m.hotel&&c.transactionCode===selected.transactionCode);
     if(definitions.length!==1||p.transactionCode!==selected.transactionCode)return fail('tax_scope_invalid');
-    const code=definitions[0],isTax=code.transactionGroup==='TAX',restaurantVat=code.transactionGroup==='F&B'&&/\bvat\b/i.test(text(code.description)),isVat=(isTax||restaurantVat)&&/\bvat\b/i.test(text(code.description));
+    const code=definitions[0],isTax=code.transactionGroup==='TAX',restaurantVat=code.transactionGroup==='F&B'&&/\bvat\b/i.test(text(code.description)),isVat=directVatDefinition(code);
     if(restaurantVat){if(!packet.nativeTaxControls)return fail('tax_code_unsupported');needsNativeControls=true;}
     if(isTax&&!isVat)return fail('tax_code_unsupported');
-    const check=text(selected.checkNo),groupKey=JSON.stringify([text(selected.transactionDate),check?'check':'posting',check||line.id]),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check,candidates:[],eligible:true};
+    const check=text(selected.checkNo),groupKey=directGroupKey(selected),group=directGroups.get(groupKey)??{base:0n,vat:0n,baseCount:0,taxCount:0,hasCheck:!!check,candidates:[],eligible:true};
     if(isVat){if(taxSeen.has(key))return fail('tax_scope_invalid');taxSeen.add(key);group.vat+=grossAmount;group.taxCount++;vatUnits+=grossAmount;}
     else{
      group.base+=grossAmount;group.baseCount++;
@@ -180,6 +182,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
   const qualified=qualifyNativeNonVat({chargeGross:gross,postedVAT:vat,inferredNonVAT:nonTaxable,candidates:nonVatCandidates,fullTotals:packet.nativeTaxControls.fullTotals});
   nonTaxable=qualified.nonTaxable;taxableNet=qualified.taxableNet;needsNativeControls=true;
  }
+ if(directQualification==='native'){const totals=packet.nativeTaxControls?.fullTotals;if(!totals||totals.currency!=='THB'||totals.gross!==gross||totals.vat!==vat||totals.net!==taxableNet||totals.nonTaxable!==nonTaxable)return fail('native_nonvat_unverified');}
  if(!Number.isSafeInteger(gross)||!Number.isSafeInteger(taxableNet))return fail('amount_invalid');
  if(currentRules){if(nonTaxable!==0||needsNativeControls||directGroups.size||graphs.length||transfer)return fail('current_ar_tax_unverified');}
  else if((simulations.length||graphs.length||transfer||needsNativeControls)&&(!packet.nativeTaxControls||packet.nativeTaxControls.vat!==vat||packet.nativeTaxControls.nonTaxable!==nonTaxable))return fail('ar_tax_unverified');

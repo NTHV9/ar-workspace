@@ -34,8 +34,10 @@ it('splits busy date windows before unstable OPERA pagination can lose package m
  expect((await readInvoiceModel(reader,p.manifest)).gross).toBe(6630000);expect(reader.invoicePostingBreakdown.mock.calls.every(a=>a[4]===0)).toBe(true);
 });
 it('reads an omitted optional taxes list and verifies separately posted VAT end-to-end',async()=>{
- const {p,reader}=fixture(1,mixedTaxPacket()),model=await readInvoiceModel(reader,p.manifest);
- expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledOnce();
+ const {p,reader}=fixture(1,mixedTaxPacket());
+ const qualifiedReader={...reader,invoiceTransactionCodeRules:vi.fn(async()=>({transactionCode:{hotelId:'KAT',code:'UNTAXED',classification:{type:'Revenue',transactionType:{code:'Others'},group:{code:'OTHER'}},trxSetup:{nonTaxable:true,taxInclusive:false},compTransaction:false,associatedTransactionCodes:[],generatesSetup:{addBaseAmtTo:{bucket1:false,bucket2:false,bucket3:false}}}})),invoiceChargeSimulation:vi.fn(async(code:string,amount:number)=>({result:{totalAmount:amount,charges:[{transactionCode:code,amount,sequence:0,level:'TransactionCode',basePosting:true}]}}))};
+ const model=await readInvoiceModel(qualifiedReader,p.manifest);
+ expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledTimes(2);expect(qualifiedReader.invoiceChargeSimulation).toHaveBeenCalledTimes(2);
 });
 it('reads missing AR adjustments by exact transaction ID with complete generated-posting evidence',async()=>{const p=arAdjustmentPacket(),{reader}=fixture(1,p);reader.invoiceTransactionDetails.mockImplementation(async(ids:string[])=>ids.includes('60001')?p.arDetails[0].response:{trxCodesInfo:p.taxCodes});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_invoice_ar_tax_unverified');expect(reader.invoiceTransactionDetails).toHaveBeenCalledWith(['60001']);});
 it('reports a changed balance before a missing reservation selector on an old preparation',async()=>{const {p,reader,detail}=fixture(1);p.manifest.reservation_id='';reader.account.mockResolvedValue({accountDetails:{...p.account,invoices:[{...detail.details[0].invoices[0],balance:money(0)}]}});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');expect(reader.reservationFolios).not.toHaveBeenCalled();});

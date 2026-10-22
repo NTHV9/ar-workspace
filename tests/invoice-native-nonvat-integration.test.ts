@@ -32,8 +32,8 @@ it.each(['gross','vat','net','split-charge','missing-full','date','amount','post
  expect(()=>invoiceModel(p)).toThrow();
 });
 
-it('extracts full native totals from the first print and retains the printed invoice balance and current AR source fences',async()=>{
- const p=fixture();p.manifest.open=p.invoice.balance.amount=100;
+it.each(['F&B','SVC'])('extracts full native totals on ordinary reads (service group %s), including when legacy inference succeeds',async serviceGroup=>{
+ const p=fixture();p.manifest.open=p.invoice.balance.amount=100;p.taxCodes[0].transactionGroup=serviceGroup;
  const current={...p.invoice,reservationId:{id:'777'}},detail={details:[{hotelId:'KAT',accountId:{id:'101'},invoices:[current]}]};
  const {PDFDocument,StandardFonts}=await import('pdf-lib'),pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica),page=pdf.addPage([612,792]);
  for(const [label,value,y] of [['Folio No.','88',650],['Total Amount Before VAT 7%','160.00',400],['Total VAT 7%','7.70',380],['Total Non VAT Amount','0.00',360],['Total Amount','167.70',340],['Total Outstanding Balance','167.70',320]] as const){page.drawText(label,{x:320,y,size:9,font});page.drawText(value,{x:520,y,size:9,font});if(y<500)page.drawText('THB',{x:570,y,size:9,font});}

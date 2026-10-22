@@ -1,3 +1,4 @@
+import {readDirectZeroTaxEvidence} from './direct-zero-tax';
 import {readEmbeddedGenerateEvidence} from './embedded-generate-read';
 import {currentArTaxSource,refreshCurrentArRules} from './current-ar-tax';
 import {canonical} from './ar-tax';
@@ -120,12 +121,13 @@ export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,no
   }
  }
  if(!packet)throw Error('document_invoice_source_unstable');
+ packet=await readDirectZeroTaxEvidence(packet,reader.invoiceTransactionCodeRules?.bind(reader),()=>readInvoicePacket(reader,manifest),reader.invoiceChargeSimulation?.bind(reader),reader.folioReport&&reader.folioTypeName?()=>readNativeInvoiceTaxControls(reader as Reader&Pick<ArTaxReader,'folioReport'|'folioTypeName'>,manifest,onRenderStart):undefined);
  try{return invoiceModel(packet,now);}catch(error){
   // Only tax-base/service classification can request this independent proof. Identity,
   // coverage, duplicate and monetary mismatches retain their original failures.
   if(error instanceof Error&&error.message==='document_invoice_tax_code_unsupported'&&!packet.nativeTaxControls&&reader.invoiceTransactionCodeRules){
    const qualified=await readEmbeddedGenerateEvidence(packet,code=>reader.invoiceTransactionCodeRules!(code),()=>readInvoicePacket(reader,manifest),reader.invoiceChargeSimulation?(code,amount)=>reader.invoiceChargeSimulation!(code,amount):undefined);
-   if(qualified)return invoiceModel(qualified,now);
+   if(qualified)return invoiceModel({...qualified,directZeroTaxProof:packet.directZeroTaxProof},now);
   }
   if(!(error instanceof Error)||!['document_invoice_tax_rate_unsupported','document_invoice_tax_code_unsupported'].includes(error.message)||packet.nativeTaxControls||!reader.folioReport||!reader.folioTypeName)throw error;
   const nativeTaxControls=await readNativeInvoiceTaxControls(reader as Reader&Pick<ArTaxReader,'folioReport'|'folioTypeName'>,manifest,onRenderStart);
