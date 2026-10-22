@@ -36,7 +36,7 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  const {manifest:m}=packet,a=record(packet.account),i=record(packet.invoice),reservation=record(packet.reservation),postingData=record(packet.postings);
  if(a.hotelId!==m.hotel||text(record(a.accountId).id)!==m.account_id||i.hotelId!==m.hotel||id(i.transactionNo)!==m.id||text(i.invoiceNo)!==m.invoice_no||text(i.folioNo)!==m.folio_no||!m.reservation_id||!m.folio_no||!m.invoice_no||!['standalone','parent'].includes(m.collection_role)||m.open<=0||i.parentInvoiceNo!=null)return fail('scope_invalid');
  if(reservation.hotelId!==m.hotel||!rows(reservation.reservationIdList).some(r=>r.type==='Reservation'&&text(r.id)===m.reservation_id))return fail('scope_invalid');
- const outstanding=cents(i.balance),currentAmount=cents(i.amount);if(outstanding!==Math.round(m.open*100)||i.folioDate!==m.folio_date)throw Error('document_source_changed');
+ const arOutstanding=cents(i.balance),currentAmount=cents(i.amount);if(arOutstanding!==Math.round(m.open*100)||i.folioDate!==m.folio_date)throw Error('document_source_changed');
  const codes=rows(postingData.trxCodesInfo),postings=rows(postingData.invoicePostingsDetails);if(!postings.length||postings.length>=4000)return fail('postings_incomplete');
  const postingDates=new Map(postings.map(p=>[String(p.transactionNo),text(p.transactionDate)]));
  const seen=new Set<string>(),lines:InvoiceLine[]=postings.map(p=>{
@@ -180,6 +180,9 @@ export function invoiceModel(packet:InvoicePacket,now:Date=new Date()):InvoiceMo
  const guestName=guestProfile.id!=null&&text(guestProfile.id)===text(reservationGuest.id)&&guestParts.length?guestParts.join(' '):text(i.guestName);
  const voucher=m.hotel==='KAT'?text(i.reference)||text(packet.customReference):text(packet.customReference);
  const printed=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now),part=(type:string)=>printed.find(p=>p.type===type)?.value??'';
- return {hotel:m.hotel,accountId:m.account_id,invoiceId:m.id,folio:m.folio_no,voucher,address:billAddress,company:text(a.accountName),guest:guestName,taxId:text(packet.payeeTaxNumber),room:text(stay.roomId),arrival:dateText(stay.arrivalDate),departure:dateText(stay.departureDate),adults:text(stay.adultCount),children:text(stay.childCount),confirmation:text(ids.find(r=>r.type==='Confirmation')?.id),cashierNo:text(cashier.cashierId),cashierName:text(cashier.cashierName),printDate:`${part('day')}/${part('month')}/${part('year')}`,printTime:`${part('hour')}:${part('minute')}`,lines,debit,credit,gross,taxableNet,nonTaxable,vat,outstanding};
+ // The printed balance belongs to these invoice postings. AR allocations made
+ // outside them reduce the account/Statement balance, not this source invoice.
+ // sourceNet already reconciles exactly to OPERA's current invoice amount.
+ return {hotel:m.hotel,accountId:m.account_id,invoiceId:m.id,folio:m.folio_no,voucher,address:billAddress,company:text(a.accountName),guest:guestName,taxId:text(packet.payeeTaxNumber),room:text(stay.roomId),arrival:dateText(stay.arrivalDate),departure:dateText(stay.departureDate),adults:text(stay.adultCount),children:text(stay.childCount),confirmation:text(ids.find(r=>r.type==='Confirmation')?.id),cashierNo:text(cashier.cashierId),cashierName:text(cashier.cashierName),printDate:`${part('day')}/${part('month')}/${part('year')}`,printTime:`${part('hour')}:${part('minute')}`,lines,debit,credit,gross,taxableNet,nonTaxable,vat,outstanding:sourceNet};
 }
 function rowsOfText(v:unknown):string[]{if(!Array.isArray(v))return fail('address_invalid');return v.map(text);}

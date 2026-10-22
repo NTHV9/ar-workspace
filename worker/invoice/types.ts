@@ -4,7 +4,9 @@ export interface InvoiceLine {id:string;date:string;description:string;reference
 export interface InvoiceModel {
  hotel:string;accountId:string;invoiceId:string;folio:string;voucher:string;address:string[];
  company:string;guest:string;taxId:string;room:string;arrival:string;departure:string;adults:string;children:string;confirmation:string;cashierNo:string;cashierName:string;printDate:string;printTime:string;
- lines:InvoiceLine[];debit:number;credit:number;gross:number;taxableNet:number;nonTaxable:number;vat:number;outstanding:number;
+ lines:InvoiceLine[];debit:number;credit:number;gross:number;taxableNet:number;nonTaxable:number;vat:number;
+ /** Printed invoice balance; excludes later AR allocations absent from its lines. */
+ outstanding:number;
 }
 export interface InvoiceImage {width:number;height:number;png:string;sha256:string}
 export interface InvoicePosition {x0:number;x1:number;top:number;bottom:number;size:number;fontname:string}

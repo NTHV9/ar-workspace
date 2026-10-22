@@ -1,3 +1,16 @@
+## Printed Invoice amount versus remaining AR balance — 22 October 2026
+
+The owner clarified that an OPERA Invoice retains its invoice amount while the
+Statement shows the remaining receivable after separately applied payments.
+Independent current AR PDFs confirm this distinction. The Invoice footer and
+amount-in-words must use the complete selected invoice posting net, reconciled
+to OPERA `invoice.amount`, rather than substitute `invoice.balance`. Payments
+that are actual selected Invoice lines remain in its printed credit column and
+balance. External AR allocations absent from those lines do not reduce that
+printed Invoice balance. Statement/dashboard/open-balance and source-freshness
+checks continue to use OPERA's current AR balance. This supersedes earlier repair
+notes that described the current AR balance as the printed Invoice footer value.
+
 ## PDF corpus qualification and uploaded originals — 21 October 2026
 
 The owner requests testing all of our current bills, beyond representative hotel

@@ -50,8 +50,8 @@ describe('workspace invoice financial model',()=>{
   const p=packet(14),m=invoiceModel(p,now);expect(m.gross).toBe(4641000);expect(m.vat).toBe(303617);expect(m.taxableNet).toBe(4337383);expect(m.nonTaxable).toBe(0);expect(m.outstanding).toBe(m.gross);
   expect(m.lines).toHaveLength(14);expect(m.lines[0].reference).toBe('PRINTED-1');expect(m.printDate).toBe('21/09/26');expect(m.printTime).toBe('17:00');
  });
- it('keeps a partial payment out of gross/tax and uses the smaller current AR balance',()=>{
-  const p=packet();p.manifest.open-=500;p.invoice.balance=money(p.manifest.open);const m=invoiceModel(p,now);expect(m.gross).toBe(663000);expect(m.outstanding).toBe(613000);expect(m.vat).toBe(43374);
+ it('keeps an externally applied AR payment out of the printed invoice balance and tax',()=>{
+  const p=packet();p.manifest.open-=500;p.invoice.balance=money(p.manifest.open);const before=structuredClone(p),m=invoiceModel(p,now);expect(m.gross).toBe(663000);expect(m.outstanding).toBe(663000);expect(m.vat).toBe(43374);expect(p).toEqual(before);expect(p.invoice.balance.amount).toBe(6130);
  });
  it('does not add settlement or another invoice tax components into the footer',()=>{
   const p=packet(),extra=structuredClone(p.taxRows.at(-1)!);extra.posting.transactionNo=70000;if(!('referencePackageTransactionNo' in extra.posting))throw Error('Fixture');extra.posting.referencePackageTransactionNo=80000;p.taxRows.push(extra);
