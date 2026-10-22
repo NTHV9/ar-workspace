@@ -1,8 +1,9 @@
-## 2026-10-22 — AR account-transfer qualification (release qualification)
+## 2026-10-22 — AR account-transfer qualification (deployed)
 
 - Added exact closed-transfer proof for two WAKL cases whose posted adjustments retain the source account number. Source/destination identities, all selected posting fingerprints and complete closed history must match; they are fetched and revalidated around native printing. No blanket account mismatch exception.
 - Both fresh live reader/models and actual generated PDFs match independent current AR tax controls. Applied-payment outstanding continues to use the current AR API balance. Final 2,324 tests / 223 files, TypeScript, build and independent review pass; a reported freshness gap was fixed and rechecked. [Evidence](INVOICE_TRANSFER_PROOF_20261022.md).
-- Deployment pending. The separate direct-tax classification experiment is excluded. The production application was verified in Developer Portal: its existing subscriptions omit Data APIs, consistent with the fresh 403 response. No subscription or permission was changed. [Unsent Oracle follow-up draft](OPERA_DATA_API_FOLLOWUP_20261022.md).
+- Deployed/enabled source `a84f0f21d1481f2c9b709fda1999c3358f69f854`, Worker `29b64799-e68d-4301-8268-620c3621ca25`. Health/database and six anonymous protected routes pass; all 42 bindings unchanged except COMMIT_SHA. Six original cases remain. The separate direct-tax classification experiment is excluded.
+- The production application was verified in Developer Portal: its existing subscriptions omit Data APIs, consistent with the fresh 403 response. The owner says to treat that channel as unavailable for current work; no new service/access is to be added. Investigation continues through usable Property APIs and current AR references. No subscription or permission was changed. [Unsent Oracle follow-up draft](OPERA_DATA_API_FOLLOWUP_20261022.md).
 
 ## 2026-10-22 — Posted AR service/VAT components (deployed)
 

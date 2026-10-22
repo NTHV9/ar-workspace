@@ -1,6 +1,11 @@
 # AR account-transfer qualification
 
-## Implemented and tested; deployment pending
+## Implemented, tested, deployed and enabled
+
+Source `a84f0f21d1481f2c9b709fda1999c3358f69f854` is deployed as Worker
+`29b64799-e68d-4301-8268-620c3621ca25`. Health/database and six anonymous protected
+email routes pass; all 42 bindings match the prior release except COMMIT_SHA.
+Tracker push/writeback remain enabled.
 
 Two remaining WAKL invoices had moved to a new AR account, but their direct AR
 adjustments retained the original account number. A blanket account-equality
@@ -43,7 +48,7 @@ transfer lookups. Transferred nested generate graphs remain unqualified.
   a differential check, not a fresh regeneration claim for those 87 cases.
 
 This resolves two further original cases after the separate TSK posted-component
-repair. Once this release is deployed, six of the original nine remain
+repair. After this release, six of the original nine remain
 unresolved: four ambiguous native selectors and two Non-VAT cases whose
 broader classification repair is not yet release-qualified. The independent
 Data API access investigation is documented in
