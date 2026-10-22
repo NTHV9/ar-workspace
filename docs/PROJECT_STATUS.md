@@ -1,8 +1,8 @@
-## 2026-10-22 — Posted AR service/VAT components (release qualification)
+## 2026-10-22 — Posted AR service/VAT components (deployed)
 
 - Implemented a generic closed parent/child posting graph, using actual posted service/VAT amounts once and preserving signed AR lines. Exact scope/lineage, stable rules, native parity, final source fences and no-retry-after-print remain mandatory.
 - Fresh TSK model and generated PDF match an independently downloaded current AR print, including all 16 lines and tax/footer totals. Clean release: 2,224 tests / 220 files, TypeScript, build and independent review pass. All 87 baseline captured packets retain identical old/new outcomes; this does not claim a fresh regeneration of all 87. [Evidence and limits](INVOICE_POSTED_GENERATES_20261022.md).
-- This resolves one of the nine remaining source patterns locally; eight remain. Direct-tax classification and account-transfer work are excluded from the qualified release. Deployment pending; current production remains `6d137c12b1ee6eb2520842b594aab536772b527c`.
+- Deployed/enabled source `f1fbe53390825c27b0278a0c5aff958c2feb43e7`, Worker `3d1330f6-18f0-4139-8bbe-474efc33b0bf`. Health/database and six anonymous protected routes pass; all 42 bindings unchanged except COMMIT_SHA. This resolves one of the nine remaining source patterns; eight remain. Direct-tax classification and account-transfer work are excluded from this release.
 
 ## 2026-10-22 — PDF Workspace longer text and row insertion (deployed)
 

@@ -1,6 +1,11 @@
 # Explicit posted AR tax components
 
-## Implemented and tested; deployment pending
+## Implemented, tested, deployed and enabled
+
+Source `f1fbe53390825c27b0278a0c5aff958c2feb43e7` is deployed as Worker
+`3d1330f6-18f0-4139-8bbe-474efc33b0bf`. Health/database and six anonymous email
+boundaries pass. All 42 runtime bindings match the previous release except
+COMMIT_SHA; tracker push and writeback remain enabled.
 
 One remaining TSK invoice contains exclusive service/VAT components as both
 nested children and individually selected AR postings. The former reader tried
