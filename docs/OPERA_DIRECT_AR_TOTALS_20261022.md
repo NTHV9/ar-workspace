@@ -105,6 +105,33 @@ the user authorized sign-in; credentials are not saved in project files.
 
 ## Official references
 
+### Later bounded stored-folio inspection
+
+The existing Property schema offers `getStoredFolioDetails` with a required
+folio ID and optional invoice/date/internal-window qualifiers, but the inspected
+AR detail responses omit their optional stored-folio identifiers. Read-only
+diagnostics tried only source-observed Folio number and sequence values for two
+exact affected TSAN history records, with all available invoice/date/window
+qualifiers. Both hypotheses returned empty objects containing only empty links;
+no report URL was followed and no mapping was accepted. The WAKL diagnostic
+stopped before retrieval because its history payment transaction differed from
+the current selected AR transaction. These calls did not print or mutate a bill.
+
+The three remaining cases still lack an automatically usable exact source. A
+scoped historical tax classification or documented exact current-AR report/data
+selector is needed; current code flags and numerical parity alone are not proof.
+
+An additional current AR print was obtained for a remaining AR-only adjustment
+case through the exact selected invoice in OPERA. Its native gross/net/VAT/footer
+is retained privately. A bounded browser network observation of that authorized
+print showed an ADF UI request and session report viewer, not a Property API
+response with an exact reusable stored-folio selector. Only paths/statuses and
+parameter names were inspected in output; no user-session credential was copied
+to the app or diagnostics. Network observation was disabled afterward. This
+proves an independent reference, not an automatic application integration.
+
+### Schema and workflow sources
+
 - [CSH API schema](https://github.com/oracle/hospitality-api-docs/blob/main/rest-api-specs/property/v1/csh.json)
 - [Media API schema](https://github.com/oracle/hospitality-api-docs/blob/main/rest-api-specs/property/v1/medcfg.json)
 - [Report configuration API schema](https://github.com/oracle/hospitality-api-docs/blob/main/rest-api-specs/property/v1/repcfg.json)
