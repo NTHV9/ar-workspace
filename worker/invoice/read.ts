@@ -7,7 +7,7 @@ import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {collectPages} from '../opera/pagination';
 import {invoiceModel,invoiceTaxEntries,record,type InvoicePacket} from './model';
-type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>&Partial<Pick<OperaReader,'profile'|'folioReport'|'folioTypeName'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'>>;
+type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>&Partial<Pick<OperaReader,'accountsByNumber'|'profile'|'folioReport'|'folioTypeName'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'>>;
 const fail=():never=>{throw Error('document_source_changed');};
 const list=(value:unknown)=>{if(!Array.isArray(value))return fail();return value.map(record);};
 export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,qualifyArTax=false,onRenderStart:()=>void=()=>{}):Promise<InvoicePacket>{
@@ -67,9 +67,9 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
  // Read their exact transaction identities, including all generated postings;
  // the model independently checks account/invoice/folio, amounts and tax facts.
  for(let offset=0;offset<missingIds.length;offset+=40){const ids=missingIds.slice(offset,offset+40);arDetails.push({ids,response:await reader.invoiceTransactionDetails(ids)});}
- let arTax:Pick<InvoicePacket,'arSimulations'|'arPostedGenerates'|'nativeTaxControls'>={};
+ let arTax:Pick<InvoicePacket,'arTransfer'|'arSimulations'|'arPostedGenerates'|'nativeTaxControls'>={};
  if(qualifyArTax&&arDetails.length&&nativeTaxReport(manifest.hotel)&&reader.folioReport&&reader.folioTypeName&&reader.invoiceTransactionCodeRules&&reader.invoiceChargeSimulation){
-  arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,postings,arDetails,onRenderStart);
+  arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,invoice,postings,arDetails,onRenderStart);
   const finalPostings=await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string});
   if(financialPostingFingerprint(finalPostings)!==financialPostingFingerprint(postings))throw Error('document_source_changed');
  }

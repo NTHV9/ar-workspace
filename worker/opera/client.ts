@@ -34,6 +34,10 @@ export class OperaReader {
   accounts(offset=0,limit=20) {
     return this.read('/ars/v1/accounts',[['balance','All'],['hotelIds',this.config.hotelId],...this.page(offset,limit)]);
   }
+  accountsByNumber(accountNo:string) {
+    if(typeof accountNo!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(accountNo))throw new OperaError('invalid_request');
+    return this.read('/ars/v1/accounts',[['accountNo',accountNo],['hotelIds',this.config.hotelId],['balance','All'],...this.page(0,20)]);
+  }
   /** Fixed read-only diagnostic selector; never accepts arbitrary control names or URLs. */
   agingBasisSettings() {
     return this.read('/ent/config/v1/settings',[['hotelId',this.config.hotelId],['parameterNameWildCard','DATE_FOR_AGING']]);

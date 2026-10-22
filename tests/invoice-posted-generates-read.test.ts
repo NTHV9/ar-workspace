@@ -11,14 +11,14 @@ async function fixture(){
  return {p,reader,rules};
 }
 it('reads stable explicit graph evidence without simulating posted parent or children',async()=>{
- const {p,reader}=await fixture(),evidence=await readArTaxEvidence(reader,p.manifest,p.account,p.postings,p.arDetails);
+ const {p,reader}=await fixture(),evidence=await readArTaxEvidence(reader,p.manifest,p.account,p.invoice,p.postings,p.arDetails);
  expect(invoiceModel({...p,...evidence})).toMatchObject({vat:22457,gross:343270,nonTaxable:0});expect(reader.invoiceChargeSimulation).not.toHaveBeenCalled();expect(reader.folioReport).toHaveBeenCalledOnce();
  expect(reader.invoiceTransactionCodeRules).toHaveBeenCalledTimes(6);
 });
 it('refuses a changed child definition across native-control printing',async()=>{
  const {p,reader,rules}=await fixture(),original=reader.folioReport.getMockImplementation()!;
  reader.folioReport.mockImplementation(async()=>{const changed=structuredClone(p.arPostedGenerates[0].generatedRules[1]);changed.transactionCode.description.defaultText='OTHER TAX';rules.set('POST-VAT',changed);return original();});
- await expect(readArTaxEvidence(reader,p.manifest,p.account,p.postings,p.arDetails)).rejects.toThrow('document_invoice_ar_tax_unverified');expect(reader.folioReport).toHaveBeenCalledOnce();
+ await expect(readArTaxEvidence(reader,p.manifest,p.account,p.invoice,p.postings,p.arDetails)).rejects.toThrow('document_invoice_ar_tax_unverified');expect(reader.folioReport).toHaveBeenCalledOnce();
 });
 it('simulates only standalone inclusive roots in a mixed posted/simulated invoice, including both cancellation signs',async()=>{
  const {p,reader,rules}=await fixture(),root=p.arDetails[0].response.transactions[0];
@@ -30,7 +30,7 @@ it('simulates only standalone inclusive roots in a mixed posted/simulated invoic
  const rootRules=structuredClone(p.arPostedGenerates[0].rules);rootRules.transactionCode.code='INCLUSIVE';rootRules.transactionCode.classification.group.code='RM';rootRules.transactionCode.trxSetup.generatesType='INCLUSIVE';rootRules.transactionCode.trxSetup.taxInclusive=true;rootRules.transactionCode.generatesSetup.generates=[{code:'SIM-VAT',rule:{percentage:{amount:7,calculatedOn:'Base',useTaxBracket:false},posting:{adjustmentType:'NoAdjustment'}},addGeneratedAmtTo:{bucket1:false,bucket2:false,bucket3:false}}];
  rules.set('INCLUSIVE',rootRules);rules.set('SIM-VAT',{transactionCode:{hotelId:'KAT',code:'SIM-VAT',classification:{group:{code:'TAX'}},description:{defaultText:'VAT'}}});
  reader.invoiceChargeSimulation.mockImplementation(async(code,amount)=>({result:{totalAmount:amount,charges:[{transactionCode:code,amount,sequence:0,basePosting:true},{transactionCode:code,amount:amount/1.07,sequence:0,basePosting:false},{transactionCode:'SIM-VAT',amount:amount*7/107,sequence:1,basePosting:false}]}}));
- const evidence=await readArTaxEvidence(reader,p.manifest,p.account,p.postings,p.arDetails),m=invoiceModel({...p,...evidence});
+ const evidence=await readArTaxEvidence(reader,p.manifest,p.account,p.invoice,p.postings,p.arDetails),m=invoiceModel({...p,...evidence});
  expect(reader.invoiceChargeSimulation.mock.calls).toEqual([['INCLUSIVE',100],['INCLUSIVE',-100]]);expect(reader.folioReport).toHaveBeenCalledOnce();expect(m).toMatchObject({vat:22457,gross:343270});expect(m.lines).toHaveLength(6);
 });
 import {readInvoiceModel} from '../worker/invoice/read';
