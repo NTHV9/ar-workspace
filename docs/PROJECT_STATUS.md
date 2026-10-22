@@ -1,4 +1,39 @@
+## 2026-10-23 — Shared zero-tax qualification released; four source blockers remain
+
+Source `6fdf0ae9a91f1f269bf0b51c5dbd0d071b98f380`, Worker
+`9ad734ea-a578-4188-9fa5-30260ce79048` deployed. Ordinary reads proactively qualify
+direct zero-tax groups with stable explicit NonVAT proof or complete native
+aggregate controls. No per-Invoice override or guessed NonRevenue exclusion.
+Identical reordered postings are normalized by unique ID; all contents stay fenced.
+
+Full 1,402 replay: 1,398 monetary matches, four expected refusals, all previous
+matches retained, 39 tax identities retained, no other-field regression. Fresh
+provider-backed 27-case execution: 23 generated PDFs independently match seven
+current AR fields, four unqualified cases return no PDF. WAKL corrected. The four
+remaining cases require an exact automatic AR tax source; refusal is not completion.
+
+233 files / 2,578 tests, typecheck/build and independent reviews pass. Exact-source
+live health/database and six unauthenticated boundary checks pass. All previous
+runtime bindings preserved except COMMIT_SHA. No migration, email, billing/Sheet
+date or ledger write. Temporary diagnostics stopped and credentials removed.
+
+Completion audit: reference capture, TAX ID, qualified WAKL fix, regression tests,
+qualified deployment and reporting are complete. Automatic correction of four
+source-limited cases remains unproven; the overall goal must not be marked complete.
+The same exact-source blocker has been verified across consecutive goal turns.
+Prepared integration questions are in `AR_INVOICE_PARITY_AUDIT_20261022.md`.
+
 ## 2026-10-23 — Complete AR reference capture; TAX ID released
+
+Later qualification evidence: fresh internal tax-control reads across all 27
+direct-zero-tax candidates produced 17 complete footers independently matching
+current AR references, nine strict folio-selector refusals, and one incomplete
+footer. These controls are not counted as AR parity references. Injecting the
+fresh complete WAKL control into the existing aggregate qualifier reproduces all
+seven AR fields; a normal-read integration is still required. A blanket native
+requirement would newly block six currently matching invoices, so their existing
+explicit NonVAT provenance must remain qualified. No monetary runtime change was
+deployed from this experiment. Temporary diagnostics stopped and credentials removed.
 
 All 1,402 candidates now have exact current AR Invoice references: 1,397 monetary
 matches and five unresolved cases, no missing or ambiguous references. KAT's

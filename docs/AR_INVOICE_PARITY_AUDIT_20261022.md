@@ -3,16 +3,17 @@
 ## Current result
 
 All **1,402 generation candidates have current OPERA AR Invoice references**:
-**1,397 monetary matches and five unresolved cases**. None awaits a reference or
-has an unresolved identity. Four generated PDFs differ in tax-base/NonVAT fields;
-one refuses generation. The full goal is not complete.
+**1,398 monetary matches and four unresolved automatic-generation cases** after
+the shared qualification fix. None awaits an AR reference or has an unresolved
+reference identity. The four unqualified cases now refuse output; they are not
+counted as fixed or generated. The full goal is not complete.
 
 | Hotel | Matched | Unresolved |
 |---|---:|---:|
 | KAT | 459 | 0 |
 | TSK | 76 | 0 |
 | TLKL | 89 | 1 |
-| WAKL | 232 | 1 |
+| WAKL | 233 | 0 |
 | TLFO | 109 | 0 |
 | TSAN | 432 | 3 |
 
@@ -79,7 +80,32 @@ Worker: `d5e6ce2f-5c09-4388-bc83-77d1c3284c1b`.
 Exact-source health/database verification and six anonymous access checks pass.
 All 42 previous bindings are preserved except COMMIT_SHA. No database migration.
 
-## Five monetary/source cases — unresolved
+## Shared direct zero-tax qualification — implemented and deployed
+
+Ordinary PDF reads now inspect completed date/check groups with no posted VAT.
+Explicit NonVAT requires exact posted identity/amounts, stable scoped rules and
+charge calculations, and an unchanged financial source. Other groups require
+source-bound complete native control totals and the existing aggregate qualifier.
+The qualifier's reconciliation rules remain unchanged; no per-code net/exclusion
+guess or per-Invoice override was added. Missing or ambiguous controls refuse.
+
+Selected postings are compared by verified unique transaction ID, so a reordered
+response does not falsely count as financial mutation. Every row field remains
+fenced; duplicate IDs or changed dates/codes/amounts/references still reject.
+
+- Full ordinary-read replay: **1,398 matches, four expected refusals**, no lost
+  previously matching invoice, no other model-field regression, 39 TAX IDs retained.
+- Fresh provider-backed runs for all 27 affected-branch candidates: 23 generated
+  PDFs independently match all seven actual AR fields, four refusals produce no
+  PDF. Six previously matching ambiguous-Folio cases retain explicit proof support.
+- WAKL now matches all AR fields; changed output visually inspected.
+- Final tests: 233 files / 2,578 tests; TypeScript/Vite builds pass. Independent
+  implementation and ordering reviews found no actionable issues.
+- Source `6fdf0ae9a91f1f269bf0b51c5dbd0d071b98f380`, Worker
+  `9ad734ea-a578-4188-9fa5-30260ce79048`. Exact-source health/database and six
+  anonymous access checks pass. All previous 42 bindings preserved except SHA.
+
+## Original five findings and four remaining source blockers
 
 One WAKL split food charge and one TSAN laundry adjustment are classified as
 NonVAT by the direct zero-tax group path, while native AR includes them in
@@ -101,11 +127,34 @@ rule was changed to fit this hypothesis. A private arithmetic experiment is
 only diagnostic; existing native aggregate overrides must be considered before
 interpreting its estimates.
 
+One original WAKL discrepancy is now corrected using the existing complete native
+aggregate proof. The remaining three TSAN cases return an ambiguous folio selector;
+TLKL returns VAT/NonVAT controls without complete qualified totals. Native AR PDFs
+are available for manual audit, but the current API path cannot obtain equivalent
+exact-invoice evidence automatically. This same source limitation has persisted
+across consecutive goal turns and fresh provider verification. It is not solved
+by treating current code configuration as historical tax evidence.
+
 Next: establish exact native AR footer provenance or separately proven shared
 classification. Do not force native arithmetic, weaken the existing native
 full-total contract, add per-Invoice overrides or infer universal NonVAT from
-missing Generates. These five cases still need implementation, complete-set
+missing Generates. These four cases still need implementation, complete-set
 regression tests and live verification before the goal can be complete.
+
+### Questions prepared for the OPERA integration owner
+
+1. Which supported API retrieves the current AR Invoice PDF or its stored net,
+   VAT and NonVAT totals by hotel, AR account and AR transaction/Invoice identity,
+   when several AR invoices share reservation, Folio, date and window?
+2. Which response supplies the exact `storedFolioId`/`folioId` namespace for stored
+   folio retrieval? The inspected AR payment-detail responses omit those fields;
+   no substitution of Folio number or sequence is assumed.
+3. Which historical posted field distinguishes NonRevenue amounts included in
+   native before-VAT from amounts excluded from the tax footer? Current
+   `nonTaxable`, `revenue`, transaction type and absent Generates do not uniquely
+   establish it for the observed counterexample.
+
+No support email, subscription, permission or paid-service change was performed.
 
 ## Evidence and operational boundaries
 
