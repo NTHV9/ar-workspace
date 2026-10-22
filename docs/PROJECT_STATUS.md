@@ -1,3 +1,81 @@
+## 2026-10-23 — Complete AR reference capture; TAX ID released
+
+All 1,402 candidates now have exact current AR Invoice references: 1,397 monetary
+matches and five unresolved cases, no missing or ambiguous references. KAT's
+remaining 129 were captured through strict selected groups and single-Invoice
+proofs. The final previously printed invoice was found with a positive balance;
+absence from a displayed list was not treated as zero.
+
+TAX ID fallback is deployed as source `643c2c09ee718f85235bb540ed3771c2b068e0c7`,
+Worker `d5e6ce2f-5c09-4388-bc83-77d1c3284c1b`. 231 files / 2,549 tests,
+TypeScript/Vite builds and independent review pass. All 1,402 captured-source
+replays preserve non-tax-ID model fields; 39 generated PDFs show the same tax ID
+as native AR. Fresh provider-backed samples for KAT, TSK, WAKL and TSAN confirm
+TAX ID in PDF and unchanged seven monetary fields. Health verifies exact commit
+and database; six unauthenticated routes reject access. All 42 prior runtime
+bindings remain unchanged except COMMIT_SHA. No database migration.
+
+Five monetary/source cases remain: one refusal and four NonVAT/base differences.
+Fresh API reads cover their exact postings and all 14 relevant hotel/code rules
+across 27 affected-branch candidates. Blanket NonRevenue exclusion was rejected
+because an actual TLKL counterexample has the same relevant classification flags
+but different native footer treatment. No speculative monetary rule was deployed.
+Full findings and boundaries: `AR_INVOICE_PARITY_AUDIT_20261022.md`.
+
+Temporary remote diagnostics were stopped and nonce/session files removed.
+No email, ledger, Sheet dates or application billing history changed. Goal active;
+remaining work is shared monetary/source correction and complete-set verification.
+
+## 2026-10-23 — Goal continuation checkpoint: 1,266 matches
+
+The sixth TSAN selected group completed and all 20 matched with exact selected-set verification. Aggregate now 1,266 matches, five needs-review, 131 awaiting references and no unresolved captured identities. No print queue currently pending; next is the final two TSAN invoices, then remaining KAT selected groups. Main and auxiliary OPERA pages are retained; partial KAT selection is saved. Goal remains active, including TAX ID and shared tax fixes, tests and deployment. No production change yet.
+
+## 2026-10-23 — Owner authorized autonomous completion, fixes and deployment
+
+An active Goal now explicitly covers finishing the AR audit, shared VAT/Non-VAT and TAX ID fixes, regression/integration tests, qualified deployment and live verification while the owner is away. No runtime changes or deployment claimed yet. Latest verified aggregate: 1,246 monetary matches, five needs-review cases, 151 awaiting references, no unresolved identities among captured references. WAKL reference acquisition is complete (232 matches plus one difference). Small explicitly selected Invoice groups recovered the previously failed WAKL output and 100 TSAN references. Exact selected-set proofs are checked before counting results. Active queue and partial KAT selection are saved privately for continuation.
+
+## 2026-10-23 — Continued AR comparisons and exact Invoice identity proof
+
+Current aggregate crossed 800 monetary matches. Five needs-review cases now include one generation refusal and four confirmed Non-VAT/base differences; no production repair in this audit. Selected-Invoice AR reprints are resolving duplicate Folios with recorded UI selector evidence, not amount-only matching. TSAN99 matched completely; TSAN122 still processing; KAT proceeding. WAKL59 failed output and later expired queue remain explicit missing references. See current AR_INVOICE_PARITY_AUDIT_20261022.md and private aggregate for incremental counts.
+
+## 2026-10-23 — AR audit: 518 matched, explicit identity and report exceptions
+
+518 matched; four needs-review; 16 identities unverified; 864 awaiting AR references. Final WAKL59 batch stalled, one print skipped, then combined report returned Report not found; no pass claimed and smaller selected-Invoice output still required. TSAN16 native groups have repeated account/Folio and sometimes same date/description, so amount-only matching rejected. TSAN large99 batch stalled at one report while smaller batches continue. All partial evidence retained; production unchanged.
+
+## 2026-10-23 — AR audit continued; three confirmed Non-VAT differences
+
+459 matched, four needs-review (one TLKL generation refusal plus one WAKL and two TSAN Non-VAT differences), 939 awaiting references. All three monetary differences independently parsed and visually confirmed. One TSAN AR report's tax sections do not reconcile to its own printed gross; preserve evidence and investigate report classification rather than force arithmetic. TSK/TLKL/TLFO references complete; final WAKL batch and next TSAN batch in progress. No production changes. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — AR audit found split-posting Non-VAT mismatch
+
+Actual WAKL AR PDF and web PDF visually confirm a before-VAT/Non-VAT classification difference on one split food posting; gross and posted VAT match. The direct no-tax check-group path is implicated; no per-invoice override or runtime fix applied. Aggregate 383 matches, two needs-review cases (existing TLKL refusal plus WAKL mismatch), 1,017 awaiting references. TLFO109/109 complete; WAKL104 match plus one mismatch. Remaining WAKL reports continue with Preview-only destinations. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — TLFO AR parity complete; WAKL in progress
+
+TLFO 109/109 candidates match actual OPERA AR Invoice PDFs on all seven monetary fields. Aggregate: 282 matches, one existing TLKL generation refusal with AR reference, 1,119 awaiting references. WAKL first three match; two further WAKL batches processing. Fifteen extra groups are verified credits outside positive scope. All PDFs saved privately; no production code/deployment, email or billing/Sheet-date changes. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — Edge access restored; TLFO AR reference acquisition resumed
+
+Current Edge connection and authorized cashier login work. First TLFO AR Invoice PDF saved and all seven monetary fields matched. Current total: 171 matches, one existing TLKL tax-evidence refusal with AR reference, 1,230 awaiting references. Two additional scoped TLFO batches are processing, all destinations Preview to Print. Prior TSK/TLKL evidence retained. No production code, deployment, email or billing/Sheet date change. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — Owner resumed AR parity audit; TSK and TLKL references complete
+
+Browser access subsequently blocked with an explicit requirement to update the ChatGPT extension in Microsoft Edge. Owner asked to update/reconnect. All completed PDFs and comparisons saved. Next hotel is TLFO; no new TLFO report has been submitted in the resumed small-batch run. No production repair or deployment has been performed.
+
+Verified current AR monetary matches: TSK 76/76, TLKL 89/90 plus one safe web-generation refusal, KAT sample 5; total 170 matches and one refusal with an AR reference. Remaining 1,231 candidates await references. Thirteen extra printed groups are credits outside the positive scope. The refusal reproduces with existing internal Guest controls but the same model succeeds with actual AR controls; diagnosis only, no production fix. Smaller account batches replace the interrupted large-run acquisition. No email, ledger, billing/Sheet date or production-code change. See AR_INVOICE_PARITY_AUDIT_20261022.md and private evidence.
+
+## 2026-10-22 — Earlier pause to move computers (subsequently resumed)
+
+Do not resume until requested. Saved: 1,402 generation attempts, 1,401 PDFs checked across 1,915 pages; one TLKL tax-evidence refusal; five current AR Invoice monetary comparisons confirmed. Six submitted OPERA batch jobs have unknown continuing status because their tabs are no longer discoverable and browser control is unattached. Do not restart those jobs blindly. Private PDFs/checkpoints remain on this computer under the qualified worktree .tmp/invoice-parity-20261022. No assumption of cross-computer file transfer. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+## 2026-10-22 — AR-only comparison and hotel batches (in progress)
+
+- All 1,402 current generation candidates attempted: 1,401 PDFs generated, one tax-evidence refusal. Eight initial transport failures passed bounded retries. Independent extraction/rendering checked 1,401 files / 1,915 pages without generation-check defects; this is not AR parity certification.
+- The exact downloaded six-page OPERA AR batch contains five Invoices; all seven monetary fields match. These five include the two earlier individual references. Guest Folio comparisons contribute zero passes. Confirmed separate TAX ID omission in the web header, with the matching value present in the fetched linked profile.
+- Hotel batches KAT/TSK/TLKL/WAKL/TLFO/TSAN are running, all destinations overridden to Preview, never email. Exact queue IDs and private evidence retained. No production code or billing/Sheet change. [Current audit scope and findings](AR_INVOICE_PARITY_AUDIT_20261022.md).
+
+## 2026-10-22 — Earlier checkpoint: current AR Invoice parity audit
+
+Owner requires AR Invoice references; Guest Folio comparisons are excluded. Fresh discovery covered 413 accounts without read failures: 1,969 nonzero rows and 1,402 generation candidates. Before interruption, 1,347 outcomes were recorded: 1,338 PDFs, eight transport failures and one tax refusal. Independent generation checks passed on 1,334 files / 1,843 pages; these are not AR parity passes. Two fresh AR Invoice references match all seven monetary fields. A user-authorized Create Statement + Print Invoices batch for five invoices was queued; its downloaded output is not yet confirmed. Computer Use required stopping because it could not determine the separate Windows reportviewer URL. Diagnostic processes stopped and nonce/session files removed. Production code, email, billing dates and Sheet dates unchanged. Private continuation evidence: qualified worktree .tmp/invoice-parity-20261022; inspect existing batch before repeating Process.
 ## 2026-10-22 — Final shared tax-source rules (deployed)
 
 - All three final cases pass fresh actual Worker models and independently checked generated PDFs. Missing AR adjustments use a bounded current OPERA-calculator proof only for a complete all-VAT7 shape when native selection is ambiguous. Mixed NonVAT uses explicit code provenance plus posted-row, rule and effective-calculation rereads. No Invoice IDs/amounts are hardcoded. [Full evidence and limits](INVOICE_FINAL_TAX_RULES_20261022.md).
@@ -2371,3 +2449,18 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
   six anonymous protected routes reject access. All previous runtime bindings
   match except COMMIT_SHA, with no added or missing binding. Draft PR139 updated.
 ##
+# 2026-10-23 — Goal continuation: TAX ID regression qualification
+
+- Implemented locally: verified linked AR-profile tax number fallback when the
+  selected matching folio payee tax number is blank. Existing identity fences and
+  populated payee precedence remain; no additional profile request.
+- Tested: 1,402 captured-source replays: 1,362 unchanged, 39 TAX ID additions,
+  original TLKL refusal retained. Non-tax-ID model fields unchanged. Actual-template
+  output inspection confirms all 39 numbers and unchanged money. Native references
+  confirm 36 in TAX ID and three in address VAT lines; duplicate placement for those
+  three is pending review. 231 files / 2,545 tests and TypeScript build passed.
+- Audit: 1,268 matched, five needs review, 129 KAT references pending. TSAN and
+  WAKL recovery batches complete. No current print queues submitted this turn.
+- Not deployed/enabled: production unchanged. Five source/Non-VAT findings and
+  remaining native references still prevent claiming complete parity. OPERA browser
+  control attachment currently times out; local qualification continues.
