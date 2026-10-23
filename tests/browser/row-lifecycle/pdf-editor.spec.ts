@@ -112,14 +112,27 @@ for(const width of [1440,1280])test(`insert/delete/review/export preserves the o
  await page.screenshot({path:`.tmp/pdf-row-lifecycle-deleted-${width}.png`,animations:'disabled'});
  await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await page.getByRole('button',{name:'Save reviewed PDFs privately',exact:true}).click();await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
  const proof=await page.evaluate(async()=>{
-  const f=(window as any).fixture,source=await f.loadSources(f.sources),output=await f.loadSources([{id:'out',name:'reviewed.pdf',kind:'invoice',bytes:f.saved[0].bytes}]);
-  const before=document.createElement('canvas'),after=document.createElement('canvas');
-  // The export embeds 300dpi pixels. Compare at that exact scale to avoid a
-  // different PDF font rasterizer/sampling scale masquerading as a layout change.
-  await f.renderPage(source.project.pages[0],source.documents,before,300/72);await f.renderPage(output.project.pages[0],output.documents,after,300/72);
-  const a=before.getContext('2d')!.getImageData(0,0,before.width,before.height).data,b=after.getContext('2d')!.getImageData(0,0,after.width,after.height).data;
-  let darkBefore=0,darkAfter=0;for(let i=0;i<a.length;i+=4)if(a[i]<180)darkBefore++;for(let i=0;i<b.length;i+=4)if(b[i]<180)darkAfter++;
-  const result={pages:output.project.pages.length,width:after.width,height:after.height,sourceWidth:before.width,sourceHeight:before.height,ratio:darkAfter/darkBefore};source.dispose();output.dispose();return result;
+  const f=(window as any).fixture,source=await f.loadSources(f.sources),original=source.project.pages[0],scale=300/72;
+  const pixels=async(bytes:Uint8Array,id:string)=>{const loaded=await f.loadSources([{id,name:id+'.pdf',kind:'invoice',bytes}]),canvas=document.createElement('canvas');try{await f.renderPage(loaded.project.pages[0],loaded.documents,canvas,scale);return {pages:loaded.project.pages.length,width:canvas.width,height:canvas.height,data:canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data};}finally{canvas.width=canvas.height=0;loaded.dispose();}};
+  const difference=(a:Uint8ClampedArray,b:Uint8ClampedArray)=>{if(a.length!==b.length)return Infinity;let n=0;for(let i=0;i<a.length;i+=4)if(a[i]!==b[i]||a[i+1]!==b[i+1]||a[i+2]!==b[i+2]||a[i+3]!==b[i+3])n++;return n;};
+  const dark=(data:Uint8ClampedArray)=>{let n=0;for(let i=0;i<data.length;i+=4)if(data[i]<180)n++;return n;};
+  try{
+   // Both sides pass through the identical 300dpi export/image/PDF render
+   // pipeline. A vector-font raster is not an interchangeable pixel baseline.
+   // A full-page identity avoids introducing a fractional crop boundary.
+   const identity={id:'reference-raster',kind:'move',x:0,y:0,width:original.width,height:original.height,dx:0,dy:0};
+   const exported=await f.exportProject({...source.project,pages:[{...original,rowEdits:[identity]}]},f.sources,source.documents),reference=await pixels(exported[0].bytes,'reference'),actual=await pixels(f.saved[0].bytes,'reviewed');
+   const vector=document.createElement('canvas');await f.renderPage(original,source.documents,vector,scale);const vectorDark=dark(vector.getContext('2d')!.getImageData(0,0,vector.width,vector.height).data);vector.width=vector.height=0;
+   // These deliberate mutations prove the exact comparison notices a 1pt
+   // translation and missing source text; neither is part of the reviewed edit.
+   const shiftedExport=await f.exportProject({...source.project,pages:[{...original,rowEdits:[{id:'negative-shift',kind:'move',x:0,y:0,width:original.width-1,height:original.height,dx:1,dy:0}]}]},f.sources,source.documents),shifted=await pixels(shiftedExport[0].bytes,'shifted');
+   const run=(await f.detectText(original,source.documents)).find((r:any)=>r.text==='City Ledger');if(!run)throw Error('Synthetic monetary row missing');
+   const removal={...f.createReplacementLayer(run,'negative-removal'),text:'',deleted:true};
+   const removedExport=await f.exportProject({...source.project,pages:[{...original,layers:[removal],rowEdits:[identity]}]},f.sources,source.documents),removed=await pixels(removedExport[0].bytes,'removed');
+   return {pages:actual.pages,width:actual.width,height:actual.height,sourceWidth:reference.width,sourceHeight:reference.height,differentPixels:difference(reference.data,actual.data),referenceInk:dark(reference.data),actualInk:dark(actual.data),rawVectorRatio:dark(actual.data)/vectorDark,shiftedPixels:difference(reference.data,shifted.data),removedPixels:difference(reference.data,removed.data)};
+  }finally{source.dispose();}
  });
- expect(proof.pages).toBe(1);expect(proof.width).toBe(proof.sourceWidth);expect(proof.height).toBe(proof.sourceHeight);expect(proof.ratio).toBeGreaterThan(.97);expect(proof.ratio).toBeLessThan(1.03);
+ console.log('Synthetic normalized roundtrip',JSON.stringify({viewportWidth:width,...proof}));
+ expect(proof.pages).toBe(1);expect(proof.width).toBe(proof.sourceWidth);expect(proof.height).toBe(proof.sourceHeight);expect(proof.referenceInk).toBeGreaterThan(1000);expect(proof.actualInk).toBe(proof.referenceInk);expect(proof.differentPixels).toBe(0);expect(proof.shiftedPixels).toBeGreaterThan(100);expect(proof.removedPixels).toBeGreaterThan(100);
+ await page.getByRole('button',{name:'Close final preview',exact:true}).click();await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(5);await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(0);
 });

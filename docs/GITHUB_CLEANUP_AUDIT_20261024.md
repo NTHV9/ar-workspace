@@ -100,3 +100,23 @@ artifact-only screenshot-path correction for a Windows file-open failure.
 and independent review pass. CI now includes every **/pdf-editor.spec.ts suite,
 collecting342 browser cases. Deployment is gated on committed-head GitHub checks;
 its final source/version record is posted to PR #142 without rewriting old runs.
+
+## Cross-platform comparison follow-up
+
+The first expanded committed-head run
+[40027126417](https://github.com/NTHV9/ar-workspace/actions/runs/40027126417)
+passed4346 unit cases and340/342 browser cases, exposing two newly enabled
+row-roundtrip comparisons. They compared a vector-font render with an exported
+300dpi image PDF; the dark-pixel ratio differed by4.8% on Linux. Production code
+was not deployed on that result.
+
+The test-only follow-up compares the independently loaded original source and
+actual reviewed bytes after equivalent raster export/render pipelines. A full-page
+zero-delta move triggers reference rasterization without creating fractional crop
+seams; the initial1x1 reference was rejected after118 one-channel rounding pixels
+were identified. Both viewport cases now require exact full-page RGBA equality,
+identical nonempty ink, one page and matching2480x3509 dimensions, plus Undo/Redo.
+Both pass locally. Independent deliberate1pt movement and source-word removal
+produce108387 and3070 differing pixels; private mutant tests fail the same main
+zero-difference assertion. No tolerance was widened and no application or renderer
+code changed in this follow-up. Committed-head remote checks remain the gate.

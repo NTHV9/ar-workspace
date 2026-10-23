@@ -49,6 +49,13 @@ pre-publication qualification; committed-head CI and the final deployed Worker
 version are recorded separately in the completion comment on
 [PR #142](https://github.com/NTHV9/ar-workspace/pull/142).
 
+The first expanded remote run40027126417 passed340/342 browser cases; two old
+row-roundtrip metrics compared different rasterization pipelines. A test-only
+follow-up now requires exact independently normalized full-page RGBA equality,
+matching dimensions/nonempty ink and Undo/Redo, with deliberate movement/removal
+mutants proving rejection. Both targeted cases pass; no runtime code or tolerance
+relaxation was used. Deployment still awaits the updated committed-head workflow.
+
 ## 2026-10-24 — PDF address Delete Row scope repair
 
 **Implemented / tested / deployed / enabled.** Reproduced the owner's
