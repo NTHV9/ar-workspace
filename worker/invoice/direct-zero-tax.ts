@@ -51,6 +51,7 @@ function verifyExplicit(g:DirectZeroTaxPlan['candidates'][number],e:EmbeddedNonV
  if(charge.transactionCode!==g.posting.transactionCode||charge.level!=='TransactionCode'||charge.basePosting!==true||charge.sequence!==0||charge.amount!==amount)fail();
  for(const scoped of [calculation,result,charge])if(Object.hasOwn(scoped,'hotelId')&&scoped.hotelId!==hotel||Object.hasOwn(scoped,'currencyCode')&&scoped.currencyCode!=='THB')fail();
 }
+export {verifyExplicit as verifyDirectZeroTaxExplicitCandidate};
 export function verifyDirectZeroTaxProof(packet:InvoicePacket):'explicit'|'native'{
  const proof=packet.directZeroTaxProof??fail(),plan=inspectDirectZeroTax(packet);
  if(proof.version!==1||!plan.candidates.length||canonical(directSource(proof.sourceBefore))!==plan.fingerprint||canonical(directSource(proof.sourceAfter))!==plan.fingerprint)fail();

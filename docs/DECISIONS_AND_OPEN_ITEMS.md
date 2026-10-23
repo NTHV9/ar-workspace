@@ -1,3 +1,54 @@
+## 2026-10-24 — Invoice comparison acceptance clarified by owner
+
+Invoice amounts and the wording/meaning of each item must match OPERA AR.
+Line breaks, row counts arising from equivalent grouping, and layout need not be
+100% identical, provided no important information is lost or changes meaning.
+Previously approved equivalent API accommodation wording remains accepted. The
+owner also explicitly accepts the API payment label without unavailable masked
+card/expiry details. Keep exact monetary/VAT/NonVAT and invoice identity checks.
+Do not spend further work on pixel/line-layout equivalence alone.
+
+## Final AR acceptance: amounts and item meaning — 24 October 2026
+
+The owner explicitly confirms that line grouping and layout do not need to match
+the native report 100%. Required amounts and item wording/meaning must agree.
+Keep exact AR identity, source ownership and the independently checked before-VAT,
+VAT, NonVAT, gross, outstanding, debit and credit requirements. Do not continue
+layout-only or grouping-only refinements after these criteria pass.
+
+The exact Accommodation Charge / Accommodate Charge wording pair is accepted as
+meaning-equivalent; the first 25 observed rows were a subset, not a count limit.
+The owner also explicitly accepts the API payment label for the identified
+KMasterCard case without the native masked-card/expiry detail, which the bounded
+source reads did not provide. Do not fabricate card details or hardcode a typo
+replacement. Other item meanings remain subject to source-backed verification.
+Preserve native baselines and report exact, accepted-semantic and layout-only
+differences separately.
+
+## AR parity is field-level, not total-only — 23 October 2026
+
+The owner reiterates that generated Invoices must agree with OPERA AR Invoices
+in tax detail, not merely the final total. Acceptance compares before-VAT, posted
+VAT and NonVAT separately, as well as gross, printed outstanding, debit/credit
+and relevant visible line content. Service-charge treatment must follow qualified
+source evidence; excluding service from a VAT calculation base does not by itself
+classify that service as NonVAT in the AR footer. Offset tax/base differences
+cannot pass because their gross cancels. Guest Folio is not an AR reference.
+
+## AR financial evidence excludes Guest Folio reports — 23 October 2026
+
+The owner explicitly rejects `folioReports` / Guest Folio PDFs as financial
+sources or tax-validation fallbacks for AR Invoice generation. Exact current
+OPERA AR Invoice PDFs are the acceptance references. Identifier-only reservation
+metadata may still be read with exact scope checks; it is not AR monetary proof.
+
+The replacement must use qualified AR-selected posted facts and independently
+validated rules where authorized, without per-Invoice overrides. Do not deploy a
+partial replacement that converts previously working invoices into mass refusals.
+Recorded-source replay is regression evidence, not a fresh provider interval.
+This supersedes earlier recommendations for native Guest aggregate controls in
+AR generation; existing production usage is legacy pending the complete cutover.
+
 ## Shared current-rule and NonVAT qualification — 22 October 2026
 
 The owner delegates the choice of a correct automatic rule and confirms it must

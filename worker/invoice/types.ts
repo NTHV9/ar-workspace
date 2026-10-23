@@ -1,10 +1,11 @@
 export const INVOICE_TEMPLATE_VERSION='invoice-rtf-20260921-v2';
 export const supportedInvoiceTemplate=(version:unknown)=>version===INVOICE_TEMPLATE_VERSION||version==='invoice-rtf-20260921-v1';
-export interface InvoiceLine {id:string;date:string;description:string;reference:string;debit:number;credit:number}
+export interface InvoiceLine {id:string;date:string;description:string;reference:string;debit:number;credit:number;sourceIds?:string[]}
+export interface InvoiceDisplayLine extends InvoiceLine {sourceIds:string[];sourceDate:string;kind:'source'|'pos-group'|'payment-offset'}
 export interface InvoiceModel {
  hotel:string;accountId:string;invoiceId:string;folio:string;voucher:string;address:string[];
  company:string;guest:string;taxId:string;room:string;arrival:string;departure:string;adults:string;children:string;confirmation:string;cashierNo:string;cashierName:string;printDate:string;printTime:string;
- lines:InvoiceLine[];debit:number;credit:number;gross:number;taxableNet:number;nonTaxable:number;vat:number;
+ lines:InvoiceLine[];displayLines?:InvoiceDisplayLine[];paymentOffsetDisplaySource?:import('./payment-offset-display-proof').PaymentOffsetDisplayCatalog;posDisplaySuppressionSource?:import('./zero-pos-display-proof').PosDisplaySuppressionCatalog;debit:number;credit:number;gross:number;taxableNet:number;nonTaxable:number;vat:number;
  /** Printed invoice balance; excludes later AR allocations absent from its lines. */
  outstanding:number;
 }

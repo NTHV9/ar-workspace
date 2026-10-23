@@ -163,3 +163,26 @@ selection proofs, the 102-batch aggregate and diagnostics. Raw customer data and
 temporary credentials are not committed. Diagnostic processes were stopped;
 nonce/session files removed. No billing activity, Sheet dates, ledger data or
 sending history changed. Authorized OPERA printing can advance print metadata.
+
+## Display qualification and accepted wording (23–24 October 2026)
+
+The owner accepts source-backed `Accommodation Charge` where native AR prints
+`Accommodate Charge`, provided all other compared row fields and source ownership
+are exact. The first 25 identified routed rows are an observed initial subset,
+not an exhaustive corpus count; later controls contain the same accepted pair.
+The final source/body census determines the total. Reports must count accepted
+semantic differences separately from exact text matches.
+Keep the API wording; do not add a typo replacement or rewrite native/parser
+baselines. Other wording differences need their own evidence or acceptance.
+Amounts, independent debit/credit columns, dates, references, invoice/account/hotel
+identity and row ownership still require exact source qualification. The bounded
+policy is recorded in `superpowers/plans/2026-10-23-ar-tsan-nonrouted-rate-display.md`.
+
+A targeted TSK rerender from an existing capture passed the current verifier:
+one PDF, one page, all seven financial fields and the complete visible body match
+native AR. The sole change against that verified capture was preservation of a
+literal source reference suffix after the exact NA package marker. Financial rows,
+Tax ID and guest counts were retained. Visual inspection confirmed the complete
+suffix is readable without body/footer overlap. This is body/financial acceptance,
+not a claim of pixel-identical header or signature layout. Detailed customer
+artifacts remain in the ignored private evidence directory.

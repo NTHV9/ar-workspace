@@ -1,0 +1,25 @@
+import {wrapperNetReaderFixture} from './fixtures/invoice-ar-only-wrapper-net-vat-reader';
+import {it,expect,vi} from 'vitest';
+import {readArOnlyInvoiceModel,readArOnlyInvoicePacket} from '../worker/invoice/ar-only-read';
+import {wrapperNetPacket} from './fixtures/invoice-ar-only-wrapper-net-vat';
+
+it('pairs exact component/leaf metadata around complete source reads without any native or simulation calls',async()=>{
+ const {p,reader}=wrapperNetReaderFixture(),q=await readArOnlyInvoicePacket(reader,p.manifest);
+ expect(q.arOnlyWrapperNetVatProof?.components.map(c=>c.componentId)).toEqual(['30001']);expect(q.arOnlySourceClaimsProof).toBeUndefined();expect(q.currentArTaxProof).toBeUndefined();expect(q.arOnlyNonVatProof).toBeUndefined();
+ expect(reader.invoiceTransactionCodeRules.mock.calls.map(c=>c[0])).toEqual(['NET-BASE','SVC','VAT','FULL-BASE','NET-BASE','SVC','VAT','FULL-BASE']);expect(reader.account).toHaveBeenCalledTimes(2);expect(reader.invoiceChargeSimulation).not.toHaveBeenCalled();expect(reader.folioReport).not.toHaveBeenCalled();expect(reader.folioTypeName).not.toHaveBeenCalled();
+});
+it.each(['selected','component','child','balance','parent-rule','leaf-rule'] as const)('rejects changed %s during the whole-source/rule interval',async kind=>{
+ const {p,current,definitions,reader}=wrapperNetReaderFixture(),original=reader.invoicePostings.getMockImplementation()!;let reads=0;
+ reader.invoicePostings.mockImplementation(async()=>{if(reads++){
+  if(kind==='selected')p.postings.invoicePostingsDetails[0].checkNo='Changed';
+  if(kind==='component')Reflect.set(p.taxRows[1].posting,'folioWindowNo',2);
+  if(kind==='child'){const e=p.taxRows[1];if('postingBreakdown'in e)e.postingBreakdown.taxes[0].amount.amount++;}
+  if(kind==='balance')current.balance.amount--;
+  if(kind==='parent-rule')definitions[0].transactionCode.compTransaction=true;
+  if(kind==='leaf-rule')definitions.find(d=>d.transactionCode.code==='SVC')!.transactionCode.compTransaction=true;
+ }return original();});
+ await expect(readArOnlyInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');expect(reader.folioReport).not.toHaveBeenCalled();expect(reader.folioTypeName).not.toHaveBeenCalled();
+});
+it('retains a fully valid old net-only proof with a strict single-tax sibling inside the SAME package',async()=>{const {p,current,definitions,reader}=wrapperNetReaderFixture(),e=structuredClone(p.taxRows[2]);if(!('postingBreakdown'in e))throw Error('fixture');e.posting.transactionNo=30003;Object.assign(e.posting,{transactionCode:'MISC-BASE',debitAmount:{amount:107,currencyCode:'THB'},postedAmount:{amount:107,currencyCode:'THB'}});e.postingBreakdown.netAmount.amount=100;e.postingBreakdown.grossAmount.amount=107;e.postingBreakdown.taxes.splice(0,1);Object.assign(e.postingBreakdown.taxes[0],{transactionNo:300031,referenceTransactionNo:30003,amount:{amount:7,currencyCode:'THB'}});p.taxRows.push(e);const rule=structuredClone(definitions[0]);rule.transactionCode.code='MISC-BASE';rule.transactionCode.classification.transactionType.code='Others';rule.transactionCode.classification.group.code='MISC';const gen=rule.transactionCode.generatesSetup;if(!('generates'in gen))throw Error('fixture');gen.generates.splice(0,1);gen.generates[0].rule.percentage.calculatedOn='Base';definitions.push(rule);p.manifest.open=341.7;p.invoice.amount.amount=p.invoice.balance.amount=341.7;p.postings.invoicePostingsDetails[0].debitAmount.amount=341.7;Reflect.set(p.taxRows[0].posting,'postedAmount',{amount:341.7,currencyCode:'THB'});const q=await readArOnlyInvoicePacket(reader,p.manifest);expect(q.arOnlyWrapperNetVatProof?.components.map(c=>c.componentId)).toEqual(['30001']);expect(q.arOnlySourceClaimsProof).toBeUndefined();expect(await readArOnlyInvoiceModel(reader,p.manifest)).toMatchObject({gross:34170,vat:2170,taxableNet:32000});expect(reader.invoiceChargeSimulation).not.toHaveBeenCalled();expect(reader.folioReport).not.toHaveBeenCalled();});
+it.each(['deferred','parent','children','package'] as const)('rejects the known contradictory selected assertion before old-strategy metadata reads: %s',kind=>{const f=wrapperNetReaderFixture(),s=f.p.postings.invoicePostingsDetails[0];if(kind==='deferred')Reflect.set(s,'deferredTax',true);if(kind==='parent')Reflect.set(s,'referenceTransactionNo',99999);if(kind==='children')Reflect.set(s,'subPostings',[{transactionNo:99999}]);if(kind==='package')Reflect.set(s,'referencePackageTransactionNo',99999);return expect(readArOnlyInvoicePacket(f.reader,f.p.manifest)).rejects.toThrow().then(()=>{expect(f.reader.invoiceTransactionCodeRules).not.toHaveBeenCalled();expect(f.reader.folioReport).not.toHaveBeenCalled();});});
+it('retains explicit false/empty/matching-package selected assertions on the prior strategy',async()=>{const f=wrapperNetReaderFixture();Object.assign(f.p.postings.invoicePostingsDetails[0],{deferredTax:false,subPostings:[],referencePackageTransactionNo:90001});const q=await readArOnlyInvoicePacket(f.reader,f.p.manifest);expect(q.arOnlyWrapperNetVatProof).toBeDefined();expect(await readArOnlyInvoiceModel(f.reader,f.p.manifest)).toMatchObject({gross:23470,vat:1470});});

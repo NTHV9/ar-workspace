@@ -1,3 +1,952 @@
+## Release candidate verified — production deployment pending
+
+Final frozen source checkpoint: 322 test files / 4,334 tests pass, build passes,
+source manifest unchanged across 1,072 files (SHA-256
+17c67fec2d6eb7c7c265d1aa54a0a7a0908cef87c5478f1aef07979d88cdd7db).
+Root inspected the saved full logs and exit-code summary. Changed-file sensitive
+pattern scan found no secret, one-time recipient, supplied PIN or private/binary
+customer evidence files among the 229 changed paths.
+
+Final corpus evidence satisfies the owner's clarified content criteria: all 1,402
+cases and 9,814 monetary fields match actual AR, TAX ID is verified, and item
+wording matches or uses the explicitly accepted API equivalents. Line-layout
+identity is not required. Latest 75 affected PDFs match native body details exactly.
+Independent financial, display, retained-case and production-routing reviews are
+approved. Release is ready for commit/deploy and live route verification; it is not
+yet deployed or enabled. No ledger, billing/Sheet history or email writes performed.
+
+## Owner-approved payment label completes corpus comparison criteria
+
+Owner explicitly accepts the API payment label without masked card/expiry details
+that are absent from the API. This does not waive payment identity/date/amounts.
+The consolidated final corpus manifest now covers all 1,402 PDFs / 1,632 pages:
+9,814 native monetary fields match; TAX ID 1,399 exact headers + three address
+placements; bodies 1,396 exact, four accepted equivalent accommodation wording,
+one explicitly accepted API payment label, and one verified native line-wrap
+extraction difference. All 75 targeted repaired PDFs match native body details.
+
+Latest display guards and production-routing review are completing. No deployment
+or production enablement yet; final verification must use the actual deployed
+AR-only route and preserve stored artifacts/history.
+
+## Complete generated PDF audit: monetary pass, bounded display differences
+
+All 1,402 generated PDFs / 1,633 pages reopen successfully and match all 9,814
+native monetary fields, with zero missing fields, parser problems or out-of-page
+text. Every generated body matches its source-derived model. Native body results:
+1,321 exact; four accepted equivalent-description cases (65 rows); 77 outstanding
+(75 reference-only, one description-only, one three-member grouping difference).
+These display differences block deployment; financial qualification stays retained.
+
+TAX ID qualification is complete: 1,399 exact header fields and three native-address
+values. Two initial parser ambiguities were literal TAX ID lines in the address
+plus a separate empty report TAX ID field. Native/generated header images confirm
+both address values are present. A field-label adjacency check resolves only those
+two, retaining the original full audit and separate recheck evidence; 39 positive
+controls still pass. No native baseline or runtime value was altered.
+
+Agents are grouping outstanding display differences by source-backed shared rules.
+No full monetary replay is being restarted. Production remains unchanged.
+
+## Final routing regression/build checkpoint; PDF audits running
+
+AR-only production routing is implemented and independently approved, but not
+deployed. Final full suite: 321 files / 4,309 tests pass; fresh typecheck/build pass;
+Worker deploy --dry-run passes. Workspace generation selects AR-only, pending
+native/missing-source generation retires explicitly, stored ready/reviewed/draft/
+uncertain bytes and immutable snapshots remain intact. Safe metadata probes stay
+available; nine old invoice/report diagnostic workflow flags retire before effects.
+
+All 1,402 PDFs have been rendered. Independent full-corpus monetary extraction,
+body comparison and TAX ID header audits are running on those files; no completion
+claim yet. Seven targeted display replays preserve all monetary fields and use
+whole exact paired provider responses; original 1,402 monetary evidence remains.
+
+Actual read-only production checks confirm active v2 invoice templates for all six
+hotels and no queued/running open document jobs. Existing native ready files: 131;
+workspace ready files: 245. No DB writes or changes to those files. Admin browser
+sign-in succeeded for later live verification. No deployment/enablement.
+
+## Complete recorded-source monetary qualification: 1,402 / 1,402
+
+The immutable combined replay completed: all 1,402 cases match all seven actual
+native AR monetary fields, zero refusals, zero monetary mismatches, zero Guest
+calls. Identity-level retention loses none of the previous 1,395 passing cases
+and adds all seven remaining cases. All 1,402 source-derived models are captured
+under replay run cebc20c9-a086-443d-b310-daf83055d851 for the PDF/body audit.
+
+This is NOT deployment readiness. Complete generated-PDF/body/header qualification
+and final production-routing review remain. Two saved replay inputs lack requested
+POS metadata, already available as exact whole responses in their fresh captures;
+only those cases need evidence supplementation, not a full financial rerun.
+Display label controls match 2,998 KAT and 5,559 non-KAT rows; country labels 1,129;
+City Ledger display 62 cases / 138 rows. These are scoped controls, not complete
+native-body parity. Full build passes. The broad suite had 4,262 passing tests and
+one fixture-index failure, corrected test-only and its 18-test suite passes.
+No deployment or production enablement.
+
+## Combined run started; final two fresh PDFs checked
+
+The immutable combined replay is running over all 1,402 cases with per-run model
+capture for the subsequent complete PDF/body audit. No aggregate pass is claimed
+until completion. The two final exact fresh provider reads both pass; two PDFs /
+four pages independently match all 14 native monetary fields with no parser or
+bounds problems. Embedded cancellation now matches the complete 21-row native body.
+The V6 PDF has equal row count/date/description/debit/credit, with one incomplete
+printed reference remaining; source-backed reference diagnosis is isolated while
+the existing full run continues. No restart of POS financial qualification.
+
+Private evidence: final-embedded-live and final-embedded-output. Authenticated
+preview stopped and exact nonce/session files removed. Full tests/build and final
+independent counters are running separately. Production is unchanged.
+
+## V6 actual target matches all native monetary fields
+
+The first integrated V6 recorded-source replay for the remaining embedded-Revenue
+case passes all seven native AR monetary fields, with zero missing metadata and
+zero Guest calls. Exact paired current root/child metadata corroborates original
+posted VAT ownership; runtime values are not copied from native controls.
+All known monetary gaps now have individually passing targets. This does NOT yet
+prove combined 1,402-case retention, fresh V6 reads, or complete visible-body parity.
+Focused implementation tests/typecheck pass; independent review and the combined
+display hooks remain active. Evidence: target-v6-replay.private.json (private).
+No deployment or production enablement.
+
+## Complete native reference integrity check
+
+Parent independently checked all 1,402 native comparison records: each identifies
+OPERA AR Batch Statements + Print Invoices, has complete expected page membership,
+and points to an existing split PDF. All 102 original batch SHA-256 hashes match
+their stored provenance. Each of the 1,702 split pages was then text-hash compared
+with its exact zero-based page in the original batch: all match, zero differences.
+This validates the AR reference corpus; it does not claim the new renderer already
+matches every reference. Guest Folio files were not used. Private evidence:
+native-corpus-integrity.private.json and native-corpus-page-integrity.private.json.
+V6 financial and the remaining display implementations/reviews continue.
+
+## PDF layout and TAX ID follow-through
+
+Root visually inspected all eight retention/taxless generated pages: no clipped
+rows or text overlap; the known TLKL POS grouping discrepancy remains explicit.
+A coordinate-bounded TAX ID verifier compares the left header row independently
+of footer/company tax numbers. Latest nine PDFs match native header TAX ID fields.
+The verifier was additionally checked against 39 previously generated positive-TAX
+controls: 36 exact header values and three matching values printed in native
+address blocks. Those 39 are prior artifacts, not newly generated qualification.
+Private tax-header-verification artifacts preserve exact results without changing
+native PDFs, parsers' financial baselines or runtime values. No deployment.
+
+## Fresh retention/taxless qualification: six reads and PDFs
+
+All six exact targets passed fresh AR-only reads. Six generated PDFs / eight pages
+independently match all 42 native monetary fields, with zero missing fields,
+parser problems or out-of-page text. The five KAT native bodies match completely.
+TLKL's newly qualified financial case still prints 44 body rows versus native 37:
+a POS check is not yet grouped. Its fresh packet is queued for display diagnosis.
+This is not a complete visible-body pass for all six.
+
+One originally unqualified target has no legacy model. The verifier now reports
+that missing legacy baseline explicitly rather than crashing or inventing one;
+its seven native-PDF monetary comparisons still pass independently. Captured
+source precedes the final selected-wrapper contradiction preflight tightening.
+Evidence: retention-taxless-live and retention-taxless-output (private).
+Authenticated preview stopped and exact nonce/session files removed. No deployment.
+
+## Retention and exclusive zero-tax net: targeted replay passed
+
+After deterministic selection of the unchanged prior net-base proof, the five
+previously rejected KAT cases again match all seven native monetary fields.
+The new shared exclusive NonRevenue zero-tax net profile also matches its actual
+TLKL target. Parent combined six-case replay: 6/6, all 42 monetary fields exact,
+35 KAT and eight non-KAT display-label controls exact, zero Guest calls.
+
+This is recorded-source qualification, not a fresh provider/PDF or full-corpus
+retention claim. One saved target lacks newly requested POS display metadata;
+fresh qualification must capture the real paired response. Independent review
+and V6 embedded-Revenue implementation remain in progress. No deployment.
+
+## Full V5 replay: aggregate unchanged, retention not yet qualified
+
+The complete 1,402-case recorded-source replay completed with 1,395 monetary
+matches, seven unqualified and zero monetary mismatches or Guest calls. Comparing
+identities, rather than counts, found five newly qualified cases and five earlier
+KAT cases now rejected by the posted-wrapper verifier. This is NOT a retention
+pass. Actual paired KAT leaf metadata was supplied; independent source/profile
+diagnosis is required before changing the guard. The other two financial gaps
+remain the planned taxless NonRevenue and embedded Revenue profiles.
+
+Display witness comparisons pass 2,963 KAT and 5,551 non-KAT label controls.
+This is not a whole-corpus visible-body qualification. Private evidence:
+v5-full-retention-comparison.private.json and ar-only-display-replay.private.json.
+Production remains unchanged; no deployment/enablement.
+
+## Fresh footer / zero-group qualification — 2026-10-24
+
+Three exact targets passed fresh AR-only reads and generated 3 PDFs / 7 pages.
+Independent PDF extraction matches all 21 native monetary fields, with no missing
+fields, parser failures or out-of-page text. No Guest Folio calls. The authenticated
+preview was stopped and its exact nonce/session files removed after capture.
+
+Two complete native bodies match (37 and 24 rows), including the independently
+approved source-bound zero POS group suppression. The third generated body has
+23 rows versus native 21: a same-date miscellaneous debit reversal pair remains
+visible, plus one reference whitespace difference. This is an unresolved display
+qualification item despite exact financial totals; shared-rule diagnosis is active.
+Evidence is private in footer-zero-live and footer-zero-output under the ignored
+invoice-parity audit directory. No deployment or production enablement.
+
+Separately, the approved NA-package marker reference fix was rerendered from a
+verified prior fresh capture: all seven monetary fields and the complete native
+body match, with clean visible wrapping and no overlap. This was not a new live read.
+
+## Owner clarification: semantically equivalent API descriptions
+
+On 2026-10-23 the owner accepted API wording when its meaning matches the native
+AR description. This specifically resolves the 25 observed routed rows using
+"Accommodation Charge" versus native "Accommodate Charge" as an accepted display
+difference. It does not waive exact monetary, VAT/Non-VAT, date, reference, or
+invoice identity checks, and does not authorize arbitrary description differences.
+No runtime hardcoded spelling replacement is needed. This clarification does not
+change the last verified whole-corpus checkpoint or imply deployment.
+
+## Fresh 59-case qualification with display integration
+
+All 59 new cases passed fresh AR-only provider reads at the reviewed combined
+financial/POS/City/country checkpoint. Parent generated 59 PDFs / 118 pages and
+reopened them against actual native AR references: all 413 monetary fields match,
+no missing fields or out-of-page text, and TAX ID/line counts retain the reference
+baseline. Expected financial-line text changes are 133 descriptions and 36 references.
+Country names are present and native-equal on all 59 generated/native header pairs.
+
+Full body parity is explicitly incomplete: 24 PDFs match every parsed native row;
+26 differ only in descriptions (known TSAN rate-label scope); nine have additional
+reference/order/grouping differences. Two have different row counts. All 59 generated
+bodies match their models, so remaining differences are source/display logic rather
+than unexplained rendering loss. Display implementation work owns the nine cases;
+TSAN routed-origin and property label policy remain separate work. No deployment.
+
+Fresh data and renderer were frozen before subsequent work; providers were stopped
+and nonce/session files removed. Country independent review passed 31 focused tests
+and typecheck; SourceClaims/City/inclusive financial/display review passed 195 tests.
+Recorded whole-corpus monetary checkpoint remains 1,395 matches / seven unresolved.
+
+## Combined recorded checkpoint: 1,395 / 1,402
+
+The separate actual-posted-net certificate for current inclusive-flag charges adds
+three matches. Combined source/financial/display integration retains every earlier
+match: 1,395 monetary matches, seven unresolved, zero seven-field discrepancies or
+Guest calls. The current snapshot includes independently reviewed SourceClaims POS
+and City integration; fresh 59-case qualification is being batched with the small
+country-label change, rather than repeating provider reads for each display edit.
+
+All 87 newly required POS metadata contexts have now been read twice, stably, with
+one current page per context. They are added as exact provider witnesses for the
+next combined replay; no result data is spliced. Country header controls independently
+match configured property country names in all 1,129 candidate native AR address
+blocks. This supports a source-bound display change, not a runtime hardcoded table.
+
+The remaining seven monetary cases have explicit work ownership: mixed taxless
+NonRevenue, one embedded F&B service child, two manual MISC footer exclusions, one
+Other revenue role, and two posted wrapper-component policies. No case-specific
+exception or nominal tax recalculation is authorized. Production remains unchanged;
+temporary authenticated metadata previews are stopped and nonce/session removed.
+
+## Current checkpoint: 1,392 monetary matches / 10 unresolved
+
+The recorded replay of exclusive posted NonRevenue net claims admits 56 additional
+invoices and retains all 1,336 previous matches. All seven native AR monetary fields
+match and Guest calls remain zero. A subsequent independent review closed a separate
+absent-subtype base-scope guard; the final combined replay will include that tightening
+and the SourceClaims POS display companion. This is not yet fresh 56-case PDF
+qualification. Fresh capture is intentionally deferred until the display companion
+is ready to avoid regenerating the same batch twice.
+
+Current raw replay shows 63 grouped POS cases / 395 groups because the new financial
+owner still needs the shared display companion; this is an acknowledged intermediate
+body regression, not a deployment-ready result. Exact saved City detail blocks supply
+59 cases / 130 auxiliary rows without fabricating or splicing responses. Other cases
+require complete matching request blocks/fresh reads; display gaps never qualify money.
+
+The country configuration getter's failure was a real API limit mismatch: provider
+requires at most 20, while the getter requested 200. The query/response bound is fixed
+and 32 focused tests pass. All six property reads now return stable paired metadata
+for 42 property/country combinations with no missing requested codes. Applying these
+labels to the PDF still requires native-header comparison; no country label is guessed.
+
+Bounded API alternatives audit is complete at current access: version-correct EFolio
+still returns the subscription gateway 403; three exact AR folio-history searches
+return no IDs/links both on their known folio dates and with dates omitted. This does
+not prove universal archive absence. Implementation proceeds using available posted
+source data; no subscription/access/production changes. All previews are stopped.
+
+## City Ledger artifact checkpoint (core hooks still pending)
+
+The isolated display implementation passed independent review after binding the
+serialized catalog to the exact invoice/account identity. Parent generated all 63
+financially admitted candidate PDFs / 76 pages. All 441 native monetary fields
+match, with zero extraction or bounds errors. All 63 bodies match their models;
+47 match complete native bodies, while other previously identified description,
+grouping or placement gaps remain. Two financially unqualified source cases were
+not promoted by a display proof.
+
+The old-baseline verifier flagged three TAX ID differences. A targeted comparison
+confirms all 63 current financial models retain TAX ID and guest counts exactly;
+the three differences predate this display change and are in legacy saved models.
+No claim of full 63-body parity or production integration is made. API alternatives
+remain the owner's current priority before further financial policy expansion.
+
+## Direct API investigation prioritized by owner
+
+The owner requested a detailed Developer Portal, documentation and Postman audit
+before further inferred footer policies. Existing qualified work is retained; the
+new exclusive NonRevenue policy expansion is held pending this investigation.
+Actual SSO Portal access and official Postman AR Invoice Postings were inspected.
+The Portal AR OpenAPI 26.4 contract was downloaded and compared structurally with
+26.3: all 62 operations, parameters, responses and definitions are unchanged.
+
+A fixed readonly EFolio GraphQL query against one exact AR invoice, using the
+current app credentials, returned HTTP 403 with sanitized reason
+"No Subscribed Plan or API found". Current app was matched internally to TLK-Test;
+no credential or key suffix was persisted in this status. Its Portal subscription
+view shows API Catalog, Hospitality Property and OAuth, without a Data API tab.
+This does not establish the hotel's overall commercial entitlement. No subscription
+or security settings were changed. Authenticated preview stopped and nonce removed.
+
+Fresh paired AR history reads on three exact printed/reference invoices were stable
+and returned one target each, with no stored-folio identifiers. Documented CSH AR
+folio-history discovery is the next bounded source check; stored-ID absence is not
+proof that no stored AR PDF exists. Findings and primary citations are consolidated
+in OPERA_AR_DIRECT_API_AUDIT_20261023.md. No production deployment.
+
+## Explicit revenue and mixed-shape increment qualified for money
+
+Full recorded replay now matches 1,336 / 1,402 native AR invoices, with 66 unresolved.
+All 1,328 prior matches remain; eight additional cases pass all seven monetary
+fields with zero Guest calls. Independent review passed eight suites / 150 tests
+and typecheck. The increment handles genuine absent subtype with explicit revenue
+metadata and correct whole-remainder strategy selection; VAT remains actual posted.
+
+All eight fresh provider reads passed. Eight generated PDFs / 26 pages were reopened:
+all 56 native financial fields match, no missing fields or bounds errors, counts
+and TAX ID unchanged. Seventeen approved descriptor and two reference changes only.
+However all eight bodies still differ in row grouping: the shared SourceClaims
+profiles do not yet expose verified POS display groups. Generated bodies match their
+models, but this is not native body parity. The display integration remains required.
+
+The newly retained per-transaction rateCode was probed on the 25 TSAN wrapper rows;
+all 25 were found but the provider supplied no rateCode. No guessed descriptor or
+origin was introduced. Authenticated preview stopped and session/nonce removed.
+The earlier six four-property PDF controls were also visually inspected across all
+seven rendered pages; no clipping or overlap observed. Production remains unchanged.
+
+## Direct transaction rate metadata identified
+
+The documented CSH summary posting schema includes optional `rateCode` (max 20),
+meaning the rate associated with that transaction. Our existing display projection
+omitted this field. Therefore earlier projected summary responses cannot establish
+that the upstream transaction rate is absent. A narrow validated projection and
+paired probe are approved, with no financial-policy change. If present, exact
+posting identity must bind the rate; the destination reservation's current rate
+must not be assumed to describe a routed historical charge.
+
+Two TSK wrapper refusals are also isolated: one has VAT explicitly based on net
+plus service while the current narrow profile expects net-only, and the second
+has a fractional-satang posted service deviation from the current ratio. Neither
+is being fixed by changing source money or loosening a tolerance. Actual posted
+component ownership remains the required path. Production remains unchanged.
+
+## Mixed-shape planner diagnosis and routed-label evidence
+
+The remaining known-role WAKL case fails because a discount-shaped scope suppresses
+the posted-VAT strategy, then the earlier positive multi-VAT strategy rejects a
+mixed scope. A private diagnostic selecting the existing posted-source verifier
+passes all seven native fields without changing any monetary verifier. This proves
+a planner-selection defect, not production qualification; a whole-shape selection
+fix preserving valid existing discount strategies is requested.
+
+The targeted TSAN summary-posting read is stable but returned no typed original
+reservation information. Transaction-detail and summary reads therefore do not
+yet support an original-reservation rate binding. No guest-name/reference parsing,
+rate-code exception or hardcoded descriptor was introduced. Both temporary read
+sessions were stopped and their nonce/session files removed. Production unchanged.
+
+## Optional transaction subtype confirmed by independent API read
+
+A new narrowly scoped documented GET list reader passed 19 focused tests. Actual
+paired TLKL reads for the two candidate transaction codes were stable and confirm
+explicit Revenue/F&B classification and revenue=true, with absent transaction
+subtype and false nonTaxable/taxInclusive/manual/paidout/deposit/comp flags. This
+agrees with the existing exact-code metadata; the missing subtype is not a parser
+omission. Oracle documentation permits an optional subtype. Implementation of the
+separate explicit-revenue-base certificate is authorized under the written source
+contract; no new case has been claimed as matched yet, and actual posted VAT must
+remain the source of money.
+
+The TSAN routed-wrapper detail probe returned all requested 25 IDs stably but no
+typed original-rate/routing identity or missing native descriptor. Its transaction
+code description remains different from the native AR wording; this evidence does
+not justify a text fallback. Both temporary previews were stopped and credentials
+removed. Financial checkpoint remains 1,328 matched / 74 unresolved, not deployed.
+
+## Remaining financial work grouped by source cause
+
+The 74 unresolved cases are now separated into disjoint causes: 54 default/all-charge
+POS mapping-role gaps, seven missing-subtype-only cases, four other typed role/map
+gaps, three missing property-mapping captures, two excluded-footer policies, two
+embedded rounding policies, one mixed NonVAT/residual policy and one residual
+case requiring diagnosis. These categories identify work, not accepted invoices.
+
+The missing WAKL evidence has now been fetched using the existing property-scoped
+getter: discovery plus all six returned interface mappings are stable on paired
+reads. The three cases still require role analysis; they are not automatically
+qualified by availability. A narrowly scoped documented transaction-code list
+read is being prepared to clarify the missing subtype evidence. No new service,
+access or paid API plan was enabled. Preview stopped and session/nonce removed.
+
+## Four-property descriptor qualification
+
+TLFO/TLKL/TSK/WAKL now use independently qualified current English AR rate-label
+policy with unchanged dated reservation, package-code, translation and paired-source
+guards. KAT remains compatible; TSAN is not enabled under this policy. Full replay
+retains 1,328 financial matches / 74 unresolved and all 2,998 KAT wrapper checks.
+All 2,892 comparable labels on the four newly enabled properties match native AR.
+POS display evidence now covers 135 cases / 1,233 groups, with no missing metadata
+requests in this replay. These counts do not replace full PDF body qualification.
+
+Fresh provider reads for six cases across all four properties passed. Six generated
+PDFs / seven pages were reopened: all 42 monetary fields and all six complete
+bodies (date, description, reference, debit, credit and row counts) match native AR.
+Only 34 expected descriptions changed; counts and TAX ID remain equal, no bounds
+or extraction errors. Temporary preview stopped; session and nonce removed.
+No production deployment or enablement. TSAN descriptor and City Ledger work remain.
+
+## City Ledger ownership evidence closed
+
+Exact-ID detail probes returned all 164 candidate source IDs. Typed current AR
+invoice ownership partitions 74 initial groups into 69 two-row offsetting pairs
+and five foreign-invoice exclusions. All 138 retained rows uniquely match native
+AR date, reference, debit/credit and returned transaction-code description. Source
+snapshots are stable under the existing exact-ID ordering normalization; other
+fields are unchanged. The display-only implementation is still pending, and must
+not alter financial aggregates or infer current ownership from account equality.
+
+Four non-KAT property rate-description policies are independently approved for
+implementation. TSAN remains separate: canonical reference matching identifies
+25 genuine counterexamples to a universal primary-description fallback. Those
+cases must not be hidden by an invoice/rate-code exception. No deployment.
+
+## Source coverage updates for body parity
+
+All 49 previously missing POS display metadata contexts were read twice with stable
+responses and zero read errors. Replay now includes this evidence; combined replay
+is deferred until the next source-code checkpoint rather than repeated unchanged.
+The remaining City Ledger ownership probes completed 59 paired reads / 148 exact
+transaction IDs, including selected-source before/after snapshots. Full ownership
+analysis is in progress. These reads are evidence collection, not automatic row
+admission. Temporary authenticated previews were stopped and session/nonce removed.
+
+## Explicit reference suffix correction qualified
+
+The shared display helper now preserves an explicit AR reference beginning with
+its exact check number plus a whitespace-delimited nonempty suffix. Existing
+RoutedFrom behavior remains unchanged; no invoice-specific rule or remark fallback.
+Independent six focused tests passed. Two regenerated PDFs / three pages preserve
+all 14 native monetary fields and match both source-model bodies. Native comparison
+has zero reference differences; the separate City Ledger row-pair gap remains in
+one document. No out-of-page text, changed counts/TAX ID, or financial changes.
+
+## Fresh transfer / posted-fee qualification
+
+All 21 newly admitted cases passed fresh AR-only provider reads. One read detected
+source change and refused; one exact-scope retry completed with stable evidence.
+The frozen renderer produced 21 PDFs / 74 pages. Reopened generated PDFs match
+all 147 native AR financial fields, with zero missing fields, out-of-page text or
+Guest calls. Counts and TAX ID remain equal; 15 canonical reference changes only.
+This qualifies monetary output for this increment, not full body parity or cutover.
+The temporary preview was stopped and nonce/session files removed.
+
+After the shared POS identity guard change, full captured replay remains 1,328
+matched / 74 unresolved, zero monetary mismatches. Independent fee-integration
+review passed ten suites / 226 tests and typecheck. A separately verified direct-zero
+membership closure defect is being fixed with focused tests before final cutover.
+The two explicit split/routing reference suffix losses have a shared helper fix;
+independent review and rendered verification are pending. No deployment/enabling.
+
+## Latest recorded checkpoint: 1,328 matched / 74 unresolved
+
+Whole-corpus replay of the shared transferred-current-rule and posted mapped-fee
+components now matches all seven monetary fields for 1,328 of 1,402 native AR
+references. All 1,307 previous matches remain; 21 are additional matches, with
+zero monetary mismatches or forbidden Guest calls. This is captured-source replay,
+not fresh qualification of the 21 new cases. Transfer calculator evidence in the
+capture is single-read; fresh paired reads remain required. Independent review of
+the fee integration is in progress. Production is unchanged, not deployed/enabled.
+
+Earlier fresh display qualification generated 89 PDFs / 154 pages; all 623 native
+AR monetary fields matched. Full visible-body parity is NOT complete: non-KAT
+rate descriptions differ and three examples omit offsetting City Ledger rows.
+A full source census also finds similar offset pairs absent from native PDFs, so
+inserting every zero-sum pair is not justified. Exact ownership probes are prepared.
+The body verifier now uses actual signature-image geometry to exclude cashier
+text on continuation pages. All 89 generated bodies exactly match their models;
+20 match native bodies completely. Remaining observed differences are 526 rate
+descriptions, two split/routing reference suffixes and three offset-pair row counts.
+Date/debit/credit differences are zero for aligned rows. Model fidelity alone does
+not qualify native parity.
+
+Paired provider reads for all 69 non-KAT rate profiles succeeded with stable
+responses. Their property-specific native-label analysis remains pending; ambiguous
+native joins and missing dated rate bindings are not counted as matches. Temporary
+authenticated preview was stopped and its nonce/session files removed.
+
+## Latest financial checkpoint: 1,302 matched / 100 unresolved
+
+The bounded ordinary-revenue zero-posted-VAT profile admits one additional case
+without changing any previous match. Whole-corpus replay compares all seven native
+AR monetary fields: 1,302 matches / 100 unresolved, zero monetary mismatches or
+Guest calls, and 2,998 native-equal wrapper labels. Fresh read and generated PDF
+inspection of the new case pass all seven financial fields on one page, with no
+missing fields or out-of-page text. Six canonical reference changes only; financial
+lines, IDs, amounts, descriptions, counts and TAX ID are preserved.
+
+An initially overrestrictive residual guard was corrected to admit embedded-tax
+Revenue through the existing strict validator. A bounded shared-claim composition
+is being implemented for zero-tax roles plus already-verifiable ordinary POS,
+with full original source, global ID ownership and a single financial aggregation.
+This addresses legitimate combinations rather than per-invoice exceptions.
+
+All remaining 72 display-metadata inventory contexts were read twice successfully
+and stably, with complete first pages by logical outer-row counts. Combined with
+five prior contexts, all 846 source group memberships and native descriptions match.
+Native ordering is date plus the existing representative posting ID, not API order
+or minimum member ID. Runtime grouped-display integration remains unqualified.
+
+Eight scoped Header/MappingCodes metadata probes returned stable responses. Extra
+fiscal/tax-type fields were absent; exported mapping values are not automatically
+interpreted as tax roles. These observations do not remove the remaining financial
+or routed/split display gaps. Temporary previews were stopped and nonce/session
+files removed. Production is unchanged: not deployed or enabled.
+
+## Current display-source result
+
+All five corrected CheckNo metadata reads succeeded and were stable. The earlier
+projection failure was an actual 21-character group/subgroup key identical to the
+validated check number, beyond the general schema's 20-character group-key limit.
+Only exact equality permits the longer bounded key; arbitrary long identifiers
+remain rejected. Independent client review: 30 focused tests passed.
+
+The five response scopes contain 35 explicit groups whose declared counts and
+source member identities match. Group descriptions match all 35 native AR labels.
+Group headers reuse existing member IDs, so they must never become additional
+financial postings. Grouped presentation proof/renderer work is still pending;
+header reference is an opaque key and cannot replace the explicit AR reference.
+
+## Latest recorded checkpoint: mapped-sales replay 1,301 / 101
+
+The separate mapped-sales profile adds five cases in the complete 1,402-case
+captured-source replay, retaining all 1,296 previous financial matches. There are
+zero seven-field monetary mismatches or forbidden Guest calls. All 2,998 qualified
+wrapper labels now match actual native AR rows; the 73 corrected labels remain.
+The five-case increment passed independent review and fresh provider reads. Five
+generated PDFs / six pages were reopened: all 35 native AR financial fields match,
+no missing fields or out-of-page text, unchanged TAX ID/row count/financial lines;
+one canonical reference changed. Last-page visuals were inspected. Combined
+A+/B checkpoint: 263 files / 3,213 tests, typecheck/build passed. It is not deployed
+or enabled.
+
+The next zero-posted-tax audit covers all 27 captured candidate invoices / 34 atoms,
+not only the eight refusals. Existing explicit NonVAT classifications match native
+NonVAT for all 27. Two excluded-footer counterexamples remain distinct; five
+ordinary-revenue candidates now have paired current rules, selected-source and
+calculation reads. Four return a single base; one inclusive calculation returns
+a base echo plus subtotal-bucket state, not two monetary charges. The bounded
+interpretation passed independent review; implementation of a separate proof and
+whole-invoice qualification remains pending. No financial inference was implemented
+from their names, empty Generates, or aggregate matching totals.
+
+## 2026-10-23 — Signed multi-VAT composition qualified; 106 financial cases remain
+
+Recorded whole-corpus replay: 1,296 seven-field financial matches / 106 unresolved,
+zero monetary mismatches or Guest calls; every prior 1,289 match retained. The
+seven new cases completed fresh reads and generated-PDF inspection: seven PDFs /
+27 pages, all 49 financial fields equal actual saved native AR PDFs, no missing
+financial fields or out-of-page text. Seven canonical reference changes only;
+line IDs, dates, descriptions, amounts, counts and TAX ID stay unchanged.
+Independent review approved the signed proof and its composition with strictly
+positive ordinary mapped-fee checks; no fee is admitted inside signed/repeated
+VAT scopes. A separate mapped-sales profile is still being qualified.
+
+The earlier display core checkpoint is independently revalidated on all 13 fresh
+packets: 73 native-equal labels and 91 native-equal financial fields. Full POS row
+presentation is still unfinished. All eight actual TSAN arrangement headers were
+read stably and explain 694 native venue labels; OPERA omitted member-code lists.
+CheckNo grouping exists in real responses, but a response-projection assumption
+currently rejects the normal diagnostic getter. Bounded type/length-only probes
+are localizing it; this is not evidence that the OPERA API is unavailable.
+
+A direct-zero-tax audit found two actual AR footer counterexamples: some amounts
+are included in gross but excluded from both before-VAT and NonVAT. Do not enforce
+an invented gross=net+VAT+NonVAT identity or classify these amounts by a blanket
+empty-Generates rule. A separate source-backed excluded-footer role is under audit.
+
+Production remains unchanged; no cutover, email, ledger or billing/Sheet writes.
+Temporary authenticated previews used this turn were stopped and nonce/session
+files removed. Customer packets and rendered evidence remain Git-ignored.
+
+## 2026-10-23 — Display core qualified on fresh changed cases; remaining financial work active
+
+Implemented and independently reviewed locally: shared KAT rate-display proof is
+integrated after financial validation on every successful reader branch. Final
+combined checkpoint: 257 files / 3,097 tests, typecheck and build passed.
+
+Complete 1,402-case recorded replay retains 1,289 financial matches / 113 unresolved,
+zero monetary mismatches and forbidden Guest calls. Within financially qualified
+cases, 2,962 wrapper labels equal actual AR reference rows; 73 labels change across
+13 cases. The other 36 labels from the 2,998-row helper audit belong to financially
+unqualified cases and are not counted as qualified document output.
+
+All 13 changed cases were then read fresh from OPERA and rendered as 13 PDFs /
+13 pages. Reopening generated and actual native AR PDFs verifies all 91 financial
+fields exactly, all 73 changed labels equal native and present in printed output,
+no missing financial fields or out-of-page text. Five reference changes use the
+already reviewed canonical AR-reference rule. Row counts, IDs, dates, amounts and
+TAX ID are unchanged. Representative changed rate profiles were visually compared
+side by side. This resolves the known five label/reference discrepancies through
+shared metadata rules, without per-invoice substitutions.
+
+Still incomplete: full native POS grouping/reference/venue-label parity and 113
+financial cases. Source probes for five representative display scopes returned
+stable responses but no grouping headers through the existing plain folio query;
+these are diagnostic metadata reads, not Guest PDF financial evidence. The scoped
+previews were stopped and temporary nonce/session files removed. Further signed
+multi-VAT work is in progress, outside the verified checkpoint above.
+
+Additional visual gap recorded: native country names versus current ISO country
+codes in two representative billing addresses. This is not a monetary mismatch,
+but whole-document visual/content parity is not claimed.
+
+Production routing/version remains unchanged: not deployed or enabled. No emails,
+ledger changes, billing/Sheet writes or new paid/access changes.
+
+## 2026-10-23 — AR-only financial replay 1,289; visible POS grouping remains open
+
+Implemented locally, not deployed or enabled: mapped taxable-fee, typed discount,
+and positive multi-VAT profiles with property-scoped source/configuration proofs.
+The latest complete recorded 1,402-case replay matches all seven financial fields
+for 1,289 cases, leaves 113 unqualified, and records zero monetary mismatches or
+forbidden Guest/Folio calls. All 1,274 prior matches remain; 15 new multi-VAT cases
+completed fresh-provider reads and produced 15 PDFs / 47 pages. Reopening generated
+and actual native AR PDFs verified all 105 financial fields exactly, no missing
+fields or out-of-page text. Ten canonical reference changes are the only line
+changes from prior models; IDs, dates, descriptions, amounts, counts and TAX ID
+remain unchanged. Refusals are not passes.
+
+Mapped-fee qualification completed with 31 fresh packets and 31 generated PDFs /
+92 pages: 217 financial fields equal saved actual OPERA AR Invoice references.
+Typed-discount qualification completed with three fresh packets and three rendered
+PDFs: reopening both native AR and generated PDFs verified all 21 fields exactly,
+with no missing financial fields or out-of-page text. Representative visual review
+still shows a native grouped POS row versus separate base/discount/VAT/service
+rows in the web document, and differing visible check references. Therefore these
+are financial passes, not complete visible-line/body parity or release approval.
+
+The display audit now covers all 47 KAT rate profiles: 419 proof passes / two
+unsupported cases; 2,998 admitted wrapper labels match native AR rows. Seventy-three
+label changes across 13 cases are source-backed. The two unsupported date bindings
+retain original text; core display integration and fresh qualification remain open.
+
+Pre-display multi-VAT regression checkpoint: 256 files / 3,082 tests passed, plus
+typecheck. Independent review and combined final verification remain pending.
+Production stays at the prior deployed version; no billing/Sheet writes, emails,
+ledger changes or paid/access changes were performed for this qualification.
+The scoped multi-VAT preview was stopped and exact nonce/session files removed.
+Private diagnostic evidence remains outside tracked files. Native AR references
+are saved genuine AR PDFs, not newly printed references for every invoice.
+
+## 2026-10-23 — Receipt-backed POS qualified; mapped-fee replay progresses
+
+Task 2E1 and canonical display-reference integration passed independent review
+and the full suite (248 files / 2,950 tests at that checkpoint). Final recorded
+1,402-case replay admitted 1,240 exact seven-field AR matches with 162 unresolved,
+zero money mismatches/Guest calls and all 1,212 prior matches retained.
+
+All 28 new cases were read fresh from OPERA with complete proof intervals and
+rendered privately into 28 PDFs / 79 pages. Reopening the PDFs found all 196 money
+values equal to the previously captured actual AR PDF references, no missing
+fields and no out-of-page text. IDs, dates, descriptions and line amounts are
+unchanged; 23 references across 20 PDFs changed intentionally to canonical AR
+reference rather than remark fallback. Independent native-line audit checked all
+1,402 pairs, aligned 1,105 and verified 165 applicable rows exactly; unaligned
+layouts were not claimed. Known five blank-reference gaps are addressed by this
+shared rule. Full visible-description parity remains unfinished.
+
+Fresh RTP metadata now supplies the exact five-case native label in scoped
+primaryDetails.description; folioText itself is empty. Primary-description use is
+not enabled: fallback/report semantics and three source-derived negative controls
+must be checked first. No hardcoded description or rate-plan exception.
+
+Task 2E2 adds a separate positive mapped-taxable-fee profile without a receipt or
+10% service assertion. Astra independently reviewed 150 focused tests; full suite
+250 files / 2,989 tests, typecheck/build passed. Initial actual-corpus replay:
+1,271 matched / 131 unresolved, zero money mismatches/Guest calls, all 1,240 prior
+matches retained and 31 new candidates (1 KAT, 1 TLKL, 29 TSAN). Fresh/new-admission
+and generated-PDF qualification remains pending; this is not deployment readiness.
+
+## Fresh AR UI reference attempt
+
+The owner questioned use of saved PDFs versus current UI. Clarified that the
+1,402 references are real OPERA AR PDFs downloaded earlier, not newly printed
+this round. This turn opened Edge OPERA, signed into Cashier as previously
+authorized, searched TSAN/PTA0002 and selected Invoice 17578/Folio37641. Processed
+Create Statement with Print Invoices and Preview (not Email). Batch1805250 showed
+both statement and tsan_ar_folio_vat Complete/Finished Successfully. The new PDF
+could not be downloaded through the current browser flow; the viewer closed and
+reopening the observed URL returned Report not found. No new PDF/reference parity
+pass is claimed from that attempt. The existing captured reference remains intact.
+The main AR tab is kept for continuation. No repeated print command was issued.
+
+No production routing change, ledger movement, email, app billing/Sheet history,
+access expansion or paid service occurred. The AR preview operation may update
+OPERA print/statement history within the owner's prior authorized print scope.
+Temporary API previews are stopped and nonce/session files removed. Goal active;
+complete source coverage, text semantics and final cutover verification remain.
+
+## 2026-10-23 — Service candidate receipt corpus captured; proof implementation started
+
+Previous Goal turn was progress: corrected INT mapping operation and verified live
+mappings. This turn captured paired exact-check GETs for 218 distinct opaque check
+IDs used by 50 candidate Invoices (39 TLKL checks, 179 TSAN). All pairs were stable
+with no request errors; 205 returned receipt text and 13 returned empty objects.
+Missing receipt data is not a zero amount or a qualified case. Raw data remains
+ignored/private under service-receipts with a scoped manifest.
+
+Actual mappings show SC-family alone does not distinguish automatic service from
+tips: one SC1 slot carries tips. Mapping joins must use itemNumber/splitPost and
+actual context, not itemizer labels or code-name guesses. Astra supplied a bounded
+full-receipt service proof plan; Sol has started parser/mapping/proof work, not yet
+qualified. It requires separately matching posted base, service, VAT and payment
+buckets, complete identity/closure and stable source/config evidence; no amount
+replacement. Split/adjusted receipt cases must remain separately investigated.
+
+The owner asked whether known OPERA codes such as 6000/6002 suffice. Clarified that
+codes and property-specific rules are central and already used for explicit
+NonVAT, while POS can post VAT as a separate code with no Generates on its base
+code. Missing Generates alone is not NonVAT proof in that arrangement.
+
+Astra is also evaluating whether exact typed fee mappings and complete posted
+proof can qualify additional cases without unnecessarily requiring an available
+receipt. This is evidence research, not permission to broaden rules blindly or
+shrink the Goal to only the first full-receipt profile. Corpus baseline remains
+1,212 matched / 190 unresolved; no new financial admissions or deployment claimed.
+
+All temporary previews stopped and nonce/session files removed. No emails,
+ledger/history/Sheet writes, access changes or paid additions occurred.
+
+## 2026-10-23 — POS mapping source corrected and verified live
+
+Previous Goal turn was progress (new exact-check/transaction-detail evidence).
+This turn identified why mapping projections were empty: the initial FOF customData
+operation returns customDataInfo, not transaction mappings. Safe key/type-only
+inspection proved this without reading arbitrary config values. Corrected to the
+documented INT getHotelInterfaceDetails operation, requesting only
+TransactionCodesInfo and preserving discovered-logo authorization and projections.
+
+All 13 active POS interface mappings in three properties now return nonempty,
+stable paired results. Actual typed SC itemizers and distinct tip/discount/tax
+mappings are available for the target codes. Seven scoped receipt bodies are
+captured privately. Two initial receipts reconcile with full selected postings;
+two others show adjustment/split-payment hazards that must not be hidden by using
+whole-receipt totals. Additional receipt/context audit is in progress.
+
+Client verification: 243 files / 2,862 tests, typecheck, build and whitespace checks
+pass (existing bundle-size warning). No financial rule or production routing
+changed; the qualified corpus baseline remains 1,212 / 1,402 with 190 unresolved.
+Astra is defining a source-backed service-role proof from the newly verified
+mapping/receipt evidence; Sol awaits that scope. This is concrete progress, not a
+blocked turn or completion claim. See AR_ONLY_POS_SOURCE_PROBE_PLAN_20261023.md.
+
+Temporary previews stopped, nonce/session credentials removed. No email, ledger,
+billing/Sheet history, access expansion or new paid service occurred.
+
+## 2026-10-23 — Fresh POS evidence probes advance active Goal
+
+Previous Goal turn classified as progress: new Goal activation, official-contract
+inspection and exact missing-field inventory. This turn added/tested narrow GET
+capabilities for check details, active POS discovery and transaction-code mappings.
+No financial-model or production routing changes. 243 files / 2,858 tests,
+typecheck/build and whitespace checks pass; existing bundle warning remains.
+
+Five fresh exact transaction-detail probes returned all 25 requested posting IDs.
+Paired details and selected AR sources were stable (selected-row order normalized
+only). None returned parent/group/receipt/description linkage fields; this route
+supplied no new ownership proof for those samples. It was not an API failure.
+
+Three-property POS discovery returned 13 active interfaces. Four exact-check GETs
+returned stable plain receipt text through `checkDetailsInfo`; structured check
+number/date fields were absent. These real receipts are new evidence requiring
+identity, date, outlet and posting reconciliation before financial qualification.
+Astra is assessing them. All 13 mapping responses projected to empty details;
+Sol is investigating safe raw structure to distinguish omitted data from a decoder
+shape issue. Do not conclude mapping configuration is absent from this result.
+
+No new corpus admissions are claimed: baseline remains 1,212 matched / 190
+unqualified. Four existing rule witnesses were identified for three replay lookup
+gaps and labelled recorded-source evidence, not new live reads. Raw receipts and
+metadata stay ignored/private. Temporary previews stopped, nonce/session files
+removed; no ledger, mail, billing/Sheet, access or paid-service changes.
+
+Next action: assess exact receipt evidence and diagnose mapping projection safely;
+use typed itemizer configuration only with source-backed joins. See
+`AR_ONLY_POS_SOURCE_PROBE_PLAN_20261023.md` for official references and boundaries.
+Goal remains active; no completion or blocked audit is warranted while these
+concrete source investigations are yielding evidence.
+
+## 2026-10-23 — Owner-created completion Goal active
+
+The owner explicitly requested a Goal to complete remaining AR-only qualification,
+shared fixes and production cutover only after complete field-level acceptance.
+A new active Goal was created after confirming no tool-managed Goal existed.
+Astra High continues planning/independent review; Sol Medium implements bounded
+reviewed changes. No token budget was imposed by the owner.
+
+Current baseline remains 1,212 matched / 190 unqualified; production unchanged.
+Research now prioritizes exact POS receipt/posted identities and authoritative
+roles, not broader aggregate-rate acceptance. Official Oracle contracts expose
+richer transaction-detail fields and a scoped check-details GET. Most exact direct
+POS posting IDs were not requested through the richer transaction-details route
+in prior captures. These are investigation leads, not verified integration success
+or new runtime financial proof. No invented query flags or ID mappings are allowed.
+
+All goal success conditions retain actual AR PDF references, separate VAT/NonVAT/
+before-VAT checks, regression coverage, fresh source/PDF qualification and explicit
+implemented/tested/deployed/enabled reporting. No emails, ledger/history changes,
+paid additions or access expansion are part of this Goal.
+
+## 2026-10-23 — Net-base wrapper VAT locally qualified against AR PDFs
+
+Task 2D1 is implemented and independently reviewed. Exact source/rule ownership
+qualifies VAT-on-net components while retaining posted SVC in before-VAT, with
+all residual checks unchanged. No per-Invoice override or Guest financial source.
+Review counterexamples for linked descendants, source-money contradictions and
+identity aliases are fixed. Full evidence: `AR_ONLY_NET_VAT_VALIDATION_20261023.md`.
+
+Final tests: 242 files / 2,839 tests; 349 focused tests; typecheck/build and diff
+checks pass. Astra final independent net-base suites pass 60/60. Full recorded
+1,402-case replay: 1,212 matched / 190 unqualified, zero money mismatches and zero
+forbidden calls; all previous 1,202 matches retained, exactly ten new admissions.
+
+Ten fresh provider-backed packets pass the final verifier. Ten generated PDFs
+(11 pages) were reopened and all 70 footer values match actual OPERA AR references:
+before-VAT, VAT, NonVAT, gross, printed outstanding, debit and credit. Model lines
+and tax identity are unchanged; no out-of-page text was detected. Representative
+footer visually checked. This is cohort qualification, not fresh full-corpus proof.
+
+Separate pre-existing text gaps remain in five native PDFs: 35 descriptions and
+five references differ from the previous generated model. Dates and monetary
+values of all 112 visible rows agree. Do not claim complete document-text parity.
+
+Production unchanged; AR-only routing is not deployed/enabled. All temporary
+previews stopped and credentials removed. No ledger, email, billing/Sheet history,
+permissions or paid-service changes. Complete replacement remains unfinished.
+
+## 2026-10-23 — Remaining 217 audited; explicit NonVAT stage qualified locally
+
+All 217 remaining development cases were reproduced and categorized in
+`AR_ONLY_REMAINING_AUDIT_20261023.md`. Five missing metadata pairs were fetched
+twice successfully; no API outage was established. An additional 21 wrapper rule
+pairs were captured twice without change for the next net-base proof assessment.
+
+Task 2C now uses an independent explicit-NonVAT envelope. Exact signed candidates,
+paired rules/calculations, whole-source snapshots and strict taxable residuals are
+required. Identity claims precede wrapper processing. Review exposed acceptance
+of nested/deferred/linked children; failing regressions were added and the new
+profile now rejects these shapes before evidence reads and before model admission.
+Legacy proof contracts remain unchanged. Astra independently approved the final
+source-shape/child-link checks after 80 NonVAT tests; broader focused checks passed.
+
+Final full verification: 240 files / 2,779 tests, 289 focused tests, typecheck,
+build and whitespace checks pass. Existing large-bundle warning remains.
+Recorded-source replay: 1,202 seven-field AR matches, 200 unqualified, zero
+monetary mismatches and zero forbidden Guest calls. This is 17 more qualified
+cases in the replacement, not a production deployment. Two remaining replay
+cases need newly requested metadata captures; do not call these API failures.
+
+Fresh provider reads for the 19-case explicit-policy cohort yielded 17 qualified
+models, all seven money fields matching native AR references. One transient
+pagination duplicate was reread once successfully. The other two emitted no
+model (source-change fence and unqualified direct-zero tax). All 17 captured
+source/proof packets were revalidated through the final verifier: all passed,
+lines and tax identity unchanged, zero forbidden calls. This covers this cohort,
+not a fresh full-corpus certification or a PDF Workspace user-flow test.
+
+Production routing is unchanged and the AR-only replacement remains disabled.
+All diagnostic previews stopped and nonce/session credentials removed. No emails,
+ledger, billing history, Sheet dates, access settings or paid subscriptions changed.
+Next bounded opportunity: ten net-base wrapper cases with explicit posted links
+and matching Generates buckets; ambiguous POS roles/partitions, allocation and
+transfer cases remain separate. The complete automatic replacement is unfinished.
+
+## 2026-10-23 — AR-only direct POS stage implemented and independently reviewed
+
+Local Task 2B adds exact selected POS membership, source closure, explicit paired
+transaction-code roles and sign-separated VAT validation. Actual posted VAT is
+retained. Missing window identity and unselected same-check siblings are treated
+as ambiguity; known distinct windows remain separate. POS identities are claimed
+before wrapper processing to prevent double counting across structures.
+
+Astra found two issues in the initial implementation (cross-structure duplicate
+identity and incomplete check closure). Five red regressions reproduced them;
+Sol fixed them. Astra independently reran all nine focused files (182 tests) and
+found no remaining actionable P0-P2 findings in the bounded diff.
+
+Final verification: 238 files / 2,699 tests, typecheck, build and diff checks pass.
+Existing large-bundle warning remains. Full private replay: 1,185 exact seven-field
+AR matches, 217 unqualified, zero monetary mismatches, zero forbidden report calls.
+All 1,139 prior admitted cases remain admitted; 46 new matches span five hotels.
+
+Remaining categories: 163 ambiguous/unsupported roles, 17 partition-rate cases,
+19 missing rule captures in the replay (not proven API failures), two source-shape,
+two scope, twelve strict-tax-profile and two transfer cases. This is a development
+inventory, not a count of newly broken production invoices. Replay combines
+captured Invoice source with stable current paired POS metadata where absent from
+older captures; it proves regression results, not a fresh live interval or history.
+
+Production remains unchanged; AR-only routing is not deployed/enabled. Complete
+coverage and fresh live qualification are outstanding. No email, accounting,
+billing-history, Sheet or paid configuration changes occurred.
+
+## 2026-10-23 — AR-only replacement: local posted-generate proof stage
+
+Owner approved removing Guest Folio/`folioReports` from AR financial evidence,
+including fallback. Astra High plans/reviews; Sol Medium implements. Production
+is unchanged at source `6fdf0ae9a91f1f269bf0b51c5dbd0d071b98f380`; this replacement
+is not deployed or enabled. Earlier release entries describe legacy behavior.
+
+Implemented locally: capability-restricted AR reader, full-VAT selected-source
+proof, and posted-generate graph proof. Graph qualification checks exact base and
+service membership in the VAT bucket, actual signed posted VAT, complete source
+and rule stability, and separately qualified residual rows. No per-Invoice rule.
+
+Tests: 236 files / 2,656 tests, typecheck and build passed (existing large-chunk
+warning). Private captured-source replay: 1,139 monetary matches, 263 unqualified,
+zero mismatches and zero forbidden report calls. The newly admitted graph case
+preserves all lines and tax identity as well as the seven native AR money fields.
+Replay only normalizes exact transaction-detail request ID order; no source rows
+or monetary evidence are invented. It is not a fresh live-source certification.
+
+Remaining development includes direct POS, NonVAT, embedded rules and transfers;
+261 cases fail the current strict tax profile and two fail transfer qualification.
+Paired read-only current rule capture covers 187 property/code pairs with zero
+read errors or changes. This does not establish historical rule membership.
+Diagnostic preview stopped and temporary credential files removed. Independent
+Astra review passed with no actionable P0-P2 findings and an independent rerun
+of all 139 focused tests. No routing cutover, email, ledger, Sheet or billing write.
+
+Correction to prior blocker explanation: one split-footer case was an internal
+Guest-report parser limitation, not missing provider totals. Its prototype was
+archived and excluded because Guest reports are not accepted AR financial proof.
+The requested complete automatic AR-only replacement remains unfinished.
+
 ## 2026-10-23 — Shared zero-tax qualification released; four source blockers remain
 
 Source `6fdf0ae9a91f1f269bf0b51c5dbd0d071b98f380`, Worker

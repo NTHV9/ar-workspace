@@ -1,0 +1,33 @@
+import {it,expect} from 'vitest';
+import {createPosDisplaySuppressionCatalog,revalidatePosDisplaySuppressionCatalog} from '../worker/invoice/zero-pos-display-proof';
+import {zeroPosDisplayFixture,rebindZeroPosDisplayFixture} from './fixtures/invoice-zero-pos-display';
+import {sourceClaimsPosDisplayFixture} from './fixtures/invoice-source-claims-pos-display';
+import {invoiceModel} from '../worker/invoice/model';
+it('certifies only the eight original POS IDs in a complete per-code cancelling group',()=>{
+ const f=zeroPosDisplayFixture(),before=JSON.stringify(f.packet),model=invoiceModel(f.packet),catalog=createPosDisplaySuppressionCatalog(f.packet,f.proof)!;expect(catalog.suppressed).toEqual([{representativeId:'60008',sourceIds:['60001','60002','60003','60004','60005','60006','60007','60008'],date:'2026-01-03'}]);expect(revalidatePosDisplaySuppressionCatalog(JSON.parse(JSON.stringify(catalog))).catalog).toEqual(catalog);expect(invoiceModel(f.packet)).toEqual(model);expect(JSON.stringify(f.packet)).toBe(before);
+});
+it('does not apply the current TSAN policy to another hotel or a nonzero signed group',()=>{
+ const f=sourceClaimsPosDisplayFixture('zero-group');expect(createPosDisplaySuppressionCatalog(f.packet,f.proof)).toBeUndefined();const ordinary=sourceClaimsPosDisplayFixture('posted');expect(createPosDisplaySuppressionCatalog(ordinary.packet,ordinary.proof)).toBeUndefined();
+});
+it('does not suppress zero gross obtained by debit/credit netting',()=>{
+ const f=zeroPosDisplayFixture();for(const s of (f.packet.postings as {invoicePostingsDetails:Record<string,unknown>[]}).invoicePostingsDetails){const amount=(s.debitAmount as {amount:number})?.amount;if(amount>=0)continue;delete s.debitAmount;s.creditAmount={amount:-amount,currencyCode:'THB'};const p=(f.packet.taxRows.find(e=>String((e as {posting:{transactionNo:unknown}}).posting.transactionNo)===String(s.transactionNo)) as {posting:Record<string,unknown>}).posting;delete p.debitAmount;p.creditAmount=s.creditAmount;}rebindZeroPosDisplayFixture(f);expect(()=>invoiceModel(f.packet)).not.toThrow();expect(createPosDisplaySuppressionCatalog(f.packet,f.proof)).toBeUndefined();
+});
+it('does not use cancellation across different transaction codes',()=>{
+ const f=zeroPosDisplayFixture();for(const [id,amount]of [[60004,-500],[60008,-500]]){const s=(f.packet.postings as {invoicePostingsDetails:Record<string,unknown>[]}).invoicePostingsDetails.find(s=>s.transactionNo===id)!,e=f.packet.taxRows.find(e=>(e as {posting:{transactionNo:number}}).posting.transactionNo===id) as {posting:Record<string,unknown>;postingBreakdown:{grossAmount:unknown;netAmount:unknown}};s.debitAmount={amount,currencyCode:'THB'};Object.assign(e.posting,{debitAmount:s.debitAmount,postedAmount:s.debitAmount,transactionAmount:amount});e.postingBreakdown.grossAmount=e.postingBreakdown.netAmount=s.debitAmount;}rebindZeroPosDisplayFixture(f);expect(()=>invoiceModel(f.packet)).not.toThrow();expect(createPosDisplaySuppressionCatalog(f.packet,f.proof)).toBeUndefined();
+});
+it.each(['ids','source','pages','unknown-field'] as const)('revalidates serialized suppression evidence rather than a caller flag: %s',kind=>{
+ const f=zeroPosDisplayFixture(),catalog=createPosDisplaySuppressionCatalog(f.packet,f.proof)!;if(kind==='ids')catalog.suppressed[0].sourceIds[0]='99991';if(kind==='source')Reflect.set(catalog.packet.invoice as object,'reference','Changed');if(kind==='pages')catalog.proof.contexts[0].after=[];if(kind==='unknown-field')Reflect.set(catalog,'hidden',true);expect(()=>revalidatePosDisplaySuppressionCatalog(catalog)).toThrow();
+});
+
+it('retains a financially qualified nonzero group under the TSAN policy',()=>{
+ const f=sourceClaimsPosDisplayFixture('posted');const hotel=(raw:unknown):void=>{if(!raw||typeof raw!=='object')return;if(Array.isArray(raw)){raw.forEach(hotel);return;}for(const [key,value]of Object.entries(raw)){if((key==='hotelId'||key==='hotel')&&value==='KAT')Reflect.set(raw,key,'TSAN');else hotel(value);}};hotel(f.packet);hotel(f.page);rebindZeroPosDisplayFixture(f);expect(()=>invoiceModel(f.packet)).not.toThrow();expect(createPosDisplaySuppressionCatalog(f.packet,f.proof)).toBeUndefined();
+});
+it('does not admit invalid financial money through an otherwise cancelling group',()=>{
+ const f=zeroPosDisplayFixture();const selected=(f.packet.postings as {invoicePostingsDetails:{debitAmount:{amount:number}}[]}).invoicePostingsDetails;selected[0].debitAmount.amount++;rebindZeroPosDisplayFixture(f);expect(()=>createPosDisplaySuppressionCatalog(f.packet,f.proof)).toThrow();
+});
+import {mixedPosDisplayFixture} from './fixtures/invoice-mixed-pos-display';
+it('keeps a cancelling mixed manual group visible despite zero literal column sums',()=>{
+ const f=zeroPosDisplayFixture(),manual=mixedPosDisplayFixture(),target=f.packet.postings as {invoicePostingsDetails:Record<string,unknown>[];trxCodesInfo:Record<string,unknown>[]},source=(manual.packet.taxRows.find(e=>(e as {posting:{transactionNo:number}}).posting.transactionNo===80001) as {posting:Record<string,unknown>;postingBreakdown:{grossAmount:unknown;netAmount:unknown;taxes:Record<string,unknown>[]}});target.trxCodesInfo.push({hotelId:'TSAN',transactionCode:'MANUAL',description:'Independent embedded charge',transactionGroup:'OTHER'});
+ for(const [id,amount]of [[80001,107],[80002,-107]]){const s={...structuredClone(manual.manual),transactionNo:id,debitAmount:{amount,currencyCode:'THB'}},e=structuredClone(source);Object.assign(e.posting,{hotelId:'TSAN',transactionNo:id,debitAmount:s.debitAmount,postedAmount:s.debitAmount,transactionAmount:amount});e.postingBreakdown.grossAmount=s.debitAmount;e.postingBreakdown.netAmount={amount:amount>0?100:-100,currencyCode:'THB'};e.postingBreakdown.taxes[0].amount={amount:amount>0?7:-7,currencyCode:'THB'};e.postingBreakdown.taxes[0].transactionNo=id*10+1;e.postingBreakdown.taxes[0].referenceTransactionNo=id;target.invoicePostingsDetails.push(s);f.packet.taxRows.push(e);f.page.windows[0].folios[0].postings.push({transactionNo:String(id),transactionCode:'MANUAL',transactionDate:s.transactionDate,checkNo:s.checkNo,reference:s.reference,cashierInfo:{cashierId:8},groupTypeInfo:{subGroupId:'POS-CHECK'}});}
+ const header=f.page.windows[0].folios[0].postings[0];header.transactionNo='80002';header.groupTypeInfo.groupCount=10;rebindZeroPosDisplayFixture(f);expect(()=>invoiceModel(f.packet)).not.toThrow();expect(createPosDisplaySuppressionCatalog(f.packet,f.proof)).toBeUndefined();f.packet.arPosDisplayProof=f.proof;const model=invoiceModel(f.packet);expect(model.displayLines).toHaveLength(2);expect(model.posDisplaySuppressionSource).toBeUndefined();expect(model.displayLines?.find(l=>l.kind==='pos-group')).toMatchObject({debit:0,credit:0});
+});
