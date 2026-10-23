@@ -13,7 +13,7 @@ export function flatMaskBackground(data:Uint8ClampedArray,width:number,height:nu
  return `rgb(${center.join(',')})`;
 }
 /** Reject every nonbackground source pixel not accounted for by original glyph ink. */
-export function assertMaskInterior(data:Uint8ClampedArray,matte:Uint8ClampedArray,width:number,height:number,rect:{x:number;y:number;width:number;height:number},background:string,radius:number,foreground?:string){
+export function assertMaskInterior(data:Uint8ClampedArray,matte:Uint8ClampedArray,width:number,height:number,rect:{x:number;y:number;width:number;height:number},background:string,radius:number,foreground?:string,maximumOpacity=1){
  const bg=background.match(/\d+/g)!.map(Number),knownForeground=foreground?.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)?.slice(1).map(v=>parseInt(v,16));
  for(let y=Math.max(0,Math.floor(rect.y));y<Math.min(height,Math.ceil(rect.y+rect.height));y++)for(let x=Math.max(0,Math.floor(rect.x));x<Math.min(width,Math.ceil(rect.x+rect.width));x++){
   const i=(y*width+x)*4;if(bg.every((v,c)=>Math.abs(data[i+c]-v)<=8))continue;
@@ -28,7 +28,7 @@ export function assertMaskInterior(data:Uint8ClampedArray,matte:Uint8ClampedArra
    const channel=delta.reduce((best,value,c)=>Math.abs(value)>Math.abs(delta[best])?c:best,0);
    if(Math.abs(delta[channel])<1)continue;
    const coverage=(data[i+channel]-bg[channel])/delta[channel];
-   if(coverage>=-.03&&coverage<=1.03&&bg.every((v,c)=>Math.abs(data[i+c]-(v+delta[c]*coverage))<=12)){accounted=true;break;}
+   if(coverage>=-.03&&coverage<=maximumOpacity+.03&&bg.every((v,c)=>Math.abs(data[i+c]-(v+delta[c]*coverage))<=12)){accounted=true;break;}
   }
   if(!accounted)throw Error('The original text area contains artwork or other content. Restore original text, then use Whiteout and a new text box.');
  }
@@ -36,7 +36,7 @@ export function assertMaskInterior(data:Uint8ClampedArray,matte:Uint8ClampedArra
 /** Nearby rules outside the paint footprint must not prevent editing its text.
  * If the outer ring is mixed, prove a flat surface from every clear interior
  * pixel instead. Original glyph ink is still checked over the entire mask. */
-export function verifiedMaskBackground(data:Uint8ClampedArray,matte:Uint8ClampedArray,width:number,height:number,rect:{x:number;y:number;width:number;height:number},radius:number,foreground?:string):string{
+export function verifiedMaskBackground(data:Uint8ClampedArray,matte:Uint8ClampedArray,width:number,height:number,rect:{x:number;y:number;width:number;height:number},radius:number,foreground?:string,maximumOpacity=1):string{
  let background:string;
  try{background=flatMaskBackground(data,width,height,rect);}catch{
   const colors:number[][]=[];
@@ -52,7 +52,7 @@ export function verifiedMaskBackground(data:Uint8ClampedArray,matte:Uint8Clamped
   if(colors.some(c=>c.some((v,i)=>Math.abs(v-center[i])>8)))throw Error('The source background contains artwork or nearby content. Restore original text, then use Whiteout and a new text box.');
   background=`rgb(${center.join(',')})`;
  }
- assertMaskInterior(data,matte,width,height,rect,background,radius,foreground);
+ assertMaskInterior(data,matte,width,height,rect,background,radius,foreground,maximumOpacity);
  return background;
 }
 export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLayer,mask:{x:number;y:number;width:number;height:number;sourceX?:number;sourceY?:number;sourceHeight?:number;sourceLayer?:PdfLayer}):string{
@@ -80,7 +80,7 @@ export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLa
   context.textBaseline='alphabetic';
   const originals=style.maskRuns??[{run:style.run,style}];
   for(const observed of originals){
-   const face=observed.style;if(!face?.supported||face.run.rotated||face.sequence.filter(g=>typeof g!=='number').map(g=>g.unicode).join('')!==observed.run.text)throw Error('The original glyph background could not be verified.');
+   const face=observed.style;if(!face||!(face.supported||!style.maskRuns&&face.maskSupported)||face.run.rotated||face.sequence.filter(g=>typeof g!=='number').map(g=>g.unicode).join('')!==observed.run.text)throw Error('The original glyph background could not be verified.');
    let advance=0;context.fillStyle=face.color;
    for(const glyph of face.sequence){
     if(typeof glyph==='number'){advance-=glyph*face.fontSize/1000*face.hScale;continue;}
@@ -89,6 +89,6 @@ export function sourceMaskFill(source:HTMLCanvasElement,scale:number,layer:PdfLa
     advance+=(glyph.width*face.fontSize/1000+face.charSpacing+(glyph.isSpace?face.wordSpacing:0))*face.hScale;
    }
   }
-  return verifiedMaskBackground(pixels.data,context.getImageData(0,0,width,height).data,width,height,local,Math.ceil(scale*.75),style.color);
+  return verifiedMaskBackground(pixels.data,context.getImageData(0,0,width,height).data,width,height,local,Math.ceil(scale*.75),style.color,style.opacity??1);
  }finally{matte.width=matte.height=0;}
 }

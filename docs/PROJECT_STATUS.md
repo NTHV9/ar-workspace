@@ -1,3 +1,31 @@
+## 2026-10-24 — GitHub verification repair (local qualification)
+
+Investigated actual failed Actions runs 39860906317 / 39860900330 at older commit
+21b7440. The same workflow ran on both feature-branch push and pull_request, creating
+duplicate failure notifications. It now verifies all PRs and main pushes, supports
+manual dispatch, and cancels superseded runs. No checks were disabled or skipped.
+
+Updated stale Collections browser assertions to retain cross-account/stage/filter
+selection per the owner-approved batch workflow, while preserving exact requested
+invoice IDs, separate billing/collection groups, and true source-change invalidation.
+Dashboard test now coordinates the tracker revision event that correctly invalidates
+cached previews; unavailable data still stays unknown rather than becoming zero.
+
+Fixed three actual PDF editor problems: quantized self-edge movement rejection,
+preexisting Whiteout overlap blocking row growth, and strictly provable standalone
+translucent-text deletion. Original glyph/background/artwork, opposite-column and
+Undo checks remain; new opacity/artwork negative controls pass independently.
+
+Local final verification: 4,339 unit/integration tests; 250 browser smoke cases;
+three configured performance cases; 15 polling/continuous-Aging cases; typecheck,
+production build and public asset bundle pass. Focused independent review approved.
+Generated screenshots are retained privately; every tracked evidence image was
+restored to its original baseline. AR-only financial/source code and database
+migrations have no changes in this patch. Production remains version
+fe256593-7393-4fcc-bf82-a6b96ef42f62 during this CI repair. Actual GitHub PR-head
+verification is required before reporting remote CI success; evidence goes in
+ignored .tmp/ci-repair/ together with the Actions run link.
+
 ## 2026-10-24 — AR-only Invoice release deployed and live-verified
 
 **Implemented / tested / deployed / enabled:** production source commit

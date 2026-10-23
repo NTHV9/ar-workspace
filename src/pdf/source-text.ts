@@ -3,7 +3,7 @@ import type { DetectedText, PdfLayer } from './types';
 
 export type SourceTextReference = { sourceId: string; sourcePage: number; runIndex: number; scope?: string };
 export type SourceGlyph = { unicode: string; fontChar: string; width: number; isSpace?: boolean; isInFont?: boolean; accent?: unknown; fallbackFont?:string };
-export type SourceStyle = { maskRuns?:{run:DetectedText;style:SourceStyle}[];font: string; fontSize: number; bold: boolean; italic: boolean; color: string; baseline: number; hScale: number; charSpacing: number; wordSpacing: number; glyphs: Map<string, SourceGlyph>; sequence: (SourceGlyph | number)[]; supported: boolean; run: DetectedText };
+export type SourceStyle = { maskRuns?:{run:DetectedText;style:SourceStyle}[];font: string; fontSize: number; bold: boolean; italic: boolean; color: string; baseline: number; hScale: number; charSpacing: number; wordSpacing: number; glyphs: Map<string, SourceGlyph>; sequence: (SourceGlyph | number)[]; supported: boolean; maskSupported?: boolean; opacity?: number; run: DetectedText };
 export class SourceFontError extends Error {
  constructor(){super('This source font cannot reproduce the edited characters. Choose a replacement font in formatting, or use characters available in the source document.');this.name='SourceFontError';}
 }

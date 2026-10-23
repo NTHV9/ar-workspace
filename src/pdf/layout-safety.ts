@@ -27,6 +27,9 @@ export function assertRasterDestinationClear(edit:Move,raster:{data:Uint8Clamped
  for(const part of subtractRect(destination,edit)){
   for(let y=Math.max(0,Math.floor(part.y*scale));y<Math.min(raster.height,Math.ceil((part.y+part.height)*scale));y++){
    for(let x=Math.max(0,Math.floor(part.x*scale));x<Math.min(raster.width,Math.ceil((part.x+part.width)*scale));x++){
+    // A fractional selection boundary can split a raster pixel. That pixel
+    // already belongs to the source crop; it is not newly covered artwork.
+    if(x<Math.ceil((edit.x+edit.width)*scale)&&x+1>Math.floor(edit.x*scale)&&y<Math.ceil((edit.y+edit.height)*scale)&&y+1>Math.floor(edit.y*scale))continue;
     const i=(y*raster.width+x)*4;
     if(raster.data[i+3]>20&&Math.min(raster.data[i],raster.data[i+1],raster.data[i+2])<240)throw Error('The destination is occupied by visible artwork. Choose a blank area; the move was not applied.');
    }
@@ -51,7 +54,7 @@ export function reflowStationery(page:PdfProjectPage,before:PdfLayer,next:PdfLay
   group.push(target);bottom=Math.max(bottom,target.y+target.height);
  }
  const others=targets.filter(t=>!group.includes(t));
- if(others.some(t=>overlaps(next,t)))throw Error('The text would overlap another column or field. Choose more space before adding a line.');
+ if(others.some(t=>subtractRect(next,before).some(part=>overlaps(part,t))))throw Error('The text would overlap another column or field. Choose more space before adding a line.');
  if(graphicTargets(page,graphics).some(t=>subtractRect(next,before).some(part=>overlaps(part,t))))throw Error('The text would overlap artwork. Choose more space before adding a line.');
  if(!group.length)return page;
  const x=Math.max(0,Math.min(...group.map(t=>t.x))-.25),y=Math.min(...group.map(t=>t.y))-.25;

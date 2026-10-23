@@ -95,12 +95,15 @@ export async function extractSourceText(page: PdfProjectPage,pdfPage: PDFPagePro
   const bold=/bold|black|heavy/i.test(font.name??'')||!!font.bold||!!font.black,italic=/italic|oblique/i.test(font.name??'')||!!font.italic;
   const ref={sourceId:page.sourceId,sourcePage:page.sourcePage!,runIndex,scope},baseline=height*(style?.ascent??.85);
   const run:DetectedText={text:item.str,x:tx[4],y:tx[5]-baseline,width:Math.max(item.width,2),height:Math.max(height*1.15,baseline+height*.3),fontSize:height,rotated,color:chunk?.state.color??'#000000',bold,italic,fontLabel:font.name??style?.fontFamily??'Unknown source font',sourceText:ref};
-  const supported=!!chunk&&!rotated&&!font.disableFontFace&&!font.isType3Font&&!font.vertical&&chunk.state.mode===0&&chunk.state.simpleFill&&chunk.state.alpha===1&&/^#[0-9a-f]{6}$/i.test(run.color!);run.unsupported=!supported;
+  // Original translucent glyphs can prove a deletion mask without qualifying
+  // edited text. The mask verifier still bounds visible ink by this opacity.
+  const maskSupported=!!chunk&&!rotated&&!font.disableFontFace&&!font.isType3Font&&!font.vertical&&chunk.state.mode===0&&chunk.state.simpleFill&&Number.isFinite(chunk.state.alpha)&&chunk.state.alpha>0&&chunk.state.alpha<=1&&/^#[0-9a-f]{6}$/i.test(run.color!);
+  const supported=maskSupported&&chunk!.state.alpha===1;run.unsupported=!supported;
   // Runtime font values come from this PDF's PDF.js font loader, never persisted CSS.
   const typeface=font.systemFontInfo?.css??`"${font.loadedName??'sans-serif'}", ${font.fallbackName??'sans-serif'}`;
   const rawWidth=chunk?.sequence.reduce<number>((w,g)=>w+(typeof g==='number'?-g*height/1000:g.width*height/1000+chunk.state.charSpacing+(g.isSpace?chunk.state.wordSpacing:0)),0)??0;
   const horizontalScale=rawWidth>0?item.width/rawWidth:1;
-  const runtime:SourceStyle={font:typeface,fontSize:height,bold:!!font.bold||!!font.black,italic:!!font.italic,color:run.color!,baseline,hScale:horizontalScale,charSpacing:chunk?.state.charSpacing??0,wordSpacing:chunk?.state.wordSpacing??0,glyphs:glyphMap,sequence:chunk?.sequence??[],supported,run};
+  const runtime:SourceStyle={font:typeface,fontSize:height,bold:!!font.bold||!!font.black,italic:!!font.italic,color:run.color!,baseline,hScale:horizontalScale,charSpacing:chunk?.state.charSpacing??0,wordSpacing:chunk?.state.wordSpacing??0,glyphs:glyphMap,sequence:chunk?.sequence??[],supported,maskSupported,opacity:chunk?.state.alpha,run};
   registerSourceStyle(ref,runtime);return [run];
  });
  const fields=voucherFields(page,runs);

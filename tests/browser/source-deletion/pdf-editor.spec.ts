@@ -249,3 +249,40 @@ test('deleting source text pushed beyond the physical sheet removes the empty ov
  });
  expect(result.beforePages).toBe(2);expect(result.deletedBelowSheet).toBe(true);expect(result.afterPages).toBe(1);expect(result.headerInk).toBeGreaterThan(100);
 });
+test('deleting transparent source text refuses unrelated artwork within its mask',async({page})=>{
+ await openStatement(page);
+ const message=await page.evaluate(async()=>{
+  const f=(window as any).fixture,pdf=await f.PDFDocument.load(f.unsupportedSources[0].bytes);
+  pdf.getPage(0).drawRectangle({x:32,y:220,width:220,height:3});
+  const sources=[{...f.unsupportedSources[0],bytes:await pdf.save()}],loaded=await f.loadSources(sources);
+  try{
+   const p=loaded.project.pages[0],runs=await f.detectText(p,loaded.documents);
+   p.layers=[f.createReplacementLayer(runs[0],'transparent-delete')];
+   loaded.project.pages[0]=f.deleteTextLayer(p,p.layers[0]);
+   try{await f.exportProject(loaded.project,sources,loaded.documents);return '';}
+   catch(error){return error instanceof Error?error.message:String(error);}
+  }finally{loaded.dispose();}
+ });
+ expect(message).toMatch(/artwork|background|other content/i);
+});
+test('transparent source deletion cannot erase an opaque glyph at the same position',async({page})=>{
+ await openStatement(page);
+ const results=await page.evaluate(async()=>{
+  const f=(window as any).fixture,results=[];
+  for(const opacity of [.5,0]){
+   const pdf=await f.PDFDocument.create(),font=await pdf.embedFont('Helvetica'),sheet=pdf.addPage([400,300]);
+   sheet.drawText('SYNTHETIC OVERLAP',{x:30,y:220,size:12,font,opacity});
+   sheet.drawText('SYNTHETIC OVERLAP',{x:30,y:220,size:12,font});
+   const sources=[{id:'overlap',name:'Synthetic overlap.pdf',kind:'invoice',bytes:await pdf.save()}],loaded=await f.loadSources(sources);
+   try{
+    const p=loaded.project.pages[0],runs=await f.detectText(p,loaded.documents),run=runs.find((r:any)=>r.unsupported);
+    if(!run)throw Error('Transparent fixture run was not detected');
+    p.layers=[f.createReplacementLayer(run,'overlap-delete')];loaded.project.pages[0]=f.deleteTextLayer(p,p.layers[0]);
+    try{await f.exportProject(loaded.project,sources,loaded.documents);results.push('');}
+    catch(error){results.push(error instanceof Error?error.message:String(error));}
+   }finally{loaded.dispose();}
+  }
+  return results;
+ });
+ for(const message of results)expect(message).toMatch(/artwork|background|other content/i);
+});
