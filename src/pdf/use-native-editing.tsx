@@ -2,7 +2,7 @@ import {rowGeometry} from './row-geometry';
 import {compactEmptyRowLines} from './row-compaction';
 import {insertRowUsingWhitespace} from './row-whitespace';
 import {deleteInsertedRow,insertedRowBands} from './inserted-rows';
-import {prepareRowDeletion,replacementForRun} from './source-edits';
+import {deleteTextLayer,prepareRowDeletion,replacementForRun} from './source-edits';
 import {applyFlowEdit,pageCanvasHeight,MAX_FLOW_HEIGHT} from './flow';
 import {useEffect,useId,useRef,useState,type PointerEvent} from 'react';
 import type {PDFDocumentProxy} from 'pdfjs-dist';
@@ -111,6 +111,12 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
    let keptSpace=false;
    const okay=await changePage(before=>{const result=deleteInsertedRow(before,anchor.tableRow!);keptSpace=result.keptSpace;return result.page;});
    if(okay){setArea(null);if(keptSpace)setNotice('Row removed. Space containing other content was kept.');}
+   return;
+  }
+  if(!tableTextFlows(page,anchor,runs)){
+   // Header/address fields own their source text, never a page-wide row band.
+   const okay=await changePage(before=>deleteTextLayer(before,anchor));
+   if(okay)setArea(null);
    return;
   }
   if(!row!.deletable){onError('This row overlaps nearby text or a border. Move the overlapping object before deleting the row.');return;}
