@@ -1,3 +1,14 @@
+## Final release outcome — 24 October 2026
+
+The AR-only replacement is enabled in production (source `4ff69f9`, Worker
+`fe256593-7393-4fcc-bf82-a6b96ef42f62`). All 1,402 source cases and 9,814 native AR
+monetary fields qualify, preserving every previously qualified case. Final item
+content and TAX ID checks satisfy the owner's documented semantic/layout criteria.
+The final full suite passes 4,334 tests; build passes. Six post-deployment UI-created
+PDFs across all six operating hotels pass all 42 monetary and complete item-row
+comparisons. No email, billing/Sheet history or OPERA ledger writes occurred.
+See PROJECT_STATUS.md for the exact evidence inventory and preserved-artifact checks.
+
 # AR Invoice parity audit — 23 October 2026
 
 ## Current result

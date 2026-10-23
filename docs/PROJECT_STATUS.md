@@ -1,3 +1,42 @@
+## 2026-10-24 — AR-only Invoice release deployed and live-verified
+
+**Implemented / tested / deployed / enabled:** production source commit
+`4ff69f9` is deployed as Cloudflare Worker version
+`fe256593-7393-4fcc-bf82-a6b96ef42f62` at
+https://ar-workspace.ar-c82.workers.dev. Deployment used --keep-vars; workflow
+bindings and schedules remain in place. All 1,072 tested source files matched
+the frozen validation manifest immediately before deployment.
+
+Qualification completed against actual OPERA AR Invoice PDFs: 1,402 cases,
+9,814 monetary fields, no lost previously qualified cases and no Guest financial
+source/fallback. Final PDF evidence comprises 1,632 pages. TAX ID values are
+verified; item content follows the owner's explicit API-wording/payment-label
+and non-identical-layout allowances. 4,334 tests / 322 files and build passed.
+
+After deployment, the administrator used the actual Collections UI to create
+invoice-only preparations for KAT, TSK, TLKL, TSAN, TLFO and WAKL, opened PDF
+Workspace and final previews, and downloaded six reviewed PDFs / ten pages.
+Independent re-extraction matched all 42 native monetary fields and every parsed
+item row in those six files. These include the retained-wrapper, actual posted
+VAT, exclusive zero-tax net, mixed VAT/NonVAT and partial-balance source cases.
+
+All six exact test preparations were explicitly discarded after verification.
+Read-only database checks confirm workspace source/version on all six, all closed,
+zero email drafts, zero sent events, zero external-billing records and zero tracker
+history rows for the tested scope/time. Existing open stored-file counts remain
+unchanged: native ready 131, workspace ready 245, and the prior uncertain outcome
+is preserved. Temporary authenticated provider previews were stopped and their
+exact nonce/session files removed. No OPERA ledger or billing/Sheet history write,
+email send, paid service or access expansion was performed.
+
+Private evidence remains ignored: `.tmp/ar-only-final-validation/` (frozen test
+logs, deployment record, live-job IDs, downloaded PDFs and live checks) and
+`.tmp/invoice-parity-20261022/final-corpus-evidence-manifest.private.json`.
+Native baselines were never rewritten. New generation is AR-only; retained legacy
+bytes remain readable, while pending legacy generation does not call Guest reports.
+This completes the current replacement/qualification/cutover goal; it is not a
+promise that unknown future malformed provider data will be silently accepted.
+
 ## Release candidate verified — production deployment pending
 
 Final frozen source checkpoint: 322 test files / 4,334 tests pass, build passes,
