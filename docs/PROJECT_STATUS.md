@@ -1,3 +1,54 @@
+## 2026-10-24 — Repository cleanup and broader PDF regression repair
+
+**Repository cleanup completed; editor fixes implemented and locally qualified.**
+Closed superseded PRs #117–#141 only after refreshing each exact head and verifying
+all 25 are ancestors of deployed source9f8b943. Every closure links to #142; only
+#142 remains open. Branches, commits and Actions history remain. Public asset
+hashes were unchanged by cleanup. Details and historical coverage are recorded in
+`docs/GITHUB_CLEANUP_AUDIT_20261024.md`.
+
+Inspected all216 historical failed-run job inventories and214 available latest-job
+logs, plus both earlier retry attempts. Mapped39 error signatures across36 titles.
+Two cancelled/no-step jobs have missing logs and remain explicitly undiagnosed.
+Every affected test file remains configured; old failures were not automatically
+classified as harmless solely because they were old or current CI was green.
+
+Expanded current PDF testing exposed three genuine defects: blank header image
+bounds rejected address growth, helper reflow changed pointer coordinates during
+dragging, and native graphic IDs replaced generated movement command IDs.
+Repairs use qualified native-only supported-left source removal and a bounded
+residual-pixel proof, captured gesture coordinates, stable helper layout and
+sanitized geometry with command-owned IDs. Original right-header proof and all
+text, vector, overlay and strict export guards remain. Unknown proof fails closed.
+Only active-page proof work runs, with abort/release and a shared64MiB budget.
+No OPERA/financial renderer, VAT/Non-VAT, database, billing-date or email-history
+change is included. No live billing/email action was performed.
+
+Six private real Workspace Invoice samples qualify address growth with exact
+opposite-column/body pixels, strict export and Undo preserved. Measured proof work
+in the final concurrent-load run was855–4313ms and ready state2159–4173ms, retaining
+358020–379134bytes per grid. Source images and customer text are kept private.
+The opacity-page negative explicitly tests unavailable proof; a separate actual
+unsupported-left case qualifies while its unremoved text remains occupied.
+
+Updated stale PDF tests to check native removal/preservation, independent-field
+semantics and real occupied/blank destinations rather than require unsafe flow
+or raster-only output. Dense overflow coverage now uses recognized table headings
+and enough rows to exhaust spare whitespace. All PDF editor suites are included
+in CI through **/pdf-editor.spec.ts. Production UI tests retain all API interception
+and error checks, using current Google/tab authentication and preview semantics.
+
+Local qualification: 4,346 unit/integration tests across323 files; all122 PDF
+cases (121 in the complete run plus one unchanged layout assertion rerun after
+moving its capture into the test artifact directory); three performance cases;
+production build and90 public assets pass. All tracked reference images were
+restored exactly. The public baseline also passed two synthetic-API UI cases at
+1440x900 and1280x800. Independent source/safety review approved the scoped fixes.
+The expanded GitHub smoke selection now collects342 cases. This entry records
+pre-publication qualification; committed-head CI and the final deployed Worker
+version are recorded separately in the completion comment on
+[PR #142](https://github.com/NTHV9/ar-workspace/pull/142).
+
 ## 2026-10-24 — PDF address Delete Row scope repair
 
 **Implemented / tested / deployed / enabled.** Reproduced the owner's

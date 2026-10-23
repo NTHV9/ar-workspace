@@ -3,12 +3,13 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { mkdirSync, readFileSync } from 'node:fs';
 import fontkit from '@pdf-lib/fontkit';
 import {policyFixture} from './fixtures/collection-policy';
+import {auditLogin,auditRoute} from './fixtures/audit-workspace';
 
 // Deployment UI evidence only. Every API response and every PDF is synthetic.
 // In particular this does NOT verify OPERA native Statement availability.
 const jobId = 'c0000000-0000-4000-8000-000000000001';
 const account = 'SYNTHETIC frontend QA account';
-const user = { id: 'synthetic-deployed-pdf-user', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
+const user = { id: 'synthetic-deployed-pdf-user', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { providers: ['google'] }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
 
 async function fixturePdf(kind: 'statement' | 'invoice', pageCount: number, label: string) {
   const pdf = await PDFDocument.create(), regular = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -55,11 +56,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     const unexpectedApis: string[] = [], pageErrors: string[] = [], scripts: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
     page.on('response', response => { if (response.url().startsWith(baseURL!) && response.url().includes('/assets/') && response.url().endsWith('.js') && response.ok()) scripts.push(response.url()); });
-    await page.addInitScript(value => localStorage.setItem('sb-example-auth-token', JSON.stringify(value)), { access_token: 'synthetic-only-token', refresh_token: 'synthetic-only-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user });
-    await page.route('https://example.supabase.co/**', route => route.fulfill({ json: { user } }));
+    await page.route('https://example.supabase.co/**', route => route.fulfill({ json: { access_token: 'synthetic-only-token', refresh_token: 'synthetic-only-refresh', expires_in: 3600, token_type: 'bearer', user } }));
     await page.route('**/api/**', route => {
       const path = new URL(route.request().url()).pathname;
-      if (path === '/api/config') return route.fulfill({ json: { supabaseUrl: 'https://example.supabase.co', publishableKey: 'synthetic-key' } });
+      if (path === '/api/config') return route.fulfill({ json: { supabaseUrl: 'https://example.supabase.co', publishableKey: 'synthetic-key',googleEnabled:true } });
+      if (path === '/api/access/me') return route.fulfill({json:{memberId:user.id,email:user.email,displayName:'Synthetic Staff',active:true,administrator:true,regions:['phuket','khao-lak'],revision:1}});
+      if (path === '/api/reports/tracker-revisions') return route.fulfill({json:{rows:[]}});
       if (path === '/api/collection-policy' && route.request().method() === 'GET') return route.fulfill({json:policyFixture});
       if (path === '/api/refresh') return route.fulfill({ json: { jobs: [], running: false, hotels: [] } });
       if (path === '/api/portfolio') return route.fulfill({ json: { status: 'connected', accounts: [], refresh: { running: false, hotels: [] } } });
@@ -68,7 +70,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
       if (fileIndex >= 0) return route.fulfill({ contentType: 'application/pdf', body: pdfs[fileIndex] });
       unexpectedApis.push(path); return route.fulfill({ status: 501, json: { error: 'blocked_unmocked_synthetic_api' } });
     });
-    await page.goto(`/?documentJob=${jobId}`);
+    await auditLogin(page);await auditRoute(page,`documentJob=${jobId}`);
     await page.getByRole('button', { name: 'Open PDF Workspace', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Select page 4', exact: true })).toBeVisible();
     await expect(page.locator('.pdf-canvas canvas')).toHaveCount(5);
@@ -102,7 +104,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(4);
     await expect(page.getByRole('img', { name: 'Final PDF page 1', exact: true })).toBeVisible();
     await expect(page.locator('.pdf-preview-files button').first()).toHaveAttribute('data-reviewed','false');
-    await expect(page.getByRole('button', { name: 'Save reviewed PDFs privately', exact: true })).toBeDisabled();
+    await expect(page.locator('.pdf-final-sheet')).toHaveAttribute('data-render-state','ready');
+    await expect(page.getByRole('dialog',{name:'Final PDF preview'}).getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Save reviewed PDFs privately', exact: true })).toBeEnabled();
     await page.screenshot({ path: `evidence/pdf-workspace-cloudflare-final-preview-${viewport.width}x${viewport.height}.png`, animations: 'disabled' });
     expect(scripts.length).toBeGreaterThan(0); expect(unexpectedApis).toEqual([]); expect(pageErrors).toEqual([]);
   });

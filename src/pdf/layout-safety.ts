@@ -2,6 +2,7 @@ import type {DetectedText,PdfLayer,PdfProjectPage,PdfRowEdit} from './types';
 import {applyFlowEdit,sourceFragments} from './flow';
 import {overlaps,mapSourceTextRect} from './row-layout';
 import {replacementForRun} from './source-edits';
+import {assertStationeryBlank,type StationeryArtwork} from './stationery-artwork';
 type Rect={x:number;y:number;width:number;height:number};
 type Move=Extract<PdfRowEdit,{kind:'move'}>;
 /** Only the newly covered destination can replace unrelated source content. */
@@ -37,7 +38,7 @@ export function assertRasterDestinationClear(edit:Move,raster:{data:Uint8Clamped
  }
 }
 /** Spacing for a bounded stationery column, using ordinary reversible source moves. */
-export function reflowStationery(page:PdfProjectPage,before:PdfLayer,next:PdfLayer,runs:DetectedText[],graphics:Rect[]):PdfProjectPage {
+export function reflowStationery(page:PdfProjectPage,before:PdfLayer,next:PdfLayer,runs:DetectedText[],graphics:(Rect&{id?:string})[],proof?:StationeryArtwork):PdfProjectPage {
  let delta=next.height-before.height;
  // Ownership lives in the existing command ID; never compact arbitrary manual space.
  const owner=`column:${before.id.length}:${before.id}:`,edits=page.rowEdits??[];
@@ -47,6 +48,8 @@ export function reflowStationery(page:PdfProjectPage,before:PdfLayer,next:PdfLay
   delta=-Math.min(-delta,Math.max(0,owned));
  }
  if(Math.abs(delta)<.1)return page;
+ const images=graphics.filter(g=>g.id?.startsWith('image-')),strict=graphics.filter(g=>!g.id?.startsWith('image-'));
+ const qualify=(rect:Rect)=>{if(graphicTargets(page,images).some(t=>overlaps(rect,t))){if(!proof)throw Error('The stationery artwork has not been verified. Keep the current layout or use a blank area.');assertStationeryBlank(page,rect,proof);}};
  const targets=textTargets(page,runs).filter(t=>t.layerId!==before.id),group:typeof targets=[];
  const gap=Math.max(24,Math.min(36,before.fontSize*2.5));let bottom=before.y+before.height;
  for(const target of targets.filter(t=>t.y>before.y+before.fontSize*.8&&Math.abs(t.x-before.x)<=12).sort((a,b)=>a.y-b.y)){
@@ -55,15 +58,17 @@ export function reflowStationery(page:PdfProjectPage,before:PdfLayer,next:PdfLay
  }
  const others=targets.filter(t=>!group.includes(t));
  if(others.some(t=>subtractRect(next,before).some(part=>overlaps(part,t))))throw Error('The text would overlap another column or field. Choose more space before adding a line.');
- if(graphicTargets(page,graphics).some(t=>subtractRect(next,before).some(part=>overlaps(part,t))))throw Error('The text would overlap artwork. Choose more space before adding a line.');
+ for(const part of subtractRect(next,before))qualify(part);
+ if(graphicTargets(page,strict).some(t=>subtractRect(next,before).some(part=>overlaps(part,t))))throw Error('The text would overlap artwork. Choose more space before adding a line.');
  if(!group.length)return page;
  const x=Math.max(0,Math.min(...group.map(t=>t.x))-.25),y=Math.min(...group.map(t=>t.y))-.25;
  const right=Math.min(page.width,Math.max(...group.map(t=>t.x+t.width))+.25),end=Math.max(...group.map(t=>t.y+t.height))+.25;
  const id=owner+crypto.randomUUID();if(id.length>200)throw Error('This text box cannot safely add column spacing. Move the fields explicitly.');
  const edit:Move={id,kind:'move',x,y,width:right-x,height:end-y,dx:0,dy:delta};
  // Partial membership means the detected column boundary is ambiguous.
- if(others.some(t=>overlaps(t,edit))||graphicTargets(page,graphics).some(t=>overlaps(t,edit)))throw Error('This column overlaps another field or artwork. Adjust the text box before adding a line.');
- assertMoveDestinationClear({...page,layers:page.layers.map(l=>l.id===before.id?{...l,text:'',deleted:true}:l)},edit,runs,graphics);
+ qualify(edit);for(const part of subtractRect({...edit,x:edit.x+edit.dx,y:edit.y+edit.dy},edit))qualify(part);
+ if(others.some(t=>overlaps(t,edit))||graphicTargets(page,strict).some(t=>overlaps(t,edit)))throw Error('This column overlaps another field or artwork. Adjust the text box before adding a line.');
+ assertMoveDestinationClear({...page,layers:page.layers.map(l=>l.id===before.id?{...l,text:'',deleted:true}:l)},edit,runs,strict);
  if(group.some(t=>overlaps({...t,y:t.y+delta},next)))throw Error('There is not enough space in this column.');
  return applyFlowEdit(page,edit,[before.id]);
 }

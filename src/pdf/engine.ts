@@ -1,4 +1,5 @@
 import {nativeTextCandidate} from './native/candidate';
+import {runNativeWorker} from './native/worker-pool';
 import {sourceMaskFill} from './mask-background';
 import type {NativeResult} from './native/protocol';
 import {validateInvoiceAttachments} from './invoice-attachments';
@@ -267,4 +268,43 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
     files.push({ name: filenames[index], bytes: await output.save() });
   }
   return files;
+}
+
+/** Immutable source-only artwork proof. Every removal must be native; raster
+ * masks cannot establish whether artwork exists behind an original glyph. */
+let stationeryProofBytes=0;
+export async function originalHeaderArtwork(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,signal?:AbortSignal):Promise<import('./stationery-artwork').StationeryArtwork|undefined>{
+ let canvas:HTMLCanvasElement|undefined,reserved=0,retained=0;
+ try{
+  const scope=sourceScope(page,documents),bytes=scope?.sources.find(s=>s.id===page.sourceId)?.bytes,doc=documents.get(page.sourceId);
+  if(!scope||scope.closed||signal?.aborted||!bytes||!doc||!page.sourcePage)return;
+  const abort=signal?AbortSignal.any([signal,scope.abort.signal]):scope.abort.signal;
+  const pdfPage=await doc.getPage(page.sourcePage),viewport=pdfPage.getViewport({scale:1});
+  if(viewport.width!==page.width||viewport.height!==page.height||page.width>2000||page.height>3000)return;
+  const original:PdfProjectPage={id:page.id,sourceId:page.sourceId,sourcePage:page.sourcePage,width:viewport.width,height:viewport.height,layers:[]};
+  const runs=await extractSourceText(original,pdfPage,scope.id);
+  const title=runs.filter(r=>/^(?:COPY OF )?INVOICE$/i.test(r.text.trim())&&r.x>page.width*.55),tables=runs.filter(r=>r.text.trim()==='DATE'&&runs.some(s=>s.text.trim()==='DESCRIPTION'&&Math.abs(s.y-r.y)<3));
+  if(title.length!==1||tables.length!==1||tables[0].y<=title[0].y)return;
+  const height=tables[0].y-2,leftBoundary=Math.min(page.width*.5,title[0].x);
+  // Unrequested/unsupported glyphs remain visible in the proof and therefore
+  // occupied. Only wholly bounded, qualified left-column runs are removed.
+  const header=runs.filter(r=>r.x>=0&&r.x+r.width<=leftBoundary&&r.y>=0&&r.y+r.height<=height&&r.sourceText&&!r.unsupported&&sourceStyle(createReplacementLayer(r,'proof'))?.supported);
+  if(!header.length||header.length>100)return;
+  const scale=1.5,width=Math.ceil(page.width*scale),rows=Math.ceil(height*scale);
+  const {stationeryAllocation}=await import('./stationery-artwork');
+  reserved=stationeryAllocation(page.width,page.height,scale,height,bytes.byteLength);
+  if(stationeryProofBytes+reserved>64*1024*1024){reserved=0;return;}stationeryProofBytes+=reserved;
+  const layers=header.map((r,i)=>({...createReplacementLayer(r,`header-artwork-${i}`),text:'',deleted:true as const}));
+  const edits=layers.map(l=>{const style=sourceStyle(l)!;return {id:l.id,expectedText:l.original!.text,text:'',x:l.original!.x,baseline:original.height-l.original!.y-style.baseline,fontSize:style.fontSize,fontLabel:style.run.fontLabel??'',color:style.color,bold:l.bold,italic:l.italic,maxRight:l.original!.x+l.original!.width};});
+  // All edits remove native source glyphs; there are no overlay/mask z-order
+  // interactions in this private original-page transaction.
+  const candidate=await runNativeWorker(JSON.stringify([scope.id,page.sourceId,page.sourcePage,'header-artwork']),{bytes,page:page.sourcePage-1,edits},abort);
+  if(scope.closed||abort.aborted||!candidate||candidate.unsupportedPage||candidate.applied.length!==layers.length||layers.some(l=>!candidate.applied.includes(l.id)))return;
+  canvas=await sourceRaster(original,documents,scale,candidate);
+  const data=canvas.getContext('2d')!.getImageData(0,0,width,rows).data,pixels=new Uint8Array(width*rows);
+  for(let i=0;i<pixels.length;i++)pixels[i]=Math.min(data[i*4],data[i*4+1],data[i*4+2])<255?1:0;
+  if(scope.closed||abort.aborted)return;
+  retained=pixels.byteLength;let released=false;
+  return {release:()=>{if(!released){released=true;stationeryProofBytes-=pixels.byteLength;}},sourceId:page.sourceId,sourcePage:page.sourcePage,pageWidth:page.width,pageHeight:page.height,width,height:rows,scale,pixels};
+ }catch{return undefined;}finally{stationeryProofBytes-=reserved-retained;if(canvas)canvas.width=canvas.height=0;}
 }

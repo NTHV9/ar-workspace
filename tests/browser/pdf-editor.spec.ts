@@ -22,7 +22,7 @@ test('oversized geometry cannot create an unreopenable saved draft',async({page}
  await page.getByRole('spinbutton',{name:'Layer x',exact:true}).fill('999999');await expect(page.getByRole('alert')).toContainText('was not applied');await expect(page.getByRole('spinbutton',{name:'Layer x',exact:true})).toHaveValue(before);
  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');expect(await page.evaluate(()=>(window as any).pdfTest.draft.pages[0].layers[0].x)).toBe(Number(before));
 });
-test('source replacement exports opaque pages and preserves untouched multi-page invoices',async({page})=>{
+test('source replacement removes original wording and preserves untouched multi-page invoices',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');
  await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Edit source text',exact:true}).click();
@@ -39,9 +39,12 @@ test('source replacement exports opaque pages and preserves untouched multi-page
  await page.evaluate(async()=>{const api=(window as any).pdfTest;const task=api.getDocument({data:api.saved.files[0].bytes.slice()});const pdf=await task.promise;const p=await pdf.getPage(1);const canvas=document.createElement('canvas');const viewport=p.getViewport({scale:1.25});canvas.width=viewport.width;canvas.height=viewport.height;await p.render({canvas,viewport}).promise;canvas.id='export-proof';canvas.style.cssText='position:fixed;inset:0;z-index:9999;background:white';document.body.appendChild(canvas);await task.destroy();});
  mkdirSync('evidence',{recursive:true});await page.locator('#export-proof').screenshot({path:'evidence/pdf-editor-edited-export.png'});
  const result=await page.evaluate(async()=>{const api=(window as any).pdfTest;const saved=api.saved;const task=api.getDocument({data:saved.files[0].bytes.slice()});const pdf=await task.promise;const content=[];for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n);content.push((await p.getTextContent()).items.map((i:any)=>i.str||'').join(' '));}await task.destroy();return{count:pdf.numPages,text:content,edits:saved.project.pages[0].layers.length};});
- expect(result.count).toBe(4);expect(result.edits).toBe(1);expect(result.text[0]).toBe('');expect(result.text[1]).toContain('CONFIDENTIAL ORIGINAL WORDING');expect(result.text[2]).toContain('Page 2 of 2');
- const rasterWidths=await page.evaluate(async()=>{const api=(window as any).pdfTest,doc=await api.PDFDocument.load(api.saved.files[0].bytes);const objects=doc.getPage(0).node.Resources().lookup(api.PDFName.of('XObject'));return objects.entries().map(([,ref]:any)=>doc.context.lookup(ref).dict.get(api.PDFName.of('Width')).asNumber());});
- expect(Math.max(...rasterWidths)).toBeGreaterThanOrEqual(2480);
+ expect(result.count).toBe(4);expect(result.edits).toBe(1);expect(result.text[0]).not.toContain('CONFIDENTIAL ORIGINAL WORDING');expect(result.text[1]).toContain('CONFIDENTIAL ORIGINAL WORDING');expect(result.text[2]).toContain('Page 2 of 2');
+ if(result.text[0])expect(result.text[0]).toContain('REPLACED FOR OUTBOUND COPY');
+ else{
+  const rasterWidths=await page.evaluate(async()=>{const api=(window as any).pdfTest,doc=await api.PDFDocument.load(api.saved.files[0].bytes);const objects=doc.getPage(0).node.Resources().lookup(api.PDFName.of('XObject'));return objects.entries().map(([,ref]:any)=>doc.context.lookup(ref).dict.get(api.PDFName.of('Width')).asNumber());});
+  expect(Math.max(...rasterWidths)).toBeGreaterThanOrEqual(2480);
+ }
 
 });
 test('whiteout removes visible source pixels, while text, shapes, image and page edits survive export',async({page})=>{
@@ -62,8 +65,8 @@ test('page operations undo and separate delivery require review of each file',as
  await page.getByRole('button',{name:'Statement + each Invoice',exact:true}).click();await page.getByRole('button',{name:'Preview PDFs'}).click();await expect(page.locator('.pdf-preview-actions .pdf-primary')).toBeDisabled();
  await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeDisabled();await expect(page.getByRole('button',{name:'01-Statement.pdf'})).toHaveAttribute('data-reviewed','true');await page.getByRole('button',{name:'02-Invoice-A.pdf'}).click();await expect(page.getByRole('button',{name:'02-Invoice-A.pdf'})).toHaveAttribute('data-reviewed','false');await page.getByRole('button',{name:'03-Invoice-B.pdf'}).click();await expect(page.getByRole('button',{name:'03-Invoice-B.pdf'})).toHaveAttribute('data-reviewed','true');await reviewPreviewPages(page);await expect(page.getByRole('checkbox')).toHaveCount(0);await expect(page.getByRole('button',{name:'Save reviewed PDFs privately'})).toBeEnabled();
 });
-test('workspace matches approved three-column layout at desktop and laptop',async({page})=>{
- mkdirSync('evidence',{recursive:true});for(const width of [1440,1100]){await page.setViewportSize({width,height:900});await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await page.waitForFunction(()=>document.querySelectorAll('.pdf-canvas canvas').length===5);await page.screenshot({path:`evidence/pdf-editor-${width}.png`});expect(await page.locator('.pdf-workspace').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);}
+test('workspace matches approved three-column layout at desktop and laptop',async({page},testInfo)=>{
+ for(const width of [1440,1100]){await page.setViewportSize({width,height:900});await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await page.waitForFunction(()=>document.querySelectorAll('.pdf-canvas canvas').length===5);await page.screenshot({path:testInfo.outputPath(`pdf-editor-${width}.png`)});expect(await page.locator('.pdf-workspace').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);}
 });
 test('export in flight locks edits until its exact preview is ready',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
@@ -119,8 +122,13 @@ test('direct source editing keeps source formatting and adds/removes text lines'
  await expect(target).toBeVisible({timeout:3000});await target.click();
  const text=page.getByRole('textbox',{name:'Edit document text',exact:true});await expect(text).toBeFocused();
  await expect(page.getByRole('spinbutton',{name:'Font size',exact:true})).toHaveValue('13');await expect(page.getByLabel('Text color',{exact:true})).toHaveValue('#000000');
- await text.fill('First line');await text.press('End');await page.getByRole('button',{name:'Add text line',exact:true}).click();await text.pressSequentially('Second line');
- await expect(text).toHaveValue('First line\nSecond line');await page.getByText('Position & size',{exact:true}).click();await expect(page.getByRole('spinbutton',{name:'Layer height',exact:true})).not.toHaveValue('15');
+ await text.fill('First line');await text.press('End');await page.getByRole('button',{name:'Add text line',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('occupied');await expect(text).toHaveValue('First line');
+ // This source field has another line and a rule below it. Use a blank area
+ // for the positive formatting/line test rather than requiring overlap.
+ await page.getByText('Position & size',{exact:true}).click();await page.getByRole('spinbutton',{name:'Layer y',exact:true}).fill('580');
+ await text.click();await text.press('End');await page.getByRole('button',{name:'Add text line',exact:true}).click();await expect(text).toHaveValue('First line\n');await text.pressSequentially('Second line');
+ await expect(text).toHaveValue('First line\nSecond line');await expect(page.getByRole('spinbutton',{name:'Layer height',exact:true})).not.toHaveValue('15');
  await page.getByRole('button',{name:'Remove text line',exact:true}).click();await expect(text).toHaveValue('First line');
  await page.getByRole('button',{name:'Bold',exact:true}).click();await expect(page.getByRole('button',{name:'Bold',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:'Restore original formatting',exact:true}).click();await expect(page.getByRole('button',{name:'Bold',exact:true})).toHaveAttribute('aria-pressed','false');await expect(text).toHaveValue('First line');

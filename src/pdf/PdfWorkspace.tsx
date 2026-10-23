@@ -175,7 +175,7 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
       const nextY=Math.min(rowBelow?.y??Infinity,otherBelow?.y??Infinity);
       if(!tableTextFlows(page,layer,runs)){
         if(!native.geometryReady){setError('Wait for the page geometry before changing text spacing.');return;}
-        try{changed=reflowRightHeader(page,layer,next,runs,linkedHeaderInk.current.get(`${page.sourceId}:${page.sourcePage}`))??reflowStationery(page,layer,next,runs,native.barriers);}catch(e){setError(e instanceof Error?e.message:'Unable to space this column.');return;}
+        try{changed=reflowRightHeader(page,layer,next,runs,linkedHeaderInk.current.get(`${page.sourceId}:${page.sourcePage}`))??reflowStationery(page,layer,next,runs,native.barriers,native.artwork);}catch(e){setError(e instanceof Error?e.message:'Unable to space this column.');return;}
       }else if(delta>.1){
         const at=layer.textFlow?layer.textFlow.at+layer.textFlow.height:layer.tableRow?beforeBottom:Math.min(Number.isFinite(nextY)?nextY-.1:Infinity,layer.y+layer.height);
         try{changed=applyFlowEdit(page,{id:uid(),kind:'insert',y:at,height:delta,...(layer.tableRow&&page.rowEdits?.some(e=>e.kind==='insert'&&e.id===layer.tableRow)?{rowId:layer.tableRow}:{})},siblings.map(l=>l.id));next.textFlow={at:layer.textFlow?.at??at,height:(layer.textFlow?.height??0)+delta};}catch(e){setError(e instanceof Error?e.message:'Unable to flow this text.');return;}
@@ -190,7 +190,7 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
   function releaseTextSpace(before:PdfProjectPage,removed:PdfLayer):PdfProjectPage {
     if(!tableTextFlows(before,removed,runs)&&removed.original){
       if(!native.geometryReady)throw Error('Wait for the page geometry before restoring text.');
-      return reflowStationery(before,removed,{...removed,height:removed.original.height},runs,native.barriers);
+      return reflowStationery(before,removed,{...removed,height:removed.original.height},runs,native.barriers,native.artwork);
     }
     const flow=removed.textFlow;if(!flow||!sourceBandIsEmpty(before,flow.at,flow.height))return before;
     if(before.layers.some(l=>l.id!==removed.id&&!l.deleted&&l.y<flow.at+flow.height&&l.y+l.height>flow.at))return before;

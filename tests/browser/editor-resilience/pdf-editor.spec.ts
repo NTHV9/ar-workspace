@@ -101,15 +101,17 @@ test('Undo clears a resolved Preview warning and original text can be exported a
 
 test('a partial area selection expands to the whole word before it moves',async({page})=>{
  await page.goto('/tests/browser/editor-resilience/harness.html');
- const target=await page.getByRole('button',{name:'Edit original text: REF-001',exact:true}).boundingBox();expect(target).not.toBeNull();
+ const originalTarget=(await page.getByRole('button',{name:'Edit original text: REF-001',exact:true}).boundingBox())!;
+ const originalPaper=(await page.locator('.pdf-paper').boundingBox())!;
  await choosePdfTool(page,'Move table / area');
- // Read coordinates again after the contextual tools change the page position.
- const paper=await page.locator('.pdf-paper').boundingBox(),scale=paper!.width/595;
- const x=paper!.x+310*scale,y=paper!.y+(842-700-8*.718)*scale;
- await page.mouse.move(x+2,y+1);await page.mouse.down();await page.mouse.move(x+target!.width*.6,y+target!.height*.8,{steps:3});await page.mouse.up();
+ // Source text targets hide in area mode. Project their measured paper-relative
+ // geometry after contextual controls settle rather than guessing a baseline.
+ const paper=(await page.locator('.pdf-paper').boundingBox())!;
+ const target={x:paper.x+(originalTarget.x-originalPaper.x)/originalPaper.width*paper.width,y:paper.y+(originalTarget.y-originalPaper.y)/originalPaper.height*paper.height,width:originalTarget.width/originalPaper.width*paper.width,height:originalTarget.height/originalPaper.height*paper.height};
+ await page.mouse.move(target!.x+target!.width*.25,target!.y+target!.height*.25);await page.mouse.down();await page.mouse.move(target!.x+target!.width*.7,target!.y+target!.height*.8,{steps:3});await page.mouse.up();
  const area=page.getByRole('button',{name:'Move selected table or area',exact:true});await expect(area).toBeVisible();
  const bounds=await area.boundingBox();expect(bounds!.width).toBeGreaterThanOrEqual(target!.width-.5);
- await area.press('ArrowRight');await expect(page.getByRole('alert')).toHaveCount(0);
+ await area.press('ArrowRight');await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeEnabled();await expect(page.getByRole('alert')).toHaveCount(0);
  await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByText('Draft saved. Final review is still required.',{exact:true})).toBeVisible();
  const edits=await page.evaluate(()=>(window as any).fixture.project.pages[0].rowEdits);expect(edits).toHaveLength(1);expect(edits[0]).toMatchObject({kind:'move',dx:1,dy:0});
 });

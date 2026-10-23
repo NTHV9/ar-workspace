@@ -90,7 +90,10 @@ for(const action of ['add','delete'])test(`row tools after moving source text: $
  await page.getByText('Position & size',{exact:true}).click();await page.getByRole('spinbutton',{name:'Layer y',exact:true}).fill('300');
  if(action==='add'){
   await page.getByRole('button',{name:'Add row below',exact:true}).click();
-  await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(1,{timeout:1500});
+  await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('City Ledger\n');
+  await expect(page.locator('.pdf-layer-target.empty-cell')).toHaveCount(0);
+  await expect(page.getByRole('spinbutton',{name:'Layer y',exact:true})).toHaveValue('300');
+  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('City Ledger');
  }else{
   await page.getByRole('button',{name:'Delete row',exact:true}).click();
   await expect(page.getByRole('button',{name:'Edit original text: City Ledger',exact:true})).toHaveCount(0,{timeout:1500});
