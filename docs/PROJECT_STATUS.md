@@ -1,3 +1,33 @@
+## 2026-10-25 — Current warnings, proven closure and removed-row history
+
+**Implemented and tested; final deployment readback in progress.** The owner
+approved fixing remaining zero-balance/removed-row warnings. Root cause: strict
+nullable Folio equality blocked exact-zero retirement, old removed rows retained
+pending warnings, and an open review panel cached rows after its count changed.
+
+- Add archived status and retirement reason while preserving exact warning,
+  financial, Sent and date records. Completed Sheet removal archives current
+  warning work without clearing debt; returned rows can raise new warnings.
+- Closure checks the exact internal ledger and durable verified-zero proof plus
+  current source state. Missing Folio alone is allowed, but compatible active or
+  unknown debt, contradictory actual identity and incomplete Account-only changes
+  do not borrow old closure evidence. Every snapshot separately records its latest
+  provider identity even when a match fails; old warning hints are not current
+  identity evidence. Positive-debt matching and provider-write guards are unchanged.
+- A shared current-warning projection drives status and paginated counts/rows.
+  Closed/removed items no longer inflate current review; administrator review
+  invalidates cached rows/cursors when current status changes. Member visibility
+  remains only Last successful synchronization and the original Sheet link.
+
+Qualification: 4,623 unit tests / 340 files; typecheck and production build; 41
+real-browser synthetic cases, including open-panel count/list refresh; all 132
+migrations and 22 disposable SQL rollback fixtures. RED reproductions cover the
+NULL-Folio closure, historical-hint identity error, incomplete Account-only change
+and stale open panel. Fresh review's Account edge was fixed and retested. The
+unchanged 2,028-row Preview capacity guard passes standalone; an earlier parallel
+browser/build run exceeded the unchanged 8-second guard and was not counted as
+passing. Hosted migration: `20261024210933_ar_tracker_warning_lifecycle`.
+
 ## 2026-10-25 — Sheet credit authority, safe Account moves and administrator details
 
 **Implemented, tested, deployed and enabled.** Owner

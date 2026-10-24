@@ -1,3 +1,25 @@
+## 2026-10-25 — Current warning work and archived warning history
+
+The owner approves repairing warnings for confirmed-zero invoices and rows no
+longer in the completed Sheet snapshot. Removed rows leave current review work
+without establishing financial zero or retracting business/Sent/date history.
+Retain the exact warning record as archived with a reason; reappearing rows are
+evaluated anew rather than treated as permanently acknowledged.
+
+Confirmed closure uses exact internal Hotel/Account/Invoice IDs, the durable
+verified-zero ledger and current verified/cleared zero state. Missing Folio alone
+is not a contradiction. Use the latest independently recorded provider identity,
+not a stale warning hint or old matched identity. Known identity contradictions,
+an unmatched nonempty Account without full corroboration, and compatible active
+or unknown debt still block closure. Positive-debt matching/writing rules remain.
+
+Status counts and pagination share a current-only projection, hiding confirmed
+closure immediately between synchronization cycles. Completed membership archives
+inactive records. An already-open administrator review refreshes when the status
+epoch changes and resets old cursors; staff still sees last-success timestamp only.
+No provider date write, resend, financial amount change or Aging Master change is
+part of this warning-lifecycle repair.
+
 ## 2026-10-25 — Invoice-local Sheet credit and administrative synchronization details
 
 The owner approves blank S being filled from the current Account credit rule;

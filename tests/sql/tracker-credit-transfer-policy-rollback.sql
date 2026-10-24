@@ -74,7 +74,7 @@ begin
  update public.ar_invoices set open=0,verification_state='cleared',synced_at=now() where hotel='TSAN' and account_id=scope||'-moved' and id='new-i';
  perform public.ar_tracker_membership(actor,'khao-lak',lease,jsonb_build_array(scope));
  if exists(select 1 from ar_private.tracker_conflicts where region='khao-lak' and row_key=scope and status='pending') then raise exception 'source-confirmed closed invoice still has pending warnings';end if;
- if not exists(select 1 from ar_private.tracker_conflicts where region='khao-lak' and row_key=scope and field='AB' and status='resolved') then raise exception 'retired warning audit was deleted';end if;
+ if not exists(select 1 from ar_private.tracker_conflicts where region='khao-lak' and row_key=scope and field='AB' and status='archived' and retirement_reason='verified_zero') then raise exception 'retired warning audit was deleted';end if;
  -- A rowKey reused for a different Invoice cannot borrow old zero evidence.
  r:=jsonb_set(r,'{invoiceNo}','"SYNTH-OTHER-INVOICE"');perform public.ar_tracker_snapshot(actor,'khao-lak',lease,jsonb_build_array(r));
  perform public.ar_tracker_membership(actor,'khao-lak',lease,jsonb_build_array(scope));
