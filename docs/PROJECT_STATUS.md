@@ -1,4 +1,70 @@
+## 2026-10-25 — Combined release: Sent rows, activity refresh and regional self CC
+
+**Implemented, tested, deployed and enabled together.** Production health readback
+confirms source `8f519891ca780b33ea9049d5c63dd9893bdf195d`, Worker
+`fdec8b36-fee2-4823-8c71-13aae12bb52f`. Live HTML and all 56 qualified JS/WASM/CSS
+assets match. Git ancestry explicitly includes self-CC `893c28d`, activity refresh
+`2a20741`, and the later native endpoint/style/owner-review fixes; the combined
+release does not replace the site with either older worktree snapshot. Source
+and verification evidence are retained in Git and this record independently of
+the two source chats. The owner chose to delete those chats themselves after
+stopping app control; no successful chat deletion is claimed here.
+
+- Regional self CC is now live: required self CC is combined with saved Account CC
+  without duplication. Automatic recipients remain and the redundant Load account
+  recipients button is removed. Existing delivery snapshots are preserved.
+- Activity-driven OPERA refresh remains live: active users cover all authorized
+  regions, shared five-minute optional work, preserved 07:00/19:00 runs, account
+  batching, idle handling and fast independent Sheet synchronization.
+- Missing confirmed-Sent rows are appended to the original trackers with durable
+  plans and readback. Existing exact rows, staff edits and cleared date cells are
+  not backfilled. Transient preflight failures, explicit 429 rejection and Phuket
+  CAS 412 can retry; unknown mutations remain readback-only rather than risking
+  another insertion after an external Aging Master rebuild. New invalid/ambiguous
+  source or alias/identity conflicts hold visibly for review. No resend is involved.
+
+**Actual ten-row recovery completed.** All ten private append jobs are written;
+fresh original native Sheet readback finds exactly one correct-account row per
+invoice. Three dates are 23 October and seven are 24 October, matching immutable
+actual Sent evidence. After verifying the new ITS rows, the exact three closed
+old GO rows were removed as explicitly authorized. The complete pre-change
+recovery copy and exact removal proof are private; no business/Sent history was
+deleted. All 143 Sent events retain the same fingerprint.
+
+Preservation readback compared 1,360 remaining original keyed data rows: no
+semantic change to staff tracking, formats or notes, including 4,985 blank date
+cells. Google Sheets adjusted 21 existing `=G{row}+1` date formulas to their moved
+invoice rows after the authorized three-row deletion; each still refers to the
+same invoice posting date. Neither formulas nor blanks were restored from Sent.
+The owned synthetic provider fixture was deleted by its exact created ID; the
+recovery copy is retained. Private evidence: `.tmp/tracker-append-20261025/`.
+
+Verification on the combined source: **4,548 unit tests / 336 files**, TypeScript
+and production build pass. Browser verification covers **113 cases**: 87 initial
+passes, 21 conversation reruns after explicitly mocking the newly legitimate
+authenticated activity heartbeat, and five additional activity/background cases.
+No product assertion or visual baseline was relaxed; generated screenshots stay
+private and original tracked images were restored. All 127 then-local migrations
+and 19 tracker rollback fixtures passed before integrating the already-qualified
+activity migration. Independent source/merge review found no material issue.
+
+Both complete existing Aging Master build/restore/candidate/readback validation
+flows ran on owned synthetic Phuket and Khao Lak copies (including LFS). Appended
+R/U/W dates survive row moves and existing cleared blanks stay blank. The actual
+mixed 49-XF style case reproduced a parser failure and passed after its narrow
+lazy-match fix. Aging Master itself is unchanged; it still regenerates derived T
+from posting date according to its existing behavior. No original updater run,
+test email, provider draft, OPERA accounting mutation or paid resource was used.
+
+Hosted versions: activity `20261024180635`, Sent append `20261024181200`, exact
+reviewed quarantine restoration `20261024182021`. Both append policies are enabled;
+older suppressed work remains terminal except the exact ten reviewed IDs. The
+paused full financial publisher/LFS-only updater experiment remains paused.
+
 ## 2026-10-25 — Activity-driven OPERA refresh and fewer durable steps
+
+Individual release checkpoints below are historical; the combined release above
+is the current live status.
 
 - Owner follow-up changes active scope from the viewed region to every authorized region of the active user. Backend uses the full verified grant; viewed-region admission and database membership checks remain. Dual-region/admin activity keeps all six hotels eligible, single-region staff retain only their region. No new schema/resource/RPC or client-rights payload added. Three scope cases reproduced the old behavior RED before the update; independent review found no material issue.
 - **Rights-scope follow-up deployed/enabled:** Worker `e718db48-1d78-4439-af6e-f6f08c9a089d`, source `dcbdf3f3ba0039e0a93a0a3072cbc7cccae3da4d`. Preserved concurrently deployed tracker source `8a33b9f` (previous Worker `2fc49ccf-9562-44a0-8c4c-2c4c168c02c9`) by merging both implementations; did not revert its confirmed-Sent row append. Final combined 4,530 tests/335 files, 62 focused scope/access cases and production build pass. Initial four-worker run hit an unchanged native-hint test's five-second timeout; final two-worker full run passed without relaxing assertions/deadlines. Hosted all-authorized-region touch assertion passed and rolled back. Health200/database_verified, activity route401 and all42 other runtime bindings verified unchanged. Daily cron/Sheet/idle rules remain.
@@ -10,7 +76,8 @@
 
 ## 2026-10-25 — Regional self CC and simpler recipient preparation
 
-**Implemented and tested locally; not deployed or enabled on the live site.**
+**Historical local checkpoint; subsequently integrated, deployed and enabled in
+the combined release recorded above.**
 Work is isolated in the managed `default-self-cc` worktree on
 `codex/default-self-cc-20261025`, based on `aff8494`, rather than the older branch
 in the original checkout. The baseline EmailComposer file was also compared with
