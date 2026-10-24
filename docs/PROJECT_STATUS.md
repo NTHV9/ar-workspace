@@ -1,3 +1,10 @@
+## 2026-10-25 — Activity-driven OPERA refresh and fewer durable steps
+
+- Owner authorizes activity-gated five-minute current refresh, account batching, preserved 07:00/19:00 Thai runs/fast Sheet synchronization and saved-first rendering. Implemented private six-minute actor/hotel activity leases, minute visible/recent-use heartbeats, ten-minute idle handling and immediate stale-on-open wake. Generic Sheet/Gmail background work never renews OPERA activity.
+- New refresh instances use ten-account steps with three independent reads and exact staged-ID retry recovery; legacy instances retain their durable layout. Keep complete identity/pagination/zero proof, shared hotel locks and atomic publication. Existing document/history live reads and two Workflow slots remain. Synthetic 30-account comparison: 30→3 checkpoints, 60 unchanged source reads, 3,000→2,400 ms; not a live speed or monthly-cost guarantee.
+- Release is based on actual 24 October deployed source `3d71988` (Worker `5ab7acc4-ffa0-4fa0-9ca3-7a1a12eb6129`), including latest fast native Sheet probing and quarantine UI. Preserved the later owner-pause documentation; no paused experiment restored. The old runtime COMMIT_SHA binding was stale, so exact Worker release evidence was used instead.
+- Latest-base 4,471 unit tests/330 files, TypeScript, production build and Worker dry-run pass; local PostgreSQL activity/ACL/retry fixture passes after its RED check. Independent reviewer finding repaired with three RED→GREEN wake tests; latest-base review has no additional material findings. Actual deployment/enablement still pending at this checkpoint. [Evidence, choices and limits](ACTIVE_OPERA_REFRESH_20261025.md).
+
 ## 2026-10-25 — Owner paused replacing Aging Master
 
 The owner withdrew the web financial-publisher/LFS-only updater change before
