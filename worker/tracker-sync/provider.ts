@@ -5,7 +5,7 @@ import type {RegionId} from '../../src/domain/hotels';
 import type {TrackerAdapter,TrackerEnv,ProviderSnapshot,ProviderWrite} from './service';
 import {prepareTrackerWorkbook,readTrackerSentRowContext,appendTrackerSentRows,type TrackerCellChange,type TrackerSentSourceCell} from './workbook';
 import {readNativeTracker,readNativeTrackerChangeHint,writeNativeTrackerBatch} from './native';
-import {appendNativeTracker} from './append-native';
+import {appendNativeTracker,readNativeAppendSheetId} from './append-native';
 import type {SentAppendInput,SentAppendResult} from './append';
 
 const XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',NATIVE='application/vnd.google-apps.spreadsheet';
@@ -102,12 +102,8 @@ export async function appendSentTrackerRow(env:TrackerEnv,owner:string,region:Re
   if(region==='khao-lak'){
    if(env.TRACKER_NATIVE_BEST_EFFORT_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
    const meta=await metadata(token,region,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict',mutationStarted:false};
-   const structure=await readJson(await check(await google('https://sheets.googleapis.com/v4/spreadsheets/'+fileId+'?fields=spreadsheetId,sheets(properties(sheetId,title))&prettyPrint=false',token)),65536);
-   if(structure.spreadsheetId!==fileId||!Array.isArray(structure.sheets))return {status:'conflict',mutationStarted:false};
-   const sheets=structure.sheets.filter((s:unknown)=>!!s&&typeof s==='object'&&(s as {properties?:{title?:string}}).properties?.title==='ลูกหนี้ เขาหลัก');
-   const gid=(sheets[0] as {properties?:{sheetId?:number}})?.properties?.sheetId;
-   if(sheets.length!==1||!Number.isSafeInteger(gid)||Number(gid)<0)return {status:'conflict',mutationStarted:false};
-   return appendNativeTracker(token,fileId,{sheetId:Number(gid),sheetTitle:'ลูกหนี้ เขาหลัก',metadataId:input.plan.metadataId,rowKey:input.plan.rowKey,identity:input.identity,values:input.plan.values,priorUncertain:input.priorUncertain});
+   const gid=await readNativeAppendSheetId(token,fileId);
+   return appendNativeTracker(token,fileId,{sheetId:gid,sheetTitle:'ลูกหนี้ เขาหลัก',metadataId:input.plan.metadataId,rowKey:input.plan.rowKey,identity:input.identity,values:input.plan.values,priorUncertain:input.priorUncertain});
   }
   if(env.TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
   const current=await readStable(token,region,fileId);if(!current.etag||current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true)return {status:'conflict',mutationStarted:false};

@@ -97,6 +97,14 @@ async function json(response:Response,max=16*1024*1024){
  if(!response.ok){await response.body?.cancel();throw Error('tracker_append_unavailable');}
  return readJson(response,max);
 }
+/** A fixed Sheets endpoint; do not route this through the Drive-only helper. */
+export async function readNativeAppendSheetId(token:string,fileId:string,fetcher:typeof fetch=fetch):Promise<number>{
+ const query=new URLSearchParams({fields:'spreadsheetId,sheets(properties(sheetId,title))',prettyPrint:'false'});
+ const structure=await json(await http(token,fileId,'?'+query,fetcher),65536);
+ if(structure.spreadsheetId!==fileId||!Array.isArray(structure.sheets))return conflict();
+ const sheets=(structure.sheets as Sheet[]).filter(s=>s.properties?.title===TITLE),id=sheets[0]?.properties?.sheetId;
+ if(sheets.length!==1||!Number.isSafeInteger(id)||Number(id)<0)return conflict();return Number(id);
+}
 async function snapshot(token:string,file:string,plan:NativeAppendPlan,fetcher:typeof fetch):Promise<Snapshot>{
  const projection=await occupiedProjection(token,file,fetcher),keys=projection.keys,extent=projection.extent,rows=new Map<number,GridCell[]>();
  let rowCount:number|undefined,retained=0;
