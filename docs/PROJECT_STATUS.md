@@ -53,8 +53,20 @@ and backend suite; no real staff permissions/session was changed to simulate the
 The 143 actual Sent records and all 2,016 present rows' R/U/V/W values have the
 same before/after fingerprints. Some historical warnings with contradictory Folio
 or unresolved source identity intentionally remain for review; no financial zero
-was inferred to make the warning count disappear. Final release metadata and
-completion counts are recorded after the release readback.
+was inferred to make the warning count disappear.
+
+**Final readback:** source `bca120983611b53b88cd7fcfde5861d8a9ad1736`, Worker
+`19ec17ec-a9c3-439b-ac9c-7b6724675624`, health OK / database verified / OPERA
+connected. All 55 qualified asset hashes match. All 725 initial blank S intents
+are written and read back: Phuket 231, Khao Lak 494; no pending/uncertain credit
+intent or date write remains. Both original bindings last synchronized without
+error. The final fingerprints of all 2,016 present rows' R/U/V/W values and all
+143 Sent records exactly equal their pre-release fingerprints. Pending warning
+fields reduced from Phuket 10,766 / Khao Lak 5,184 to 2,395 / 1,328 through policy
+retirement and verified reconciliation; remaining identity contradictions are
+retained for administrator review, not declared harmless or financially zero.
+Private aggregate evidence: `.tmp/tracker-policy25/completion-proof.json` and
+`live-assets-proof.json`; no customer documents or recipient data were committed.
 
 ## 2026-10-25 — Combined release: Sent rows, activity refresh and regional self CC
 

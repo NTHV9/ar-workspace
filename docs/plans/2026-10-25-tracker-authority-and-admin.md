@@ -24,7 +24,12 @@ Owner approved all four policies and deployment after testing on 25 October 2026
 - Hiding UI without removing backend data access is insufficient.
 
 ## Progress
-- Planning, implementation, qualification and live deployment: complete; final release readback ongoing.
+- Planning, implementation, qualification, deployment and final readback: complete.
+- Final release bca1209 / Worker 19ec17ec-a9c3-439b-ac9c-7b6724675624; 55 live
+  asset hashes match. All 725 initial S fills are written, no credit/date intent
+  remains pending or uncertain, and 2,016 source-date rows plus 143 Sent records
+  retain their before/after fingerprints. Tests: 4,623 unit cases, 40 browser
+  cases, 131 migration replay and 21 rollback fixtures; fresh review clean.
 - Fresh reviews found and fixed echo continuity, source candidate ambiguity,
   current identity retirement, Preview parity, uncertain post-upload readback and
   native fresh-read tuple races; all have behavior regression coverage.
