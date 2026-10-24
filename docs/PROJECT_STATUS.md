@@ -1,6 +1,6 @@
 ## 2026-10-24 — Gmail attachment filename fallback evidence repair
 
-**Implemented and locally verified; production deployment pending.** A staff
+**Implemented, tested and deployed.** A staff
 delivery was independently present in Gmail Sent with the intended recipients.
 Both actual attachment byte lengths and SHA-256 digests matched its frozen
 preparation, but Gmail exposed our ASCII MIME fallback filename instead of the
@@ -23,6 +23,13 @@ and independent code review found no blocking issue. A read-only replay of the
 actual existing Sent message, frozen full envelope/body and both original
 attachment bytes passes the patched verifier. Real customer data remained in
 memory/private tool context, outside Git. No hosted SQL migration was applied.
+
+Runtime source 409871e was deployed with existing runtime variables preserved
+as Worker `64b10c69-278d-4e3b-9571-c0c4fc4773db`. Its only runtime delta from
+the previous production source is the three email filename/evidence files;
+financial/PDF generation, UI assets and database schemas are unchanged. The
+existing delivery can be reconciled through its normal Check sent status path;
+diagnostic replay did not call confirmation RPCs or modify real Invoice history.
 
 ## 2026-10-24 — Full PDF Workspace and Google Sheet CI expansion
 
