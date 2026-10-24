@@ -27,4 +27,8 @@ New refresh instances select batching version 2: ten accounts per durable step, 
 
 ## Release status
 
-Implemented and locally tested. Hosted migration/application rollout and actual runtime readback are recorded separately when verified; no email or original Sheet/OPERA accounting write is part of release verification.
+Implemented, tested, deployed and enabled on the existing resources. Hosted migration `20261024180635_ar_refresh_activity_batches` is applied. Worker version `d95d4009-6600-4ccc-a6b2-ad6c82594217` serves source `0f96efd8fd199ac922ac3503e333a64dfeea5600`. Health returns200/database_verified, six existing anonymous boundaries and both methods of the new activity route return401. All 41 bindings other than COMMIT_SHA match their previous descriptors/plain values; four Workflows and original cron expressions remain.
+
+Actual hosted activity touch/readback assertions pass inside a transaction that is rolled back; RLS, service-only RPC grants and denied direct activity-table inserts are verified. At01:11 ICT, activity rows/active hotels are empty and zero optional open-refresh runs were created since01:10. This is a bounded idle observation, not a claim that every future cron execution has been monitored.
+
+All six browser cases pass against the actual deployed public assets with synthetic intercepted business APIs. The signed-in Edge browser was closed during work, so actual authenticated employee wake latency/OPERA import duration was not measured. No email, original Sheet edit or OPERA accounting write was performed for verification. Real monthly savings must be assessed from later metered usage.
