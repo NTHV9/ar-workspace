@@ -24,8 +24,11 @@ Do not change the stricter positive-debt matching/publication rules.
 Progress: implemented, qualified and deployed. Full unit4623, browser41 and
 disposable SQL133/22 passed; production build and fresh review passed. Live current
 warnings3723→140; no removed or confirmed-closed rows remain in current review.
-Source dates2016 and actual Sent143 fingerprints are unchanged. Final metadata
-and repeat-poll stability readback ongoing.
+Source dates2016 and actual Sent143 fingerprints are unchanged. Final source5d15bc7
+and Worker e797df77-dc51-4c2d-a910-4a76903696d3 verified; live assets55 match and
+status/page counts agree. A complete post-guard repeat synchronization of both
+original bindings preserves archive count3900 without making new closed warnings.
+All implementation, testing, deployment and verification tasks are complete.
 
 Ruling: an unresolved snapshot retains its prior mapped ledger, so separately
 record current observed identity on every row, including failed matches. Historical

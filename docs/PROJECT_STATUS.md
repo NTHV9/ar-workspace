@@ -43,7 +43,17 @@ details; none is linked to a verified/cleared zero Invoice. Source dates for all
 2,016 present rows and all 143 actual Sent records retain their pre-change
 fingerprints; pending date writes remain zero. No mail was sent, no original Sheet
 date was intentionally changed, and Aging Master remains unchanged. Final release
-metadata and unchanged-repeat readback are recorded after the last deployment.
+metadata and unchanged-repeat readback follow.
+
+Final source `5d15bc76c0648a234161d041449ab5ae25860037`, Worker
+`e797df77-dc51-4c2d-a910-4a76903696d3`: health OK / database verified / OPERA
+connected; all 55 qualified asset hashes match. Authenticated live Review displays
+the new current-only explanation, and status/page RPC counts agree at Phuket 36
+and Khao Lak 104. Both original bindings completed a post-guard sync without
+error; unchanged closed-row warning history stayed at 3,900 records across that
+repeat readback. The 2,016 source-date rows and all 143 Sent records have identical
+pre/post fingerprints. No known-zero or absent row appears in current review.
+Private aggregate proof: `.tmp/tracker-policy25/warning-lifecycle-final-proof.json`.
 
 ## 2026-10-25 — Sheet credit authority, safe Account moves and administrator details
 
