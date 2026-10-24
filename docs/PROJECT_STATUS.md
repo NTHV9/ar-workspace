@@ -1,3 +1,32 @@
+## 2026-10-24 — Native projected-value hints bypass lagging Drive versions
+
+**Implemented and tested; final Worker/live timing pending.** Real native Undo
+tests showed that committed cell values can precede Drive version changes by up
+to minutes. Version-only probing therefore cannot guarantee prompt native edits.
+The Khao Lak hint now reads a fixed six-range primitive-value projection directly
+from the original native Sheet (headers, hotel/account/invoice/folio/base date,
+R–AC mapped fields and stable keys), after existing identity/metadata checks.
+Unused guest/financial columns are excluded. Responses are capped at 1 MiB and
+canceled on overflow; size-only fallback retains the pinned Drive version path.
+Schema/authorization errors fail closed. Original Phuket XLSX stays metadata-only
+and necessarily waits for Google to save the actual file.
+
+The projection is never imported as business facts. Only a private opaque
+96-bit SHA-256-derived, 30-digit equality hint persists. The complete typed reader
+still validates every business/date/identity rule before publication. A restored
+value can produce an older fingerprint; SQL fixture regression 1 → 2 → 1 proves
+each difference queues exactly once without assuming monotonic versions. No new
+migration, permissions, credentials, resources or paid service was needed.
+
+Verification: 4,439 tests across 328 files pass with bounded local parallelism;
+focused native-hint/provider and existing native suites pass; production typecheck
+passes. All 124 local migrations / 17 SQL fixtures pass with the non-monotonic
+regression. Independent review found no blocker. Native probes now include one
+Sheets values request per eligible shared check (about 12/minute at five seconds),
+plus existing identity/metadata calls; earlier metadata-only descriptions are
+historical for the preceding releases, not this native path. Hidden pages retain
+their existing no-poll behavior. Final live timing/restoration remains required.
+
 ## 2026-10-24 — Bounded native-grid read optimization
 
 **Implemented and tested; final Worker/live read qualification pending.** Small

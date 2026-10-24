@@ -5,8 +5,9 @@ import {readTrackerFileVersion} from './provider';
 import {trackerFile} from './service';
 import {dispatchTrackerWakes,type TrackerWatchEnv} from './watch';
 
-/** Visible tabs request hints; a DB lease/cooldown shares the provider metadata
- * read across all tabs and users. Unchanged versions never load sheet content. */
+/** Visible tabs request hints; a DB lease/cooldown shares provider probes across
+ * tabs/users. XLSX uses metadata, native uses a bounded tracked-value projection.
+ * Unchanged hints never enqueue a new full validated sheet read. */
 export async function probeTrackerVersions(env:TrackerWatchEnv,owner:string,regions:readonly RegionId[]):Promise<void>{
  if(env.TRACKER_SYNC_ENABLED!=='true'||env.TRACKER_PUSH_ENABLED!=='true'||writesHeld(env)||regions.some(r=>!isRegionId(r)))return;
  await Promise.allSettled([...new Set(regions)].map(async region=>{

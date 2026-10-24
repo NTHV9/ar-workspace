@@ -44,6 +44,13 @@ to one row per region and has no financial/history fields.
 
 ## Tasks
 
+Native correctness ruling: live Undo can commit native values before Drive's
+version catches up. Use one bounded (1 MiB) fixed projected-values batchGet for
+the native hint, keeping XLSX metadata-only. Persist only an opaque 30-digit
+equality fingerprint compatible with existing SQL; it is not authoritative data
+and not a monotonic provider version. Full typed validation remains mandatory.
+Size-only fallback preserves old Drive monitoring. No further schema required.
+
 Final bounded read ruling: the ordinary native adapter's serial 200-row reads
 still contribute to visible latency. For occupied grids up to 2,000 rows, use a
 single complete typed-grid read plus the same two key checks, retaining all

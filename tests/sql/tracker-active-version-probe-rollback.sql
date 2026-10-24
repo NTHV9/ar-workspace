@@ -53,12 +53,25 @@ declare o uuid:=ar_private.access_owner();l uuid:=gen_random_uuid();bad boolean:
  insert into ar_private.access_members select m.*;
 end $$;
 do $$
+declare o uuid:=ar_private.access_owner();l uuid;r jsonb;g bigint;v text;begin
+ -- Fingerprints are equality tokens: undo may restore an earlier, lower value.
+ -- Exercise 1 -> 2 -> 1 without imposing any monotonic ordering on the token.
+ foreach v in array array['1','2','1'] loop
+  select generation into g from ar_private.tracker_wakes where region='phuket';
+  update ar_private.tracker_probe_state set last_checked_at=now()-interval '6 seconds' where region='phuket';
+  l:=gen_random_uuid();r:=public.ar_tracker_probe_claim(o,'phuket',l);
+  if r->>'status'<>'claimed' then raise exception 'fingerprint claim';end if;
+  r:=public.ar_tracker_probe_finish('phuket',l,v);
+  if r->>'status'<>'changed' or (select prior_version from ar_private.tracker_probe_state where region='phuket')<>v or (select generation from ar_private.tracker_wakes where region='phuket')<>g+1 then raise exception 'restored fingerprint must enqueue exactly once';end if;
+ end loop;
+end $$;
+do $$
 declare o uuid:=ar_private.access_owner();l uuid:=gen_random_uuid();r jsonb;g bigint;begin
  -- A consumed wake is no longer a dispatch hint; unchanged still does not enqueue.
  update ar_private.tracker_wakes set consumed=generation where region='phuket';
  select generation into g from ar_private.tracker_wakes where region='phuket';
  update ar_private.tracker_probe_state set last_checked_at=now()-interval '6 seconds' where region='phuket';
- perform public.ar_tracker_probe_claim(o,'phuket',l);r:=public.ar_tracker_probe_finish('phuket',l,'999');
+ perform public.ar_tracker_probe_claim(o,'phuket',l);r:=public.ar_tracker_probe_finish('phuket',l,'1');
  if r->>'status'<>'unchanged' or r->>'id' is not null or (select generation from ar_private.tracker_wakes where region='phuket')<>g then raise exception 'consumed hint or churn';end if;
  -- This fixture created no sheet rows/history/channels. Remove only its synthetic wake
  -- so existing durable-queue FK protection is preserved while testing cache cascade.
@@ -67,8 +80,3 @@ declare o uuid:=ar_private.access_owner();l uuid:=gen_random_uuid();r jsonb;g bi
  if exists(select 1 from ar_private.tracker_probe_state where region='phuket') then raise exception 'probe cache did not cascade';end if;
 end $$;
 rollback;
-
-
-
-
-
