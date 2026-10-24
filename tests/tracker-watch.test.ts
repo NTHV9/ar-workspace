@@ -1,4 +1,5 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {trackerWatchCallback,ensureTrackerWatch,dispatchTrackerWakes,runTrackerWake} from '../worker/tracker-sync/watch';
 import {backendRpc} from '../worker/refresh/backend';
 import {driveToken} from '../worker/drive/oauth';
@@ -16,6 +17,13 @@ const request=(h=headers)=>new Request('https://ar-workspace.ar-c82.workers.dev/
 beforeEach(()=>{vi.resetAllMocks();create.mockResolvedValue({});get.mockResolvedValue({status:async()=>({status:'running'})});vi.mocked(driveToken).mockResolvedValue('private-test-token');vi.mocked(identity).mockResolvedValue('ar@katathani.com');});
 afterEach(()=>vi.restoreAllMocks());
 describe('tracker file notification boundary',()=>{
+ it('accepts a verified edit notification under the actual shipped runtime defaults',async()=>{
+  const shipped=JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8')) as {vars:Record<string,string>};
+  vi.mocked(backendRpc).mockImplementation(async(_e,name)=>name==='ar_tracker_watch_notify'?{status:'accepted',id,region:'phuket'}:[{id,region:'phuket'}]);
+  const response=await trackerWatchCallback(request(),{...env,...shipped.vars});
+  expect(response.status).toBe(204);
+  expect(create).toHaveBeenCalledWith({id,params:{id}});
+ });
  it('commits a verified notification before acknowledgement and dispatches only persisted IDs',async()=>{
   vi.mocked(backendRpc).mockImplementation(async(_e,name)=>name==='ar_tracker_watch_notify'?{status:'accepted',id,region:'phuket'}:[{id,region:'phuket'}]);
   const tasks:Promise<unknown>[]=[];const response=await trackerWatchCallback(request(),env,{waitUntil:p=>tasks.push(p)});await Promise.all(tasks);

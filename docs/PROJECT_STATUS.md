@@ -1,3 +1,23 @@
+## 2026-10-24 — Restore approved tracker push/runtime flags
+
+**Implemented and locally tested; deployment/live latency test pending.** The
+owner requests prompt Sheet-to-web updates after the live clear test revealed
+six-minute fallback latency. Immutable version inspection confirms tracked false
+Wrangler defaults overwrite the previously approved live true push and native
+writeback flags, despite `--keep-vars`; the same failure was documented and
+temporarily corrected on 19 October. Restore the two approved flags in deployment
+source so future releases do not repeat that overwrite.
+
+Two regressions project the actual shipped variables into the real notification
+callback and native write boundary. Before the fix, the verified callback returned
+503 and an otherwise-qualified native date write returned conflict; after the
+flag restoration, both pass. All 4,388 tests across 324 files and production
+build/typecheck pass. Independent review found no blocker. Existing channel-token
+verification, exact original file identity, row identity, lease/coalescing,
+conditional Phuket writes, native uncertainty handling and fallback cron remain
+unchanged. No application code, schema, OAuth scopes, sharing, costs or resources
+are added. Live binding comparison and reversible live timing remain required.
+
 ## 2026-10-24 — Live Sheet billing-date clear/restore test
 
 **Tested against one owner-authorized KAT invoice; all original row values

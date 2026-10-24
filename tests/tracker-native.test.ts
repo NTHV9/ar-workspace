@@ -1,4 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {trackerHeaders} from '../worker/tracker-sync/workbook';
 import {trackerAdapter,writeTrackerBatch} from '../worker/tracker-sync/provider';
 import {readNativeTracker} from '../worker/tracker-sync/native';
@@ -183,6 +184,12 @@ it.each(['during-grid','after-grid','missing-grid','wrong-gid','wrong-offset'] a
  await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow();expect(state.posts).toHaveLength(0);
 });
 it('publishes only numeric date values at freshly matched identity, preserving all other cell metadata',async()=>{const state=fake(),before=structuredClone(state.value);expect(await writeTrackerBatch(env,owner,'khao-lak',file,[input()])).toMatchObject({status:'written'});expect(state.posts).toHaveLength(1);const requests=state.posts[0].requests as {updateCells:{start:{sheetId:number;rowIndex:number;columnIndex:number};fields:string;rows:{values:{userEnteredValue:{numberValue:number}}[]}[]}}[];expect(requests.map(r=>[r.updateCells.start,r.updateCells.fields])).toEqual([17,20,21,22].map(columnIndex=>[{sheetId:9,rowIndex:2,columnIndex},'userEnteredValue']));for(const r of requests){expect(Number.isInteger(r.updateCells.rows[0].values[0].userEnteredValue.numberValue)).toBe(true);before.sheets[0].data[0].rowData[2].values[r.updateCells.start.columnIndex].userEnteredValue=r.updateCells.rows[0].values[0].userEnteredValue;}expect(state.value).toEqual(before);});
+it('keeps the owner-approved native date writeback available under shipped runtime defaults',async()=>{
+ const shipped=JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8')) as {vars:Record<string,string>};
+ const state=fake();
+ expect(await writeTrackerBatch({...env,...shipped.vars},owner,'khao-lak',file,[input()])).toMatchObject({status:'written'});
+ expect(state.posts).toHaveLength(1);
+});
 it('is disabled by default and formulas/identity mismatches never publish',async()=>{const state=fake();expect(await writeTrackerBatch({...env,TRACKER_NATIVE_BEST_EFFORT_ENABLED:undefined},owner,'khao-lak',file,[input()])).toEqual({status:'conflict'});expect(state.posts).toHaveLength(0);const formula=fake({formula:true});expect(await writeTrackerBatch(env,owner,'khao-lak',file,[input()])).toMatchObject({status:'conflict'});expect(formula.posts).toHaveLength(0);const wrong=input();wrong.expectedIdentity.invoiceNo='1';const identity=fake();expect(await writeTrackerBatch(env,owner,'khao-lak',file,[wrong])).toMatchObject({status:'conflict'});expect(identity.posts).toHaveLength(0);});
 it.each([{lost:true},{changeIdentity:true}])('response loss or changed readback identity is uncertain with exactly one POST: %j',async option=>{const state=fake(option);expect(await writeTrackerBatch(env,owner,'khao-lak',file,[input()])).toMatchObject({status:'uncertain'});expect(state.posts).toHaveLength(1);});
 it('accepts observed merged Property A1 header and resolves moved key under a new gid',async()=>{const state=fake({move:true}),rows=state.value.sheets[0].data[0].rowData;rows[0].values=[rows[1].values[0]];rows[1].values[0]={};expect(await writeTrackerBatch(env,owner,'khao-lak',file,[input()])).toMatchObject({status:'written'});expect(state.posts[0]).toMatchObject({requests:Array.from({length:4},()=>({updateCells:{start:{sheetId:77,rowIndex:3}}}))});});
