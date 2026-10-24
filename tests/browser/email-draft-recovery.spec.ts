@@ -1,8 +1,9 @@
+import {currentWorkspaceSession,openWorkspaceRoute} from './fixtures/workspace-route';
 import {test,expect,type Page} from '@playwright/test';
 import {policyFixture} from './fixtures/collection-policy';
 const jobId='00000000-0000-4000-8000-000000000001',draftId='00000000-0000-4000-8000-000000000002',deliveryId='00000000-0000-4000-8000-000000000003';
 async function setup(page:Page,stage='Friendly',stageLabel='Friendly',missingReceipt=false){
- const user={id:'synthetic-draft-recovery-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'},calls:string[]=[];
+ const user={id:'00000000-0000-4000-8000-000000000803',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'},calls:string[]=[];
  const exports=[{name:'Synthetic-reviewed.pdf',storage_key:`jobs/${jobId}/exports/synthetic.pdf`,byte_count:1000,sha256:'a'.repeat(64)}];
  const job={id:jobId,lifecycle:'transient',hotel:'KAT',account_id:'example',account_name:'Synthetic draft recovery',invoice_ids:['1'],state:'ready',revision:4,acknowledged:true,files:[],exports};
  let delivery={id:deliveryId,state:missingReceipt?'review_required':'created',reason:missingReceipt?'gmail_receipt_missing':null,mode:'draft',stage,stageLabel,recorded:false};
@@ -18,7 +19,7 @@ async function setup(page:Page,stage='Friendly',stageLabel='Friendly',missingRec
   if(path==='/api/email/open')return r.fulfill({json:{id:draftId,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:'example',account_name:job.account_name,invoice_ids:['1'],purpose:'collection',recipients:{to:['recipient@example.test'],cc:[],bcc:[]},subject:'Synthetic collection subject',body:'Synthetic saved collection body',exports,attachments:[],revision:1,package_changed:false,gmail_handoff:delivery.state,delivery}});
   if(path===`/api/email/deliveries/${deliveryId}/check`){delivery={...delivery,state:'review_required',reason:'gmail_receipt_missing'};return r.fulfill({json:delivery});}
   return r.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});
- });await page.goto(`/?documentJob=${jobId}&compose=1`);await expect(page.getByLabel('Email message')).toBeVisible();return calls;
+ });await currentWorkspaceSession(page,user);await openWorkspaceRoute(page,`/?documentJob=${jobId}&compose=1`);await expect(page.getByLabel('Email message')).toBeVisible();return calls;
 }
 for(const [stage,label] of [['Friendly','Friendly'],['round_retired','Original retired reminder']])test(`a reopened collection Gmail Draft displays its locked ${stage} stage`,async({page})=>{
  const calls=await setup(page,stage,label);const selection=page.getByLabel('Collection stage');await expect(selection).toBeDisabled();await expect(selection).toHaveValue(stage);await expect(selection.locator('option:checked')).toHaveText(label);

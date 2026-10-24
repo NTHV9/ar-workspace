@@ -19,7 +19,9 @@ begin
  result:=public.ar_tracker_confirm_preview(actor,'phuket',preview,repeat('c',64),'synthetic-ledger-v1');
  if result->>'confirmed'<>'true' or result->>'imported'<>'1' then raise exception 'ledger atomic import incomplete';end if;
  if (select last_reminder_stage from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='A')<>'Follow 2' then raise exception 'same-day stage priority changed';end if;
- if exists(select 1 from ar_private.tracker_history where account_id=scope and invoice_id<>'A') then raise exception 'held or following row inherited history';end if;
+ -- A uniquely matched blank Sheet row now records null authority dates. The
+ -- held source must still receive no history and the next row no dated fact.
+ if exists(select 1 from ar_private.tracker_history where account_id=scope and (invoice_id='HELD' or invoice_id='NEXT' and actual_date is not null)) then raise exception 'held or following row inherited dated history';end if;
  if exists(select 1 from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id<>'A' and first_billing_date is not null) then raise exception 'held or following row inherited billing';end if;
  if exists(select 1 from ar_private.tracker_rows where region='phuket' and row_key='SYNTH-LEDGER-NEXT' and (baseline->>'R' is not null or baseline->>'AB' is not null or baseline->>'AC' is not null)) then raise exception 'baseline accumulator leaked across held row';end if;
  if public.ar_tracker_confirm_preview(actor,'phuket',preview,repeat('c',64),'synthetic-ledger-v1')->>'replayed'<>'true' then raise exception 'ledger confirmation replay changed';end if;

@@ -1,3 +1,52 @@
+## 2026-10-24 — Full PDF Workspace and Google Sheet CI expansion
+
+**Implemented on the current branch; committed-head GitHub qualification is the
+activation gate.** The owner explicitly paused the actual staff Sent/Sheet case
+and requested completion of whole-workflow CI coverage first. No hosted migration,
+production provider action, email, Sheet/date correction or app deployment was
+performed in this task. Deployed app remains ff88342 / Worker ae0fe3e8-d9ee-4da0-9f03-77ac06fea644.
+
+The browser selection retains all previous342 cases and now collects454 cases
+across40 files. It includes full document preparation/cleanup/review handoff,
+PDF package/session/batch workflows, original-field edits and all mapped Sheet
+UI/background paths. Detailed feature-to-test and field-authority maps are in
+`docs/CI_WORKFLOW_COVERAGE_20261024.md`.
+
+Local qualifications:49 DocumentRoute cases,27 email/supplemental/recovery cases,
+5 joined batch cases with actual reviewed-byte account isolation,52 Sheet UI cases,
+161 focused Sheet units,123 ordered migrations and16 real local SQL fixtures,
+and10 actual subprocess isolation guards pass. Fullunit run4356/323 files passes;
+TypeScript, build and90 public asset checks pass. One earlier concurrent local
+unit run hit the existing5second limit during initial PDF parsing; the exact20
+case file and the full serial run passed without changing timeouts or source.
+
+The28-field catalog uses keyboard edits, Preview/export, fixed anchors, independent
+expected glyphs, a universal edited-region RGB difference limit of1 and exact
+unchanged neighbors. Native text from the actual edited snapshot is an additional
+semantic check. Source-font ink bounds prevent the reference itself clipping an
+adjacent line or leaving an original curved glyph's fringe. Wrong-glyph, black
+rectangle and gray-background real-PDF mutants fail. Final integrated/remote field
+results are recorded with the committed-head run rather than inferred from counts.
+
+New CI-only PostgreSQL17.6 service is loopback-published and independently attested
+by its GitHub-created container ID before SQL. The runner requires exact address,
+admin/bootstrap identity and freshness, scrubs inherited libpq/provider settings,
+creates only its random scratch database and cleans up only owned resources.
+Browser failures retain screenshots/traces and HTML/JSON reports; SQL failures
+retain only report.json and *-psql.log, never cluster/password files. Ubuntu24.04
+pins the already-qualified OS; no existing check was removed or skipped.
+
+Real SQL replay exposed the resolver's conflicting inner c alias. The new guarded
+migration20261024064334_ar_tracker_resolve_authority_alias changes only that alias
+and preserves grants/security/search_path. A behavioral fixture reproduces the
+old error before the migration and passes afterward. This fix is BRANCH-ONLY;
+it is not applied to the hosted database or used to resolve any real conflict.
+The local auth/storage stand-ins and mocked adapter RPC are explicitly separate
+from real Google/Supabase/OPERA/Gmail service verification.
+
+Final committed-head CI run and enabled-scope confirmation are posted to
+[PR #142](https://github.com/NTHV9/ar-workspace/pull/142) after remote verification.
+
 ## 2026-10-24 — Repository cleanup and broader PDF regression repair
 
 **Repository cleanup completed; editor fixes implemented and locally qualified.**

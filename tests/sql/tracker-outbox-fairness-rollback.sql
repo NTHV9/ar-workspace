@@ -13,7 +13,7 @@ begin
  update ar_private.tracker_bindings set bootstrap_confirmed=true,lock_id=lease,lock_until=now()+interval '10 minutes' where region='phuket';
  insert into ar_private.tracker_rows(region,row_key,hotel,account_id,invoice_id,identity,locator,sheet_values)
  select 'phuket','SYNTH-Q-'||n,'KAT',scope,'I'||n,jsonb_build_object('hotel','KAT','accountNo',scope,'invoiceNo','SYN-'||n,'folio','F'||n),'{}','{"R":null}' from generate_series(1,102)n;
- insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(delivery,actor,'send','synthetic-queue-'||delivery,'{}','awaiting_evidence');
+ insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(delivery,actor,'send','synthetic-queue-'||delivery,'{"expected":{"mailbox":"phuket","sender":"ar@katathani.com"}}','awaiting_evidence');
  insert into public.ar_sent_events(delivery_id,owner,hotel,account_id,invoice_ids,purpose,stage,sent_at,gmail_id,open_at_send)
  values(delivery,actor,'KAT',scope,array(select 'I'||n from generate_series(1,102)n),'billing',null,now(),'synthetic-queue-'||delivery,10200);
  update ar_private.mail_deliveries set state='sent' where id=delivery;
@@ -26,7 +26,7 @@ begin
  perform public.ar_tracker_connect(actor,'khao-lak','synthetic_original_other_region_12345',0);
  update ar_private.tracker_bindings set bootstrap_confirmed=true,lock_id=other_lease,lock_until=now()+interval '10 minutes' where region='khao-lak';
  insert into ar_private.tracker_rows(region,row_key,hotel,account_id,invoice_id,identity,locator,sheet_values) values('khao-lak','SYNTH-KH-Q','TLKL',scope,'I101',jsonb_build_object('hotel','TLKL','accountNo',scope,'invoiceNo','SYN-101','folio','F101'),'{}','{"R":null}');
- insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(other_delivery,actor,'send','synthetic-other-queue-'||other_delivery,'{}','awaiting_evidence');
+ insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(other_delivery,actor,'send','synthetic-other-queue-'||other_delivery,'{"expected":{"mailbox":"khao-lak","sender":"ar@thesandskhaolak.com"}}','awaiting_evidence');
  insert into public.ar_sent_events(delivery_id,owner,hotel,account_id,invoice_ids,purpose,stage,sent_at,gmail_id,open_at_send) values(other_delivery,actor,'TLKL',scope,array['I101'],'billing',null,now(),'synthetic-other-queue-'||other_delivery,100);
  update ar_private.mail_deliveries set state='sent' where id=other_delivery;
  update ar_private.tracker_outbox set state='held',created_at=now()-interval '5 days',updated_at=now()-interval '5 days' where delivery_id=other_delivery;

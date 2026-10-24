@@ -11,7 +11,23 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Keep the currently qualified OS while ubuntu-latest changes independently.
+    runs-on: ubuntu-24.04
+    services:
+      tracker-postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: ar_ci_admin
+          POSTGRES_DB: ar_ci_bootstrap
+          # Disposable synthetic data only; reachable only on runner loopback.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U ar_ci_admin -d ar_ci_bootstrap"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -24,23 +40,38 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      - name: Verify isolated Google Sheet database service identity
+        run: node scripts/ci/verify-tracker-service.mjs
+        env:
+          AR_CI_SERVICE_CONTAINER: ${{ job.services['tracker-postgres'].id }}
+      - name: Verify Google Sheet SQL contracts in isolated PostgreSQL
+        run: node scripts/ci/verify-tracker-sql.mjs
+        env:
+          AR_CI_SERVICE: 'true'
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: ar_ci_admin
+          PGDATABASE: ar_ci_bootstrap
       - run: pnpm build
       - name: Verify public asset bundle
         run: node scripts/build-connector-deployment.mjs
       - name: Install browser for synthetic smoke tests
         run: pnpm exec playwright install --with-deps chromium
-      - name: Verify browser workflows with synthetic APIs
+      - name: Verify app, full PDF Workspace and Google Sheet workflows
         run: pnpm test:browser:smoke
       - name: Verify background refresh and parallel PDF loading
         run: pnpm exec playwright test --config playwright.performance.config.ts -g 'PDF performance|saved Aging is usable'
       - name: Verify publication polling and continuous Aging
         run: pnpm exec playwright test --config playwright.audit-fixes.config.ts
-      - name: Preserve browser failure report
+      - name: Preserve verification failure reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-smoke-report
+          name: verification-failure-report
           path: |
             playwright-report/
             test-results/
+            .tmp/coverage-sheet-sql/*/report.json
+            .tmp/coverage-sheet-sql/*/*-psql.log
+          include-hidden-files: true
           retention-days: 7

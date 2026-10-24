@@ -5,6 +5,7 @@
 import React from 'react';import {createRoot} from 'react-dom/client';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
 import {App} from '/src/App.tsx';
+import {loadSources,detectText} from '/src/pdf/engine.ts';
 import {tabAuthOptions} from '/src/access/tab-session.ts';
 import {policyFixture} from '../fixtures/collection-policy.ts';
 import '@fontsource/plus-jakarta-sans/latin-400.css';import '@fontsource/plus-jakarta-sans/latin-500.css';import '@fontsource/plus-jakarta-sans/latin-600.css';import '@fontsource/plus-jakarta-sans/latin-700.css';
@@ -103,5 +104,6 @@ window.fetch=async(input,init={})=>{
  }
  return json({error:'blocked_unmocked_fixture_route'},501);
 };
+window.inspectBatchExports=async()=>{const results=[];for(const job of Object.values(db.jobs)){const files=[];for(const [i,file] of job.exports.entries()){const loaded=await loadSources([{id:'inspect',name:'Synthetic.pdf',kind:'invoice',bytes:decode(db.bytes[file.storage_key])}]);try{const texts=[];for(const p of loaded.project.pages)texts.push((await detectText(p,loaded.documents)).map(r=>r.text).join(' '));files.push({name:file.name,pages:loaded.project.pages.length,text:texts.join(' ')});}finally{loaded.dispose();}}results.push({hotel:job.hotel,accountId:job.account_id,files});}return results;};
 audit();createRoot(document.getElementById('root')).render(React.createElement(App));
 </script></body></html>

@@ -1,8 +1,8 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {trackerHeaders} from '../worker/tracker-sync/workbook';
-import {writeTrackerBatch} from '../worker/tracker-sync/provider';
+import {trackerAdapter,writeTrackerBatch} from '../worker/tracker-sync/provider';
 import {readNativeTracker} from '../worker/tracker-sync/native';
-import type {TrackerEnv,ProviderWrite} from '../worker/tracker-sync/service';
+import {syncTracker,type TrackerEnv,type ProviderWrite} from '../worker/tracker-sync/service';
 vi.mock('../worker/drive/oauth',()=>({driveToken:vi.fn(async()=> 'synthetic-token')}));
 vi.mock('../worker/drive/provider',async original=>({...await original<typeof import('../worker/drive/provider')>(),identity:vi.fn(async()=> 'ar@katathani.com')}));
 const file='synthetic_native_original_123456',owner='synthetic-owner';
@@ -24,6 +24,78 @@ function nativeResponse(value:ReturnType<typeof grid>,url:string){
 function grid(){const headers:Cell[]=Array.from({length:33},()=>({}));for(const [k,v]of Object.entries(trackerHeaders))headers[col(k)]={userEnteredValue:{stringValue:v}};const row=(key:string,invoice:string)=>{const cells:Cell[]=Array.from({length:33},()=>({}));for(const [k,v]of Object.entries({A:'SAN',C:'0002',E:invoice,F:'F'+invoice,G:'2026-09-01',AG:key}))cells[col(k)]={userEnteredValue:{stringValue:v}};for(const k of ['R','U','V','W'])cells[col(k)].userEnteredFormat={numberFormat:{type:'DATE',pattern:'dd/mm/yyyy'}};cells[col('T')]={userEnteredValue:{formulaValue:'=R3+S3'}};cells[col('AA')]={userEnteredValue:{formulaValue:'=H3-Z3'}};return {values:cells};};return {spreadsheetId:file,sheets:[{properties:{sheetId:9,title:'ลูกหนี้ เขาหลัก',gridProperties:{rowCount:100,columnCount:33}},data:[{startRow:0,startColumn:0,rowData:[{values:[]},{values:headers},row('key-A','00001'),row('key-B','00002')]}]}]};}
 function fake(options:{lost?:boolean;move?:boolean;formula?:boolean;changeIdentity?:boolean;newGid?:boolean}={}){let value=grid();if(options.move){const rows=value.sheets[0].data[0].rowData;[rows[2],rows[3]]=[rows[3],rows[2]];value.sheets[0].properties.sheetId=77;}if(options.formula)value.sheets[0].data[0].rowData[2].values[col('R')].userEnteredValue={formulaValue:'=TODAY()'};const posts:Record<string,unknown>[]=[];const fetcher=vi.fn(async(input:RequestInfo|URL,init:RequestInit={})=>{const url=String(input);if(url.includes('sheets.googleapis.com')){if(init.method==='POST'){const body=JSON.parse(String(init.body));posts.push(body);for(const request of body.requests){const u=request.updateCells;value.sheets[0].data[0].rowData[u.start.rowIndex].values[u.start.columnIndex].userEnteredValue=u.rows[0].values[0].userEnteredValue;}if(options.changeIdentity)value.sheets[0].data[0].rowData[2].values[col('E')].userEnteredValue={stringValue:'OTHER'};if(options.newGid)value.sheets[0].properties.sheetId=88;if(options.lost)throw Error('synthetic response lost');return Response.json({spreadsheetId:file,replies:[]});}return nativeResponse(value,url);}return Response.json({id:file,name:'Master_SAN_AR_Tracker',mimeType:'application/vnd.google-apps.spreadsheet',trashed:false,version:'1',modifiedTime:'2026-10-07T00:00:00Z',capabilities:{canDownload:true,canEdit:true,canModifyContent:true}});});vi.stubGlobal('fetch',fetcher);return {posts,value,fetcher};}
 const input=():ProviderWrite=>({version:'observed',rowKey:'key-A',expectedIdentity:{hotel:'TSAN',accountNo:'0002',invoiceNo:'00001',folio:'F00001',transactionDate:'2026-09-01'},locator:{sheetId:123,row:40},changes:[{field:'R',expected:null,value:'2026-09-02'},{field:'U',expected:null,value:'2026-09-03'},{field:'V',expected:null,value:'2026-09-04'},{field:'W',expected:null,value:'2026-09-05'}]});
+// SQL receipt/authority selection is deliberately a fake RPC boundary here.
+// Parsing, service decisions, provider preimage validation, HTTP mutation and
+// readback use their real implementations; this does not claim SQL execution.
+function joinedNative(options:{lost?:boolean;clearBeforeWrite?:boolean;missingRow?:boolean;noOutbox?:boolean}={}){
+ const state=fake({lost:options.lost}),providerFetch=globalThis.fetch,calls:{name:string;body:Record<string,unknown>}[]=[];
+ const cells=state.value.sheets[0].data[0].rowData[2].values;
+ if(options.clearBeforeWrite)cells[col('U')].userEnteredValue={stringValue:'2026-09-02'};
+ if(options.missingRow)delete cells[col('AG')].userEnteredValue;
+ let receipt='pending';
+ vi.stubGlobal('fetch',async(url:RequestInfo|URL,init:RequestInit={})=>{
+  if(!String(url).startsWith('https://synthetic.supabase.co/rest/v1/rpc/')){
+   if(init.method==='POST')expect(calls.filter(c=>c.name==='ar_tracker_write_result').at(-1)?.body.p_state).toBe('uncertain');
+   return providerFetch(url,init);
+  }
+  const name=String(url).split('/').at(-1)!,body=JSON.parse(String(init.body));calls.push({name,body});
+  if(name==='ar_tracker_claim')return Response.json({status:'claimed',fileId:file});
+  if(name==='ar_tracker_outbox'){
+   if(options.clearBeforeWrite)delete cells[col('U')].userEnteredValue;
+   if(options.noOutbox)return Response.json([]);
+   return Response.json(receipt==='written'?[]:[{id:'synthetic-confirmed-intent',rowKey:'key-A',identity:input().expectedIdentity,locator:{},field:'U',value:'2026-09-03',expected:options.clearBeforeWrite?'2026-09-02':null,state:receipt}]);
+  }
+  if(name==='ar_tracker_write_result'){receipt=String(body.p_state);return Response.json({state:receipt});}
+  return Response.json({});
+ });
+ return {...state,calls,run:()=>syncTracker({...env,SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic'},owner,owner,'khao-lak',trackerAdapter)};
+}
+it('joins an existing confirmed intent through native arm, publication, exact readback and receipt without a second write',async()=>{
+ const state=joinedNative();await state.run();
+ expect(state.posts).toHaveLength(1);
+ expect(state.calls.filter(c=>c.name==='ar_tracker_write_result').map(c=>c.body.p_state)).toEqual(['uncertain','written']);
+ expect(state.calls.map(c=>c.name)).toEqual(['ar_tracker_claim','ar_tracker_snapshot','ar_tracker_membership','ar_tracker_outbox','ar_tracker_write_result','ar_tracker_write_result','ar_tracker_finish']);
+ const imported=state.calls.find(c=>c.name==='ar_tracker_snapshot')!.body.p_rows as {fields:Record<string,unknown>}[];
+ expect(imported[0].fields.U).toBeNull();
+ await state.run();expect(state.posts).toHaveLength(1);
+ expect(state.calls.filter(c=>c.name==='ar_tracker_snapshot').at(-1)?.body).toMatchObject({p_rows:[{fields:{U:'2026-09-03'}},{}]});
+});
+it('a collaborator date deletion between service snapshot and native preimage read is not restored',async()=>{
+ const state=joinedNative({clearBeforeWrite:true});await state.run();
+ expect(state.posts).toHaveLength(0);
+ expect(state.value.sheets[0].data[0].rowData[2].values[col('U')].userEnteredValue).toBeUndefined();
+ expect(state.calls.filter(c=>c.name==='ar_tracker_write_result').map(c=>c.body.p_state)).toEqual(['uncertain','conflict']);
+ expect(state.calls.find(c=>c.name==='ar_tracker_snapshot')?.body).toMatchObject({p_rows:[{fields:{U:'2026-09-02'}},{}]});
+});
+it('a lost native response is reconciled by the next joined snapshot without another provider mutation',async()=>{
+ const state=joinedNative({lost:true});await state.run();
+ expect(state.posts).toHaveLength(1);expect(state.calls.filter(c=>c.name==='ar_tracker_write_result').at(-1)?.body.p_state).toBe('uncertain');
+ await state.run();expect(state.posts).toHaveLength(1);
+ expect(state.calls.filter(c=>c.name==='ar_tracker_write_result').at(-1)?.body.p_state).toBe('written');
+});
+it('a stale selected outbox identity with a deleted provider row cannot write a neighbouring invoice',async()=>{
+ const state=joinedNative({missingRow:true});await state.run();expect(state.posts).toHaveLength(0);
+ expect(state.calls.find(c=>c.name==='ar_tracker_membership')?.body.p_keys).toEqual(['key-B']);
+ expect(state.calls.filter(c=>c.name==='ar_tracker_write_result').map(c=>c.body.p_state)).toEqual(['conflict']);
+});
+it('joins every mapped source column and explicit date clears into the snapshot RPC without a provider write',async()=>{
+ const state=joinedNative({noOutbox:true}),cells=state.value.sheets[0].data[0].rowData[2].values;
+ const fields={R:'2026-09-01',S:'30',T:'2026-10-01',U:'2026-09-02',V:'2026-09-03',W:'2026-09-04',X:'2026-10-10',Y:'Awaiting reply',Z:'125.50',AA:'0',AB:'Synthetic source note',AC:'Synthetic owner'};
+ for(const [field,value] of Object.entries(fields))cells[col(field)].userEnteredValue={stringValue:value};
+ await state.run();expect(state.calls.find(c=>c.name==='ar_tracker_snapshot')?.body).toMatchObject({p_rows:[{fields,fieldHolds:[]},{}]});
+ for(const field of ['R','U','V','W'])delete cells[col(field)].userEnteredValue;
+ await state.run();expect(state.calls.filter(c=>c.name==='ar_tracker_snapshot').at(-1)?.body).toMatchObject({p_rows:[{fields:{...fields,R:null,U:null,V:null,W:null}},{}]});
+ expect(state.posts).toHaveLength(0);
+});
+it.each([403,429])('a joined native read failure %i records failure without publication and a fresh run can recover',async status=>{
+ const state=joinedNative(),fetchBeforeFailure=globalThis.fetch;let fail=true;
+ vi.stubGlobal('fetch',async(url:RequestInfo|URL,init:RequestInit={})=>fail&&String(url).includes('sheets.googleapis.com')?new Response('synthetic provider body must not escape',{status}):fetchBeforeFailure(url,init));
+ await expect(state.run()).rejects.toThrow(status===403?'tracker_authorization_required':'tracker_provider_unavailable');
+ expect(state.posts).toHaveLength(0);expect(state.calls.some(c=>c.name==='ar_tracker_snapshot')).toBe(false);
+ expect(state.calls.filter(c=>c.name==='ar_tracker_finish').at(-1)?.body.p_error).toBe('tracker_unavailable');
+ fail=false;await state.run();expect(state.posts).toHaveLength(1);
+ expect(state.calls.filter(c=>c.name==='ar_tracker_write_result').at(-1)?.body.p_state).toBe('written');
+});
 afterEach(()=>vi.unstubAllGlobals());
 it('writes dates for a corroborated blank Account No. without filling or changing that identity cell',async()=>{
  const state=fake(),cell=state.value.sheets[0].data[0].rowData[2].values[col('C')];delete cell.userEnteredValue;

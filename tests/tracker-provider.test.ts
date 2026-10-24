@@ -67,6 +67,21 @@ it.each([401,403,404])('sanitizes missing/expired/file-scope grants without surf
  vi.stubGlobal('fetch',async()=>new Response('SYNTHETIC private-provider-error-body',{status}));
  try{await readTrackerWorkbook(env,owner,'phuket',fileId);throw Error('expected authorization hold');}catch(error){expect((error as Error).message).toBe('tracker_authorization_required');}
 });
+it.each([{trashed:true},{name:'Synthetic renamed copy.xlsx'},{mimeType:'application/vnd.google-apps.spreadsheet'}])('a changed original file metadata %j blocks both import and upload',async changed=>{
+ const state=fake(),providerFetch=globalThis.fetch;
+ vi.stubGlobal('fetch',async(url:RequestInfo|URL,init:RequestInit={})=>{
+  const response=await providerFetch(url,init),parsed=new URL(String(url));
+  if(parsed.pathname.startsWith('/drive/v3/files/')&&parsed.searchParams.has('fields')){
+   const metadata:unknown=await response.json();
+   if(!metadata||typeof metadata!=='object'||Array.isArray(metadata))throw Error('synthetic_metadata_shape_invalid');
+   return Response.json({...metadata,...changed});
+  }
+  return response;
+ });
+ await expect(readTrackerWorkbook(env,owner,'phuket',fileId)).rejects.toThrow('tracker_target_conflict');
+ await expect(writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).rejects.toThrow('tracker_target_conflict');
+ expect(state.writes).toHaveLength(0);expect(state.fn.mock.calls.some(([url])=>String(url).includes('alt=media'))).toBe(false);
+});
 it('publishes a multi-invoice batch with one upload and one source/readback download pair',async()=>{
  const state=fake({rows:2}),rows=parseTrackerWorkbook(state.bytes(),'phuket').rows;
  const inputs=rows.map(row=>({version:'v2:"synthetic-tag-1"',rowKey:row.rowKey,expectedIdentity:{hotel:row.hotel,accountNo:row.accountNo,invoiceNo:row.invoiceNo,folio:row.folio},locator:row.locator,changes:[{field:'R' as const,value:'2026-10-06',expected:null}]}));
