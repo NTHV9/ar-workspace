@@ -1,3 +1,17 @@
+## 2026-10-25 — Confirmed-Sent row additions alongside unchanged Aging Master
+
+The owner authorizes the exact ten previously quarantined billing rows with actual
+Sent dates, and automatic missing-row insertion for future confirmed sends. Keep
+Aging Master unchanged. This is append-only supplementation, not restoration of
+the paused complete financial publisher or LFS-only updater proposal. Existing
+rows and staff-edited/deleted dates are authoritative and must not be backfilled.
+Retain durable retries for safe failures and read back unknown provider outcomes;
+never resend mail or blindly repeat an uncertain insertion. The owner separately
+authorizes removing the exact three old closed GO rows after the correct ITS rows
+and actual billing dates are verified, preserving recovery and business history.
+The regional self-CC and activity-driven refresh changes are integrated into this
+release; their source and acceptance evidence remain in Git independently of chats.
+
 ## 2026-10-25 — OPERA current refresh follows actual usage
 
 Follow-up owner clarification: count an active user's **entire authorized regional scope**, regardless of the currently selected region. A user allowed Phuket and Khao Lak keeps both regions eligible for proactive refresh; a one-region user keeps only that region eligible. This supports moving between regions with pre-refreshed data. Backend-derived grants and current database membership determine scope, never browser-supplied rights. Shared hotel jobs, idle expiry, manual/daily runs and fast Sheet synchronization remain as agreed.
@@ -586,17 +600,3 @@ does not silently replace already edited recipients. Required self CC is visible
 and saved before the existing human-triggered Gmail draft or Send Now review.
 Retain already frozen Gmail delivery snapshots and uncertain/sent preparations;
 do not rewrite historic recipients or trigger replacement sends.
-## 25 October 2026 — Confirmed-Sent row additions alongside unchanged Aging Master
-
-The owner authorizes the exact ten previously quarantined billing rows with actual
-Sent dates, and automatic missing-row insertion for future confirmed sends. Keep
-Aging Master unchanged. This is append-only supplementation, not restoration of
-the paused complete financial publisher or LFS-only updater proposal. Existing
-rows and staff-edited/deleted dates are authoritative and must not be backfilled.
-Retain durable retries for safe failures and read back unknown provider outcomes;
-never resend mail or blindly repeat an uncertain insertion. The owner separately
-authorizes removing the exact three old closed GO rows after the correct ITS rows
-and actual billing dates are verified, preserving recovery and business history.
-The regional self-CC and activity-driven refresh changes are integrated into this
-release; their source and acceptance evidence remain in Git independently of chats.
-
