@@ -1,6 +1,6 @@
 import {useWorkspaceMember} from '../access/context';
 import {useCollectionPolicy} from '../collection/PolicyContext';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {ArrowLeft,Plus,Save,FileText} from 'lucide-react';
 import RichMessageEditor from './RichMessageEditor';
 import {parseTemplate,starterTemplates,type EmailTemplate,type TemplateInput,type TemplateReference} from './templates';
@@ -16,8 +16,8 @@ export default function TemplateLibrary({token,onClose,onApply,onDirtyChange}:{t
  const command=useRef(crypto.randomUUID()),alive=useRef(true),generation=useRef(0);
  const navigationDirty=dirty||busy;
  useEffect(()=>{alive.current=true;void load(0);return()=>{alive.current=false;generation.current++;};},[token]);
- useEffect(()=>{onDirtyChange?.(navigationDirty);return()=>onDirtyChange?.(false);},[navigationDirty,onDirtyChange]);
- useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(navigationDirty){e.preventDefault();e.returnValue='';}};addEventListener('beforeunload',warn);return()=>removeEventListener('beforeunload',warn);},[navigationDirty]);
+ useLayoutEffect(()=>{onDirtyChange?.(navigationDirty);return()=>onDirtyChange?.(false);},[navigationDirty,onDirtyChange]);
+ useLayoutEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(navigationDirty){e.preventDefault();e.returnValue='';}};addEventListener('beforeunload',warn);return()=>removeEventListener('beforeunload',warn);},[navigationDirty]);
  async function load(offset:number){setLoading(true);setError('');try{const r=await request<{items:EmailTemplate[];nextOffset:number|null}>(`/api/email/templates?offset=${offset}`,token);if(alive.current){setItems(prev=>offset?[...prev,...r.items]:r.items);setNext(r.nextOffset);}}catch(e){if(alive.current)setError((e as Error).message);}finally{if(alive.current)setLoading(false);}}
  function choose(t:TemplateInput,head:EmailTemplate|null=null){if(dirty&&!window.confirm('Discard unsaved template edits?'))return;generation.current++;setSelected(head);setForm(inputOf(t));setDirty(false);setNotice('');setError('');command.current=crypto.randomUUID();}
  function change(p:Partial<TemplateInput>){setForm(v=>({...v,...p}));setDirty(true);setNotice('');}

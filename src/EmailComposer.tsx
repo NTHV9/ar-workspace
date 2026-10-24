@@ -16,7 +16,7 @@ import ThreadChooser,{TestConversationReview,threadRequest,threadErrorMessages} 
 import {plainMessage,richText,richHtml,type RichMessage} from './email/rich-message';
 import {applyTemplate,type TemplateReference} from './email/templates';
 import {stageLabel} from './domain/collection';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {ArrowLeft,Check,FileText,Mail,ShieldCheck,X,Image as ImageIcon} from 'lucide-react';
 import SupplementalPreview from './SupplementalPreview';
 import type {EmailAttachment,EmailDraft,EmailDeliveryView} from '../worker/email/shared';
@@ -54,7 +54,8 @@ export default function EmailComposer({job,token,onClose,onDirtyChange,batch}:{j
  const lockedStage=handoff&&delivery?.stage?delivery.stage:null;
  const busy=operationBusy||threadBusy||testPreview;const policyBlocked=purpose==='collection'&&(!policy||!policy.rounds.some(r=>r.active&&r.key===stage));
  const navigationDirty=dirty||busy||!!pendingFile||templateDirty||sentReviewDirty;
- useEffect(()=>{onDirtyChange?.(navigationDirty);return()=>onDirtyChange?.(false);},[navigationDirty,onDirtyChange]);
+ // Commit the aggregate guard with the visible editor and nested dialogs.
+ useLayoutEffect(()=>{onDirtyChange?.(navigationDirty);return()=>onDirtyChange?.(false);},[navigationDirty,onDirtyChange]);
  useEffect(()=>{setIncludeTestFiles(false);},[draft?.revision]);
  const dialog=useRef<HTMLDialogElement>(null);useEffect(()=>{if(!batch)dialog.current?.showModal();},[]);
  const live=useRef(true),tokenRef=useRef(token);tokenRef.current=token;
@@ -66,7 +67,7 @@ export default function EmailComposer({job,token,onClose,onDirtyChange,batch}:{j
   void api<GmailState>(`/api/gmail/status?region=${region}&jobId=${encodeURIComponent(job.id)}`,tokenRef.current,{signal:controller.signal}).then(s=>{if(live.current)setGmail(s);}).catch(()=>{if(live.current)setGmail(null);});
   return()=>{live.current=false;controller.abort();};
  },[job.id,job.revision,retry,region]);
- useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(navigationDirty){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[navigationDirty]);
+ useLayoutEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(navigationDirty){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[navigationDirty]);
  const systemBilling=purpose==='billing'&&draft?.billing_method==='system';
  const billingMethod=draft?.billing_method===null?'Billing not required':draft?.billing_method==='system'?'By System':'By Email';
  const instructions=(purpose==='billing'?draft?.billing_instructions:draft?.collection_instructions)??'';

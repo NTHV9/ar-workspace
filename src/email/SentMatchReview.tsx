@@ -1,12 +1,13 @@
 import {gmailUrl} from './mailbox-ui';
 import type {MailboxId} from '../domain/mailboxes';
-import {useRef,useState,useEffect} from 'react';
+import {useRef,useState,useEffect,useLayoutEffect} from 'react';
 interface Candidate {gmailId:string;sentAt:string|null;eligible:boolean;reason:string|null;proof:string|null}
 export default function SentMatchReview({token,region,deliveryId,onMatched,onClose,onDirtyChange}:{token:string;region:MailboxId;deliveryId:string;onMatched:()=>void;onClose:()=>void;onDirtyChange?:(dirty:boolean)=>void}){
  const dialog=useRef<HTMLDialogElement>(null),[rows,setRows]=useState<Candidate[]>([]),[next,setNext]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[reason,setReason]=useState(''),[chosen,setChosen]=useState<Candidate|null>(null),[confirmed,setConfirmed]=useState(false),[loaded,setLoaded]=useState(false);
  const dirty=!!chosen||reason.length>0||confirmed,navigationDirty=dirty||busy;
- useEffect(()=>{onDirtyChange?.(navigationDirty);return()=>onDirtyChange?.(false);},[navigationDirty,onDirtyChange]);
- useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(navigationDirty){event.preventDefault();event.returnValue='';}};addEventListener('beforeunload',warn);return()=>removeEventListener('beforeunload',warn);},[navigationDirty]);
+ // Browser events can follow dialog removal before passive effects run.
+ useLayoutEffect(()=>{onDirtyChange?.(navigationDirty);return()=>onDirtyChange?.(false);},[navigationDirty,onDirtyChange]);
+ useLayoutEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(navigationDirty){event.preventDefault();event.returnValue='';}};addEventListener('beforeunload',warn);return()=>removeEventListener('beforeunload',warn);},[navigationDirty]);
  useEffect(()=>{dialog.current?.showModal();return()=>dialog.current?.close();},[]);
  function close(){if(busy)return;if(!dirty||window.confirm('Leave without saving this sent message review?'))onClose();}
  async function read(page=''){setBusy(true);setError('');try{const r=await fetch(`/api/email/deliveries/${deliveryId}/candidates${page?'?pageToken='+encodeURIComponent(page):''}`,{headers:{Authorization:'Bearer '+token}});const v=await r.json() as {rows?:Candidate[];nextPageToken?:string|null};if(!r.ok||!v.rows)throw Error();setRows(old=>page?[...old,...v.rows!.filter(row=>!old.some(x=>x.gmailId===row.gmailId))]:v.rows!);setNext(v.nextPageToken??null);setLoaded(true);}catch{setError('Sent candidates could not be verified. No history was changed.');}finally{setBusy(false);}}

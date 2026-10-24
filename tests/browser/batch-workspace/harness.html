@@ -16,6 +16,10 @@ sessionStorage.setItem(auth.storageKey,JSON.stringify({access_token:'synthetic',
 if(!location.search)history.replaceState(null,'','?collections=1&region=phuket');
 const storageKey='ar-batch-fixture-server-v1',fresh={jobs:{},commands:{},bytes:{},drafts:{},opened:{},sends:[],requests:[]};
 let db=JSON.parse(sessionStorage.getItem(storageKey)||'null')||fresh;
+// Explicit save barrier exercises the async UI boundary without clock-based delays.
+let nextMailSave=null;
+window.pauseNextBatchMailSave=()=>{if(nextMailSave)throw Error('A synthetic save is already held');let release;const promise=new Promise(resolve=>{release=resolve;});nextMailSave={promise,release};};
+window.resumeBatchMailSave=(fail=false)=>{if(!nextMailSave)throw Error('No synthetic save is held');nextMailSave.release(fail);};
 const encode=b=>btoa(Array.from(b,c=>String.fromCharCode(c)).join('')),decode=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const hash=async b=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(b)))].map(n=>n.toString(16).padStart(2,'0')).join('');
 function audit(){sessionStorage.setItem(storageKey,JSON.stringify(db));document.getElementById('audit-results').textContent=JSON.stringify({fixtureVersion:3,lostPdfReview:!!db.lostPdfReview,drafts:Object.values(db.drafts).map(d=>({hotel:d.hotel,documentRevision:d.document_revision,currentPdfRevision:db.jobs[d.document_job_id].revision,subject:d.subject})),createdJobs:Object.keys(db.jobs).length,confirmations:db.confirmations??[],uncertainNext:!!db.uncertainNext,sends:db.sends,requests:db.requests.slice(-12)},null,2);}
@@ -91,7 +95,7 @@ window.fetch=async(input,init={})=>{
  if(email&&db.drafts[email[1]]){
   const draft=db.drafts[email[1]],job=db.jobs[draft.document_job_id];
   if(!email[2]&&method==='GET')return json(draft);
-  if(!email[2]&&method==='PUT'){if(body.revision!==draft.revision)return json({error:'email_revision_conflict'},409);Object.assign(draft,{purpose:body.purpose,recipients:body.recipients,subject:body.subject,body:body.body,rich_body:body.richBody,revision:draft.revision+1});return json(draft);}
+  if(!email[2]&&method==='PUT'){if(nextMailSave){const held=nextMailSave;db.heldMailSave=draft.id;audit();const fail=await held.promise;nextMailSave=null;delete db.heldMailSave;if(fail)return json({error:'email_revision_conflict'},409);}if(body.revision!==draft.revision)return json({error:'email_revision_conflict'},409);Object.assign(draft,{purpose:body.purpose,recipients:body.recipients,subject:body.subject,body:body.body,rich_body:body.richBody,revision:draft.revision+1});return json(draft);}
   if(email[2]?.startsWith('exports/')){const file=draft.exports[Number(email[2].split('/')[1])];return new Response(decode(db.bytes[file.storage_key]),{headers:{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${file.name}"`}});}
   if(email[2]==='send'){
    if(draft.delivery)return json(draft.delivery);

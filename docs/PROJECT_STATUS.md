@@ -1,3 +1,41 @@
+## 2026-10-25 — GitHub notification audit and committed browser guards
+
+**Implemented and locally tested.** The nine pictured failures and newer7cb9381
+were checked against actual Actions logs; provenance is in
+[CI_NOTIFICATION_REVIEW_20261025](CI_NOTIFICATION_REVIEW_20261025.md). All inspected
+failures were browser-stage failures after passing typecheck/unit/build (and the
+later isolated SQL service/contracts). Historical failures retain their original
+status; no old source is restored to repair a notification.
+
+- Real product repair: dirty propagation and beforeunload listener lifetime now
+  commit with visible email/template/Sent-review state via layout effects. Native
+  Browser Back, pending operations and genuinely unsaved recipients stay guarded;
+  the history/navigation algorithm and mail/database contracts are unchanged.
+- Test repair: exact batch recipient/export assertions wait for the completed
+  Review phase; deterministic save barriers cover delayed saves, failed retry and
+  rapid switching. Template fixtures start with actually saved required self CC;
+  a paired test retains a truly dirty parent after nested template save.
+- The old PDF raster comparison already has its stronger identical-pipeline
+  repair and negative controls. Current unmodified cases produce zero differing
+  pixels at1440/1280; shift and text-removal controls still detect corruption.
+
+Local evidence: full4,623unit/340files and build/typecheck pass; batch Edge8 and
+Chromium48 (including default/saved CC and threads); navigation Chromium33 and
+Edge22, affected repeated cases12; independent focused review has no blockers.
+An initial concurrent browser/build/unit run hit two unchanged5s finance-test
+timeouts; the exact86 finance cases pass in2.79s and the unchanged full suite
+passes in55.23s without competing browser work. No timeout was increased or test
+disabled. Original tracked screenshot evidence is preserved; generated captures
+are private QA outputs. Full smoke/performance/publication checks remain enabled.
+
+The authoritative complete remote result is the **same-head** workflow at
+[PR142 checks](https://github.com/NTHV9/ar-workspace/pull/142/checks); qualification
+must not be inferred from older emails or a focused local subset. Runtime release
+source is independently readable at the existing `/api/health` endpoint. Final
+Actions/release readback is attached to PR142 and this task. The deployed Sheet
+authority, warning lifecycle, activity refresh, self CC and all source/Sent/date
+protections below remain in the current branch.
+
 ## 2026-10-25 — Current warnings, proven closure and removed-row history
 
 **Implemented, tested, deployed and enabled.** The owner

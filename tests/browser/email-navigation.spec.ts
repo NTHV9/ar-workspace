@@ -7,7 +7,9 @@ async function setup(page:Page,{withDelivery=false,view='email'}:{withDelivery?:
  const user={id:'00000000-0000-4000-8000-000000000801',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
  const exports=[{name:'Synthetic-reviewed.pdf',storage_key:`jobs/${jobId}/exports/synthetic.pdf`,byte_count:1000,sha256:'a'.repeat(64)}];
  const job={id:jobId,lifecycle:'transient',hotel:'KAT',account_id:'example',account_name:'Synthetic navigation account',invoice_ids:['1'],state:'ready',revision:4,acknowledged:true,files:[],exports};
- let draft={id:draftId,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:'example',account_name:job.account_name,invoice_ids:['1'],purpose:'billing',recipients:{to:['recipient@example.test'],cc:[],bcc:[]},subject:'Synthetic subject',body:'Original saved message',exports,attachments:[],revision:0,package_changed:false,...(withDelivery?{gmail_handoff:'awaiting_evidence',delivery:{id:'synthetic-delivery',state:'awaiting_evidence',mode:'send',recorded:false}}:{})};
+ // Navigation starts with saved recipients, including the current regional self-CC.
+ // Otherwise opening a nested template creates unrelated unsaved email changes.
+ let draft={id:draftId,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:'example',account_name:job.account_name,invoice_ids:['1'],purpose:'billing',recipients:{to:['recipient@example.test'],cc:['ar@katathani.com'],bcc:[]},subject:'Synthetic subject',body:'Original saved message',exports,attachments:[],revision:0,package_changed:false,...(withDelivery?{gmail_handoff:'awaiting_evidence',delivery:{id:'synthetic-delivery',state:'awaiting_evidence',mode:'send',recorded:false}}:{})};
  const controls={calls:[] as string[],upload:null as Route|null,send:null as Route|null,templateSave:null as Route|null,match:null as Route|null};
  await page.addInitScript(u=>{
   localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u}));
@@ -92,7 +94,7 @@ test('unsaved template edits inside email also protect Browser Back',async({page
 });
 
 for(const view of ['templates','email'] as const)test(`saving an untouched starter template protects ${view} navigation until the response is retained`,async({page})=>{
- const controls=await setup(page,{view});if(view==='email')await page.getByRole('button',{name:'Choose template',exact:true}).click();
+ const controls=await setup(page,{view});if(view==='email'){await expect(page.getByRole('button',{name:'Save message',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Choose template',exact:true}).click();}
  await page.getByRole('button',{name:'Save template',exact:true}).click();await expect.poll(()=>!!controls.templateSave).toBe(true);
  await dismissBack(page,'Template name');
  expect(await page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});window.dispatchEvent(event);return event.defaultPrevented;})).toBe(true);
@@ -102,6 +104,20 @@ for(const view of ['templates','email'] as const)test(`saving an untouched start
  const dialogs:string[]=[];page.on('dialog',async dialog=>{dialogs.push(dialog.message());await dialog.dismiss();});
  await page.evaluate(()=>history.back());await expect(page.getByLabel('Template name',{exact:true})).toHaveCount(0);expect(dialogs).toEqual([]);
  expect(controls.calls.filter(call=>call.startsWith('PUT /api/email/templates/'))).toHaveLength(1);expect(controls.calls.some(call=>/\/(send|gmail-draft)$/.test(call))).toBe(false);
+});
+
+test('saving a nested template preserves the guard for unsaved email recipients',async({page})=>{
+ const controls=await setup(page);
+ await page.getByLabel('Email CC',{exact:true}).fill('copy@example.test, ar@katathani.com');
+ await page.getByRole('button',{name:'Choose template',exact:true}).click();
+ await page.getByRole('button',{name:'Save template',exact:true}).click();await expect.poll(()=>!!controls.templateSave).toBe(true);
+ const request=controls.templateSave!.request(),content=request.postDataJSON().content;
+ await controls.templateSave!.fulfill({json:{...content,id:new URL(request.url()).pathname.split('/').at(-1),revision:1,updated_at:'2026-09-14T02:00:00Z'}});
+ await expect(page.locator('.template-feedback')).toContainText('Template saved.');
+ await dismissBack(page,'Template name');
+ await expect(page.getByLabel('Email CC',{exact:true})).toHaveValue('copy@example.test, ar@katathani.com');
+ expect(controls.calls).not.toContain(`PUT /api/email/${draftId}`);
+ expect(controls.calls.some(call=>/\/(send|gmail-draft)$/.test(call))).toBe(false);
 });
 
 async function openSentReview(page:Page){
@@ -119,7 +135,16 @@ test('an unsaved Sent review note protects Browser Back, Close and Escape',async
  await page.keyboard.press('Escape');await expect.poll(()=>messages.length).toBe(2);await expect(review).toBeVisible();
  await expect(page.getByLabel('Sent match review note')).toHaveValue('Synthetic note that must be retained');
  expect(await page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});window.dispatchEvent(event);return event.defaultPrevented;})).toBe(true);
+ // A removed dialog must release its guard in the same commit, before another
+ // browser event can observe the closed review. Passive cleanup leaves a gap.
+ await page.evaluate(()=>{
+  Object.assign(window,{sentReviewGuardAtRemoval:null});
+  const review=document.querySelector('dialog[aria-labelledby="sent-review-title"]')!;
+  const observer=new MutationObserver(()=>{if(review.isConnected)return;observer.disconnect();const event=new Event('beforeunload',{cancelable:true});window.dispatchEvent(event);Object.assign(window,{sentReviewGuardAtRemoval:event.defaultPrevented});});
+  observer.observe(document.body,{childList:true,subtree:true});
+ });
  page.off('dialog',cancel);page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Close sent review',exact:true}).click();await expect(review).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as unknown as {sentReviewGuardAtRemoval:boolean|null}).sentReviewGuardAtRemoval)).toBe(false);
  const dialogs:string[]=[];page.on('dialog',async dialog=>{dialogs.push(dialog.message());await dialog.dismiss();});await page.evaluate(()=>history.back());await expect(page.getByLabel('Email message')).toHaveCount(0);expect(dialogs).toEqual([]);
  expect(controls.calls.some(call=>/\/(reviewed-match|send|gmail-draft)$/.test(call))).toBe(false);
 });
