@@ -26,6 +26,7 @@ async function setup(page:Page,options:{selected?:boolean;handoff?:boolean;failu
   if(p==='/api/access/me')return r.fulfill({json:{memberId:user.id,email:user.email,administrator:true,active:true,regions:['phuket','khao-lak'],revision:1,registered:true}});
   if(p==='/api/access/signature')return r.fulfill({json:{revision:0,enabled:false,signature:{staffId:user.id,name:'',title:'',workplace:''}}});
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
+  if(p==='/api/refresh/activity'){expect(q.method()).toBe('POST');expect(q.headers().authorization).toBe('Bearer synthetic-token');expect(q.postDataJSON()).toEqual({region:'phuket'});return r.fulfill({json:{active:true}});}
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(p===`/api/documents/${jobId}`)return r.fulfill({json:job});
   if(p==='/api/email/open')return r.fulfill({json:draft});
