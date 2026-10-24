@@ -1,7 +1,7 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {fixture,identity as rowIdentity} from './fixtures/tracker-workbook';
 import {parseTrackerWorkbook,patchTrackerWorkbook} from '../worker/tracker-sync/workbook';
-import {readTrackerWorkbook,writeTrackerCells,writeTrackerBatch} from '../worker/tracker-sync/provider';
+import {readTrackerWorkbook,writeTrackerCells,writeTrackerBatch,readTrackerFileVersion} from '../worker/tracker-sync/provider';
 import type {TrackerEnv,ProviderWrite} from '../worker/tracker-sync/service';
 vi.mock('../worker/drive/oauth',()=>({driveToken:vi.fn(async()=> 'synthetic-token')}));
 vi.mock('../worker/drive/provider',async importOriginal=>({...await importOriginal<typeof import('../worker/drive/provider')>(),identity:vi.fn(async()=> 'ar@katathani.com')}));
@@ -35,6 +35,11 @@ it('reads a bound snapshot through existing grant and exposes proven blob CAS on
 it.each([{readOnly:true},{contentReadOnly:true}])('never advertises proven write capability or uploads when provider rights are limited: %j',async rights=>{
  const state=fake(rights);const snapshot=await readTrackerWorkbook(env,owner,'phuket',fileId);expect(snapshot.capabilities.conditionalWrite).toBe('unverified');
  expect(await writeTrackerCells(env,owner,'phuket',fileId,input(snapshot.version))).toEqual({status:'conflict'});expect(state.writes).toHaveLength(0);
+});
+it('reads only the original file version without downloading or rewriting spreadsheet content',async()=>{
+ const state=fake();expect(await readTrackerFileVersion(env,owner,'phuket',fileId)).toBe('1');
+ expect(state.fn.mock.calls.some(([url])=>String(url).includes('alt=media')||String(url).includes('/export')||String(url).includes('/upload/'))).toBe(false);
+ expect(state.writes).toHaveLength(0);
 });
 it('requires exact configured target and provider identity, never grants arbitrary URLs',async()=>{
  const state=fake();await expect(readTrackerWorkbook(env,owner,'phuket','OtherSyntheticTracker00003')).rejects.toThrow('tracker_target_conflict');expect(state.fn).not.toHaveBeenCalled();

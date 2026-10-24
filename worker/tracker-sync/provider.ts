@@ -56,6 +56,12 @@ export async function readTrackerWorkbook(env:TrackerEnv,owner:string,region:Reg
  return {version:snapshot.version,rows:snapshot.parsed.rows,schemaFingerprint:snapshot.parsed.schemaFingerprint,
   capabilities:{conditionalWrite:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'proven':'unverified',writeAssurance:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'cas':'held'}};
 }
+/** A change hint only. The normal adapter still rereads and validates all
+ * content/identity before committing any business facts or provider writes. */
+export async function readTrackerFileVersion(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<string>{
+ target(env,region,fileId);const token=await access(env,owner);
+ return (await metadata(token,region,fileId)).version;
+}
 /** Version comparisons are observations, never atomic authorization. v3 If-Match
  * was ignored by the live synthetic probe; native conditional writes remain
  * unproven. Preserve a visible conflict hold rather than overwrite a collaborator. */

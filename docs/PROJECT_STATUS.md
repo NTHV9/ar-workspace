@@ -1,3 +1,39 @@
+## 2026-10-24 — Shared active-client tracker version probes
+
+**Implemented and tested; new private migration applied; Worker deployment and
+final live timing pending.** Restoring push flags alone did not eliminate the
+provider delay: actual native edits changed Drive modifiedTime within four
+seconds, but the corresponding notifications arrived about 90 seconds later.
+Keep push/fallback and add shared metadata-version probes while visible clients
+are active. The original files and all financial/date authority rules remain.
+
+Visible clients request authorized revisions every five seconds, retaining
+Realtime hints, hidden-page suppression, single-flight/coalescing and dirty
+editor protection. The existing authenticated revision endpoint returns cached
+revisions immediately and probes only the member's allowed regions in waitUntil.
+Provider ownership remains the shared workspace. A five-second shared per-region
+cooldown and 45-second lease prevent every tab/user reading the provider. Existing
+credential lookup and identity verification remain; successful probes read file
+metadata, never media/Sheet contents. Only a changed version hints the existing
+full validated sync. Unchanged versions enqueue no new work; an existing pending
+wake can still retry dispatch after a transient failure.
+
+Private cache state is bounded to one row per region, service-only with RLS,
+binding/owner/region checks, fresh lease tokens and binding-removal cascade.
+Version-baseline advancement and the existing durable wake enqueue are atomic.
+No financial/history data is stored in that cache. Migration was created with
+the pinned CLI, qualified on isolated PostgreSQL, applied separately through
+the migration connector, then its unchanged local file was aligned to observed
+hosted migration version `20261024114048_ar_tracker_active_version_probe.sql`.
+The older pending tracker resolver alias migration was not applied in this task.
+
+Verification: all 4,400 unit/integration tests across 326 files pass; 124 local
+migrations and 17 SQL rollback fixtures pass; 24 tracker/report browser cases,
+production build/typecheck and independent review pass. Hosted readback confirms
+RLS, backend-only execution and no anonymous/authenticated RPC grants. No provider
+permissions, credentials, paid resources, cron schedule or Invoice logic changes.
+Five seconds is the check cadence, not a promised end-to-end update time.
+
 ## 2026-10-24 — Restore approved tracker push/runtime flags
 
 **Implemented and locally tested; deployment/live latency test pending.** The
