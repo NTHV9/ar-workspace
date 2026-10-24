@@ -3,8 +3,10 @@ import {google,identity} from '../drive/provider';
 import {boundedBytes,readJson} from '../drive/shared';
 import type {RegionId} from '../../src/domain/hotels';
 import type {TrackerAdapter,TrackerEnv,ProviderSnapshot,ProviderWrite} from './service';
-import {prepareTrackerWorkbook,type TrackerCellChange} from './workbook';
+import {prepareTrackerWorkbook,readTrackerSentRowContext,appendTrackerSentRows,type TrackerCellChange,type TrackerSentSourceCell} from './workbook';
 import {readNativeTracker,readNativeTrackerChangeHint,writeNativeTrackerBatch} from './native';
+import {appendNativeTracker} from './append-native';
+import type {SentAppendInput,SentAppendResult} from './append';
 
 const XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',NATIVE='application/vnd.google-apps.spreadsheet';
 const targets={phuket:{name:'Master_KAT_AR_Tracker_Phuket.xlsx',mime:XLSX},'khao-lak':{name:'Master_SAN_AR_Tracker',mime:NATIVE}} as const;
@@ -90,4 +92,50 @@ export async function writeTrackerBatch(env:TrackerEnv,owner:string,region:Regio
  try{const confirmed=await readStable(token,region,fileId);if(await digest(confirmed.bytes)!==await digest(bytes))return {status:'conflict',version:confirmed.version};return {status:'written',version:confirmed.version};}
  catch{return {status:'uncertain'};}
 }
-export const trackerAdapter:TrackerAdapter={read:readTrackerWorkbook,write:writeTrackerCells,writeBatch:writeTrackerBatch};
+/** Appending is separate from date writeback: an existing identity is never
+ * modified, including a deliberately blank date or a changed staff formula. */
+export async function appendSentTrackerRow(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:SentAppendInput):Promise<SentAppendResult>{
+ target(env,region,fileId);if(env.TRACKER_SENT_ROW_APPEND_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+ let started=false;
+ try{
+  const token=await access(env,owner);
+  if(region==='khao-lak'){
+   if(env.TRACKER_NATIVE_BEST_EFFORT_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+   const meta=await metadata(token,region,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict',mutationStarted:false};
+   const structure=await readJson(await check(await google('https://sheets.googleapis.com/v4/spreadsheets/'+fileId+'?fields=spreadsheetId,sheets(properties(sheetId,title))&prettyPrint=false',token)),65536);
+   if(structure.spreadsheetId!==fileId||!Array.isArray(structure.sheets))return {status:'conflict',mutationStarted:false};
+   const sheets=structure.sheets.filter((s:unknown)=>!!s&&typeof s==='object'&&(s as {properties?:{title?:string}}).properties?.title==='ลูกหนี้ เขาหลัก');
+   const gid=(sheets[0] as {properties?:{sheetId?:number}})?.properties?.sheetId;
+   if(sheets.length!==1||!Number.isSafeInteger(gid)||Number(gid)<0)return {status:'conflict',mutationStarted:false};
+   return appendNativeTracker(token,fileId,{sheetId:Number(gid),sheetTitle:'ลูกหนี้ เขาหลัก',metadataId:input.plan.metadataId,rowKey:input.plan.rowKey,identity:input.identity,values:input.plan.values,priorUncertain:input.priorUncertain});
+  }
+  if(env.TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+  const current=await readStable(token,region,fileId);if(!current.etag||current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true)return {status:'conflict',mutationStarted:false};
+  const identityKey=(i:{hotel:string;accountNo:string;invoiceNo:string;folioNo?:string|null;transactionDate?:string|null})=>JSON.stringify([i.hotel,i.accountNo,i.invoiceNo,i.folioNo??null,i.transactionDate??null]);
+  const context=readTrackerSentRowContext(current.bytes,region),matches=context.rows.filter(r=>identityKey(r.identity)===identityKey(input.identity));
+  if(matches.length>1||context.rows.some(r=>r.rowKey===input.plan.rowKey&&identityKey(r.identity)!==identityKey(input.identity)))return {status:'conflict',mutationStarted:false};
+  const written=(bytes:Uint8Array):boolean=>{
+   const rows=prepareTrackerWorkbook(bytes,region).snapshot.rows.filter(r=>identityKey({...r,folioNo:r.folioNo??r.folio})===identityKey(input.identity));
+   return rows.length===1&&rows[0].rowKey===input.plan.rowKey&&(['R','U','V','W'] as const).every((field,index)=>rows[0].fields[field]===input.plan.values[[17,20,21,22][index]]);
+  };
+  if(matches.length===1)return {status:input.priorUncertain&&written(current.bytes)?'written':'exists',identityMatched:true,mutationStarted:false,version:current.version};
+  if(input.priorUncertain)return {status:'uncertain',mutationStarted:false,version:current.version};
+  const dates=new Set([6,17,19,20,21,22,23,29,30]);
+  const cells=input.plan.values.map((value,index):string|number|null|TrackerSentSourceCell=>{
+   if(value!==null&&typeof value==='object')return {value:value.formula,formula:true};
+   if(typeof value==='boolean')throw Error('tracker_append_invalid');
+   return dates.has(index)&&typeof value==='string'&&value!==''?{value,date:true}:value;
+  });
+  const bytes=appendTrackerSentRows(current.bytes,region,[{rowKey:input.plan.rowKey,identity:input.identity,values33:cells}]);
+  let response:Response|undefined;started=true;
+  try{response=await v2(token,fileId,'PUT',{headers:{'If-Match':current.etag,'Content-Type':XLSX},body:bytes as BodyInit});}catch{/* Readback can acknowledge a lost response without another upload. */}
+  if(response&&[412,429].includes(response.status)){await response.body?.cancel();return {status:'uncertain',mutationStarted:true,retrySafe:true,rejectedStatus:response.status,version:current.version};}
+  await response?.body?.cancel();
+  try{const after=await readStable(token,region,fileId);if(written(after.bytes))return {status:'written',identityMatched:true,mutationStarted:true,version:after.version};
+   const observed=readTrackerSentRowContext(after.bytes,region).rows.filter(r=>identityKey(r.identity)===identityKey(input.identity));
+   if(observed.length===1)return {status:'exists',identityMatched:true,mutationStarted:true,version:after.version};
+  }catch{/* The durable append command remains uncertain; never retry blindly. */}
+  return {status:'uncertain',mutationStarted:true};
+ }catch{return {status:'uncertain',mutationStarted:started,...(!started?{retrySafe:true}:{})};}
+}
+export const trackerAdapter:TrackerAdapter={read:readTrackerWorkbook,write:writeTrackerCells,writeBatch:writeTrackerBatch,appendSentRow:appendSentTrackerRow};

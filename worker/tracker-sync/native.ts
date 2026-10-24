@@ -23,7 +23,8 @@ function parse(value:Record<string,unknown>,file:string){
   const issues:string[]=[];let accountNo='',invoiceNo='',folio:string|null=null,transactionDate:string|null=null;try{accountNo=identityValue(get('C'));invoiceNo=identityValue(get('E'));folio=identityValue(get('F'))||null;if(get('G')?.userEnteredValue?.formulaValue)throw Error('tracker_native_identity_invalid');transactionDate=date(raw(get('G')));}catch{issues.push('identity_invalid');}if(!accountNo)issues.push('account_missing');if(!invoiceNo)issues.push('invoice_missing');
   const identity=JSON.stringify([hotel,accountNo,invoiceNo,folio]);if(accountNo&&invoiceNo&&identities.has(identity))throw Error('tracker_native_identity_ambiguous');identities.add(identity);
   const fields:ProviderRow['fields']={},formulaFields:TrackerField[]=[];for(const field of trackerFields){const cell=get(field);if(cell?.userEnteredValue?.formulaValue)formulaFields.push(field);try{fields[field]=dates.has(field)?date(raw(cell)):raw(cell)||null;}catch{fields[field]=cell?.formattedValue??null;issues.push(field+'_invalid');}}
-  rows.push({rowKey:key,hotel,accountNo,invoiceNo,folio,folioNo:folio,transactionDate,fields,locator:{sheetId:gid,sheetName:TITLE,rowIndex},issues,formulaFields,blockedWriteFields:(['R','U','V','W'] as const).filter(f=>blockedDate(get(f)))});cells.set(key,row);
+  const agent=!get('B')?.userEnteredValue?.formulaValue?raw(get('B'))?.trim():undefined,property=identityValue(get('A'));
+  rows.push({rowKey:key,hotel,accountNo,invoiceNo,folio,folioNo:folio,transactionDate,fields,...(agent?{agent,property}:{}),locator:{sheetId:gid,sheetName:TITLE,rowIndex},issues,formulaFields,blockedWriteFields:(['R','U','V','W'] as const).filter(f=>blockedDate(get(f)))});cells.set(key,row);
  }
  return {rows,cells,gid};
 }
