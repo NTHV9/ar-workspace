@@ -1,3 +1,29 @@
+## 2026-10-24 — Gmail attachment filename fallback evidence repair
+
+**Implemented and locally verified; production deployment pending.** A staff
+delivery was independently present in Gmail Sent with the intended recipients.
+Both actual attachment byte lengths and SHA-256 digests matched its frozen
+preparation, but Gmail exposed our ASCII MIME fallback filename instead of the
+original UTF-8 filename. The verifier rejected that name and left the delivery
+in review without recording Invoice history. No message was resent and no
+business history or dates were manually changed during diagnosis.
+
+The MIME builder and verifier now share the existing deterministic ASCII
+fallback. Verification accepts only the original name or its exact emitted
+fallback for non-inline files, while retaining size, downloaded-byte length,
+SHA-256, attachment count, inline filename/CID, recipient, message identity,
+thread and body checks. Alias collisions resolve by hash; indistinguishable
+distinct original names remain review-required. Each expected file can be
+consumed once. Attachment metadata failures now report their own stage even
+after an inline logo has verified. MIME output itself is unchanged.
+
+Validation: regression reproduced before implementation; 4,363 unit/integration
+tests across 323 files pass, build/typecheck pass, 31 email browser tests pass,
+and independent code review found no blocking issue. A read-only replay of the
+actual existing Sent message, frozen full envelope/body and both original
+attachment bytes passes the patched verifier. Real customer data remained in
+memory/private tool context, outside Git. No hosted SQL migration was applied.
+
 ## 2026-10-24 — Full PDF Workspace and Google Sheet CI expansion
 
 **Implemented on the current branch; committed-head GitHub qualification is the
