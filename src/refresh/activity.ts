@@ -16,8 +16,13 @@ export function startRefreshActivity(region:RegionId,token:string,onWake:()=>voi
   const next=document.visibilityState==='visible'&&Date.now()-activity.lastUsed<=10*60000;
   if(next){if(!active)onWake();void heartbeat();}active=next;
  };
- const interact=()=>{if(document.visibilityState!=='visible')return;activity.lastUsed=Date.now();check();};
- const visibility=()=>{if(document.visibilityState==='visible')activity.lastUsed=Date.now();check();};
+ const interact=()=>{
+  if(document.visibilityState!=='visible')return;
+  // Timers may have been suspended, or input may precede the next interval tick.
+  if(Date.now()-activity.lastUsed>10*60000)active=false;
+  activity.lastUsed=Date.now();check();
+ };
+ const visibility=()=>{if(document.visibilityState==='visible')interact();else check();};
  const events=['pointerdown','keydown','scroll','touchstart'] as const;
  for(const event of events)document.addEventListener(event,interact,{passive:true,capture:true});
  document.addEventListener('visibilitychange',visibility);window.addEventListener('focus',interact);

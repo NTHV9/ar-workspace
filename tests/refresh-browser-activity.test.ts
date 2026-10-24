@@ -43,3 +43,9 @@ it('a hung activity request expires and can be tried again at the next interval'
  stop=startRefreshActivity('phuket','synthetic',()=>{});await vi.advanceTimersByTimeAsync(20001);expect(signals[0].aborted).toBe(true);
  await vi.advanceTimersByTimeAsync(40000);expect(signals).toHaveLength(2);
 });
+it.each(['keydown','focus','visibilitychange'])('refreshes immediately on %s after idle before the next interval or suspended timers',async event=>{
+ const h=setup();await vi.advanceTimersByTimeAsync(10*60000);
+ vi.setSystemTime(Date.now()+(event==='focus'?60*60000:30000));
+ (event==='focus'?h.win:h.doc).dispatchEvent(new Event(event));await vi.advanceTimersByTimeAsync(0);
+ expect(h.wakes).toHaveBeenCalledTimes(1);
+});
