@@ -1,6 +1,27 @@
 import {test,expect} from '@playwright/test';
 import {auditWorkspace,auditLogin,auditRoute} from './fixtures/audit-workspace';
 
+for(const width of [1280,390])test(`Sent rows waiting for Sheet stay read only and bounded ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'khao-lak',url:'https://docs.google.com/spreadsheets/d/synthetic_khao_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=khao-lak',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:7,conflictCount:2,conflicts:[],quarantinedWrites:10,pendingRowAdds:17,uncertainRowAdds:2,heldRowAdds:3,rowAddLastSuccessAt:'2026-10-25T01:00:00Z',rowAddRows:Array.from({length:22},(_,i)=>({hotel:'TSK',invoiceNo:`SYNTH-${i+1}`,billingDate:i===0?null:'2026-10-24',state:['pending','writing','uncertain','hold','conflict'][i%5],reason:i===0?'synthetic_private_internal_reason':null}))}});});
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');const panel=page.locator('[aria-label="khao-lak tracker synchronization"]'),notice=panel.getByRole('complementary',{name:'Sent rows waiting for Sheet'});
+ await expect(notice).toContainText('Sent · waiting for Sheet');await expect(notice).toContainText('17 pending');await expect(notice).toContainText('2 uncertain — needs checking');await expect(notice).toContainText('3 held — needs review');await expect(notice).toContainText('Email is already sent.');await expect(notice).toContainText('Last row added:');
+ await expect(panel.getByRole('status')).toContainText('7 pending writes · 2 items to review');await expect(panel.getByText('10 date updates paused',{exact:false})).toBeVisible();
+ await notice.getByText('View waiting rows',{exact:true}).click();const table=notice.getByRole('table',{name:'Sent rows waiting for Sheet'});await expect(table.getByRole('row')).toHaveCount(21);
+ await expect(table.getByRole('row').nth(1).getByRole('cell')).toHaveText(['TSK','SYNTH-1','Not recorded','Pending','Needs checking']);await expect(table.getByRole('row').nth(2)).toContainText('Adding');await expect(table.getByRole('row').nth(3)).toContainText('Uncertain');await expect(table.getByRole('row').nth(4)).toContainText('Held');await expect(table.getByRole('row').nth(5)).toContainText('Conflict');
+ await expect(notice).toContainText('Showing the first 20 waiting rows.');await expect(notice.getByText('synthetic_private_internal_reason',{exact:false})).toHaveCount(0);await expect(notice.getByRole('button')).toHaveCount(0);await expect(notice.getByText(/resend/i)).toHaveCount(0);expect(commands).toEqual([]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);const bounds=await notice.boundingBox();expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width);
+ await page.screenshot({path:`.tmp/tracker-append-20261025/sent-rows-${width}.png`,fullPage:true});
+});
+
+for(const optional of [{},{pendingRowAdds:0,uncertainRowAdds:0,heldRowAdds:0,rowAddRows:[]}])test(`Sent row notice is absent for legacy or zero status ${JSON.stringify(optional)}`,async({page})=>{
+ await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:2,conflictCount:0,conflicts:[],...optional}});});
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('status')).toContainText('2 pending writes');await expect(page.getByRole('complementary',{name:'Sent rows waiting for Sheet'})).toHaveCount(0);expect(commands).toEqual([]);
+});
+
 test('healthy periodic status reads preserve an unconfirmed tracker command alert',async({page})=>{
  await page.clock.install();await auditWorkspace(page);let pending=0;const commands:unknown[]=[];
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
