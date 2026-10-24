@@ -1,3 +1,32 @@
+## 2026-10-24 — Read-only investigation of the ten quarantined Khao Lak rows
+
+The original native Sheet's recorded updater log ends at business date 23 October,
+runtime 13:45, with all five Khao Lak source properties represented. The seven
+missing current invoices are absent from both the active and archived-cleared
+Sheet identity columns. Their OPERA posting dates are 23 October, but none is
+present in the complete retained 23 October closing dashboard captures; all are
+present on 24 October. Capture times and scope were checked against the current
+capture/view definitions. This supports a later AR membership/publication versus
+the older report snapshot, not a claim that posting date proves creation time or
+that the parser definitely omitted seven rows.
+
+For the three account mismatches, distinct OPERA ledger IDs confirm a real change:
+old-account records reached verified zero, while the current other-account records
+are open. The old-account zero observations occurred during 11:03–11:12 and
+13:44–13:53 on 23 October (ICT); the Sheet still contains the old account and
+old amounts. A later same-day retained OPERA capture contains the current account.
+The financial change is provider-origin evidence, but does not establish whether
+the updater input was stale or its parser grouped the input incorrectly.
+
+Read-only inspection of the separate Aging Master source shows the active output
+is rebuilt from report-derived account rows; prior tracking is joined separately.
+This is not qualification of the exact executable used on the staff PC. The actual
+23 October input PDFs and that PC's run log were not found among accessible local
+files or connected Drive PDFs; local updater logs end earlier. Those exact inputs
+are required to distinguish report-time differences from parser/import defects.
+No updater run, Sheet/date write, queue reactivation, mail, application change or
+deployment occurred. Existing paused commands stay suppressed.
+
 ## 2026-10-24 — Owner-requested stale write queue retirement
 
 **Implemented, tested, deployed and applied to the exact reviewed backlog.**
