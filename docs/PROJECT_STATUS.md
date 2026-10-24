@@ -1,6 +1,6 @@
 ## 2026-10-24 — Record acknowledged web sends immediately; clarify staff status
 
-**Implemented and tested; deployment pending.** The owner explicitly requested
+**Implemented, tested and deployed.** The owner explicitly requested
 that a successful Gmail send response record business history immediately rather
 than require message/attachment readback. Direct web sends now persist their
 validated Gmail receipt and call the existing atomic history confirmer in the
@@ -32,6 +32,15 @@ navigation browser suites and focused accepted-draft/mobile cases pass. Producti
 build/typecheck pass. Independent review found no remaining blocker. Desktop and
 mobile synthetic screenshots were inspected; original tracked screenshot evidence
 was preserved. No actual customer email was sent as part of this qualification.
+
+Runtime source `cd6d8ec` is deployed as Worker
+`c840f97d-106a-4076-a3e1-a88a9ca08fd9`, preserving runtime variables.
+Production HTML and all 56 built JS/WASM/CSS assets match the qualified build.
+No hosted migration was applied. The previously reported staff delivery still
+had its old review flag and no Sent event at the final read-only check; this is
+not a claim that its history was repaired. No signed-in AR browser tab was
+available for its normal Check sent status action. That existing delivery can
+use the new durable-receipt recovery path without another send.
 
 ## 2026-10-24 — Gmail attachment filename fallback evidence repair
 
