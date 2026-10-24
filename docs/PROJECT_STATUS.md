@@ -1,6 +1,6 @@
 ## 2026-10-25 — Sheet credit authority, safe Account moves and administrator details
 
-**Implemented and qualified; deployment verification pending below.** Owner
+**Implemented, tested, deployed and enabled.** Owner
 approved all four policies and administrator-only diagnostic details. Original
 Aging Master remains unchanged. This builds on the combined release recorded
 below, preserving activity refresh, regional self CC and Sent-row supplementation.
@@ -20,23 +20,41 @@ below, preserving activity refresh, regional self CC and Sent-row supplementatio
   old Sent history is not copied. Provider row keys and fresh positions remain
   distinct from the mapped current ledger. Native write rereads recheck complete
   tuple uniqueness before any mutation.
-- Closed warning retirement requires a currently present verified match plus
-  fresh explicit OPERA zero evidence. Stale mapping, missing source or unknown
-  zero cannot hide a current identity warning. Warnings are resolved, not deleted
-  together with business history.
+- Closed warning retirement uses the durable exact verified-zero balance ledger
+  plus current verified/cleared zero state, rather than requiring historical
+  Invoices to be re-fetched within 15 minutes. Current rows need a validated
+  match; archived rows cannot contradict an identity warning. Missing source,
+  active/unknown competitors (including partial Folio) and changed identity do
+  not establish zero. Warnings are resolved with audit and business history kept.
 - Staff GET status returns only lastSuccessAt; detail, Picker and management
   commands are denied at the backend. UI defaults to limited visibility and
   clears cached details on access/identity changes; the original Sheet link stays.
 
 Qualification: 340 unit files / 4,623 tests; typecheck and production build;
 40 real-browser synthetic cases including staff/admin access transitions and
-existing synchronization pages; 129 migrations and all 20 disposable tracker
+existing synchronization pages; 131 migrations and all 21 disposable tracker
 SQL rollback fixtures. The unchanged 2,028-row Preview capacity guard passes
 (1.368 seconds in the pre-index final run). Fresh review findings were fixed and
 regression-tested: fill echo continuity, intent freeze revalidation, unknown
 post-upload readback, current identity retirement, source ambiguity and Preview
-policy parity. Hosted migration is `20261024201427_ar_tracker_credit_identity_policy`.
+policy parity. Hosted migrations are `20261024201427_ar_tracker_credit_identity_policy`,
+`20261024202605_ar_tracker_closed_warning_evidence`, and
+`20261024203028_ar_tracker_partial_source_ambiguity`. The latter two are additive
+follow-ups; the already-applied first migration was not rewritten.
 No real email was sent and no intentional staff date change was used for testing.
+
+Live initial release source `66946c2c09a1d353f9d5149d13bfbd2d52206fbc`, Worker
+`b75dad4e-0aa5-4bac-b95b-84f94f2e0d61`: health database verified / OPERA connected;
+all 55 deployed JS/CSS/WASM assets match the qualified build. Admin Reports was
+checked in the authenticated live browser and both original trackers synchronized
+successfully. Blank-only S fills were actually published and read back in both
+original tracker formats. Staff scenarios were tested in the synthetic browser
+and backend suite; no real staff permissions/session was changed to simulate them.
+The 143 actual Sent records and all 2,016 present rows' R/U/V/W values have the
+same before/after fingerprints. Some historical warnings with contradictory Folio
+or unresolved source identity intentionally remain for review; no financial zero
+was inferred to make the warning count disappear. Final release metadata and
+completion counts are recorded after the release readback.
 
 ## 2026-10-25 — Combined release: Sent rows, activity refresh and regional self CC
 

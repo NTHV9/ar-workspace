@@ -19,10 +19,14 @@ provider identity separate from its current ledger relationship and audit moves;
 do not move or fabricate Sent history/recipients. Row positions are temporary
 write locations found from a fresh identity read, never Invoice identifiers.
 
-Retire warnings for currently matched, source-confirmed zero Invoices; preserve
-their audit records and all business history. A missing/failed source lookup,
-absent Sheet row or changed identity is not financial zero. Fresh native reads
-also reject duplicate complete tuples introduced after command selection.
+Retire warnings using the durable exact verified-zero balance ledger and current
+verified/cleared source state; preserve their audit records and business history.
+Current rows need a validated match; archived rows must not contradict a pending
+identity warning. Historical confirmed closure does not expire merely because it
+was observed earlier than 15 minutes ago. A missing/failed source lookup, absent
+Sheet row or changed identity alone is not financial zero. Partial active or
+unverified Folio candidates block both matching and closure retirement. Fresh
+native reads also reject duplicate complete tuples after command selection.
 
 Only administrators see synchronization details, errors, queues, differences,
 Picker and management commands. Members retain the configured Sheet link and

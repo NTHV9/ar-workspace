@@ -60,6 +60,13 @@ begin
  if not exists(select 1 from ar_private.tracker_conflicts where row_key=scope and field='identity' and status='pending') then raise exception 'unverified duplicate candidate was ignored during reassignment';end if;
  update public.ar_invoices set open=0 where account_id=scope and id='unverified';
  if exists(select 1 from ar_private.tracker_policy_match(r)) then raise exception 'unknown cached-zero candidate was silently ignored';end if;
+ update public.ar_invoices set folio_no=null where account_id=scope and id='unverified';
+ if exists(select 1 from ar_private.tracker_policy_match(r)) then raise exception 'unknown partial candidate was silently ignored';end if;
+ update public.ar_invoices set verification_state='verified',open=100 where account_id=scope and id='unverified';
+ if exists(select 1 from ar_private.tracker_policy_match(r)) then raise exception 'verified live partial candidate was silently ignored';end if;
+ update public.ar_invoices set open=0,verification_state='cleared' where account_id=scope||'-moved' and id='new-i';
+ if exists(select 1 from ar_private.tracker_policy_match(r)) then raise exception 'a sole partial source was accepted without confirming Folio';end if;
+ update public.ar_invoices set open=100,verification_state='verified' where account_id=scope||'-moved' and id='new-i';
  update public.ar_invoices set folio_no='SYNTH-OTHER-FOLIO' where account_id=scope and id='unverified';
  perform public.ar_tracker_snapshot(actor,'khao-lak',lease,jsonb_build_array(r));
  -- Zero is explicit source evidence, never absence. Clear only warning records, preserve business rows.

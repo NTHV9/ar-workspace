@@ -24,13 +24,17 @@ Owner approved all four policies and deployment after testing on 25 October 2026
 - Hiding UI without removing backend data access is insufficient.
 
 ## Progress
-- Planning, implementation and qualification: complete. Deployment verification pending.
+- Planning, implementation, qualification and live deployment: complete; final release readback ongoing.
 - Fresh reviews found and fixed echo continuity, source candidate ambiguity,
   current identity retirement, Preview parity, uncertain post-upload readback and
   native fresh-read tuple races; all have behavior regression coverage.
 - Ruling: nonempty employee S equal to the Account default remains an explicit
   override unless uninterrupted actual fill provenance proves an echo.
-- Ruling: closed warnings require present current validated identity and fresh
-  explicit zero; missing source or unknown cached zero remains held.
+- Ruling: closed warnings require durable exact verified-zero evidence and current
+  verified/cleared source state. Current rows need validated identity; archived
+  rows must not contradict an identity warning. Historical zero proof does not
+  expire after 15 minutes. Missing source or unknown cached zero remains held.
+- Ruling: partial Folio competitors count whether their nonzero balance is
+  verified or unverified; the chosen target must still confirm supplied Folio.
 - SQL and provider/access work used separate scoped implementers and fresh final
   review; the parent integrated and verified the whole change before deployment.
