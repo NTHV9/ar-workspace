@@ -1,0 +1,8 @@
+import {vi} from 'vitest';
+import {nonVatPacket} from './invoice-ar-only-nonvat';
+import {nonVatCalculation} from './invoice-embedded-nonvat';
+export function nonVatReaderFixture(amounts=[20,-10]){
+ const {p,groups}=nonVatPacket(amounts),current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
+ const reader={account:vi.fn(async()=>({accountDetails:{...structuredClone(p.account),invoices:[structuredClone(current)]}})),invoiceHistory:vi.fn(),reservationFolios:vi.fn(async()=>({reservationFolioInformation:{reservationInfo:structuredClone(p.reservation),folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}]}})),financialTransactionDetail:vi.fn(async()=>({details:[{hotelId:'TSAN',accountId:{id:'101'},invoices:[structuredClone(current)]}]})),invoiceReservation:vi.fn(async()=>({reservations:{reservation:[{hotelId:'TSAN',reservationIdList:[{type:'Reservation',id:'777'}]}]}})),invoicePostings:vi.fn(async()=>structuredClone(p.postings)),invoicePostingBreakdown:vi.fn(async(_r:string,_w:number,_s:string,_e:string,offset:number,limit:number)=>({financialPostings:structuredClone(p.taxRows),offset,limit,hasMore:false,totalResults:p.taxRows.length})),invoiceTransactionDetails:vi.fn(async()=>({trxCodesInfo:structuredClone(p.taxCodes)})),folioTypeName:vi.fn(async()=>{throw Error('forbidden');}),folioReport:vi.fn(async()=>{throw Error('forbidden');}),invoiceTransactionCodeRules:vi.fn(async(code:string)=>structuredClone(groups.find(g=>g.rules.transactionCode.code===code)?.rules)),invoiceChargeSimulation:vi.fn(async(code:string,amount:number)=>nonVatCalculation(code,amount))};
+ return {p,groups,current,reader};
+}

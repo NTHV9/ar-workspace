@@ -1,12 +1,13 @@
 // Evidence from OPERA's calculator is kept separate from posted transaction rows.
-// It is usable only with independent, freshly read native invoice tax controls.
+// Native controls remain preferred. A separately verified whole-invoice current
+// rule proof can qualify the narrow all-VAT7 path when native selection is ambiguous.
 type Row=Record<string,unknown>;
 const fail=():never=>{throw Error('document_invoice_ar_tax_unverified');};
 const object=(v:unknown):Row=>v&&typeof v==='object'&&!Array.isArray(v)?v as Row:fail();
 const array=(v:unknown):Row[]=>Array.isArray(v)?v.map(object):fail();
 const number=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?v:fail();
 export const canonical=(v:unknown):string=>JSON.stringify(v,(_k,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b))):value);
-export interface ArSimulation {postingId:string;rules:unknown;rulesAfter:unknown;generatedRules:unknown[];calculation:unknown}
+export interface ArSimulation {postingId:string;rules:unknown;rulesAfter:unknown;generatedRules:unknown[];generatedRulesAfter?:unknown[];calculation:unknown}
 export function verifyArSimulation(e:Omit<ArSimulation,'postingId'>,hotel:string,code:string,gross:number){
  if(!Number.isFinite(gross)||!gross||canonical(e.rules)!==canonical(e.rulesAfter))fail();
  const root=object(object(e.rules).transactionCode),setup=object(root.trxSetup),generates=object(root.generatesSetup);

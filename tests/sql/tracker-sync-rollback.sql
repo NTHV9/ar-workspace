@@ -29,9 +29,8 @@ begin
  if (select latest_stage from ar_private.dashboard_current_invoices where hotel='KAT' and account_id=scope and invoice_id='i')<>'Follow 2' then raise exception 'effective dashboard stage missing';end if;
  if (select last_reminder_stage from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>'Follow 2' then raise exception 'same-day stages disagree between Register and Dashboard';end if;
  rows:=jsonb_set(rows,'{0,fields,V}','null');perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
- select id,revision into conflict,rev from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='V' and status='pending';
- result:=public.ar_tracker_resolve(actor,'phuket',conflict,rev,'accept_sheet');if result->>'resolved'<>'true' then raise exception 'sheet retraction failed: %',result;end if;
- if (select last_reminder_stage from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>'Follow 1' or (select latest_stage from ar_private.dashboard_current_invoices where hotel='KAT' and account_id=scope and invoice_id='i')<>'Follow 1' then raise exception 'reviewed retraction left stale stage';end if;
+  -- Verified Sheet clears project directly under the 13 October authority rule.
+if (select last_reminder_stage from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>'Follow 1' or (select latest_stage from ar_private.dashboard_current_invoices where hotel='KAT' and account_id=scope and invoice_id='i')<>'Follow 1' then raise exception 'reviewed retraction left stale stage';end if;
  rows:=jsonb_set(rows,'{0,fields,U}',to_jsonb((stamp-2)::text));perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
  if (select last_reminder_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-2 then raise exception 'earlier accepted correction left stale reminder date';end if;
  rows:=jsonb_set(rows,'{0,fields,AC}','null');perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
@@ -63,73 +62,32 @@ begin
  perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,S}','"30 days"'));
  if not exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='S' and reason='invalid_source_field' and status='pending') then raise exception 'nonnumeric credit reference was not held safely';end if;
  if (select credit_term from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>30 then raise exception 'invalid credit reference changed account authority';end if;
- -- A manual web edit and a different Sheet edit must remain a visible conflict.
+ --  -- Verified Sheet R wins over a mutable web date; settings and Sent stay separate.
  update public.ar_invoice_workflow set first_billing_date=stamp-1,revision=revision+1 where hotel='KAT' and account_id=scope and invoice_id='i';
  result:=public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp-2)::text)));
- if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-1 then raise exception 'sheet overwrote web correction';end if;
- if not exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending') then raise exception 'manual conflict not surfaced';end if;
- perform public.ar_tracker_membership(actor,'phuket',lock_id,'[]');
- if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-1 or (select count(*) from public.ar_sent_events)<>before_events then raise exception 'source deletion erased facts';end if;
+ if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-2 or exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending') then raise exception 'verified Sheet authority was not applied';end if;perform public.ar_tracker_membership(actor,'phuket',lock_id,'[]');
+ if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-2 or (select count(*) from public.ar_sent_events)<>before_events then raise exception 'source deletion erased facts';end if;
  if exists(select 1 from ar_private.tracker_rows where region='phuket' and row_key=tracked_key and present) then raise exception 'source absence not recorded';end if;
  -- Synthetic transaction ordering: event insert precedes final delivery state.
- insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(delivery,actor,'send','synthetic-tracker-'||delivery,'{}','awaiting_evidence');
+ insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(delivery,actor,'send','synthetic-tracker-'||delivery,'{"expected":{"mailbox":"phuket","sender":"ar@katathani.com"}}','awaiting_evidence');
  insert into public.ar_sent_events(delivery_id,owner,hotel,account_id,invoice_ids,purpose,stage,sent_at,gmail_id,open_at_send) values(delivery,actor,'KAT',scope,array['i'],'collection','Follow 2',now(),'synthetic-tracker-'||delivery,100);
  if not exists(select 1 from ar_private.tracker_outbox where delivery_id=delivery and invoice_id='i' and field='V' and state='pending') then raise exception 'Sent insert did not atomically enqueue';end if;
  if jsonb_array_length(public.ar_tracker_outbox(actor,'phuket',lock_id))<>0 then raise exception 'unknown delivery/source absence became writable';end if;
  perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
  update ar_private.mail_deliveries set state='sent' where id=delivery;
  if not exists(select 1 from jsonb_array_elements(public.ar_tracker_outbox(actor,'phuket',lock_id)) q where q->>'field'='V') then raise exception 'committed confirmed Sent outbox missing';end if;
- -- R is the established first actual billing date, never this resend day.
- select id,revision into conflict,rev from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending';
- perform public.ar_tracker_resolve(actor,'phuket',conflict,rev,'keep_web');
- insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(bill_delivery,actor,'send','synthetic-tracker-'||bill_delivery,'{}','awaiting_evidence');
+ --  -- A rebill retains the current verified Sheet billing date as its frozen intent.
+ insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state) values(bill_delivery,actor,'send','synthetic-tracker-'||bill_delivery,'{"expected":{"mailbox":"phuket","sender":"ar@katathani.com"}}','sent');
  insert into public.ar_sent_events(delivery_id,owner,hotel,account_id,invoice_ids,purpose,stage,sent_at,gmail_id,open_at_send) values(bill_delivery,actor,'KAT',scope,array['i'],'billing',null,((stamp-3)::timestamp at time zone 'Asia/Bangkok'),'synthetic-tracker-'||bill_delivery,100);
- update ar_private.mail_deliveries set state='sent' where id=bill_delivery;
- if not exists(select 1 from jsonb_array_elements(public.ar_tracker_outbox(actor,'phuket',lock_id)) q where q->>'field'='R' and q->>'value'=(stamp-3)::text) then raise exception 'confirmed earliest billing was not preserved';end if;
+ if not exists(select 1 from jsonb_array_elements(public.ar_tracker_outbox(actor,'phuket',lock_id)) q where q->>'deliveryId'=bill_delivery::text and q->>'field'='R' and q->>'value'=stamp::text) then raise exception 'rebill ignored current Sheet billing authority';end if;
  if (select count(*) from ar_private.tracker_outbox where delivery_id=bill_delivery)<>1 then raise exception 'outbox duplicated selected invoice';end if;
- perform public.ar_tracker_write_result(actor,'phuket',lock_id,(select id from ar_private.tracker_outbox where delivery_id=bill_delivery),'written',to_jsonb(stamp::text),to_jsonb((stamp-3)::text),'synthetic-written-version');
- perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp-3)::text)));
- if exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending') then raise exception 'equal confirmed billing day was not an echo';end if;
- -- External first billing can legitimately precede the first Gmail send.
- perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp-4)::text)));
- if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-4 or exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending') then raise exception 'legitimate pre-email first billing was blocked';end if;
- perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp-3)::text)));
- select baseline->'R' into r_baseline from ar_private.tracker_rows where region='phuket' and row_key=tracked_key;
- select value into r_fact from ar_private.tracker_accepted_facts where region='phuket' and row_key=tracked_key and field='R';
- select count(*) into r_history from ar_private.tracker_history where region='phuket' and row_key=tracked_key and field='R';
- -- A later nonblank R must be a visible review case after confirmed billing
- -- and writeback; the floor alone must not hide a silently advanced baseline.
- perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp-2)::text)));
- if not exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending') then
-  raise exception 'confirmed R later source date silently imported: baseline=%,accepted=%,workflow=%,due=%,outbox=%',
-   (select baseline->>'R' from ar_private.tracker_rows where region='phuket' and row_key=tracked_key),
-   (select actual_date from ar_private.tracker_accepted_facts where region='phuket' and row_key=tracked_key and field='R'),
-   (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i'),
-   (select due_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i'),
-   (select state from ar_private.tracker_outbox where delivery_id=bill_delivery);
- end if;
- if (select baseline->'R' from ar_private.tracker_rows where region='phuket' and row_key=tracked_key) is distinct from r_baseline or (select value from ar_private.tracker_accepted_facts where region='phuket' and row_key=tracked_key and field='R') is distinct from r_fact or (select count(*) from ar_private.tracker_history where region='phuket' and row_key=tracked_key and field='R')<>r_history or (select state from ar_private.tracker_outbox where delivery_id=bill_delivery)<>'written' then raise exception 'unreviewed later R changed baseline/fact/history/acknowledgment';end if;
- select id,revision into conflict,rev from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending';perform public.ar_tracker_resolve(actor,'phuket',conflict,rev,'keep_web');
- if not exists(select 1 from jsonb_array_elements(public.ar_tracker_outbox(actor,'phuket',lock_id)) item where item->>'field'='R' and item->>'state'='pending' and item->>'expected'=(stamp-2)::text and item->>'value'=(stamp-3)::text) then raise exception 'Keep AR later billing conflict did not requeue fresh preimage/floor';end if;
- perform public.ar_tracker_write_result(actor,'phuket',lock_id,(select id from ar_private.tracker_outbox where delivery_id=bill_delivery),'written',to_jsonb((stamp-2)::text),to_jsonb((stamp-3)::text),'synthetic-written-r-reviewed');
- if (select expected_value from ar_private.tracker_outbox where delivery_id=bill_delivery) is distinct from to_jsonb((stamp-2)::text) then raise exception 'reviewed R writeback lost fresh Sheet preimage';end if;
- perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp-3)::text)));
- if exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending') then raise exception 'reviewed R writeback echo reopened conflict';end if;
- perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}','null'));
- select id,revision into conflict,rev from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending';perform public.ar_tracker_resolve(actor,'phuket',conflict,rev,'keep_web');
- if not exists(select 1 from ar_private.tracker_outbox where delivery_id=bill_delivery and state='pending') then raise exception 'reviewed source reversion did not requeue the written date';end if;
- rows:=jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp+2)::text));perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
- select id,revision into conflict,rev from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending';
- perform public.ar_tracker_resolve(actor,'phuket',conflict,rev,'accept_sheet');
- if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-3 or (select due_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp+27 then raise exception 'later Sheet correction moved true first billing or due';end if;
+ perform public.ar_tracker_write_result(actor,'phuket',lock_id,(select id from ar_private.tracker_outbox where delivery_id=bill_delivery),'written',to_jsonb(stamp::text),to_jsonb(stamp::text),'synthetic-written-version');
  select count(*) into event_count from public.ar_sent_events;
- perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
- if exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending') or (select count(*) from public.ar_sent_events)<>event_count then raise exception 'reviewed later R acknowledgment reopened or changed Gmail';end if;
+ rows:=jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp+2)::text));perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
+ if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp+2 or (select due_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp+32 then raise exception 'later authoritative Sheet billing/due not projected';end if;
  rows:=jsonb_set(rows,'{0,fields,R}','null');perform public.ar_tracker_snapshot(actor,'phuket',lock_id,rows);
- select id,revision into conflict,rev from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='R' and status='pending';
- perform public.ar_tracker_resolve(actor,'phuket',conflict,rev,'accept_sheet');
- if (select first_billing_date from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>stamp-3 or not exists(select 1 from jsonb_array_elements(public.ar_tracker_outbox(actor,'phuket',lock_id)) q where q->>'field'='R' and q->>'value'=(stamp-3)::text) then raise exception 'Sheet clear erased immutable first billing or R writeback';end if;
- begin perform public.ar_tracker_status(other,'phuket');raise exception 'unknown actor admitted';exception when others then if sqlerrm<>'tracker_forbidden' then raise;end if;end;
+ if exists(select 1 from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i' and (first_billing_date is not null or due_date is not null)) then raise exception 'Sheet clear retained stale billing/due';end if;
+ if exists(select 1 from jsonb_array_elements(public.ar_tracker_outbox(actor,'phuket',lock_id)) q where q->>'deliveryId'=bill_delivery::text) or (select count(*) from public.ar_sent_events)<>event_count then raise exception 'Sheet clear restored old intent or changed immutable Sent';end if;begin perform public.ar_tracker_status(other,'phuket');raise exception 'unknown actor admitted';exception when others then if sqlerrm<>'tracker_forbidden' then raise;end if;end;
  if has_function_privilege('authenticated','public.ar_tracker_snapshot(uuid,text,uuid,jsonb)','execute') or has_table_privilege('service_role','ar_private.tracker_history','select') then raise exception 'tracker private boundary exposed';end if;
 end $$;
 rollback;

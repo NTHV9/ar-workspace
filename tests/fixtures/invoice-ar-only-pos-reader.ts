@@ -1,0 +1,7 @@
+import {vi} from 'vitest';
+import {posPacket} from './invoice-ar-only-pos';
+export function posReaderFixture(){
+ const {p,rules}=posPacket(),current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
+ const reader={account:vi.fn(async()=>({accountDetails:{...structuredClone(p.account),invoices:[structuredClone(current)]}})),invoiceHistory:vi.fn(),reservationFolios:vi.fn(async()=>({reservationFolioInformation:{reservationInfo:structuredClone(p.reservation),folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}]}})),financialTransactionDetail:vi.fn(async()=>({details:[{hotelId:'KAT',accountId:{id:'101'},invoices:[structuredClone(current)]}]})),invoiceReservation:vi.fn(async()=>({reservations:{reservation:[{hotelId:'KAT',reservationIdList:[{type:'Reservation',id:'777'}]}]}})),invoicePostings:vi.fn(async()=>structuredClone(p.postings)),invoicePostingBreakdown:vi.fn(async(_r:string,_w:number,_s:string,_e:string,offset:number,limit:number)=>({financialPostings:structuredClone(p.taxRows),offset,limit,hasMore:false,totalResults:p.taxRows.length})),invoiceTransactionDetails:vi.fn(async()=>({trxCodesInfo:structuredClone(p.taxCodes)})),folioTypeName:vi.fn(async()=>{throw Error('forbidden');}),folioReport:vi.fn(async()=>{throw Error('forbidden');}),invoiceTransactionCodeRules:vi.fn(async(code:string)=>structuredClone(rules.find(r=>r.transactionCode.code===code))),invoiceChargeSimulation:vi.fn(async()=>{throw Error('POS amounts cannot be simulated');})};
+ return {p,rules,current,reader};
+}

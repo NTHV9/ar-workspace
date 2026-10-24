@@ -4,6 +4,7 @@ import {trackerWatchCallback,maintainTrackerWatches,type TrackerWatchEnv} from '
 import {trackerConflictsApi} from './tracker-sync/conflicts-api';
 import {trackerPickerConfig} from './tracker-sync/picker';
 import {trackerAdapter} from './tracker-sync/provider';
+import {probeTrackerVersions} from './tracker-sync/version-probe';
 import {syncTracker,type TrackerEnv} from './tracker-sync/service';
 import {bulkSettingsApi} from './settings/bulk-api';
 import {warmPeriodSummaries} from './dashboard/precompute';
@@ -151,7 +152,13 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/management'?managementDashboardApi(request,env,user.id):path==='/api/dashboard/balance-accounts'?dashboardBalanceAccountsApi(request,env,user.id):path==='/api/dashboard/invoice-entries'?dashboardInvoiceEntriesApi(request,env,user.id):path==='/api/dashboard/aging-invoices'?agingInvoicesApi(request,env,user.id):path==='/api/dashboard/hotel-overview'?dashboardHotelOverviewApi(request,env,user.id):path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
     if(registerRequest)return invoiceRegisterApi(request,env,user.id!);
     if(path==='/api/reports/sheets')return reportSheetLinks(request,env,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']);
-    if(path==='/api/reports/tracker-revisions'){if(request.method!=='GET'||requestUrl.search)return json({error:'tracker_invalid'},400);if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return json(await backendRpc(env,'ar_tracker_revisions',{p_actor:env.REQUEST_ACTOR??user.id!}));}
+    if(path==='/api/reports/tracker-revisions'){
+      if(request.method!=='GET'||requestUrl.search)return json({error:'tracker_invalid'},400);
+      if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);
+      const revisions=await backendRpc(env,'ar_tracker_revisions',{p_actor:env.REQUEST_ACTOR??user.id!});
+      if(background)background.waitUntil(probeTrackerVersions(env,user.id!,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']));
+      return json(revisions);
+    }
     if(path==='/api/reports/tracker-conflicts'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerConflictsApi(request,env,user.id!);}
     if(path==='/api/reports/tracker'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerApi(request,env,user.id!,trackerAdapter);}
     if(path==='/api/reports/tracker-picker'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerPickerConfig(request,env,user.id!);}

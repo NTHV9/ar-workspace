@@ -14,6 +14,10 @@ it('keeps prior payment out of revenue and VAT and prints it in the source credi
 it('preserves a reversed payment sign without changing the underlying charge VAT',()=>{
  const m=invoiceModel(paymentInvoice(-100));expect(m.gross).toBe(331500);expect(m.credit).toBe(-10000);expect(m.outstanding).toBe(341500);expect(m.vat).toBe(21687);expect(m.lines.at(-1)).toMatchObject({debit:0,credit:-10000});
 });
+it('prints a payment already on the invoice but does not deduct an additional AR allocation from its footer',()=>{
+ const p=paymentInvoice();p.manifest.open-=500;p.invoice.balance=money(p.manifest.open);
+ const before=structuredClone(p),m=invoiceModel(p);expect(m.gross).toBe(331500);expect(m.credit).toBe(100000);expect(m.outstanding).toBe(231500);expect(m.vat).toBe(21687);expect(p).toEqual(before);expect(p.invoice.balance.amount).toBe(1815);
+});
 it.each(['amount','code','folio','reservation','currency','both-sides'] as const)('refuses a payment whose ledger evidence differs from the AR line (%s)',kind=>{
  const p=paymentInvoice(),last=p.taxRows.at(-1)!;if(!('creditAmount' in last.posting))throw Error('Fixture');const pay=last.posting;
  if(kind==='amount')pay.creditAmount=money(999);if(kind==='code')pay.transactionCode='OTHER';if(kind==='folio')pay.folioNo=89;if(kind==='reservation')pay.guestInfo.reservationId.id='999';if(kind==='currency')pay.postedAmount.currencyCode='USD';

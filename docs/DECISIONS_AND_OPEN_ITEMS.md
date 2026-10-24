@@ -1,3 +1,101 @@
+## 2026-10-24 — Successful web Gmail sends record history immediately
+
+The owner explicitly requests that a successful Gmail send API response for a
+message submitted by this web app immediately record its billing/collection
+history. Do not make staff verify the same message/attachment readback before
+recording a normal successful web send. This replaces that earlier readback gate
+for direct sends and existing drafts explicitly sent from the web.
+
+Persist the immutable provider receipt and use the existing atomic history
+transaction. Sending remains a human action. A created draft is not sent; an
+ambiguous/failed provider response is not success and never permits automatic
+resending. Drafts sent outside the web and diagnostic emails retain independent
+evidence verification. Status must distinguish Gmail acceptance from history
+recording, and a failed history attempt retries the original delivery without
+sending another email. Keep receipt provenance, account/hotel identity, workflow
+revision and no-duplicate protections. Google Sheet master-date authority remains
+unchanged; recording a Sent event is not a claim that a Sheet write completed.
+
+## 2026-10-24 — Invoice comparison acceptance clarified by owner
+
+Invoice amounts and the wording/meaning of each item must match OPERA AR.
+Line breaks, row counts arising from equivalent grouping, and layout need not be
+100% identical, provided no important information is lost or changes meaning.
+Previously approved equivalent API accommodation wording remains accepted. The
+owner also explicitly accepts the API payment label without unavailable masked
+card/expiry details. Keep exact monetary/VAT/NonVAT and invoice identity checks.
+Do not spend further work on pixel/line-layout equivalence alone.
+
+## Final AR acceptance: amounts and item meaning — 24 October 2026
+
+The owner explicitly confirms that line grouping and layout do not need to match
+the native report 100%. Required amounts and item wording/meaning must agree.
+Keep exact AR identity, source ownership and the independently checked before-VAT,
+VAT, NonVAT, gross, outstanding, debit and credit requirements. Do not continue
+layout-only or grouping-only refinements after these criteria pass.
+
+The exact Accommodation Charge / Accommodate Charge wording pair is accepted as
+meaning-equivalent; the first 25 observed rows were a subset, not a count limit.
+The owner also explicitly accepts the API payment label for the identified
+KMasterCard case without the native masked-card/expiry detail, which the bounded
+source reads did not provide. Do not fabricate card details or hardcode a typo
+replacement. Other item meanings remain subject to source-backed verification.
+Preserve native baselines and report exact, accepted-semantic and layout-only
+differences separately.
+
+## AR parity is field-level, not total-only — 23 October 2026
+
+The owner reiterates that generated Invoices must agree with OPERA AR Invoices
+in tax detail, not merely the final total. Acceptance compares before-VAT, posted
+VAT and NonVAT separately, as well as gross, printed outstanding, debit/credit
+and relevant visible line content. Service-charge treatment must follow qualified
+source evidence; excluding service from a VAT calculation base does not by itself
+classify that service as NonVAT in the AR footer. Offset tax/base differences
+cannot pass because their gross cancels. Guest Folio is not an AR reference.
+
+## AR financial evidence excludes Guest Folio reports — 23 October 2026
+
+The owner explicitly rejects `folioReports` / Guest Folio PDFs as financial
+sources or tax-validation fallbacks for AR Invoice generation. Exact current
+OPERA AR Invoice PDFs are the acceptance references. Identifier-only reservation
+metadata may still be read with exact scope checks; it is not AR monetary proof.
+
+The replacement must use qualified AR-selected posted facts and independently
+validated rules where authorized, without per-Invoice overrides. Do not deploy a
+partial replacement that converts previously working invoices into mass refusals.
+Recorded-source replay is regression evidence, not a fresh provider interval.
+This supersedes earlier recommendations for native Guest aggregate controls in
+AR generation; existing production usage is legacy pending the complete cutover.
+
+## Shared current-rule and NonVAT qualification — 22 October 2026
+
+The owner delegates the choice of a correct automatic rule and confirms it must
+apply to future matching cases, not individual Invoice IDs. Prefer original posted
+VAT; when exact native selection is ambiguous, allow a bounded all-VAT7 current
+OPERA-calculator proof only with complete source coverage and stable rereads.
+Do not relabel calculated tax as historical posted VAT or apply VAT7 to mixed
+NonVAT invoices. See `INVOICE_FINAL_TAX_RULES_20261022.md` for the full contract.
+
+For direct NonVAT, retain explicit OPERA flags and a named owner-confirmed TSAN
+6002 Taxi Service policy, with strict metadata, zero posted tax and unchanged
+base-only effective OPERA calculations at actual signed amounts. The owner
+confirmed Airport and Taxi treatment and separately verified TSAN6002's flag is
+unchecked; no checkbox change is authorized or made. Zero calculator tax alone
+does not classify other codes. No per-invoice override or broad description match.
+
+## Printed Invoice amount versus remaining AR balance — 22 October 2026
+
+The owner clarified that an OPERA Invoice retains its invoice amount while the
+Statement shows the remaining receivable after separately applied payments.
+Independent current AR PDFs confirm this distinction. The Invoice footer and
+amount-in-words must use the complete selected invoice posting net, reconciled
+to OPERA `invoice.amount`, rather than substitute `invoice.balance`. Payments
+that are actual selected Invoice lines remain in its printed credit column and
+balance. External AR allocations absent from those lines do not reduce that
+printed Invoice balance. Statement/dashboard/open-balance and source-freshness
+checks continue to use OPERA's current AR balance. This supersedes earlier repair
+notes that described the current AR balance as the printed Invoice footer value.
+
 ## PDF corpus qualification and uploaded originals — 21 October 2026
 
 The owner requests testing all of our current bills, beyond representative hotel

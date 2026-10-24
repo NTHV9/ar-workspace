@@ -68,7 +68,7 @@ for(const action of ['draft','send'] as const)test(`By System blocks billing but
  await page.getByRole('button',{name:'collection',exact:true}).click();await expect(page.getByText('Include the portal reference in the collection message.',{exact:true})).toBeVisible();await page.getByLabel('Collection stage').selectOption('Friendly');
  await page.getByLabel('Email TO').fill('collections@example.test');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();
  if(action==='draft'){await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();await expect(page.getByText('Gmail confirmed draft creation.',{exact:false})).toBeVisible();}
- else{await page.getByRole('button',{name:'Review & send now',exact:true}).click();await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Gmail sent evidence verified.',{exact:false})).toBeVisible();}
+ else{await page.getByRole('button',{name:'Review & send now',exact:true}).click();await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();}
  expect(calls.filter(c=>c.endsWith(action==='draft'?'/gmail-draft':'/send'))).toHaveLength(1);
 });
 

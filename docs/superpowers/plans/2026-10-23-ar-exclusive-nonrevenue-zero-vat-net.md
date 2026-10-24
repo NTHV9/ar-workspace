@@ -1,0 +1,17 @@
+# Exclusive NonRevenue zero-posted-VAT net claims
+
+Proposed follow-on within the existing direct-zero source-claims component. The remaining taxless F&B charge has the same strict nonmanual exclusive NonRevenue report domain as the reviewed actual-net POS certificate, but no VAT posting in its check. Do not invent VAT or classify it as NonVAT simply because its generates are empty.
+
+Add a distinct provenance `exclusive-nonrevenue-zero-vat-net`. Keep the existing ordinary-Revenue and explicit-NonVAT predicates unchanged, and evaluate explicit NonVAT first. The new provenance requires paired Revenue/NonRevenue/F&B definitions, source group agreement, revenue=false, nonTaxable=false, taxInclusive=false, manualPosting=false, useForPaidout=false, depositPostingOnly=false, compTransaction=false, no configured generates/associations/active adjustments, and only false bucket flags. No description, code, GL mapping or invoice exception is permitted.
+
+Reuse the existing whole-source standalone zero-atom inspector, complete reverse/member/alias closure and selected/source scope/monetary consistency. Actual net=gross=signed selected amount with no posted taxes is required. The absence of tax supplies actual zero VAT; the strict current-AR exclusive F&B report-domain certificate supplies the before-VAT classification. It is not a nominal percentage proof.
+
+Preserve the existing paired exclusive zero-charge calculation validator for corroboration: exact scoped code/signed amount, one real base result and total counted once. A calculation does not independently establish the footer bucket. The known exact source requires one new paired calculation capture; do not fabricate it or treat a missing capture as a valid result.
+
+The existing `direct-zero` claim remains `zero-vat-net`, and its opaque source-bound token excludes only the exact verified zero IDs from the complete POS remainder. Therefore the already-reviewed complete exclusive-NonRevenue/native/absent-Revenue POS owner can coexist without a new whole-invoice branch or packet splicing. Strict residual validation, one aggregation and the single whole-source fresh fence remain unchanged.
+
+The same transaction code can legitimately appear in both the zero component and a taxed POS scope. Require one identical canonical current rule witness per hotel/code across both components and across repeated zero records, as well as each record's before/after equality. The proof verifier must enforce the collector's shared-code cache invariant; contradictory paired definitions cannot assign different footer roles to the same current code. Add a cross-component contradiction counterexample and an identical-shared-code positive.
+
+Tests must reject manual NonRevenue/MISC, explicit NonVAT entering the new provenance, inclusive setup, configured/actual descendants, unknown zero roles, source/calculation mutation, partial/foreign calculator results, alias collisions and unselected check siblings. Add a positive zero atom plus actual posted POS VAT composition and verify every source ID, footer field and generic SourceClaims display path. Keep explicit owner-confirmed NonVAT precedence and all prior zero contracts.
+
+Parent qualification requires fresh paired rules/calculation/source, recorded-corpus retention, all seven actual native fields and reopened PDF body comparison. The runtime must not read native totals. Parent dispatch is required before implementation; no deployment is implied.

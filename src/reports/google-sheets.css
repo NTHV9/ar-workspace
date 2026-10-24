@@ -7,7 +7,7 @@
 .report-sheets a:hover{background:#edf3fa;border-color:#9eb5d5}
 .report-sheets li>span{font-size:12px;color:var(--ar-text-muted)}
 .report-sheets-error{display:flex;align-items:center;gap:16px;color:var(--ar-text-danger);font-size:13px}
-.report-tracker{flex-basis:100%;min-width:0;font-size:12px;color:var(--ar-text-muted)}
+.report-tracker{flex-basis:100%;width:100%;min-width:0;font-size:12px;color:var(--ar-text-muted)}
 .report-tracker p{line-height:1.6;margin:0 0 10px}
 .report-tracker [role=alert]{color:var(--ar-text-danger)}
 .report-tracker-actions{display:flex;flex-wrap:wrap;gap:8px}
@@ -32,4 +32,10 @@
 .report-tracker th,.report-tracker td{padding:8px 4px;border-bottom:1px solid var(--line)}
 .report-tracker-preview-scroll{overflow-x:auto;margin:12px 0}
 .report-tracker-preview-scroll table{min-width:580px}
+.report-tracker-paused{margin:14px 0;padding:14px 16px;border:1px solid #e6cd91;border-radius:8px;background:#fff8e8;color:#765316}
+.report-tracker-paused strong{color:#765316}
+.report-tracker-paused p:last-child{margin-bottom:0}
+.report-tracker-paused summary{color:#765316}
+.report-tracker-paused th,.report-tracker-paused td{overflow-wrap:anywhere}
+.report-tracker-paused .report-tracker-preview-scroll table{min-width:460px}
 @media(max-width:600px){.report-sheets li{align-items:flex-start;flex-direction:column;gap:12px;padding:18px 0}.report-sheets a{width:100%;justify-content:space-between}.report-sheets-error{align-items:flex-start;flex-direction:column}}

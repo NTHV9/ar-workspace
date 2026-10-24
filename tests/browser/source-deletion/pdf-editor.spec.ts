@@ -2,6 +2,50 @@ import {choosePdfTool} from '../fixtures/pdf-tools';
 import {test,expect,type Page} from '@playwright/test';
 import {reviewPreviewPages} from '../fixtures/pdf-preview';
 
+test('Delete row in the address keeps the opposite invoice header intact',async({page})=>{
+ await page.goto('/tests/browser/source-deletion/harness.html?header=1');
+ const address=page.getByRole('button',{name:'Edit original text: SYNTHETIC ADDRESS FIRST',exact:true});
+ const voucher=page.getByRole('button',{name:'Edit original text: VCH-001',exact:true});
+ await expect(address).toBeVisible();await expect(voucher).toBeVisible();
+ const voucherStyle=await voucher.getAttribute('style');
+ await address.click();await expect(page.getByRole('button',{name:'Delete row',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Delete row',exact:true}).click();
+ await expect(page.getByRole('alert')).toHaveCount(0);
+ await expect(voucher).toBeVisible();await expect(voucher).toHaveAttribute('style',voucherStyle!);
+ await expect(address).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Edit original text: SYNTHETIC ADDRESS SECOND',exact:true})).toBeVisible();
+ const changed=await saveProject(page);
+ expect(changed.pages[0].rowEdits??[]).toEqual([]);
+ expect(changed.pages[0].layers.filter((l:any)=>l.deleted).map((l:any)=>l.original.text)).toEqual(['SYNTHETIC ADDRESS FIRST']);
+ const proof=await page.evaluate(async()=>{
+  const f=(window as any).fixture,loaded=await f.loadSources(f.sources),original=loaded.project.pages[0],changed=f.restoreProject(f.project,loaded.project).pages[0];
+  const before=document.createElement('canvas'),after=document.createElement('canvas');
+  await f.renderPage(original,loaded.documents,before,2);await f.renderPage(changed,loaded.documents,after,2);
+  const a=before.getContext('2d')!.getImageData(700,200,500,330).data,b=after.getContext('2d')!.getImageData(700,200,500,330).data;
+  let differences=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])differences++;
+  loaded.dispose();return differences;
+ });
+ expect(proof,'All right-header pixels stay at their original positions').toBe(0);
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(address).toBeVisible();await expect(voucher).toHaveAttribute('style',voucherStyle!);
+ await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(address).toHaveCount(0);
+ await page.getByRole('button',{name:'Preview PDFs',exact:true}).click();await reviewPreviewPages(page);
+ await page.getByRole('dialog',{name:'Final PDF preview',exact:true}).locator('.pdf-preview-actions .pdf-primary').click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).fixture.saved?.length??0)).toBe(1);
+ const exported=await page.evaluate(async()=>{
+  const f=(window as any).fixture,loaded=await f.loadSources(f.sources),output=await f.loadSources([{id:'exported',name:'Synthetic exported.pdf',kind:'invoice',bytes:f.saved[0].bytes}]);
+  const before=document.createElement('canvas'),after=document.createElement('canvas');
+  await f.renderPage(loaded.project.pages[0],loaded.documents,before,3);await f.renderPage(output.project.pages[0],output.documents,after,3);
+  const runs=await f.detectText(loaded.project.pages[0],loaded.documents);
+  const ink=(canvas:HTMLCanvasElement,r:any)=>{const bytes=canvas.getContext('2d')!.getImageData(Math.floor(r.x*3),Math.floor(r.y*3),Math.ceil(r.width*3),Math.ceil(r.height*3)).data;let n=0;for(let i=0;i<bytes.length;i+=4)if(Math.min(bytes[i],bytes[i+1],bytes[i+2])<190)n++;return n;};
+  const result=runs.filter((r:any)=>r.x>=350&&r.y<265).map((r:any)=>({text:r.text,before:ink(before,r),after:ink(after,r)}));
+  const removed=runs.find((r:any)=>r.text==='SYNTHETIC ADDRESS FIRST'),remaining=ink(after,removed);
+  output.dispose();loaded.dispose();return {result,remaining};
+ });
+ expect(exported.remaining).toBe(0);
+ for(const r of exported.result){expect(r.before,r.text).toBeGreaterThan(0);expect(r.after/r.before,r.text).toBeGreaterThan(.85);expect(r.after/r.before,r.text).toBeLessThan(1.15);}
+});
+
 async function openStatement(page:Page,hotel='KAT',control=false){
  await page.goto(`/tests/browser/source-deletion/harness.html?hotel=${hotel}${control?'&control=1':''}`);
  await expect(page.getByRole('button',{name:'Edit original text: F002',exact:true})).toBeVisible();
@@ -13,6 +57,21 @@ async function openStatement(page:Page,hotel='KAT',control=false){
   l.dispose();return voucher;
  });
 }
+
+test('Delete row after a column move preserves prior edits and Undo',async({page})=>{
+ await page.goto('/tests/browser/source-deletion/harness.html?header=1');
+ const address=page.getByRole('button',{name:'Edit original text: SYNTHETIC ADDRESS FIRST',exact:true});
+ const voucher=page.getByRole('button',{name:'Edit original text: VCH-001',exact:true});
+ await expect(address).toBeVisible();
+ await page.evaluate(async()=>{const f=(window as any).fixture,l=await f.loadSources(f.sources),project=l.project;project.pages[0]=f.applyFlowEdit(project.pages[0],{id:'prior-column-move',kind:'move',x:33,y:125,width:200,height:45,dx:0,dy:10});l.dispose();f.reopen(project);});
+ await expect(address).toBeVisible();const right=await voucher.getAttribute('style');
+ await address.click();const before=await saveProject(page);expect(before.pages[0].rowEdits).toHaveLength(1);
+ await page.getByRole('button',{name:'Delete row',exact:true}).click();await expect(address).toHaveCount(0);await expect(page.getByRole('alert')).toHaveCount(0);
+ const deleted=await saveProject(page);expect(deleted.pages[0].rowEdits).toEqual(before.pages[0].rowEdits);
+ await expect(voucher).toHaveAttribute('style',right!);
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(address).toBeVisible();
+ const restored=await saveProject(page);expect(restored.pages[0]).toEqual(before.pages[0]);
+});
 
 async function saveProject(page:Page){
  await page.getByRole('button',{name:'Save draft',exact:true}).click();
@@ -248,4 +307,41 @@ test('deleting source text pushed beyond the physical sheet removes the empty ov
   const result={beforePages:before.getPageCount(),afterPages:output.project.pages.length,deletedBelowSheet:changed.layers[0].y>changed.height,headerInk};output.dispose();loaded.dispose();return result;
  });
  expect(result.beforePages).toBe(2);expect(result.deletedBelowSheet).toBe(true);expect(result.afterPages).toBe(1);expect(result.headerInk).toBeGreaterThan(100);
+});
+test('deleting transparent source text refuses unrelated artwork within its mask',async({page})=>{
+ await openStatement(page);
+ const message=await page.evaluate(async()=>{
+  const f=(window as any).fixture,pdf=await f.PDFDocument.load(f.unsupportedSources[0].bytes);
+  pdf.getPage(0).drawRectangle({x:32,y:220,width:220,height:3});
+  const sources=[{...f.unsupportedSources[0],bytes:await pdf.save()}],loaded=await f.loadSources(sources);
+  try{
+   const p=loaded.project.pages[0],runs=await f.detectText(p,loaded.documents);
+   p.layers=[f.createReplacementLayer(runs[0],'transparent-delete')];
+   loaded.project.pages[0]=f.deleteTextLayer(p,p.layers[0]);
+   try{await f.exportProject(loaded.project,sources,loaded.documents);return '';}
+   catch(error){return error instanceof Error?error.message:String(error);}
+  }finally{loaded.dispose();}
+ });
+ expect(message).toMatch(/artwork|background|other content/i);
+});
+test('transparent source deletion cannot erase an opaque glyph at the same position',async({page})=>{
+ await openStatement(page);
+ const results=await page.evaluate(async()=>{
+  const f=(window as any).fixture,results=[];
+  for(const opacity of [.5,0]){
+   const pdf=await f.PDFDocument.create(),font=await pdf.embedFont('Helvetica'),sheet=pdf.addPage([400,300]);
+   sheet.drawText('SYNTHETIC OVERLAP',{x:30,y:220,size:12,font,opacity});
+   sheet.drawText('SYNTHETIC OVERLAP',{x:30,y:220,size:12,font});
+   const sources=[{id:'overlap',name:'Synthetic overlap.pdf',kind:'invoice',bytes:await pdf.save()}],loaded=await f.loadSources(sources);
+   try{
+    const p=loaded.project.pages[0],runs=await f.detectText(p,loaded.documents),run=runs.find((r:any)=>r.unsupported);
+    if(!run)throw Error('Transparent fixture run was not detected');
+    p.layers=[f.createReplacementLayer(run,'overlap-delete')];loaded.project.pages[0]=f.deleteTextLayer(p,p.layers[0]);
+    try{await f.exportProject(loaded.project,sources,loaded.documents);results.push('');}
+    catch(error){results.push(error instanceof Error?error.message:String(error));}
+   }finally{loaded.dispose();}
+  }
+  return results;
+ });
+ for(const message of results)expect(message).toMatch(/artwork|background|other content/i);
 });

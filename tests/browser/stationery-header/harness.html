@@ -1,0 +1,8 @@
+<!doctype html><html><body style="margin:0"><div id="root"></div><script type="module">
+import React from 'react';import {createRoot} from 'react-dom/client';import {PDFDocument,rgb} from 'pdf-lib';
+import {PdfWorkspace} from '/src/pdf/PdfWorkspace.tsx';import {syntheticInvoice} from '/tests/browser/fixtures/invoice-pdf.ts';
+import * as stationery from '/src/pdf/stationery-artwork.ts';
+import * as engine from '/src/pdf/engine.ts';import * as text from '/src/pdf/source-text.ts';import {extractSourceText} from '/src/pdf/source-extraction.ts';import {runNativeWorker} from '/src/pdf/native/worker-pool.ts';
+const sources=[{id:'invoice',name:'Synthetic Invoice.pdf',kind:'invoice',bytes:await syntheticInvoice(3,'VCH-001','A',false,{address:['SYNTHETIC ADDRESS FIRST','SYNTHETIC ADDRESS SECOND','SYNTHETIC ADDRESS THIRD']})}];
+const root=createRoot(document.getElementById('root'));let mount=0;const reopen=(project,docs=sources)=>{window.fixture.sources=docs;root.render(React.createElement(PdfWorkspace,{key:++mount,documents:docs,initialProject:project,hotel:'KAT',selectedCount:1,accountName:'Synthetic address test',onClose:()=>{},onSaveDraft:async p=>window.fixture.project=structuredClone(p),onSave:async(files,p)=>{window.fixture.saved=files;window.fixture.project=structuredClone(p);}}));};window.fixture={...engine,...text,...stationery,PDFDocument,rgb,extractSourceText,runNativeWorker,sources,reopen};reopen();
+</script></body></html>

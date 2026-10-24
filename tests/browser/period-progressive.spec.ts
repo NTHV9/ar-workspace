@@ -31,23 +31,38 @@ for(const region of ['phuket','khao-lak'])test(`${region}: slow or failed paymen
   await page.screenshot({path:`evidence/period-progressive-${region}.png`,fullPage:true});
  }finally{release();}
 });
-for(const region of ['phuket','khao-lak'])test(`${region}: cached month appears on return and reload before any slow response, then clears at sign-out`,async({page})=>{
+for(const region of ['phuket','khao-lak'])test(`${region}: cached month survives reload until revision verification, then clears at sign-out`,async({page})=>{
  await setupRegional(page,true);await login(page);
  if(region==='khao-lak')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption('khao-lak');
  await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();await openActivity(page);
  await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
  await expect.poll(()=>page.evaluate(()=>({tab:!!sessionStorage.getItem('ar-google-tab-v1'),paths:JSON.parse(sessionStorage.getItem('ar-period-preview-v1')??'[]').map((e:{path:string})=>e.path)}))).toMatchObject({tab:true,paths:expect.arrayContaining([expect.stringMatching(/from=\d{4}-\d{2}-01/)])});
  let release=()=>{};const gate=new Promise<void>(r=>release=r);
+ let releaseRevision=()=>{};const revisionGate=new Promise<void>(r=>releaseRevision=r);
+ // The first verified tracker snapshot deliberately invalidates cached data.
+ // Hold that source independently so reload hydration is tested before invalidation.
+ await page.route('**/api/reports/tracker-revisions',async route=>{await revisionGate;await route.fallback();});
  await page.route('**/api/dashboard/hotel-overview?*',async route=>{await gate;await route.fallback();});
  try{
   await page.getByRole('button',{name:'Aging',exact:true}).click();await page.getByRole('button',{name:'Dashboard',exact:true}).click();await page.getByRole('button',{name:'This month',exact:true}).click();await openActivity(page);
   await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
   await expect(page.getByText('Loading activity…',{exact:true})).toBeVisible();
   await page.reload();await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
+  releaseRevision();
+  await expect.poll(()=>page.evaluate(()=>sessionStorage.getItem('ar-period-preview-v1'))).toBeNull();
+  // The mounted reader retains its loaded result; a new reader cannot revive
+  // the invalidated preview while the replacement response is still pending.
+  await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
+  await expect(page.getByText('Loading activity…',{exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('—');
+  release();
+  await expect(page.getByTestId('dashboard-invoice_entries-count')).toHaveText('0');
+  await expect.poll(()=>page.evaluate(()=>sessionStorage.getItem('ar-period-preview-v1'))).not.toBeNull();
   await page.getByRole('button',{name:'Sign out',exact:true}).click();
   await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>sessionStorage.getItem('ar-period-preview-v1'))).toBeNull();
- }finally{release();}
+ }finally{releaseRevision();release();}
 });
 
 for(const region of ['phuket','khao-lak'])test(`${region}: a linked invoice edit refreshes the open period and Aging readers`,async({page})=>{

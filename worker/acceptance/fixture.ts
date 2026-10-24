@@ -33,6 +33,8 @@ export function acceptanceTransport(fixture:Promise<AcceptanceFixture>|Acceptanc
   if(u.pathname==='/ars/v1/accounts')return Response.json(page(hotel===f.hotel?[{hotelId:hotel,accountId:{id:f.accountId},accountNo:f.accountNo,accountName:f.name}]:[],'accountsDetails'));
   if(hotel!==f.hotel)throw Error('acceptance_fixture_scope_invalid');
   const account=encodeURIComponent(f.accountId);
+  if(u.pathname===`/fof/config/v1/hotels/${hotel}/transactionCodes/SYNTHETIC/hotelTransactionCode`)return Response.json({transactionCode:{hotelId:hotel,code:'SYNTHETIC',classification:{type:'Revenue',transactionType:{code:'Others'},group:{code:'OTHER'}},trxSetup:{nonTaxable:true,taxInclusive:false},compTransaction:false,associatedTransactionCodes:[],generatesSetup:{addBaseAmtTo:{bucket1:false,bucket2:false,bucket3:false}}}});
+  if(u.pathname===`/fof/config/v1/hotels/${hotel}/transactionCodes/SYNTHETIC/chargeSimulations`){const amount=Number(u.searchParams.get('postingAmount'));if(!f.invoices.some(row=>row.original===amount))throw Error('acceptance_fixture_scope_invalid');return Response.json({result:{totalAmount:amount,charges:[{transactionCode:'SYNTHETIC',level:'TransactionCode',basePosting:true,sequence:0,amount}]}});}
   const reservationHeader=new RegExp(`^/rsv/v1/hotels/${hotel}/reservations/([0-9]+)$`).exec(u.pathname);
   if(reservationHeader){const row=f.invoices.find(r=>r.reservationId===reservationHeader[1]);if(!row)throw Error('acceptance_fixture_scope_invalid');return Response.json({reservations:{reservation:[{...reservationInfo(f,row),customReference:row.reference}],hasMore:false}});}
   if(u.pathname==='/ars/v1/invoicePostings'){
@@ -44,7 +46,7 @@ export function acceptanceTransport(fixture:Promise<AcceptanceFixture>|Acceptanc
    const row=f.invoices.find(r=>r.reservationId===u.searchParams.get('reservationId'));
    if(!row||u.searchParams.get('folioWindowNo')!=='1')throw Error('acceptance_fixture_scope_invalid');
    const offset=Number(u.searchParams.get('offset')??0),limit=Number(u.searchParams.get('limit')??50),included=row.date>=(u.searchParams.get('startDate')??'')&&row.date<=(u.searchParams.get('endDate')??'');
-   const entries=included?[{posting:{hotelId:hotel,folioNo:Number(row.folioNo),guestInfo:{reservationId:{id:row.reservationId}},transactionNo:Number(syntheticPosting(row)),transactionCode:'SYNTHETIC',transactionType:'Revenue'},postingBreakdown:{grossAmount:money(row.original),netAmount:money(row.original)}}]:[];
+   const entries=included?[{posting:{hotelId:hotel,folioNo:Number(row.folioNo),guestInfo:{reservationId:{id:row.reservationId}},transactionNo:Number(syntheticPosting(row)),transactionCode:'SYNTHETIC',transactionDate:row.date,debitAmount:money(row.original),postedAmount:money(row.original),transactionType:'Revenue'},postingBreakdown:{grossAmount:money(row.original),netAmount:money(row.original)}}]:[];
    return Response.json({financialPostings:entries.slice(offset,offset+limit),offset,limit,totalResults:entries.length,hasMore:offset+limit<entries.length});
   }
   if(u.pathname===`/ars/v1/hotels/${hotel}/accounts/${account}`)return Response.json(acceptanceAccount(f));
@@ -72,4 +74,3 @@ export function acceptanceTransport(fixture:Promise<AcceptanceFixture>|Acceptanc
   throw Error('acceptance_fixture_request_unsupported');
  };
 }
-

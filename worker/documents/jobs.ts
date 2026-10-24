@@ -6,9 +6,8 @@ import {workspaceInvoice} from '../invoice/generate';
 import {documentSource} from './source-policy';
 import type {WorkflowStep} from 'cloudflare:workers';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
-import {makeReader} from '../opera/probe';
 import {OperaError} from '../opera/client';
-import {getNativeInvoicePdf,type DocumentInvoice} from './native-invoice';
+import type {DocumentInvoice} from './native-invoice';
 import {documentResources} from './resources';
 export interface DocumentFile {id:string;kind:'statement'|'invoice';invoice_id:string|null;ordinal:number;state:string;storage_key:string|null;error_code:string|null;byte_count:number|null;sha256:string|null}
 export interface DocumentExport {name:string;storage_key:string;byte_count:number;sha256:string}
@@ -50,29 +49,27 @@ export async function runDocumentJob(env:RefreshEnv,jobId:string,step:WorkflowSt
  const job=await documentJob(env,jobId);if(!job)throw new Error('document_job_missing');
  const resources=documentResources(env,job.hotel);
  const pending=job.files.filter(file=>['pending','generating'].includes(file.state));
- // Scoped native tax-control printing inside workspace generation forwards its
- // print-start callback so uncertain outcomes retain the no-repeat fence.
- // Historical native printing stays serial,
- // retaining its original no-repeat and uncertain-result semantics.
+ // Source snapshots remain immutable; legacy pending invoices cannot start a
+ // retired native print. Stored/reviewed/uncertain artifacts are never regenerated.
  const parallel=job.invoice_source==='workspace'?2:1;
  for(let offset=0;offset<pending.length;offset+=parallel){
   const outcomes=await Promise.allSettled(pending.slice(offset,offset+parallel).map(file=>step.do(`document-${file.id}`,{retries:{limit:0,delay:'5 seconds'},timeout:'8 minutes'},async()=>{
    const claim=await backendRpc<{claimed:boolean;file:DocumentFile}>(env,'ar_document_claim_file',{p_job_id:job.id,p_file_id:file.id});
    if(!claim.claimed)return {state:claim.file.state};
-   let renderStarted=false;
    try{
     if(file.kind==='statement'&&job.statement_source!=='workspace')throw new OperaError('invalid_configuration',undefined,'document_statement_source_retired');
     const invoice=job.manifest.find(i=>i.id===file.invoice_id);if(file.kind!=='statement'&&(!invoice||invoice.hotel!==job.hotel||invoice.account_id!==job.account_id))throw new Error('document_manifest_invalid');
     if(file.kind==='invoice'&&job.invoice_source!==undefined&&!['native','workspace'].includes(job.invoice_source))throw Error('document_invoice_source_invalid');
-    const pdf=file.kind==='statement'?await workspaceStatement(env,job,resources):job.invoice_source==='workspace'?await workspaceInvoice(env,job,invoice!,resources,()=>{renderStarted=true;}):await getNativeInvoicePdf(makeReader(env,job.hotel),invoice!,()=>{renderStarted=true;});
+    if(file.kind==='invoice'&&job.invoice_source!=='workspace')throw Error('document_invoice_source_retired');
+    const pdf=file.kind==='statement'?await workspaceStatement(env,job,resources):await workspaceInvoice(env,job,invoice!,resources);
     const key=`jobs/${job.id}/originals/${file.id}.pdf`;
     await uploadPrivate(env,key,pdf.bytes,'application/pdf');
     await backendRpc(env,'ar_document_finish_file',{p_job_id:job.id,p_file_id:file.id,p_storage_key:key,p_bytes:pdf.bytes.length,p_sha256:pdf.sha256});
     return {state:'ready',pages:pdf.pages};
    }catch(error){
     const code=error instanceof OperaError?error.stage??error.code:error instanceof Error&&(/^(document_(?:statement|invoice|addressee)_[a-z_]+|document_source_changed|budget_[a-z_]+|storage_[a-z_]+)$/.test(error.message)||['document_manifest_invalid','private_storage_write_failed','private_storage_unavailable'].includes(error.message))?error.message:'document_generation_failed';
-    await backendRpc(env,'ar_document_fail_file',{p_job_id:job.id,p_file_id:file.id,p_code:code,p_uncertain:renderStarted});
-    return {state:renderStarted?'uncertain':'unavailable',code};
+    await backendRpc(env,'ar_document_fail_file',{p_job_id:job.id,p_file_id:file.id,p_code:code,p_uncertain:false});
+    return {state:'unavailable',code};
    }
   })));
   // Drain admitted peers before a workflow error can trigger reconciliation.

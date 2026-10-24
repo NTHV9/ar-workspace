@@ -37,7 +37,7 @@ for(const [region,width] of [['phuket',1440],['khao-lak',1280],['phuket',390]] a
  await page.getByRole('button',{name:/account Harbor Travel$/}).click();
  const panel=page.getByRole(width<=1100?'dialog':'complementary',{name:'Collection work details',exact:true});
  await expect(panel.getByRole('button',{name:'Prepare documents',exact:true})).toBeDisabled();
- await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('HARBOR-101');await panel.getByRole('button',{name:'Select all shown',exact:true}).click();await expect(panel.locator('.queue-selection-footer')).toContainText('1 selected');
+ await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('HARBOR-101');await panel.getByRole('button',{name:'Select all shown',exact:true}).click();await expect(panel.locator('.queue-selection-footer')).toContainText('1 invoices selected');
  await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('First pair');await panel.getByRole('button',{name:'Select all shown',exact:true}).click();await expect(panel.locator('.queue-selection-footer')).toContainText('THB 300.50');
  await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('');
  if(width<=1100){const amount=await panel.locator('.queue-detail-context strong').boundingBox();const close=await panel.getByRole('button',{name:'Close queue details'}).boundingBox();expect(amount!.x+amount!.width).toBeLessThanOrEqual(close!.x);}
@@ -45,12 +45,12 @@ for(const [region,width] of [['phuket',1440],['khao-lak',1280],['phuket',390]] a
  await page.screenshot({path:`evidence/collections-workspace-${region}-${width}.png`,fullPage:false});
  const footer=await panel.locator('.queue-selection-footer').boundingBox();const bounds=await panel.boundingBox();expect(footer!.y+footer!.height).toBeLessThanOrEqual(bounds!.y+bounds!.height+1);expect(footer!.y+footer!.height).toBeLessThanOrEqual(900);
  if(width<=1100)await panel.getByRole('button',{name:'Close queue details'}).click();
- await page.getByRole('button',{name:/account Coral Holidays$/}).click();await expect(panel.locator('.queue-selection-footer')).toContainText('0 selected');await expect(panel.getByRole('button',{name:'Prepare documents',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:/account Coral Holidays$/}).click();await expect(panel.locator('.queue-selection-footer')).toContainText('1 account \u00b7 2 invoices selected');await expect(panel.getByRole('button',{name:'Prepare documents',exact:true})).toBeEnabled();await panel.getByLabel('Queue select CORAL-101',{exact:true}).check();await expect(panel.locator('.queue-selection-footer')).toContainText('2 accounts \u00b7 3 invoices selected');await panel.getByLabel('Queue select CORAL-101',{exact:true}).uncheck();await expect(panel.locator('.queue-selection-footer')).toContainText('1 account \u00b7 2 invoices selected');
  if(width<=1100)await panel.getByRole('button',{name:'Close queue details'}).click();
- await page.getByRole('button',{name:/account Harbor Travel$/}).click();await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('First pair');await panel.getByRole('button',{name:'Select all shown',exact:true}).click();await panel.getByRole('button',{name:'Prepare documents',exact:true}).click();
+ await page.getByRole('button',{name:/account Harbor Travel$/}).click();await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('First pair');await expect(panel.getByLabel('Queue select HARBOR-101',{exact:true})).toBeChecked();await expect(panel.getByLabel('Queue select HARBOR-102',{exact:true})).toBeChecked();await panel.getByRole('button',{name:'Prepare documents',exact:true}).click();
  const prepare=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Prepare documents',exact:true})});await expect(prepare).toContainText('2 selected invoices');await expect(prepare.getByRole('combobox',{name:'Document content',exact:true})).toHaveValue('both');await prepare.getByRole('button',{name:'Create document job',exact:true}).click();await expect.poll(()=>writes.length).toBe(1);
  expect(writes[0]).toMatchObject({hotel,accountId:'harbor',ids:['shared','inv-2'],purpose:'billing',content:'both'});
- await prepare.getByRole('button',{name:'Cancel',exact:true}).click();if(width<=1100)await panel.getByRole('button',{name:'Close queue details'}).click();
+ await prepare.getByRole('button',{name:'Cancel',exact:true}).click();await panel.getByRole('button',{name:'Clear selection',exact:true}).click();if(width<=1100)await panel.getByRole('button',{name:'Close queue details'}).click();
  await views.locator('.queue-more-views summary').click();await views.getByRole('button',{name:/On hold/}).click();await page.getByRole('button',{name:/account Held Account$/}).click();await expect(panel.getByRole('button',{name:'Prepare documents',exact:true})).toHaveCount(0);await expect(panel.getByRole('button',{name:'Select all shown',exact:true})).toBeDisabled();if(width<=1100)await panel.getByRole('button',{name:'Close queue details'}).click();await views.getByRole('button',{name:/All work/}).click();
  await page.getByRole('button',{name:'Collection filters',exact:true}).click();await page.getByLabel('Queue timing',{exact:true}).selectOption('Upcoming');await expect(views.locator('.queue-more-views summary')).toContainText('Upcoming');await expect(page.getByRole('button',{name:/account Orchid Agency$/})).toBeVisible();await expect(page.getByRole('button',{name:/account Harbor Travel$/})).toHaveCount(0);
  await page.getByRole('button',{name:'Clear filters',exact:true}).click();await page.getByRole('searchbox',{name:'Search collection queue',exact:true}).fill('does-not-exist');await expect(page.getByText('No work matches these filters',{exact:true})).toBeVisible();
@@ -134,13 +134,16 @@ for(const region of ['phuket','khao-lak'])test(`${region}: workflow changes refr
  await expect(panel.getByRole('heading',{name:'Harbor Travel',exact:true})).toBeVisible();await expect(panel.locator('.queue-selection-footer')).toContainText('0 selected');
 });
 
-test('one account can switch work stages without carrying invoice selection across stages',async({page})=>{
+test('one account retains stage-separated selections and exact document scopes',async({page})=>{
  const {rows,writes}=await setup(page,'phuket');Object.assign(rows[0].workflow!,{first_billing_date:'2026-08-01',last_reminder_stage:'Friendly',last_reminder_date:'2026-09-16'});await page.getByRole('button',{name:'Reload queue',exact:true}).click();
  const account=page.getByRole('button',{name:/account Harbor Travel$/});await expect(account).toHaveCount(1);await account.click();const stages=page.getByRole('navigation',{name:'Work stages for selected account'});
- await stages.getByRole('button',{name:/Billing/}).click();await page.getByLabel('Queue select HARBOR-102',{exact:true}).check();await expect(page.locator('.queue-selection-footer')).toContainText('1 selected');
- await stages.getByRole('button',{name:/Follow-up 1/}).click();await expect(page.locator('.queue-selection-footer')).toContainText('0 selected');await expect(page.getByLabel('Queue select HARBOR-102',{exact:true})).toHaveCount(0);await page.getByLabel('Queue select HARBOR-101',{exact:true}).check();
- await page.getByRole('button',{name:'Prepare documents',exact:true}).click();const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Prepare documents',exact:true})});await dialog.getByRole('button',{name:'Create document job',exact:true}).click();await expect.poll(()=>writes.length).toBe(1);expect(writes[0]).toMatchObject({hotel:'KAT',accountId:'harbor',ids:['shared'],purpose:'collection'});
+ await stages.getByRole('button',{name:/Billing/}).click();await page.getByLabel('Queue select HARBOR-102',{exact:true}).check();await expect(page.locator('.queue-selection-footer')).toContainText('1 invoices selected');
+ await stages.getByRole('button',{name:/Follow-up 1/}).click();await expect(page.locator('.queue-selection-footer')).toContainText('1 invoices selected');await expect(page.getByLabel('Queue select HARBOR-102',{exact:true})).toHaveCount(0);await page.getByLabel('Queue select HARBOR-101',{exact:true}).check();
+ await expect(page.locator('.queue-selection-footer')).toContainText('1 account \u00b7 2 invoices selected');await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
+ const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Prepare selected accounts',exact:true})});await expect(dialog).toContainText('2 work groups \u00b7 2 invoices');await dialog.getByRole('button',{name:'Prepare accounts',exact:true}).click();await expect.poll(()=>writes.length).toBe(2);
+ expect(writes.map(w=>({hotel:w.hotel,accountId:w.accountId,ids:w.ids,purpose:w.purpose}))).toEqual(expect.arrayContaining([{hotel:'KAT',accountId:'harbor',ids:['inv-2'],purpose:'billing'},{hotel:'KAT',accountId:'harbor',ids:['shared'],purpose:'collection'}]));
 });
+
 test('invoice workbench shows precise amounts and lets staff review only selected rows',async({page})=>{
  await setup(page,'phuket');await page.getByRole('button',{name:/account Harbor Travel$/}).click();const panel=page.getByRole('complementary',{name:'Collection work details'}),list=panel.getByRole('group',{name:'Invoices in selected work'});
  await expect(list).toContainText('100.25');await expect(list).toContainText('200.25');await panel.getByLabel('Queue select HARBOR-101',{exact:true}).check();await panel.getByLabel('Queue select HARBOR-102',{exact:true}).check();await panel.getByRole('button',{name:'Selected 2',exact:true}).click();await expect(list.locator('tbody tr')).toHaveCount(2);await expect(panel.locator('.queue-selection-footer')).toContainText('THB 300.50');
@@ -175,17 +178,17 @@ for(const [region,width,height] of [['phuket',1590,835],['khao-lak',1280,720],['
  await list.evaluate(e=>{e.scrollTop=0;});await page.screenshot({path:`.tmp/collections-viewport/${region}-${width}-${height}.png`,fullPage:false});
 });
 
-test('visible work timing filters keep account totals and document selections in the same scope',async({page})=>{
+test('work timing filters retain hidden selections and create the exact selected document scope',async({page})=>{
  const {rows,writes,hotel}=await setup(page,'phuket');rows.filter(r=>r.account_id==='harbor').forEach((r,i)=>{Object.assign(r.workflow!,{billing_required:false,due_date:calendarAdd(today,i<12?2:20)});});
  await page.getByRole('button',{name:'Reload queue',exact:true}).click();await page.getByRole('button',{name:/account Harbor Travel$/}).click();
  const timing=page.getByRole('group',{name:'Work timing'}),list=page.getByRole('group',{name:'Invoices in selected work'}),footer=page.locator('.queue-selection-footer');
  await expect(list.locator('tbody tr')).toHaveCount(24);await page.getByLabel('Queue select HARBOR-101',{exact:true}).check();
- await timing.getByRole('button',{name:'Ready',exact:true}).click();await expect(timing.getByRole('button',{name:'Ready',exact:true})).toHaveAttribute('aria-pressed','true');await expect(list.locator('tbody tr')).toHaveCount(12);await expect(footer).toContainText('0 selected');await expect(list).not.toContainText('Upcoming');
- await page.getByLabel('Queue select HARBOR-101',{exact:true}).check();await timing.getByRole('button',{name:'Upcoming',exact:true}).click();await expect(list.locator('tbody tr')).toHaveCount(12);await expect(footer).toContainText('0 selected');await expect(page.getByLabel('Queue select HARBOR-101',{exact:true})).toHaveCount(0);
- await timing.getByRole('button',{name:'All',exact:true}).click();await expect(list.locator('tbody tr')).toHaveCount(24);await expect(page.getByLabel('Queue select HARBOR-101',{exact:true})).not.toBeChecked();
- await timing.getByRole('button',{name:'Ready',exact:true}).click();await page.getByRole('button',{name:'Select all shown',exact:true}).click();await expect(footer).toContainText('12 selected');await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
+ await timing.getByRole('button',{name:'Ready',exact:true}).click();await expect(timing.getByRole('button',{name:'Ready',exact:true})).toHaveAttribute('aria-pressed','true');await expect(list.locator('tbody tr')).toHaveCount(12);await expect(footer).toContainText('1 invoices selected');await expect(page.getByLabel('Queue select HARBOR-101',{exact:true})).toBeChecked();await expect(list).not.toContainText('Upcoming');
+ await page.getByLabel('Queue select HARBOR-101',{exact:true}).check();await timing.getByRole('button',{name:'Upcoming',exact:true}).click();await expect(list.locator('tbody tr')).toHaveCount(12);await expect(footer).toContainText('1 invoices selected');await expect(page.getByLabel('Queue select HARBOR-101',{exact:true})).toHaveCount(0);await page.getByLabel('Queue select HARBOR-124',{exact:true}).check();await expect(footer).toContainText('2 invoices selected');
+ await timing.getByRole('button',{name:'All',exact:true}).click();await expect(list.locator('tbody tr')).toHaveCount(24);await expect(page.getByLabel('Queue select HARBOR-101',{exact:true})).toBeChecked();await expect(page.getByLabel('Queue select HARBOR-124',{exact:true})).toBeChecked();
+ await timing.getByRole('button',{name:'Ready',exact:true}).click();await page.getByRole('button',{name:'Select all shown',exact:true}).click();await expect(footer).toContainText('13 invoices selected');await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
  const modal=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Prepare documents',exact:true})});await modal.getByRole('button',{name:'Create document job',exact:true}).click();await expect.poll(()=>writes.length).toBe(1);
- expect(writes[0]).toMatchObject({hotel,accountId:'harbor',purpose:'collection',ids:rows.filter(r=>r.account_id==='harbor').slice(0,12).map(r=>r.id)});
+ expect(writes[0]).toMatchObject({hotel,accountId:'harbor',purpose:'collection',ids:rows.filter(r=>r.account_id==='harbor').filter((_,i)=>i<12||i===23).map(r=>r.id)});
 });
 
 test('long account names, complete invoice identifiers and queue errors keep actions reachable',async({page})=>{
@@ -220,7 +223,7 @@ for(const region of ['phuket','khao-lak'])test('invoice headers sort without cha
  await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();await expect(table.locator('tbody tr').first()).toContainText('HARBOR-124');
  await panel.getByRole('button',{name:'Sort by Invoice',exact:true}).click();await expect(table.locator('tbody tr').first()).toContainText('HARBOR-101');
  for(const name of ['Folio','Guest','Action date','Latest sent','Open · THB'])await panel.getByRole('button',{name:'Sort by '+name,exact:true}).click();
- await expect(panel.getByRole('checkbox',{name:'Queue select HARBOR-101',exact:true})).toBeChecked();await expect(panel.locator('.queue-selection-footer')).toContainText('1 selected');
- await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('HARBOR-102');await expect(table.locator('tbody tr')).toHaveCount(1);await expect(panel.locator('.queue-selection-footer')).toContainText('1 selected');
+ await expect(panel.getByRole('checkbox',{name:'Queue select HARBOR-101',exact:true})).toBeChecked();await expect(panel.locator('.queue-selection-footer')).toContainText('1 invoices selected');
+ await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('HARBOR-102');await expect(table.locator('tbody tr')).toHaveCount(1);await expect(panel.locator('.queue-selection-footer')).toContainText('1 invoices selected');
  await page.screenshot({path:'evidence/collections-invoice-sort-'+region+'.png'});
 });

@@ -1,0 +1,9 @@
+import {nonVatPacket} from './invoice-ar-only-nonvat';
+import {arOnlyTaxSource} from '../../worker/invoice/current-ar-tax';
+export function zeroVatNetPacket(inclusive=false){
+ const {p,groups}=nonVatPacket([20]),g=structuredClone(groups[0]),code='ZERO-NET';p.postings.invoicePostingsDetails[1].transactionCode=code;Object.assign(p.postings.trxCodesInfo[1],{transactionCode:code,transactionGroup:'MISC',description:'Synthetic ordinary revenue'});const posting=p.taxRows[3].posting;Object.assign(posting,{transactionCode:code,folioWindowNo:1,checkNo:p.postings.invoicePostingsDetails[1].checkNo,transactionDate:p.postings.invoicePostingsDetails[1].transactionDate});
+ const rules=structuredClone(g.rules);Object.assign(rules.transactionCode,{code,description:{defaultText:'Synthetic ordinary revenue',translatedTexts:[]},compTransaction:false,transactionAdjustments:[]});rules.transactionCode.classification.transactionType.code='Others';rules.transactionCode.classification.group.code='MISC';Object.assign(rules.transactionCode.trxSetup,{taxInclusive:inclusive,revenue:true,nonTaxable:false,useForPaidout:false,depositPostingOnly:false});
+ const charge={transactionCode:code,description:'Synthetic ordinary revenue',level:'TransactionCode',amount:20,bucket:{bucket1:20,bucket2:20,bucket3:20},sequence:0,basePosting:true};const calculation={result:{charges:inclusive?[{...charge,bucket:{},basePosting:true},{...charge,basePosting:false}]:[charge],totalAmount:20}};
+ const group={postingId:String(posting.transactionNo),rules,rulesAfter:structuredClone(rules),calculation,calculationAfter:structuredClone(calculation),provenance:'ordinary-revenue-zero-vat-net' as const};
+ const proof={version:1 as const,kind:'ar-only-direct-zero-vat-net' as const,sourceBefore:structuredClone(arOnlyTaxSource(p)),sourceAfter:structuredClone(arOnlyTaxSource(p)),groups:[group]};return {p,proof};
+}

@@ -28,14 +28,49 @@ function parse(value:Record<string,unknown>,file:string){
  return {rows,cells,gid};
 }
 export function trackerIdentityMatches(row:ProviderRow,identity:ProviderWrite['expectedIdentity']):boolean{return !!identity&&row.hotel===identity.hotel&&row.accountNo===identity.accountNo&&row.invoiceNo===identity.invoiceNo&&(row.folio??null)===(identity.folio??null)&&(row.transactionDate??null)===(identity.transactionDate??null);}
-async function nativeJson(token:string,file:string,suffix:string){
+async function nativeJson(token:string,file:string,suffix:string,maxBytes=16*1024*1024){
  const response=await request(token,file,suffix);if(!response.ok){await response.body?.cancel();throw Error(response.status===401||response.status===403||response.status===404?'tracker_authorization_required':'tracker_provider_unavailable');}
- try{return await readJson(response,16*1024*1024);}catch(error){if(error instanceof Error&&error.message==='drive_response_too_large')throw Error(suffix.startsWith('/values/')?'tracker_native_keys_too_large':'tracker_native_grid_too_large');throw error;}
+ try{return await readJson(response,maxBytes);}catch(error){
+  if(error instanceof Error&&error.message==='drive_response_too_large'){
+   await response.body?.cancel().catch(()=>{});
+   throw Error(suffix.startsWith('/values/')?'tracker_native_keys_too_large':'tracker_native_grid_too_large');
+  }
+  throw error;
+ }
+}
+export async function readNativeTrackerChangeHint(token:string,file:string):Promise<string>{
+ // A change hint only: the full reader still validates business identity,
+ // headers, dates, formulas and write safety before importing or publishing.
+ const spans=['A1:AG2','A:A','C:C','E:G','R:AC','AG:AG'],widths=[33,1,1,3,12,1];
+ const query=new URLSearchParams({prettyPrint:'false',valueRenderOption:'UNFORMATTED_VALUE',dateTimeRenderOption:'SERIAL_NUMBER',majorDimension:'ROWS',fields:'spreadsheetId,valueRanges(range,majorDimension,values)'});
+ for(const span of spans)query.append('ranges',`'${TITLE}'!${span}`);
+ let value:Awaited<ReturnType<typeof nativeJson>>;
+ try{value=await nativeJson(token,file,'/values:batchGet?'+query,1024*1024);}catch(error){
+  if(error instanceof Error&&error.message==='tracker_native_grid_too_large')throw Error('tracker_native_hint_too_large');
+  throw error;
+ }
+ if(!value||value.spreadsheetId!==file||!Array.isArray(value.valueRanges)||value.valueRanges.length!==spans.length)throw Error('tracker_native_schema_invalid');
+ const projection=value.valueRanges.map((entry:unknown,index:number)=>{
+  if(!entry||typeof entry!=='object'||Array.isArray(entry))throw Error('tracker_native_schema_invalid');
+  const range=entry as {range?:unknown;majorDimension?:unknown;values?:unknown};
+  if(typeof range.range!=='string'||range.majorDimension!=='ROWS'||range.values!==undefined&&!Array.isArray(range.values))throw Error('tracker_native_schema_invalid');
+  const match=/^(?:'([^']+)'|([^'!]+))!(.*)$/.exec(range.range);
+  if(!match||(match[1]??match[2])!==TITLE)throw Error('tracker_native_schema_invalid');
+  const bounds=index===0?/^A1:AG(2)$/.exec(match[3]):new RegExp(`^${spans[index].split(':')[0]}1:${spans[index].split(':')[1]}([1-9][0-9]*)$`).exec(match[3]);
+  const end=bounds?Number(bounds[1]):0;
+  if(!Number.isSafeInteger(end)||end<1)throw Error('tracker_native_schema_invalid');
+  const rows=(range.values??[]) as unknown[];
+  if(rows.length>100002||rows.length>end||rows.some(row=>!Array.isArray(row)||row.length>widths[index]||row.some(cell=>cell!==null&&typeof cell!=='string'&&typeof cell!=='boolean'&&!(typeof cell==='number'&&Number.isFinite(cell)))))throw Error('tracker_native_schema_invalid');
+  return rows;
+ });
+ const hash=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(projection))));
+ let numeric=0n;for(const byte of hash.slice(0,12))numeric=numeric*256n+BigInt(byte);
+ return '9'+numeric.toString().padStart(29,'0');
 }
 async function nativeKeys(token:string,file:string){
  // Values omit the formatted-only tail. FORMULA exposes key formulas rather
  // than silently accepting their evaluated result as a stable row identity.
- const query=new URLSearchParams({majorDimension:'ROWS',valueRenderOption:'FORMULA'});
+ const query=new URLSearchParams({majorDimension:'ROWS',valueRenderOption:'FORMULA',prettyPrint:'false'});
  const value=await nativeJson(token,file,'/values/'+encodeURIComponent(`'${TITLE}'!AG:AG`)+'?'+query);
  if(typeof value.range!=='string'||!new RegExp(`^'${TITLE}'!AG1:AG[1-9][0-9]*$`).test(value.range)||value.majorDimension!=='ROWS'||value.values!==undefined&&!Array.isArray(value.values))throw Error('tracker_native_schema_invalid');
  const rows=(value.values??[]) as unknown[];if(rows.length>100002)throw Error('tracker_native_schema_invalid');
@@ -49,9 +84,14 @@ export async function readNativeTracker(token:string,file:string):Promise<Provid
  const rows:ProviderRow[]=[],pageHashes:string[]=[],seenKeys=new Set<string>(),identities=new Set<string>();
  let gid:number|undefined,headers:NonNullable<NonNullable<Sheet['data']>[number]['rowData']>|undefined,retainedBytes=2;
  const digest=async(value:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
- for(let start=0;start<extent;start+=200){
-  const end=Math.min(start+200,extent),query=new URLSearchParams({includeGridData:'true',ranges:`'${TITLE}'!A${start+1}:AG${end}`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
-  const value=await nativeJson(token,file,'?'+query);
+ const gridQuery=(start:number,end:number)=>'?'+new URLSearchParams({includeGridData:'true',prettyPrint:'false',ranges:`'${TITLE}'!A${start+1}:AG${end}`,fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue,userEnteredFormat(numberFormat),effectiveFormat(numberFormat),textFormatRuns,chipRuns))))'});
+ let fastValue:Awaited<ReturnType<typeof nativeJson>>|undefined;
+ // Small occupied grids avoid serial page latency. Keep the JSON allocation
+ // conservative; only this byte-limit failure may retry with bounded pages.
+ if(extent>200&&extent<=2000){try{fastValue=await nativeJson(token,file,gridQuery(0,extent),8*1024*1024);}catch(error){if(!(error instanceof Error)||error.message!=='tracker_native_grid_too_large')throw error;}}
+ const pageSize=fastValue===undefined?200:extent;
+ for(let start=0;start<extent;start+=pageSize){
+  const end=Math.min(start+pageSize,extent),value=fastValue??await nativeJson(token,file,gridQuery(start,end));
   if(value.spreadsheetId!==file||!Array.isArray(value.sheets))throw Error('tracker_native_schema_invalid');
   const matches=(value.sheets as Sheet[]).filter(sheet=>sheet.properties?.title===TITLE);if(matches.length!==1)throw Error('tracker_native_schema_invalid');
   const sheet=matches[0],data=sheet.data;

@@ -4,7 +4,7 @@ import {boundedBytes,readJson} from '../drive/shared';
 import type {RegionId} from '../../src/domain/hotels';
 import type {TrackerAdapter,TrackerEnv,ProviderSnapshot,ProviderWrite} from './service';
 import {prepareTrackerWorkbook,type TrackerCellChange} from './workbook';
-import {readNativeTracker,writeNativeTrackerBatch} from './native';
+import {readNativeTracker,readNativeTrackerChangeHint,writeNativeTrackerBatch} from './native';
 
 const XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',NATIVE='application/vnd.google-apps.spreadsheet';
 const targets={phuket:{name:'Master_KAT_AR_Tracker_Phuket.xlsx',mime:XLSX},'khao-lak':{name:'Master_SAN_AR_Tracker',mime:NATIVE}} as const;
@@ -55,6 +55,17 @@ export async function readTrackerWorkbook(env:TrackerEnv,owner:string,region:Reg
  const snapshot=await readStable(token,region,fileId);
  return {version:snapshot.version,rows:snapshot.parsed.rows,schemaFingerprint:snapshot.parsed.schemaFingerprint,
   capabilities:{conditionalWrite:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'proven':'unverified',writeAssurance:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'cas':'held'}};
+}
+/** A change hint only. The normal adapter still rereads and validates all
+ * content/identity before committing any business facts or provider writes. */
+export async function readTrackerFileVersion(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<string>{
+ target(env,region,fileId);const token=await access(env,owner);
+ const observed=await metadata(token,region,fileId);
+ // Drive versions for native documents can lag committed cell edits. Read a
+ // bounded primitive-value projection for a hint; the full adapter remains the
+ // sole source of validated facts. No change token is assumed monotonic.
+ if(region==='khao-lak')try{return await readNativeTrackerChangeHint(token,fileId);}catch(error){if(!(error instanceof Error)||error.message!=='tracker_native_hint_too_large')throw error;}
+ return observed.version;
 }
 /** Version comparisons are observations, never atomic authorization. v3 If-Match
  * was ignored by the live synthetic probe; native conditional writes remain

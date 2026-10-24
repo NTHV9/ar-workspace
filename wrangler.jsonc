@@ -12,8 +12,8 @@
   "assets": { "directory": "dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "vars": {
     "OPERATIONS_BUDGET_ENABLED": "true",
-    "TRACKER_NATIVE_BEST_EFFORT_ENABLED": "false",
-    "TRACKER_PUSH_ENABLED": "false",
+    "TRACKER_NATIVE_BEST_EFFORT_ENABLED": "true",
+    "TRACKER_PUSH_ENABLED": "true",
     "OPS_BUDGET_DATABASE_BYTES": "2147483648",
     "ACCEPTANCE_ENABLED": "false",
     "RETENTION_ENABLED": "true",

@@ -97,3 +97,18 @@ it('Differences follows thumbnail/export order after attachment binding and cont
  expect(differencePages(project,sources)).toEqual(visible);
  expect(differencePages({...project,content:'invoices'},sources).map(p=>p.id)).toEqual(['1','3','2']);
 });
+it('permits growth beyond an existing whiteout overlap but rejects new whiteout coverage',()=>{
+ const whiteout={...anchor,id:'whiteout',kind:'whiteout' as const,text:'',x:90,y:70,width:210,height:15};
+ const target={...page,layers:[anchor,whiteout]};
+ expect(()=>reflowStationery(target,anchor,{...anchor,height:24},[runs[0]],[])).not.toThrow();
+ expect(()=>reflowStationery({...target,layers:[anchor,{...whiteout,y:96}]},anchor,{...anchor,height:24},[runs[0]],[])).toThrow(/overlap/i);
+});
+it.each([.75,1,2])('does not mistake a partially covered source boundary pixel for artwork at scale %s',scale=>{
+ const edit:Extract<PdfRowEdit,{kind:'move'}>={id:'line',kind:'move',x:2,y:2.25,width:10,height:1.5,dx:0,dy:1};
+ const pixels=new Uint8ClampedArray(20*20*4).fill(255),raster={data:pixels,width:20,height:20};
+ const x=Math.floor(5*scale),sourceEdge=Math.floor((edit.y+edit.height)*scale),destinationEdge=Math.ceil((edit.y+edit.height)*scale);
+ pixels.set([0,0,0,255],(sourceEdge*20+x)*4);
+ expect(()=>assertRasterDestinationClear(edit,raster,{scale})).not.toThrow();
+ pixels.set([0,0,0,255],(destinationEdge*20+x)*4);
+ expect(()=>assertRasterDestinationClear(edit,raster,{scale})).toThrow(/occupied/i);
+});

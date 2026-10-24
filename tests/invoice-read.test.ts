@@ -34,8 +34,10 @@ it('splits busy date windows before unstable OPERA pagination can lose package m
  expect((await readInvoiceModel(reader,p.manifest)).gross).toBe(6630000);expect(reader.invoicePostingBreakdown.mock.calls.every(a=>a[4]===0)).toBe(true);
 });
 it('reads an omitted optional taxes list and verifies separately posted VAT end-to-end',async()=>{
- const {p,reader}=fixture(1,mixedTaxPacket()),model=await readInvoiceModel(reader,p.manifest);
- expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledOnce();
+ const {p,reader}=fixture(1,mixedTaxPacket());
+ const qualifiedReader={...reader,invoiceTransactionCodeRules:vi.fn(async()=>({transactionCode:{hotelId:'KAT',code:'UNTAXED',classification:{type:'Revenue',transactionType:{code:'Others'},group:{code:'OTHER'}},trxSetup:{nonTaxable:true,taxInclusive:false},compTransaction:false,associatedTransactionCodes:[],generatesSetup:{addBaseAmtTo:{bucket1:false,bucket2:false,bucket3:false}}}})),invoiceChargeSimulation:vi.fn(async(code:string,amount:number)=>({result:{totalAmount:amount,charges:[{transactionCode:code,amount,sequence:0,level:'TransactionCode',basePosting:true}]}}))};
+ const model=await readInvoiceModel(qualifiedReader,p.manifest);
+ expect(model.gross).toBe(454200);expect(model.vat).toBe(29387);expect(model.nonTaxable).toBe(5000);expect(reader.account).toHaveBeenCalledTimes(2);expect(qualifiedReader.invoiceChargeSimulation).toHaveBeenCalledTimes(2);
 });
 it('reads missing AR adjustments by exact transaction ID with complete generated-posting evidence',async()=>{const p=arAdjustmentPacket(),{reader}=fixture(1,p);reader.invoiceTransactionDetails.mockImplementation(async(ids:string[])=>ids.includes('60001')?p.arDetails[0].response:{trxCodesInfo:p.taxCodes});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_invoice_ar_tax_unverified');expect(reader.invoiceTransactionDetails).toHaveBeenCalledWith(['60001']);});
 it('reports a changed balance before a missing reservation selector on an old preparation',async()=>{const {p,reader,detail}=fixture(1);p.manifest.reservation_id='';reader.account.mockResolvedValue({accountDetails:{...p.account,invoices:[{...detail.details[0].invoices[0],balance:money(0)}]}});await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_source_changed');expect(reader.reservationFolios).not.toHaveBeenCalled();});
@@ -101,6 +103,60 @@ it.each([true,false])('uses payee tax identity only when the selected window and
  reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:agrees?'123':'999'},payeeTaxNumber:'SYNTHETIC-TAX'}}]}});
  const profile=async()=>({profileIdList:[{id:'123',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'verified-primary',address:{...p.account.address.address,primaryInd:true}}],totalResults:1}}});
  expect((await readInvoiceModel({...reader,profile},p.manifest)).taxId).toBe(agrees?'SYNTHETIC-TAX':'');
+});
+
+function taxProfileFixture(tax1No:unknown='SYN-AR-TAX-77'){
+ const {p,reader}=fixture(1);
+ reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',type:'Address'},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
+ const profileResponse={profileIdList:[{id:'202',type:'Profile'}],profileDetails:{taxInfo:{tax1No},addresses:{addressInfo:[{id:'address-7',type:'Address',address:{...p.account.address.address,primaryInd:true}}],totalResults:1}}};
+ return {p,reader:{...reader,profile:vi.fn().mockResolvedValue(profileResponse)},profileResponse};
+}
+it('uses the verified AR profile tax number when the selected folio has no tax number',async()=>{
+ const {p,reader}=taxProfileFixture();
+ const model=await readInvoiceModel(reader,p.manifest);
+ expect(model.taxId).toBe('SYN-AR-TAX-77');
+ expect(reader.profile).toHaveBeenCalledOnce();expect(reader.profile).toHaveBeenCalledWith('202');
+});
+it('retains tax identity and verified address text independently',async()=>{
+ const {p,reader,profileResponse}=taxProfileFixture();
+ profileResponse.profileDetails.addresses.addressInfo[0].address.addressLine.push('VAT : SYN-AR-TAX-77');
+ const model=await readInvoiceModel(reader,p.manifest);
+ expect(model.taxId).toBe('SYN-AR-TAX-77');
+ expect(model.address).toContain('VAT : SYN-AR-TAX-77');
+});
+it.each(['Street SYN-AR-TAX-77','VAT : SYN-AR-TAX-770','VAT : OTHER-TAX'])('does not infer tax identity from an address line (%s)',async line=>{
+ const {p,reader,profileResponse}=taxProfileFixture();
+ profileResponse.profileDetails.addresses.addressInfo[0].address.addressLine.push(line);
+ expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe('SYN-AR-TAX-77');
+});
+it.each(['','   '])('uses the verified AR profile tax number when the matching payee number is blank (%j)',async payeeTaxNumber=>{
+ const {p,reader}=taxProfileFixture();
+ reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:'202'},payeeTaxNumber}}]}});
+ expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe('SYN-AR-TAX-77');
+});
+it('uses only the verified AR profile tax number when the folio payee belongs to another profile',async()=>{
+ const {p,reader}=taxProfileFixture();
+ reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:'another-profile'},payeeTaxNumber:'DO-NOT-PRINT'}}]}});
+ expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe('SYN-AR-TAX-77');
+});
+it('preserves the verified selected-window tax number when it is populated',async()=>{
+ const {p,reader}=taxProfileFixture();
+ reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:'202'},payeeTaxNumber:'SYN-SELECTED-PAYEE'}}]}});
+ expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe('SYN-SELECTED-PAYEE');
+});
+it('retains verified AR profile tax identity when postal addresses are explicitly empty',async()=>{
+ const {p,reader,profileResponse}=taxProfileFixture();
+ reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
+ profileResponse.profileDetails.addresses.addressInfo=[];profileResponse.profileDetails.addresses.totalResults=0;
+ expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe('SYN-AR-TAX-77');
+});
+it.each([123,{},['SYN-AR-TAX-77']])('rejects malformed AR profile tax identity instead of stringifying it (%j)',async tax1No=>{
+ const {p,reader}=taxProfileFixture(tax1No);
+ await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_invoice_header_invalid');
+});
+it('does not use tax identity from a response for another profile',async()=>{
+ const {p,reader,profileResponse}=taxProfileFixture();profileResponse.profileIdList[0].id='another-profile';
+ await expect(readInvoiceModel(reader,p.manifest)).rejects.toThrow('document_addressee_scope_invalid');
 });
 
 it('identifies an AR credit without a reservation folio without fabricating an invoice',async()=>{

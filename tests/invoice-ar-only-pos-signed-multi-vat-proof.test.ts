@@ -1,0 +1,34 @@
+import {it,expect} from 'vitest';
+import {arOnlyInvoiceModel} from '../worker/invoice/ar-only-read';
+import {posSignedMultiVatPacket} from './fixtures/invoice-ar-only-pos-signed-multi-vat';
+import {posMultiVatPacket} from './fixtures/invoice-ar-only-pos-multi-vat';
+import {arOnlyTaxSource} from '../worker/invoice/current-ar-tax';
+import {money} from './fixtures/invoice-packet';
+const snapshot=(p:ReturnType<typeof posSignedMultiVatPacket>['p'],proof:ReturnType<typeof posSignedMultiVatPacket>['proof'])=>{proof.sourceBefore=structuredClone(arOnlyTaxSource(p));proof.sourceAfter=structuredClone(arOnlyTaxSource(p));};
+it('counts every actual negative VAT posting once with independently valid native base and service',()=>{
+ const {p,proof}=posSignedMultiVatPacket();expect(arOnlyInvoiceModel(Object.assign(p,{arOnlyPosSignedMultiVatProof:proof}))).toMatchObject({gross:213800,vat:13987,nonTaxable:0,taxableNet:199813});
+});
+function mixed(differentCheck=false){const f=posSignedMultiVatPacket(),positive=posMultiVatPacket(),selected=structuredClone(positive.p.postings.invoicePostingsDetails.slice(1)),entries=structuredClone(positive.p.taxRows.slice(3));selected.forEach(s=>{s.transactionNo+=10;if(differentCheck)s.transactionDate='2026-01-04';});entries.forEach(e=>{e.posting.transactionNo+=10;if(differentCheck)Reflect.set(e.posting,'transactionDate','2026-01-04');});f.p.postings.invoicePostingsDetails.push(...selected);f.p.taxRows.push(...entries);f.p.manifest.open+=1177;f.p.invoice.amount=f.p.invoice.balance=money(f.p.manifest.open);snapshot(f.p,f.proof);return f;}
+it.each([false,true])('validates signs independently even when VAT errors cancel overall (differentcheck=%s)',different=>{
+ const {p,proof,amount}=mixed(different);expect(arOnlyInvoiceModel(Object.assign(p,{arOnlyPosSignedMultiVatProof:proof})).vat).toBe(21687);amount(60003,-41);amount(60013,41);snapshot(p,proof);expect(()=>arOnlyInvoiceModel(Object.assign(p,{arOnlyPosSignedMultiVatProof:proof}))).toThrow();
+});
+it.each(['positive-vat','no-base','zero-tax','unknown','mapped-negative-fee','duplicate','nested','reverse','sibling','window','cashier','source','rules','native','positive-proof','maps','receipts'] as const)('rejects unproven signed multiVAT: %s',kind=>{
+ const {p,proof,amount}=posSignedMultiVatPacket();if(kind==='positive-vat'){amount(60003,40);amount(60004,37);}if(kind==='no-base')proof.definitions[0].before.transactionCode.classification.transactionType.code='NonRevenue';if(kind==='zero-tax')amount(60004,0);if(kind==='unknown')proof.definitions[1].before.transactionCode.classification.transactionType.code='Others';if(kind==='mapped-negative-fee'){proof.definitions[1].before.transactionCode.classification.group.code='F&B';Reflect.set(p.postings.trxCodesInfo[2],'transactionGroup','F&B');}
+ if(kind==='nested')Reflect.set(p.taxRows[6].posting,'subPostings',[{transactionNo:99999,transactionType:'Tax'}]);if(kind==='reverse'||kind==='sibling'){const c=structuredClone(p.taxRows[3]);c.posting.transactionNo=99999;if(kind==='reverse'){Reflect.deleteProperty(c.posting,'checkNo');Reflect.set(c.posting,'referenceTransactionNo',60003);}p.taxRows.push(c);}if(kind==='window')Reflect.deleteProperty(p.taxRows[6].posting,'folioWindowNo');if(kind==='cashier')Reflect.set(p.taxRows[6].posting,'cashierInfo',{cashierId:999});proof.definitions.forEach(e=>e.after=structuredClone(e.before));snapshot(p,proof);
+ if(kind==='duplicate')p.postings.invoicePostingsDetails[4].transactionNo=60003;if(kind==='source')p.postings.invoicePostingsDetails[1].reference='Changed';if(kind==='rules')proof.definitions[1].after.transactionCode.description.defaultText='Changed';if(kind==='maps')Object.assign(proof,{interfaces:{}});if(kind==='receipts')Object.assign(proof,{receipts:[]});const q=Object.assign(p,{arOnlyPosSignedMultiVatProof:proof});if(kind==='native')Object.assign(q,{nativeTaxControls:undefined});if(kind==='positive-proof')Object.assign(q,{arOnlyPosMultiVatProof:{}});expect(()=>arOnlyInvoiceModel(q)).toThrow();
+});
+it.each(['wrapper-first','pos-first'])('claims signed VAT IDs before embedded tax structures: %s',order=>{
+ const {p,proof}=posSignedMultiVatPacket(),row=p.taxRows[1];if(!('postingBreakdown'in row))throw Error('fixture');Reflect.get(row.postingBreakdown,'taxes')[1].transactionNo=60004;if(order==='pos-first'){p.postings.invoicePostingsDetails[0].transactionDate='2026-01-04';Reflect.set(p.taxRows[0].posting,'transactionDate','2026-01-04');}snapshot(p,proof);expect(()=>arOnlyInvoiceModel(Object.assign(p,{arOnlyPosSignedMultiVatProof:proof}))).toThrow('tax_scope_invalid');
+});
+it('refuses the signed envelope when every repeated VAT scope is wholly positive',()=>{
+ const {p,proof}=posMultiVatPacket(),signed={...proof,kind:'ar-only-pos-signed-multi-vat7' as const};expect(()=>arOnlyInvoiceModel(Object.assign(p,{arOnlyPosSignedMultiVatProof:signed}))).toThrow('signed_multi_vat_unverified');
+});
+import {posSignedFeePacket} from './fixtures/invoice-ar-only-pos-signed-fee';
+it('composes native signed repeated VAT with a separate independently mapped positive ordinary fee check',()=>{
+ const {p,proof}=posSignedFeePacket();expect(arOnlyInvoiceModel(Object.assign(p,{arOnlyPosSignedMultiVatProof:proof}))).toMatchObject({gross:331500,vat:21687,nonTaxable:0});
+});
+it.each(['negative-fee','same-signed-check','repeated-fee-vat','dc','st','default','missing-maps','changed-maps'] as const)('refuses unsafe signed fee composition: %s',kind=>{
+ const {p,proof,amount}=posSignedFeePacket(),map=proof.interfaces.mappings[0];if(kind==='negative-fee')amount(60012,-100);if(kind==='same-signed-check')for(const s of p.postings.invoicePostingsDetails.slice(5)){s.transactionDate=p.postings.invoicePostingsDetails[1].transactionDate;s.checkNo=p.postings.invoicePostingsDetails[1].checkNo;const e=p.taxRows.find(e=>e.posting.transactionNo===s.transactionNo)!;Reflect.set(e.posting,'transactionDate',s.transactionDate);Reflect.set(e.posting,'checkNo',s.checkNo);}
+ if(kind==='repeated-fee-vat'){const s=structuredClone(p.postings.invoicePostingsDetails.find(s=>s.transactionNo===60013)!),e=structuredClone(p.taxRows.find(e=>e.posting.transactionNo===60013)!);s.transactionNo=60014;e.posting.transactionNo=60014;p.postings.invoicePostingsDetails.push(s);p.taxRows.push(e);p.manifest.open+=77;amount(60013,40);amount(60014,37);}
+ if(kind==='dc')map.before.details.transactionsInfo.itemizers[1].splitCode='DC1';if(kind==='st')map.before.details.transactionsInfo.itemizers[1].splitCode='ST1';if(kind==='default')map.before.details.transactionsInfo.transactionCodes[0].code='MAPPED-FEE';map.after=structuredClone(map.before);if(kind==='missing-maps')proof.interfaces.mappings=[];if(kind==='changed-maps')map.after.details.transactionsInfo.itemizers[1].splitFactor=2;snapshot(p,proof);expect(()=>arOnlyInvoiceModel(Object.assign(p,{arOnlyPosSignedMultiVatProof:proof}))).toThrow();
+});
