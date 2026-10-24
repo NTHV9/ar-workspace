@@ -1,3 +1,35 @@
+## 2026-10-24 — Bounded native-grid read optimization
+
+**Implemented and tested; final Worker/live read qualification pending.** Small
+occupied native grids (201–2,000 rows, at most 66,000 cells) can be read in one
+bounded grid request instead of serial 200-row requests. Both AG-key observations,
+the existing parser/schema fingerprint, duplicate/identity/formula/date checks,
+movement detection, normalized-data limit and best-effort write contract remain.
+Requests use Google's supported compact JSON parameter. Fast responses are capped
+at 8 MiB; declared/streamed oversize is canceled and falls back to existing paged
+reads. Other errors fail closed. Larger grids use paging directly.
+
+Actual authorized read-only payload qualification measured 8,089,040 compact UTF-8
+bytes for the current 1,419-row typed grid, so the initial 4 MiB prototype would
+always have fallen back. The bounded 8 MiB path is qualified with a dense synthetic
+fixture as well as normal/fallback parity tests; no customer grid is in Git. This
+byte/row cap is not a measured heap cap. Successful live full synchronization is
+still required before timing another edit. No response cap above the existing
+16 MiB paging limit was added.
+
+Independent review caught an unneeded Promise.race timeout releasing the probe
+lease while I/O continued; that unshipped prototype was removed. A regression now
+proves the lease is not released before the provider read settles. Oversized
+response cancellation has explicit declared/streamed regression assertions.
+
+Verification: 4,415 tests across 326 files pass with two local file workers;
+native/provider focused qualification passes 76 tests. Default-concurrency local
+runs hit unchanged 5-second financial-test timeouts in
+`invoice-native-nonvat-integration`, `invoice-transfer-read` and
+`invoice-source-claims-display-membership`; the focused cases and complete bounded
+run pass without raising test timeouts or changing their assertions. Typecheck
+and independent review pass. Existing migration/probe/permission logic is unchanged.
+
 ## 2026-10-24 — Shared active-client tracker version probes
 
 **Implemented and tested; new private migration applied; Worker deployment and

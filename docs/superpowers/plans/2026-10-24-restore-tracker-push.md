@@ -44,6 +44,17 @@ to one row per region and has no financial/history fields.
 
 ## Tasks
 
+Final bounded read ruling: the ordinary native adapter's serial 200-row reads
+still contribute to visible latency. For occupied grids up to 2,000 rows, use a
+single complete typed-grid read plus the same two key checks, retaining all
+parser/identity/write safeguards and unchanged schema fingerprint. Actual compact
+source size is 8,089,040 bytes; use an 8 MiB fast ceiling (not the insufficient
+4 MiB prototype), compact JSON and canceled size-only fallback to old paging.
+Dense synthetic parity/negative cases must pass. Heap usage is not claimed as
+measured; warm the actual full read before editing a real date. This is the last
+optimization in scope, followed by restoration and measured results, not further
+unbounded performance work.
+
 - [ ] Add RED regressions that drive existing callback and native-write boundaries
   using the actual shipped configuration, rather than hard-coded enabled fixtures.
 - [ ] Restore the approved push and native-write flags in `wrangler.jsonc` and

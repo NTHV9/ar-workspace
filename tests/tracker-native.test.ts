@@ -98,6 +98,65 @@ it.each([403,429])('a joined native read failure %i records failure without publ
  expect(state.calls.filter(c=>c.name==='ar_tracker_write_result').at(-1)?.body.p_state).toBe('written');
 });
 afterEach(()=>vi.unstubAllGlobals());
+function occupiedGrid(state:ReturnType<typeof fake>,extent:number){
+ const rows=state.value.sheets[0].data[0].rowData,template=structuredClone(rows[2]);
+ for(let i=4;i<extent;i++){rows[i]=structuredClone(template);for(const [field,value]of Object.entries({AG:'key-'+i,E:'invoice-'+i,F:'folio-'+i}))rows[i].values[col(field)].userEnteredValue={stringValue:value};}
+ return rows;
+}
+it('reads a dense 1419-row grid larger than 4 MiB once without changing normalized observations',async()=>{
+ const state=fake(),rows=occupiedGrid(state,1419),baseline=await readNativeTracker('synthetic-token',file);
+ // Synthetic typed metadata models the dense occupied source, without copying
+ // customer values. None of this formatting changes the string business data.
+ for(const row of rows.slice(2))for(const cell of row.values)cell.userEnteredFormat={numberFormat:{type:'TEXT',pattern:'0'.repeat(80)}};
+ const bytes=new TextEncoder().encode(JSON.stringify(state.value)).byteLength;
+ expect(bytes).toBeGreaterThan(4*1024*1024);expect(bytes).toBeLessThanOrEqual(8*1024*1024);
+ state.fetcher.mockClear();const dense=await readNativeTracker('synthetic-token',file);
+ expect({...dense,version:baseline.version}).toEqual(baseline);
+ expect(state.fetcher.mock.calls.filter(call=>new URL(String(call[0])).searchParams.has('ranges')).map(call=>new URL(String(call[0])).searchParams.get('ranges'))).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG1419"]);
+ expect(state.fetcher.mock.calls).toHaveLength(3);
+ for(const call of state.fetcher.mock.calls)expect(new URL(String(call[0])).searchParams.get('prettyPrint')).toBe('false');
+ expect(state.posts).toHaveLength(0);
+});
+it.each(['declared','streamed'] as const)('reads a 1419-row occupied grid once with parity to the %s size-limited 200-row fallback',async sizeMode=>{
+ const state=fake();occupiedGrid(state,1419);const base=globalThis.fetch;
+ const fast=await readNativeTracker('synthetic-token',file);
+ expect(state.fetcher.mock.calls.filter(call=>new URL(String(call[0])).searchParams.has('ranges')).map(call=>new URL(String(call[0])).searchParams.get('ranges'))).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG1419"]);
+ expect(state.fetcher.mock.calls.filter(call=>new URL(String(call[0])).pathname.includes('/values/'))).toHaveLength(2);
+ state.fetcher.mockClear();const attempts:string[]=[],cancelOversize=vi.fn();
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const range=new URL(String(args[0])).searchParams.get('ranges');if(range){attempts.push(range);if(range==="'ลูกหนี้ เขาหลัก'!A1:AG1419")return new Response(new ReadableStream({start(controller){controller.enqueue(new Uint8Array(sizeMode==='declared'?2:8*1024*1024+1));},cancel:cancelOversize}),sizeMode==='declared'?{headers:{'Content-Length':String(8*1024*1024+1)}}:{});}
+  return base(...args);
+ });
+ const fallback=await readNativeTracker('synthetic-token',file);
+ expect({...fallback,version:fast.version}).toEqual(fast);expect(fast.rows).toHaveLength(1417);
+ expect(attempts).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG1419",...Array.from({length:8},(_,i)=>`'ลูกหนี้ เขาหลัก'!A${i*200+1}:AG${Math.min((i+1)*200,1419)}`)]);
+ expect(state.posts).toHaveLength(0);
+ expect(cancelOversize).toHaveBeenCalledTimes(1);
+});
+it.each(['authorization','schema','offset','row-bound','column-bound','key','key-formula','moved-after','duplicate-key','duplicate-identity'] as const)('fails closed on fast-grid %s without falling back',async mode=>{
+ const state=fake(),rows=occupiedGrid(state,401),base=globalThis.fetch;let grids=0,keys=0;
+ if(mode==='duplicate-key')rows[400].values[col('AG')].userEnteredValue={stringValue:'key-A'};
+ if(mode==='duplicate-identity')for(const field of ['C','E','F'])rows[400].values[col(field)]=structuredClone(rows[2].values[col(field)]);
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  const url=new URL(String(args[0]));if(url.pathname.includes('/values/')&&++keys===2&&mode==='moved-after')[rows[2],rows[3]]=[rows[3],rows[2]];
+  if(!url.searchParams.has('ranges'))return base(...args);grids++;
+  if(mode==='authorization')return new Response('',{status:403});
+  const response=await base(...args),body=await response.json() as ReturnType<typeof grid>,data=body.sheets[0].data;
+  if(mode==='schema')body.sheets[0].data=[];
+  if(mode==='offset')data[0].startRow=1;
+  if(mode==='row-bound')data[0].rowData.push({values:[]});
+  if(mode==='column-bound')data[0].rowData[2].values.push({});
+  if(mode==='key')data[0].rowData[2].values[col('AG')].userEnteredValue={stringValue:'changed'};
+  if(mode==='key-formula')data[0].rowData[2].values[col('AG')].userEnteredValue={formulaValue:'="key-A"'};
+  return Response.json(body);
+ });
+ await expect(readNativeTracker('synthetic-token',file)).rejects.toThrow();expect(grids).toBe(1);expect(state.posts).toHaveLength(0);
+});
+it('keeps occupied grids above 2000 rows on the direct paged path',async()=>{
+ const state=fake();occupiedGrid(state,2001);await readNativeTracker('synthetic-token',file);
+ const ranges=state.fetcher.mock.calls.map(call=>new URL(String(call[0])).searchParams.get('ranges')).filter(Boolean);
+ expect(ranges).toHaveLength(11);expect(ranges[0]).toBe("'ลูกหนี้ เขาหลัก'!A1:AG200");expect(ranges.at(-1)).toBe("'ลูกหนี้ เขาหลัก'!A2001:AG2001");
+});
 it('writes dates for a corroborated blank Account No. without filling or changing that identity cell',async()=>{
  const state=fake(),cell=state.value.sheets[0].data[0].rowData[2].values[col('C')];delete cell.userEnteredValue;
  const write=input();write.expectedIdentity={...write.expectedIdentity,accountNo:'',transactionDate:'2026-09-01'};
@@ -105,7 +164,7 @@ it('writes dates for a corroborated blank Account No. without filling or changin
  expect(cell.userEnteredValue).toBeUndefined();expect(state.posts).toHaveLength(1);
 });
 it('streams individually bounded pages when combined typed metadata exceeds 16 MiB',async()=>{
- const state=fake(),rows=state.value.sheets[0].data[0].rowData,base=globalThis.fetch;
+ const state=fake(),rows=state.value.sheets[0].data[0].rowData,base=globalThis.fetch,ranges:string[]=[];
  rows.length=402;for(let i=4;i<402;i++)rows[i]={values:[]};rows[400]=structuredClone(rows[2]);rows[400].values[col('AG')].userEnteredValue={stringValue:'key-last'};rows[400].values[col('E')].userEnteredValue={stringValue:'last-invoice'};
  // Typed formatting is large but does not become business fields. Each page
  // fits the existing cap while a single complete grid cannot fit it.
@@ -113,12 +172,13 @@ it('streams individually bounded pages when combined typed metadata exceeds 16 M
  for(let i=4;i<400;i++)rows[i]={values:[{userEnteredFormat:{numberFormat:{type:'NUMBER',pattern:hugeFormat}}}]};
  vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
   const url=new URL(String(args[0])),range=url.searchParams.get('ranges')?.match(/!A(\d+):AG(\d+)$/);
+  if(range)ranges.push(url.searchParams.get('ranges')!);
   if(range&&Number(range[2])-Number(range[1])+1>200)return new Response('{}',{headers:{'Content-Length':String(16*1024*1024+1)}});
   return base(...args);
  });
  const result=await readNativeTracker('synthetic-token',file);
  expect(result.rows.map(row=>row.rowKey)).toEqual(['key-A','key-B','key-last']);expect(result.rows.at(-1)?.locator).toMatchObject({rowIndex:400});
- expect(state.fetcher.mock.calls.filter(call=>new URL(String(call[0])).searchParams.has('ranges')).map(call=>new URL(String(call[0])).searchParams.get('ranges'))).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG200","'ลูกหนี้ เขาหลัก'!A201:AG400","'ลูกหนี้ เขาหลัก'!A401:AG401"]);
+ expect(ranges).toEqual(["'ลูกหนี้ เขาหลัก'!A1:AG401","'ลูกหนี้ เขาหลัก'!A1:AG200","'ลูกหนี้ เขาหลัก'!A201:AG400","'ลูกหนี้ เขาหลัก'!A401:AG401"]);
  expect(state.posts).toHaveLength(0);
 });
 it('reads only occupied typed rows when an unbounded formatted tail exceeds 16 MiB',async()=>{
@@ -158,6 +218,9 @@ it('rejects a canonical invoice repeated on a later page even with a different A
 it.each(['gid','offset','missing','keys'] as const)('fails closed for a later page with changed %s',async mode=>{
  const state=fake(),rows=state.value.sheets[0].data[0].rowData,base=globalThis.fetch;rows.length=201;for(let i=4;i<200;i++)rows[i]={values:[]};rows[200]=structuredClone(rows[2]);rows[200].values[col('AG')].userEnteredValue={stringValue:'last-key'};rows[200].values[col('E')].userEnteredValue={stringValue:'last-invoice'};
  vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{
+  // Exercise the original later-page guards after the new bounded fast read
+  // exceeds its cap, rather than bypassing those negative cases.
+  if(new URL(String(args[0])).searchParams.get('ranges')==="'ลูกหนี้ เขาหลัก'!A1:AG201")return new Response('{}',{headers:{'Content-Length':String(8*1024*1024+1)}});
   const response=await base(...args);if(new URL(String(args[0])).searchParams.get('ranges')!=="'ลูกหนี้ เขาหลัก'!A201:AG201")return response;
   const body=await response.json() as ReturnType<typeof grid>;if(mode==='gid')body.sheets[0].properties.sheetId=10;if(mode==='offset')body.sheets[0].data[0].startRow=199;if(mode==='missing')body.sheets[0].data=[];if(mode==='keys')body.sheets[0].data[0].rowData[0].values[col('AG')].userEnteredValue={stringValue:'changed-key'};return Response.json(body);
  });

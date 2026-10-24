@@ -48,3 +48,17 @@ it('retries a durable wake hint on a later unchanged probe after dispatch was un
  expect(dispatchTrackerWakes).toHaveBeenCalledTimes(2);
  expect(vi.mocked(backendRpc).mock.calls.filter(c=>c[1]==='ar_tracker_probe_finish')).toHaveLength(2);
 });
+it('does not release a shared lease while its provider read is still running',async()=>{
+ vi.useFakeTimers();
+ try{
+  vi.mocked(backendRpc).mockImplementation(async(_env,name)=>name==='ar_tracker_probe_claim'?{status:'claimed',fileId:file}:{status:'unchanged'});
+  let complete:(value:string)=>void=()=>{};
+  vi.mocked(readTrackerFileVersion).mockImplementation(()=>new Promise<string>(resolve=>{complete=resolve;}));
+  const work=probeTrackerVersions(env,owner,['phuket']);
+  await vi.advanceTimersByTimeAsync(12001);
+  expect(vi.mocked(backendRpc).mock.calls.filter(c=>c[1]==='ar_tracker_probe_finish')).toHaveLength(0);
+  complete('123');await work;
+  expect(backendRpc).toHaveBeenCalledWith(env,'ar_tracker_probe_finish',expect.objectContaining({p_region:'phuket',p_version:'123'}));
+  expect(dispatchTrackerWakes).not.toHaveBeenCalled();
+ }finally{vi.useRealTimers();}
+});
