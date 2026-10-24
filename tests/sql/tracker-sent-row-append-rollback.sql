@@ -13,7 +13,7 @@ end $$;
 do $$
 declare actor uuid;regional uuid:=gen_random_uuid();scope text:='SYNTH-APPEND-'||gen_random_uuid();p timestamptz:=now()-interval '1 hour';d date:=current_date;
  schema jsonb;lease uuid:=gen_random_uuid();delivery uuid;qids uuid[]:='{}';evs uuid[]:='{}';q uuid;c jsonb;res jsonb;plan jsonb;job jsonb;receipt jsonb;
- fresh jsonb;bad jsonb;h bigint;cmd uuid:=gen_random_uuid();review jsonb;cutoff timestamptz;before_history bigint;before_mail bigint;n integer;first_page jsonb;second_page jsonb;ready_id uuid;fair_id uuid;k text;
+ fresh jsonb;bad jsonb;h bigint;cmd uuid:=gen_random_uuid();review jsonb;retirement jsonb;cutoff timestamptz;before_history bigint;before_mail bigint;n integer;first_page jsonb;second_page jsonb;ready_id uuid;fair_id uuid;k text;
 begin
  select id into strict actor from auth.users where lower(email)='ar@katathani.com';
  schema:='[{"label":"Up to30","start":0,"end":30,"sequence":1,"amount":500,"debit":500,"credit":0},{"label":"31-60","start":31,"end":60,"sequence":2,"amount":0,"debit":0,"credit":0},{"label":"61-90","start":61,"end":90,"sequence":3,"amount":0,"debit":0,"credit":0},{"label":"91-120","start":91,"end":120,"sequence":4,"amount":0,"debit":0,"credit":0},{"label":"121-150","start":121,"end":150,"sequence":5,"amount":0,"debit":0,"credit":0},{"label":"151+","start":151,"end":null,"sequence":6,"amount":0,"debit":0,"credit":0}]';
@@ -140,16 +140,25 @@ begin
  if res->>'state'<>'hold' or res->>'attempts'<>'0' then raise exception 'source drift began a mutation';end if;
  update public.ar_invoices set open=100 where hotel='KAT' and account_id=scope and id='3';
  update public.ar_accounts set open=500,"agingBuckets"=schema where hotel='KAT' and id=scope;
- -- Only an exact reviewed, previously missing-row quarantine can re-admit a
- -- suppressed old billing intent. No global state reopening is performed.
- update ar_private.tracker_outbox set state='suppressed' where id=qids[4];
- insert into ar_private.tracker_retirement_commands(command_id,actor,region,ids,request_hash,plan,result)
- values(gen_random_uuid(),actor,'phuket',array[qids[4]],repeat('a',64),jsonb_build_object('items',jsonb_build_array(jsonb_build_object('id',qids[4],'disposition','quarantine_missing_row'))),'{}');
+ -- The exact old other-account Sheet row causes a real identity-mismatch
+ -- retirement, while the current ledger has never had a mapped Sheet row.
+ -- Explicit owner preview may approve either known quarantine disposition;
+ -- it must keep the old account's staff date and all current source guards.
+ insert into public.ar_invoices(hotel,account_id,id,invoice_no,folio_no,transaction_date,original,open,age,verification_state,collection_role,compressed,synced_at)
+ values('KAT',scope||'-OLD-GO','4','SYNTH-I-4','SYNTH-F-4',d-10,100,0,10,'cleared','standalone',false,p);
+ insert into ar_private.tracker_rows(region,row_key,hotel,account_id,invoice_id,identity,locator,sheet_values)
+ values('phuket','KT|Old GO Agent|I:SYNTH-I-4|1','KAT',scope||'-OLD-GO','4',jsonb_build_object('hotel','KAT','accountNo','OTHER-GO','invoiceNo','SYNTH-I-4','folio','SYNTH-F-4','transactionDate',d-10),'{}','{"R":"2026-03-01"}');
+ update public.ar_accounts set synced_at=statement_timestamp()-interval '1 minute' where hotel='KAT' and id=scope;
+ update public.ar_invoices set synced_at=statement_timestamp()-interval '1 minute' where hotel='KAT' and account_id=scope;
  update ar_private.tracker_bindings set lock_id=null,lock_until=null where region='phuket';
+ retirement:=public.ar_tracker_retirement_preview(actor,'phuket',array[qids[4]]);
+ if retirement->'items'->0->>'disposition'<>'quarantine_identity_mismatch' then raise exception 'other-account row did not reproduce exact retirement disposition';end if;
+ perform public.ar_tracker_retirement_apply(actor,'phuket',gen_random_uuid(),array[qids[4]],retirement->>'hash');
  review:=public.ar_tracker_append_restore_preview(actor,'phuket',array[qids[4]]);
  begin perform public.ar_tracker_append_restore_apply(actor,'phuket',cmd,array[qids[4]],repeat('b',64));raise exception 'stale owner review applied';
  exception when others then if sqlerrm<>'tracker_append_preview_stale' then raise;end if;end;
  perform public.ar_tracker_append_restore_apply(actor,'phuket',cmd,array[qids[4]],review->>'hash');
+ if (select sheet_values->>'R' from ar_private.tracker_rows where region='phuket' and row_key='KT|Old GO Agent|I:SYNTH-I-4|1')<>'2026-03-01' then raise exception 'owner restoration changed old account date';end if;
  perform public.ar_tracker_append_restore_apply(actor,'phuket',cmd,array[qids[4]],review->>'hash');
  if (select state from ar_private.tracker_outbox where id=qids[4])<>'suppressed' or (select count(*) from ar_private.tracker_append_restore_approvals)<>1 then raise exception 'suppressed queue globally reopened';end if;
  update ar_private.tracker_bindings set lock_id=lease,lock_until=now()+interval '10 minutes' where region='phuket';
