@@ -1,4 +1,4 @@
-import {isHotelId,isRegionId,regionHotels} from '../../src/domain/hotels';
+import {isHotelId,isRegionId,regionHotels,REGION_IDS} from '../../src/domain/hotels';
 import {boundedBody} from '../email/shared';
 import {backendRpc,type RefreshEnv} from './backend';
 
@@ -24,8 +24,12 @@ export async function refreshActivityApi(request:Request,env:RefreshEnv,actor:st
   value=body as Record<string,unknown>;
  }catch{return json({error:'invalid_request'},400);}
  if(Object.keys(value).length!==1||!isRegionId(value.region))return json({error:'invalid_request'},400);
- const hotels=[...regionHotels(value.region)];
- if(env.REQUEST_ACCESS&&hotels.some(h=>!env.REQUEST_ACCESS!.scopeHotels.includes(h)))return json({error:'forbidden'},403);
+ const viewedHotels=regionHotels(value.region);
+ if(env.REQUEST_ACCESS&&viewedHotels.some(h=>!env.REQUEST_ACCESS!.scopeHotels.includes(h)))return json({error:'forbidden'},403);
+ // Staff grants come from backend authorization. Only the authenticated owner
+ // bypasses that grant in the router; the owner's fixed rights cover both regions.
+ // The SQL touch independently rechecks current membership for every hotel.
+ const hotels=(env.REQUEST_ACCESS?.regions??REGION_IDS).flatMap(region=>[...regionHotels(region)]);
  if(env.OPERA_REFRESH_ENABLED!=='true')return json({active:false});
  try{await backendRpc(env,'ar_refresh_activity_touch',{p_actor:actor,p_hotels:hotels});return json({active:true});}
  catch{return json({error:'activity_unavailable'},503);}

@@ -1,6 +1,9 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import worker,{handleApi} from '../worker/index';
 import {currentRefreshCron} from '../worker/refresh/schedule';
+import {refreshActivityApi} from '../worker/refresh/activity';
+import type {AccessGrant} from '../worker/access/api';
+import type {RegionId} from '../src/domain/hotels';
 const actor='00000000-0000-4000-8000-000000000001';
 const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic',SUPABASE_PUBLISHABLE_KEY:'synthetic',OPERA_REFRESH_ENABLED:'true',OPERA_HOTEL_IDS:'KAT,TSK,TLKL,WAKL,TLFO,TSAN',OPERA_CLIENT_ID:'synthetic',OPERA_CLIENT_SECRET:'synthetic',OPERA_APP_KEY:'synthetic',AR_REFRESH:{create:vi.fn(),get:vi.fn()}};
 function harness(active:unknown=[]){
@@ -38,9 +41,25 @@ it('daily ingestion still refreshes all configured hotels without requiring acti
  expect(calls.every(c=>c.args.p_reason==='scheduled')).toBe(true);
 });
 function request(body:unknown={region:'phuket'},extra:Record<string,string>={}){return new Request('https://app.test/api/refresh/activity',{method:'POST',headers:{Authorization:'Bearer synthetic','Content-Type':'application/json',Origin:'https://app.test',...extra},body:JSON.stringify(body)});}
-it('activity is an authenticated regional lease, not a new OPERA job',async()=>{
+it('an active administrator keeps both permitted regions warm even when viewing Phuket',async()=>{
  const calls=harness();const response=await handleApi(request(),env);
- expect(response.status).toBe(200);expect(calls).toEqual([{name:'ar_refresh_activity_touch',args:{p_actor:actor,p_hotels:['KAT','TSK']}}]);
+ expect(response.status).toBe(200);expect(calls).toEqual([{name:'ar_refresh_activity_touch',args:{p_actor:actor,p_hotels:['KAT','TSK','TLKL','WAKL','TLFO','TSAN']}}]);
+});
+it.each<{regions:RegionId[];selected:RegionId;expected:string[]}>([
+ {regions:['phuket'],selected:'phuket',expected:['KAT','TSK']},
+ {regions:['khao-lak'],selected:'khao-lak',expected:['TLKL','WAKL','TLFO','TSAN']},
+ {regions:['phuket','khao-lak'],selected:'phuket',expected:['KAT','TSK','TLKL','WAKL','TLFO','TSAN']},
+ {regions:['phuket','khao-lak'],selected:'khao-lak',expected:['KAT','TSK','TLKL','WAKL','TLFO','TSAN']},
+])('staff activity covers all verified rights $regions while viewing $selected',async({regions,selected,expected})=>{
+ const calls=harness(),staff='00000000-0000-4000-8000-000000000002';
+ const grant:AccessGrant={email:'synthetic@example.test',administrator:false,regions,revision:1,actorId:staff,workspaceOwnerId:actor,scopeHotels:selected==='phuket'?['KAT','TSK']:['TLKL','WAKL','TLFO','TSAN']};
+ const response=await refreshActivityApi(request({region:selected}),{...env,REQUEST_ACCESS:grant},staff);
+ expect(response.status).toBe(200);expect(calls).toEqual([{name:'ar_refresh_activity_touch',args:{p_actor:staff,p_hotels:expected}}]);
+});
+it('an out-of-scope viewed region cannot be used to register activity',async()=>{
+ const calls=harness(),staff='00000000-0000-4000-8000-000000000002';
+ const grant:AccessGrant={email:'synthetic@example.test',administrator:false,regions:['phuket'],revision:1,actorId:staff,workspaceOwnerId:actor,scopeHotels:['KAT','TSK']};
+ expect((await refreshActivityApi(request({region:'khao-lak'}),{...env,REQUEST_ACCESS:grant},staff)).status).toBe(403);expect(calls).toEqual([]);
 });
 it.each([{region:'bad'},{region:'phuket',expiresAt:'2099-01-01'},{region:'phuket',actor},{region:'phuket',hotel:'TSAN'},{}])('rejects client-owned scope/expiry or invalid activity body %j',async body=>{
  const calls=harness();expect((await handleApi(request(body),env)).status).toBe(400);expect(calls).toEqual([]);
