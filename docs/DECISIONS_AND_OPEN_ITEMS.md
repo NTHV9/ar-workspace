@@ -1,3 +1,21 @@
+## 2026-10-24 — Successful web Gmail sends record history immediately
+
+The owner explicitly requests that a successful Gmail send API response for a
+message submitted by this web app immediately record its billing/collection
+history. Do not make staff verify the same message/attachment readback before
+recording a normal successful web send. This replaces that earlier readback gate
+for direct sends and existing drafts explicitly sent from the web.
+
+Persist the immutable provider receipt and use the existing atomic history
+transaction. Sending remains a human action. A created draft is not sent; an
+ambiguous/failed provider response is not success and never permits automatic
+resending. Drafts sent outside the web and diagnostic emails retain independent
+evidence verification. Status must distinguish Gmail acceptance from history
+recording, and a failed history attempt retries the original delivery without
+sending another email. Keep receipt provenance, account/hotel identity, workflow
+revision and no-duplicate protections. Google Sheet master-date authority remains
+unchanged; recording a Sent event is not a claim that a Sheet write completed.
+
 ## 2026-10-24 — Invoice comparison acceptance clarified by owner
 
 Invoice amounts and the wording/meaning of each item must match OPERA AR.

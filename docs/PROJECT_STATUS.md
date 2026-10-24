@@ -1,3 +1,38 @@
+## 2026-10-24 — Record acknowledged web sends immediately; clarify staff status
+
+**Implemented and tested; deployment pending.** The owner explicitly requested
+that a successful Gmail send response record business history immediately rather
+than require message/attachment readback. Direct web sends now persist their
+validated Gmail receipt and call the existing atomic history confirmer in the
+same request. Sending an existing Gmail draft from the web follows the same path
+after its existing pre-send MIME check. Successful sends no longer download
+their own message bodies or attachments before recording history. No schema or
+financial calculation changes are included.
+
+Ambiguous POSTs and malformed responses still never count as sent and never
+trigger a repeated provider POST. Externally sent Gmail drafts retain independent
+Sent evidence verification; diagnostics retain full verification. A durable send
+receipt can retry history using only its exact Gmail ID, Sent labels and original
+timestamp. Draft creation receipts are excluded using the persisted draft-send
+claim. Confirmation keeps existing row locks, revision checks and duplicate
+guards. One bounded status read handles a concurrent confirmation or committed
+history whose response was lost. No direct date/history SQL repair was performed.
+
+The composer now has a prominent desktop/mobile status: Sent/history recorded,
+Gmail draft/not sent, Sent/history needs attention, or unknown/do not resend.
+Reasons identify the specific failing step. Accepted messages cannot become
+sendable drafts. A lost browser response closes confirmation, blocks resubmission
+and recovers the saved delivery through bounded GETs with a reload action.
+
+Validation: regression REDs preceded each backend change; all 4,386 unit/
+integration tests across 324 files pass, including six-mailbox receipt isolation,
+normal/lost provider responses, malformed receipts, failed/racing/lost history
+responses, manually sent drafts and metadata negatives. Composer/recovery/
+navigation browser suites and focused accepted-draft/mobile cases pass. Production
+build/typecheck pass. Independent review found no remaining blocker. Desktop and
+mobile synthetic screenshots were inspected; original tracked screenshot evidence
+was preserved. No actual customer email was sent as part of this qualification.
+
 ## 2026-10-24 — Gmail attachment filename fallback evidence repair
 
 **Implemented, tested and deployed.** A staff

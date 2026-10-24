@@ -78,7 +78,7 @@ test('a send in progress keeps the navigation guard until its result is retained
  await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect.poll(()=>!!controls.send).toBe(true);
  await dismissBack(page);await expect(page.getByRole('button',{name:'Sending and verifying…',exact:true})).toBeDisabled();
  await controls.send!.fulfill({json:{id:'synthetic-send',state:'awaiting_evidence',mode:'send',recorded:false}});
- await expect(page.locator('.email-feedback')).toContainText('Send outcome needs verification');
+ await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Send result unknown — do not resend');
  const dialogs:string[]=[];page.on('dialog',async dialog=>{dialogs.push(dialog.message());await dialog.dismiss();});
  await page.evaluate(()=>history.back());await expect(page.getByLabel('Email message')).toHaveCount(0);expect(dialogs).toEqual([]);
  expect(controls.calls.filter(call=>call.endsWith('/send'))).toHaveLength(1);
@@ -132,7 +132,7 @@ for(const outcome of ['sent','failed'] as const)test(`a pending Sent match prote
  await page.keyboard.press('Escape');await expect(review).toBeVisible();
  await controls.match!.fulfill(outcome==='sent'?{json:{state:'sent'}}:{status:409,json:{error:'email_review_changed'}});
  if(outcome==='sent'){
-  await expect(review).toHaveCount(0);await expect(page.locator('.email-feedback')).toContainText('Gmail sent evidence verified');
+  await expect(review).toHaveCount(0);await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Sent — history recorded');
   const dialogs:string[]=[];page.on('dialog',async dialog=>{dialogs.push(dialog.message());await dialog.dismiss();});await page.evaluate(()=>history.back());await expect(page.getByLabel('Email message')).toHaveCount(0);expect(dialogs).toEqual([]);
   expect(controls.calls.filter(call=>call.endsWith('/check'))).toHaveLength(1);
  }else{
