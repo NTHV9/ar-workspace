@@ -62,28 +62,28 @@ measured; warm the actual full read before editing a real date. This is the last
 optimization in scope, followed by restoration and measured results, not further
 unbounded performance work.
 
-- [ ] Add RED regressions that drive existing callback and native-write boundaries
+- [x] Add RED regressions that drive existing callback and native-write boundaries
   using the actual shipped configuration, rather than hard-coded enabled fixtures.
-- [ ] Restore the approved push and native-write flags in `wrangler.jsonc` and
+- [x] Restore the approved push and native-write flags in `wrangler.jsonc` and
   rerun those regressions plus the full unit/integration suite and build.
-- [ ] Independently review configuration/provenance, capture the live baseline,
+- [x] Independently review configuration/provenance, capture the live baseline,
   deploy and compare every plain binding and secret binding name; only approved
   flag changes are permitted. Verify registration/wake state on original files.
-- [ ] Back up the exact live test identity/date and row values; clear an R cell
+- [x] Back up the exact live test identity/date and row values; clear an R cell
   through its normal editor, time provider notification, DB import and open-page
   status. Do not press Reload/Check changes during timed qualification.
-- [ ] Confirm a later completed sync does not reinsert the cleared date, restore
+- [x] Confirm a later completed sync does not reinsert the cleared date, restore
   the original cell and observe its automatic return to billed. Verify row values
   and unchanged Sent-event count. Record measured limits in PROJECT_STATUS.
-- [ ] Add and qualify the private shared probe lease/baseline RPCs and atomic
+- [x] Add and qualify the private shared probe lease/baseline RPCs and atomic
   existing-wake enqueue, including stale tokens, membership, rebound files,
   unchanged-version no-churn, retry hints and binding-removal cascade.
-- [ ] Add a fixed-target metadata-only provider read and background API probe.
+- [x] Add a fixed-target metadata-only provider read and background API probe.
   Keep authorization/region scoping, nonblocking cached revision responses,
   failed-read release and durable dispatch retry. No credentialed arbitrary URL.
-- [ ] Run visible-client checks every five seconds, retaining hidden-page, dirty
+- [x] Run visible-client checks every five seconds, retaining hidden-page, dirty
   edit, single-flight, coalescing and cleanup protections. Test normal/failure
   cadences. Apply only the new generated migration after real PG qualification.
-- [ ] Independently review and deploy the complete probe path, compare bindings,
+- [x] Independently review and deploy the complete probe path, compare bindings,
   then repeat timed real clear/restore tests with fresh row identity checks and
   no manual synchronization or reload during timing.

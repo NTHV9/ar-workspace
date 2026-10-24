@@ -1,6 +1,6 @@
 ## 2026-10-24 — Native projected-value hints bypass lagging Drive versions
 
-**Implemented and tested; final Worker/live timing pending.** Real native Undo
+**Implemented, tested, deployed and live-qualified.** Real native Undo
 tests showed that committed cell values can precede Drive version changes by up
 to minutes. Version-only probing therefore cannot guarantee prompt native edits.
 The Khao Lak hint now reads a fixed six-range primitive-value projection directly
@@ -25,11 +25,32 @@ regression. Independent review found no blocker. Native probes now include one
 Sheets values request per eligible shared check (about 12/minute at five seconds),
 plus existing identity/metadata calls; earlier metadata-only descriptions are
 historical for the preceding releases, not this native path. Hidden pages retain
-their existing no-poll behavior. Final live timing/restoration remains required.
+their existing no-poll behavior.
+
+Final source `44c07f9` is live as Worker
+`b12392ec-6bb6-458e-b86b-da3e3d53a413`. All 42 runtime binding descriptors/plain
+values match the approved enabled baseline; secrets were not read. Production
+HTML and all 56 built JS/WASM/CSS assets match. Hosted native probe state is a
+30-digit projected-value hint (not the size fallback / lagging Drive counter),
+and actual full native synchronization succeeds with no provider error.
+
+Final single-client-clock UI qualification: clearing the owned native billing
+cell changed the already-open invoice page to `No billing sent` within 22.977s;
+Undo returned it to `Billed` within 19.517s. No Reload / Check changes was used
+during either timing. All 33 displayed row values match their fresh pre-test
+backup; readback also confirms the exact original date number and number format.
+The original Phuket test row's 32 values were likewise restored exactly; its
+tested clear propagated within 19.036s, while XLSX save/restore varied and one
+earlier bounded 39s observation did not yet see completion. Original file format
+and IDs were preserved, so no uniform instantaneous or sub-five-second end-to-end
+claim is made for Office saves. Both actual current Sheet/web dates match their
+original values and each selected invoice retains one Sent event. No email or
+OPERA accounting write was performed. Private proof is under ignored
+`.tmp/tracker-push-20261024/`; natural audit/version records remain.
 
 ## 2026-10-24 — Bounded native-grid read optimization
 
-**Implemented and tested; final Worker/live read qualification pending.** Small
+**Implemented, tested and live full-read qualified.** Small
 occupied native grids (201–2,000 rows, at most 66,000 cells) can be read in one
 bounded grid request instead of serial 200-row requests. Both AG-key observations,
 the existing parser/schema fingerprint, duplicate/identity/formula/date checks,
@@ -43,7 +64,7 @@ bytes for the current 1,419-row typed grid, so the initial 4 MiB prototype would
 always have fallen back. The bounded 8 MiB path is qualified with a dense synthetic
 fixture as well as normal/fallback parity tests; no customer grid is in Git. This
 byte/row cap is not a measured heap cap. Successful live full synchronization is
-still required before timing another edit. No response cap above the existing
+completed successfully before timing another edit. No response cap above the existing
 16 MiB paging limit was added.
 
 Independent review caught an unneeded Promise.race timeout releasing the probe
@@ -61,8 +82,8 @@ and independent review pass. Existing migration/probe/permission logic is unchan
 
 ## 2026-10-24 — Shared active-client tracker version probes
 
-**Implemented and tested; new private migration applied; Worker deployment and
-final live timing pending.** Restoring push flags alone did not eliminate the
+**Implemented, tested and deployed; native hint superseded by the direct-value
+qualification above.** Restoring push flags alone did not eliminate the
 provider delay: actual native edits changed Drive modifiedTime within four
 seconds, but the corresponding notifications arrived about 90 seconds later.
 Keep push/fallback and add shared metadata-version probes while visible clients
@@ -97,7 +118,7 @@ Five seconds is the check cadence, not a promised end-to-end update time.
 
 ## 2026-10-24 — Restore approved tracker push/runtime flags
 
-**Implemented and locally tested; deployment/live latency test pending.** The
+**Implemented, tested and deployed; follow-up live qualification is above.** The
 owner requests prompt Sheet-to-web updates after the live clear test revealed
 six-minute fallback latency. Immutable version inspection confirms tracked false
 Wrangler defaults overwrite the previously approved live true push and native
