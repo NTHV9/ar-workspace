@@ -2,7 +2,7 @@ import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 
 const jobId='00000000-0000-4000-8000-000000000081',draftId='00000000-0000-4000-8000-000000000082';
-const user={id:'synthetic-billing-channel-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
+const user={id:'00000000-0000-4000-8000-000000000099',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
 const recipients={billing:{to:['billing@example.test'],cc:['billing-copy@example.test'],bcc:[]},collection:{to:['collections@example.test'],cc:[],bcc:['collection-copy@example.test']}};
 
 async function setup(page:Page,options:{legacy?:boolean;portal?:string;rejectHandoff?:boolean;rejectSettings?:boolean}={}){
@@ -12,12 +12,14 @@ async function setup(page:Page,options:{legacy?:boolean;portal?:string;rejectHan
  const files=[{name:'Synthetic-billing.pdf',storage_key:`jobs/${jobId}/exports/synthetic.pdf`,byte_count:2048,sha256:'a'.repeat(64)}];
  const job={id:jobId,hotel:'KAT',account_id:'synthetic-channel',account_name:'Synthetic portal account',invoice_ids:['synthetic-invoice'],state:'ready',revision:4,acknowledged:true,files:[],exports:files};
  let draft={id:draftId,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:'billing',recipients:recipients.billing,subject:'Synthetic billing documents',body:'Please review the synthetic billing documents.',exports:files,attachments:[],revision:0,package_changed:false,...metadata};
- await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
+ await page.addInitScript(u=>{const session=JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u}),set=Storage.prototype.setItem;localStorage.setItem('sb-example-auth-token',session);Storage.prototype.setItem=function(key,value){set.call(this,key,value);if(this===sessionStorage&&key==='ar-google-tab-v1')set.call(this,value,session);};},user);
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{user}}));
  await page.route('**/api/**',async r=>{
   const q=r.request(),p=new URL(q.url()).pathname;calls.push(`${q.method()} ${p}`);
   if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
-  if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+  if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}});
+  if(p==='/api/access/me')return r.fulfill({json:{memberId:user.id,email:user.email,administrator:true,active:true,regions:['phuket','khao-lak'],revision:1,registered:true}});
+  if(p==='/api/access/signature')return r.fulfill({json:{revision:0,enabled:false,signature:{staffId:user.id,name:'',title:'',workplace:''}}});
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[{id:job.account_id,hotel:'KAT',name:job.account_name,type:'OTA',open:100,over90:0,items:1}],refresh:{running:false,hotels:[]}}});
   if(p===`/api/accounts/KAT/${job.account_id}`)return r.fulfill({json:{invoices:[]}});
@@ -83,20 +85,19 @@ test('changed server billing method shows actionable handoff feedback',async({pa
  await expect(page.getByRole('alert')).toContainText('By System');await expect(page.getByRole('alert')).toContainText('actual billing date');
 });
 
-test('explicit account recipient loading follows purpose and retains unsaved message text',async({page})=>{
+test('account recipients load automatically without a reload button and purpose changes retain edits',async({page})=>{
  const {calls}=await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);
- await expect(page.getByRole('button',{name:'Load account recipients',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Load account recipients',exact:true})).toHaveCount(0);
+ await expect(page.getByLabel('Email TO')).toHaveValue('billing@example.test');await expect(page.getByLabel('Email CC')).toHaveValue('billing-copy@example.test, ar@katathani.com');
  await page.getByLabel('Email TO').fill('edited@example.test');await page.getByLabel('Email subject').fill('Retain this subject');await page.getByLabel('Email message').fill('Retain this unsaved message.');
  await page.getByRole('button',{name:'collection',exact:true}).click();await expect(page.getByLabel('Email TO')).toHaveValue('edited@example.test');expect(calls.some(c=>c.includes('/account-settings/'))).toBe(false);
- page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Load account recipients',exact:true}).click();await expect(page.getByLabel('Email TO')).toHaveValue('edited@example.test');expect(calls.some(c=>c.includes('/account-settings/'))).toBe(false);
- page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Load account recipients',exact:true}).click();await expect(page.getByLabel('Email TO')).toHaveValue('collections@example.test');await expect(page.getByLabel('Email CC')).toHaveValue('');await expect(page.getByLabel('Email BCC')).toHaveValue('collection-copy@example.test');
- await page.getByRole('button',{name:'billing',exact:true}).click();await expect(page.getByLabel('Email TO')).toHaveValue('collections@example.test');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Load account recipients',exact:true}).click();await expect(page.getByLabel('Email TO')).toHaveValue('billing@example.test');await expect(page.getByLabel('Email CC')).toHaveValue('billing-copy@example.test');await expect(page.getByLabel('Email BCC')).toHaveValue('');
+ await page.getByRole('button',{name:'billing',exact:true}).click();await expect(page.getByLabel('Email TO')).toHaveValue('edited@example.test');await expect(page.getByLabel('Email CC')).toHaveValue('billing-copy@example.test, ar@katathani.com');await expect(page.getByLabel('Email BCC')).toHaveValue('');
  await expect(page.getByLabel('Email subject')).toHaveValue('Retain this subject');await expect(page.getByLabel('Email message')).toHaveValue('Retain this unsaved message.');await expect(page.getByRole('button',{name:'Save message',exact:true})).toBeEnabled();
- expect(calls.filter(c=>c.includes('/account-settings/'))).toEqual(['GET /api/account-settings/KAT/synthetic-channel','GET /api/account-settings/KAT/synthetic-channel']);expect(calls.some(c=>c.startsWith('PUT ')||c.endsWith('/send')||c.endsWith('/gmail-draft'))).toBe(false);
- await page.screenshot({path:'evidence/billing-channel-load-recipients-1440.png'});
+ expect(calls.filter(c=>c.includes('/account-settings/'))).toEqual([]);expect(calls.some(c=>c.startsWith('PUT ')||c.endsWith('/send')||c.endsWith('/gmail-draft'))).toBe(false);
+ await page.screenshot({path:'.tmp/self-cc-evidence/billing-recipients-automatic-1440.png'});
 });
 
-test('failed account recipient loading preserves current recipients and message',async({page})=>{
+test('editing saved draft recipients needs no additional account-settings request',async({page})=>{
  const {calls}=await setup(page,{rejectSettings:true});await page.goto(`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Email TO').fill('keep@example.test');await page.getByLabel('Email message').fill('Keep this message.');
- page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Load account recipients',exact:true}).click();await expect(page.getByRole('alert')).toContainText('current recipients and message are retained');await expect(page.getByLabel('Email TO')).toHaveValue('keep@example.test');await expect(page.getByLabel('Email CC')).toHaveValue('billing-copy@example.test');await expect(page.getByLabel('Email message')).toHaveValue('Keep this message.');expect(calls.some(c=>c.startsWith('PUT ')||c.endsWith('/send')||c.endsWith('/gmail-draft'))).toBe(false);
+ await expect(page.getByRole('button',{name:'Load account recipients',exact:true})).toHaveCount(0);await expect(page.getByLabel('Email TO')).toHaveValue('keep@example.test');await expect(page.getByLabel('Email CC')).toHaveValue('billing-copy@example.test, ar@katathani.com');await expect(page.getByLabel('Email message')).toHaveValue('Keep this message.');expect(calls.some(c=>c.includes('/account-settings/')||c.startsWith('PUT ')||c.endsWith('/send')||c.endsWith('/gmail-draft'))).toBe(false);
 });

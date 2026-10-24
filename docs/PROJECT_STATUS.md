@@ -1,3 +1,49 @@
+## 2026-10-25 — Regional self CC and simpler recipient preparation
+
+**Implemented and tested locally; not deployed or enabled on the live site.**
+Work is isolated in the managed `default-self-cc` worktree on
+`codex/default-self-cc-20261025`, based on `aff8494`, rather than the older branch
+in the original checkout. The baseline EmailComposer file was also compared with
+the active OPERA-refresh branch and was identical. Integrate only this feature's
+diff into the latest release line after concurrent work; do not deploy an older
+whole-worktree snapshot over another release.
+
+- Editable email preparations automatically include `ar@katathani.com` for KAT/TSK
+  or `ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN, alongside saved Account CC.
+  The owner clarifies self CC is required; other recipients remain editable. Self
+  appears once in CC, including when it was already present in another field.
+- The redundant **Load account recipients** button/handler is removed. Existing
+  automatic Account recipient loading remains; message edits do not change Account
+  settings. CC is visible, marked for saving and persisted through the existing
+  revision-protected save before human-triggered Gmail draft, Send Now or batch
+  review. Frozen Gmail deliveries, uncertain results and closed packages retain
+  their original snapshots; no historical message is rewritten or resent.
+- Verification: full Vitest suite **4,455 passed / 329 files** using
+  `node node_modules/vitest/vitest.mjs run --maxWorkers=2 --testTimeout=15000`;
+  `pnpm build` passed. The first full run had one existing Invoice read test exceed
+  its 5-second budget under concurrent load; all six tests in that file passed in
+  isolation, and the full rerun above passed without code changes to that area.
+- Production-built browser verification **85 passed**: 78 email/composer/thread/
+  regional cases, 2 automatic-recipient cases, and 5 native-PDF batch cases.
+  Commands: `node node_modules/vite/bin/vite.js build --config vite.browser.config.ts`
+  then `node node_modules/@playwright/test/cli.js test --config playwright.self-cc.config.ts --workers 2`.
+  The dedicated local preview uses port 52873 and does not reuse other chats'
+  servers. Legacy test fixtures were updated for current Google tab sessions,
+  signature identity, tracker revision reads and relative URLs; production auth
+  was not modified. Batch assertions verify separate edited CC recipients plus
+  self in each account snapshot, all three file layouts, retry and no resend of
+  uncertain delivery. Provider APIs and email delivery are simulated.
+- Actual desktop/mobile component screenshots were inspected. All seven original
+  design PNGs and the supplied Codex design notes were read only as references;
+  they are not current-site screenshots or a basis for reverting the interface.
+  Original reference/QA images remain unchanged in Git; fresh synthetic evidence
+  stays in `.tmp/self-cc-evidence/`. Independent focused review found no actionable
+  code regression; its requested batch CC coverage was added and passed.
+- No real email, provider draft, OPERA/Sheet write, schema migration, deployment,
+  global configuration or dependency change was made. Cloudflare deployment
+  metadata was read only while checking version safety; it does not certify a
+  live deployment of this feature. Other chats' worktrees/checkouts were not edited.
+
 ## 2026-10-25 — Owner paused replacing Aging Master
 
 The owner withdrew the web financial-publisher/LFS-only updater change before

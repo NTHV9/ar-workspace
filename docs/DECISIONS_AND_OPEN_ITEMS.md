@@ -563,3 +563,20 @@ Billing requirement/term/first billing/latest reminder และ note ใช้�
 - เจ้าของให้เอา Fit page ออกจาก Preview zoom; ใช้ Fit width เป็นค่าเริ่มต้น และคงเปอร์เซ็นต์ซูม/เลือกหน้าที่เหลือ. แทนข้อกำหนดเริ่ม Preview แบบ Fit page ใน checkpoint ก่อนหน้า
 - เพิ่มแถวต้องอยู่หลังข้อความทุกบรรทัดของแถวเดิม ไม่ตัดชื่อที่ wrap และไม่แบ่งกรอบหรือแถบ Balance Due. แถวใหม่ยังแก้ข้อความ/เพิ่มซ้ำ/ลบ/Undo ได้ และเนื้อหาด้านล่างเลื่อนตาม
 - ขอบเขตนี้เป็น PDF editor เท่านั้น ไม่เปลี่ยน source bytes, ยอด AR, การส่งอีเมล หรือ integration
+## Regional self CC and automatic account recipients — 25 October 2026
+
+The owner requests the sending region's AR mailbox in CC in addition to the
+Account's configured CC: `ar@katathani.com` for KAT/TSK and
+`ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN. The owner clarifies that self CC
+must always be present on editable email preparations, without pressing a button.
+Other recipient addresses remain editable and are preserved. Keep self exactly
+once in CC, comparing addresses without case or outer-whitespace differences;
+an existing self address in To/BCC is represented in CC instead of duplicated.
+
+Remove the confusing **Load account recipients** button. New preparations continue
+to receive the saved Billing/Collection recipients through the existing open-draft
+flow. Changing a message does not change Account settings; changing its purpose
+does not silently replace already edited recipients. Required self CC is visible
+and saved before the existing human-triggered Gmail draft or Send Now review.
+Retain already frozen Gmail delivery snapshots and uncertain/sent preparations;
+do not rewrite historic recipients or trigger replacement sends.
