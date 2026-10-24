@@ -1,3 +1,15 @@
+## 2026-10-25 — Owner paused replacing Aging Master
+
+The owner withdrew the web financial-publisher/LFS-only updater change before
+production rollout and asks staff to continue using Aging Master as before.
+All feature implementation and test workers stopped. Local experimental code,
+plans and synthetic migration were saved in named recoverable Git stashes in the
+web and separate updater repositories, then removed from the active checkouts.
+Preexisting unrelated updater changes were preserved. No hosted migration,
+publisher enablement, deployment, provider write, email, executable build/run or
+replacement was performed for this feature. Existing production tracker/date
+synchronization and the ten suppressed source-review jobs remain unchanged.
+
 ## 2026-10-24 — Read-only investigation of the ten quarantined Khao Lak rows
 
 The original native Sheet's recorded updater log ends at business date 23 October,
