@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {useWorkspaceMember} from '../access/context';
 import type {RegionId} from '../domain/hotels';
 import {notifyRegisterChanged} from '../register/model';
 import {DRIVE_SCOPE,openDriveFilePicker,prepareDrivePicker,type DriveFilePickerConfig,type PickerRuntime} from '../drive/picker';
@@ -16,6 +17,26 @@ const rowAddReason=(reason:string|null)=>reason==='source_or_sheet_changed'?'Sou
 const rowAddCount=(count:number|undefined)=>typeof count==='number'&&Number.isSafeInteger(count)&&count>0?count:0;
 const canAccept=(c:Conflict)=>c.reason!=='invalid_source_field'&&!['S','T','AA'].includes(c.field)&&!(c.field==='Y'&&c.sheetValue!==null&&!['','Contacted','Awaiting reply','Promised payment','Remittance received','Disputed','Other'].includes(String(c.sheetValue)));
 export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}){
+ const member=useWorkspaceMember(),owner=JSON.stringify([token,region,member?.memberId,member?.email,member?.username,member?.administrator,member?.regions,member?.revision]);
+ // Changing identity or access unmounts all administrator state and in-flight reads.
+ return member?.administrator===true?<TrackerAdministratorStatus key={owner} token={token} region={region}/>:<TrackerMemberStatus key={owner} token={token} region={region}/>;
+}
+function TrackerMemberStatus({token,region}:{token:string;region:RegionId}){
+ const [result,setResult]=useState<{lastSuccessAt:string|null}|null>(null),[unavailable,setUnavailable]=useState(false);
+ useEffect(()=>{
+  const controller=new AbortController();
+  const read=async()=>{try{
+   const response=await fetch(`/api/reports/tracker?region=${region}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal});
+   if(!response.ok)throw Error();const data:unknown=await response.json();
+   if(!data||typeof data!=='object'||Array.isArray(data)||!('lastSuccessAt' in data)||data.lastSuccessAt!==null&&(typeof data.lastSuccessAt!=='string'||!/^\d{4}-\d{2}-\d{2}T/.test(data.lastSuccessAt)||!Number.isFinite(Date.parse(data.lastSuccessAt))))throw Error();
+   // Store only the allowed projection even if a stale server returns full status.
+   if(!controller.signal.aborted){setResult({lastSuccessAt:data.lastSuccessAt});setUnavailable(false);}
+  }catch{if(!controller.signal.aborted)setUnavailable(true);}};
+  void read();const timer=setInterval(()=>void read(),60000);return()=>{controller.abort();clearInterval(timer);};
+ },[token,region]);
+ return <div className="report-tracker" aria-label={`${region} tracker synchronization`}><p>Last successful synchronization: {result?result.lastSuccessAt?new Date(result.lastSuccessAt).toLocaleString():'No successful synchronization recorded.':unavailable?'Unavailable.':'Checking…'}</p></div>;
+}
+function TrackerAdministratorStatus({token,region}:{token:string;region:RegionId}){
  const [result,setResult]=useState<{owner:string;status:Status}|null>(null),[error,setError]=useState(''),[readError,setReadError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[review,setReview]=useState(false);
  const owner=token+region,status=result?.owner===owner?result.status:null;
  const actorRef=useRef(owner);actorRef.current=owner;const pickerOperation=useRef<AbortController|null>(null);
@@ -30,7 +51,7 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
  },[review,token,region,owner,category,cursor,pageKey,pageRetry]);
  const [authorizationOwner,setAuthorizationOwner]=useState<string|null>(null),[pickerState,setPickerState]=useState<{owner:string;config:DriveFilePickerConfig;runtime:PickerRuntime}|null>(null),[pickerError,setPickerError]=useState(''),[pickerAttempt,setPickerAttempt]=useState(0);
  const needsAuthorization=authorizationOwner===owner,picker=pickerState?.owner===owner?pickerState:null;
- useEffect(()=>()=>{pickerOperation.current?.abort();},[owner]);
+ useEffect(()=>{actorRef.current=owner;return()=>{actorRef.current='';pickerOperation.current?.abort();};},[owner]);
  useEffect(()=>{
   const controller=new AbortController();setPickerState(null);setPickerError('');
   if(needsAuthorization&&status?.available)void Promise.all([

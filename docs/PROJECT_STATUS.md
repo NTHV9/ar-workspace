@@ -1,3 +1,43 @@
+## 2026-10-25 — Sheet credit authority, safe Account moves and administrator details
+
+**Implemented and qualified; deployment verification pending below.** Owner
+approved all four policies and administrator-only diagnostic details. Original
+Aging Master remains unchanged. This builds on the combined release recorded
+below, preserving activity refresh, regional self CC and Sent-row supplementation.
+
+- Valid employee S becomes an explicit per-Invoice credit override, surviving
+  Account-rule changes; blank S restores Account credit and creates a bounded
+  blank-only fill intent. Durable provenance distinguishes auto-fill from manual
+  values, including manual edits back to an older fill value. No-op observations
+  do not rewrite provenance. S-only publication freezes intent and reads unknown
+  outcomes without repeating them; held cells reuse their journal rather than
+  generating unbounded new commands. Existing date/T cells are outside this path.
+- T is excluded from import comparisons and historical pending T warnings are
+  resolved with audit retained. Web/workbook due formulas remain independent.
+- Snapshot and Preview share unique same-hotel Invoice/Folio/posting-date
+  matching, including safe Account reassignment. All unresolved candidates count
+  toward ambiguity, including cached-zero unknown rows. Moves are audited and
+  old Sent history is not copied. Provider row keys and fresh positions remain
+  distinct from the mapped current ledger. Native write rereads recheck complete
+  tuple uniqueness before any mutation.
+- Closed warning retirement requires a currently present verified match plus
+  fresh explicit OPERA zero evidence. Stale mapping, missing source or unknown
+  zero cannot hide a current identity warning. Warnings are resolved, not deleted
+  together with business history.
+- Staff GET status returns only lastSuccessAt; detail, Picker and management
+  commands are denied at the backend. UI defaults to limited visibility and
+  clears cached details on access/identity changes; the original Sheet link stays.
+
+Qualification: 340 unit files / 4,623 tests; typecheck and production build;
+40 real-browser synthetic cases including staff/admin access transitions and
+existing synchronization pages; 129 migrations and all 20 disposable tracker
+SQL rollback fixtures. The unchanged 2,028-row Preview capacity guard passes
+(1.368 seconds in the pre-index final run). Fresh review findings were fixed and
+regression-tested: fill echo continuity, intent freeze revalidation, unknown
+post-upload readback, current identity retirement, source ambiguity and Preview
+policy parity. Hosted migration is `20261024201427_ar_tracker_credit_identity_policy`.
+No real email was sent and no intentional staff date change was used for testing.
+
 ## 2026-10-25 — Combined release: Sent rows, activity refresh and regional self CC
 
 **Implemented, tested, deployed and enabled together.** Production health readback

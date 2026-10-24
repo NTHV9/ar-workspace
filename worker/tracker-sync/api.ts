@@ -8,8 +8,13 @@ export async function trackerApi(request:Request,env:TrackerEnv,owner:string,ada
  if(!isRegionId(region)||url.searchParams.size!==1)return json({error:'tracker_invalid'},400);
  if(env.REQUEST_ACCESS&&!env.REQUEST_ACCESS.regions.includes(region))return json({error:'tracker_forbidden'},403);
  if(!['GET','POST'].includes(request.method))return json({error:'method_not_allowed'},405);
+ // The owner is authenticated separately by the dispatcher and has no grant.
+ // A scoped session must explicitly hold administration to change this tracker.
+ const administrator=!env.REQUEST_ACCESS||env.REQUEST_ACCESS.administrator===true;
+ if(request.method==='POST'&&!administrator)return json({error:'tracker_forbidden'},403);
  try{
   const status=await backendRpc<Record<string,unknown>>(env,'ar_tracker_status',{p_actor:actor,p_region:region});
+  if(request.method==='GET'&&!administrator)return json({lastSuccessAt:status.lastSuccessAt??null});
   if(request.method==='GET'){const enabled=region==='phuket'?env.TRACKER_BLOB_CAS_ENABLED==='true':env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true';return json({...status,available:env.TRACKER_SYNC_ENABLED==='true',writebackAvailable:enabled,writeAssurance:enabled?(region==='phuket'?'cas':'best-effort'):'held'});}
   if(env.TRACKER_SYNC_ENABLED!=='true')return json({error:'tracker_disabled'},409);
   if(request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin||request.headers.get('Sec-Fetch-Site')==='cross-site')return json({error:'tracker_forbidden'},403);

@@ -12,6 +12,7 @@ export async function trackerPickerConfig(request:Request,env:TrackerEnv,owner:s
  if(request.method!=='GET')return json({error:'method_not_allowed'},405);
  if(!isRegionId(region)||url.searchParams.size!==1)return json({error:'tracker_invalid'},400);
  if(env.REQUEST_ACCESS&&!env.REQUEST_ACCESS.regions.includes(region))return json({error:'tracker_forbidden'},403);
+ if(env.REQUEST_ACCESS&&env.REQUEST_ACCESS.administrator!==true)return json({error:'tracker_forbidden'},403);
  try{
   await backendRpc(env,'ar_tracker_status',{p_actor:actor,p_region:region});
   const fileId=trackerFile(env,region);

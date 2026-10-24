@@ -6,7 +6,7 @@ const decoder=new TextDecoder('utf-8',{fatal:true}),encoder=new TextEncoder();
 const MAX_FILE=8*1024*1024,MAX_PART=12*1024*1024,MAX_TOTAL=64*1024*1024;
 export const trackerHeaders:Readonly<Record<string,string>>={A:'Property',C:'Account No.',E:'เลขที่ Invoice',F:'Folio No.',G:'วันที่โพสต์',R:'วันที่วางบิล',S:'เครดิตเทอม (วัน)',T:'วันครบกำหนด',U:'อีเมลทวง #1',V:'อีเมลทวง #2',W:'อีเมลทวง #3',X:'วันนัดชำระใหม่',Y:'สถานะติดตาม',Z:'จำนวนเงินที่รับ',AA:'ผลต่าง',AB:'รายละเอียดการติดตาม',AC:'ผู้รับผิดชอบ',AG:'KEY (ระบบ-ห้ามแก้)'};
 export interface TrackerLocator {sheetName:string;sheetPath:string;row:number;key:string}
-export interface TrackerRow extends TrackerIdentity {rowKey:string;folio:string|null;transactionDate?:string|null;agent?:string;property?:string;fields:TrackerValues;formulaFields?:TrackerField[];blockedWriteFields?:('R'|'U'|'V'|'W')[];locator:TrackerLocator;issues?:string[]}
+export interface TrackerRow extends TrackerIdentity {rowKey:string;folio:string|null;transactionDate?:string|null;agent?:string;property?:string;fields:TrackerValues;formulaFields?:TrackerField[];blockedWriteFields?:('R'|'S'|'U'|'V'|'W')[];locator:TrackerLocator;issues?:string[]}
 export interface ParsedTracker {rows:TrackerRow[];schemaFingerprint:string;sheetName:string;sheetPath:string;date1904:boolean}
 export interface TrackerCellChange {field:TrackerField;value:string;expected:string|null}
 export interface TrackerWorkbookEdit {rowKey:string;expectedIdentity:TrackerIdentity&{transactionDate?:string|null};changes:readonly TrackerCellChange[]}
@@ -71,6 +71,8 @@ function dateString(value:string,date1904:boolean):string|null {
  throw Error('tracker_date_invalid');
 }
 export {dateString as trackerDateValue};
+/** Canonical numeric text roundtrips through typed provider number cells. */
+export function validTrackerCredit(value:unknown):value is string {return typeof value==='string'&&/^(?:0|[1-9]\d{0,3})$/.test(value)&&Number(value)<=3650;}
 const dateFields=new Set<TrackerField>(['R','T','U','V','W','X']);
 const scalarTypes=new Set(['n','s','inlineStr','str']),dateTypes=new Set([...scalarTypes,'d']);
 function value(cell:Cell|undefined,field:TrackerField,date1904:boolean):string|null {
@@ -110,7 +112,7 @@ function load(bytes:Uint8Array,region:RegionId,sentIdentity=false){
   if(accountNo&&invoiceNo){const identityKey=JSON.stringify([hotel,accountNo,invoiceNo,folio,...(sentIdentity?[transactionDate]:[])]);if(identities.has(identityKey))throw Error('tracker_row_identity_ambiguous');identities.add(identityKey);}
   const fields:TrackerValues={};for(const field of trackerFields){try{fields[field]=value(get(field),field,date1904);}catch{fields[field]=get(field)?.raw??null;issues.push(field+'_invalid');}}
   const formulaFields=trackerFields.filter(field=>get(field)?.formula);
-  const blockedWriteFields=(['R','U','V','W'] as const).filter(field=>blockedDateCell(get(field)));
+  const blockedWriteFields=(['R','S','U','V','W'] as const).filter(field=>blockedDateCell(get(field))||field==='S'&&!scalarTypes.has(get(field)?.type??''));
   const agent=get('B'),aliases=agent&&!agent.formula&&scalarTypes.has(agent.type)&&agent.raw.trim()?{agent:agent.raw,property:get('A')?.raw??''}:{};
   rows.push({rowKey:key.raw,hotel,accountNo,invoiceNo,folioNo:folio,folio,transactionDate,...aliases,fields,...(formulaFields.length?{formulaFields}:{}),...(blockedWriteFields.length?{blockedWriteFields}:{}),locator:{sheetName:chosen.name,sheetPath:chosen.path,row:key.row,key:key.raw},...(issues.length?{issues}:{})});
  }
@@ -140,10 +142,14 @@ function patchLoadedWorkbook(loaded:ReturnType<typeof load>,edits:readonly Track
  for(const {rowKey,expectedIdentity,changes} of edits){const row=rows.get(rowKey);
  if(!row||row.issues?.some(issue=>identityIssues.has(issue)&&!(issue==='account_missing'&&canResolveWithoutAccountNumber(row))||changes.some(change=>issue===change.field+'_invalid'))||row.hotel!==expectedIdentity.hotel||row.accountNo!==expectedIdentity.accountNo||row.invoiceNo!==expectedIdentity.invoiceNo||(row.folio??null)!==(expectedIdentity.folioNo??null)||(expectedIdentity.transactionDate!==undefined&&row.transactionDate!==expectedIdentity.transactionDate))throw Error('tracker_identity_conflict');
  if(!changes.length||changes.length>4||new Set(changes.map(c=>c.field)).size!==changes.length)throw Error('tracker_patch_invalid');
- for(const change of changes){if(!['R','U','V','W'].includes(change.field)||!/^\d{4}-\d{2}-\d{2}$/.test(change.value))throw Error('tracker_patch_forbidden');
+ for(const change of changes){const credit=change.field==='S';if(credit?change.expected!==null||!validTrackerCredit(change.value):!['R','U','V','W'].includes(change.field)||!/^\d{4}-\d{2}-\d{2}$/.test(change.value))throw Error('tracker_patch_forbidden');
   if(row.fields[change.field]!==change.expected)throw Error('tracker_cell_conflict');const cell=loaded.chosen.map.get(change.field+row.locator.row);if(!cell||cell.formula)throw Error('tracker_formula_or_missing_cell');
   const reference=change.field+row.locator.row,prior=seen.get(reference);if(prior){if(prior.value!==change.value||prior.expected!==change.expected)throw Error('tracker_cell_conflict');continue;}seen.set(reference,change);
-  if(blockedDateCell(cell))throw Error('tracker_cell_metadata_unsupported');
+  if(blockedDateCell(cell)||credit&&!scalarTypes.has(cell.type))throw Error('tracker_cell_metadata_unsupported');
+  if(credit){
+   const tag=/^<([^\s>]+)/.exec(cell.xml)?.[1];if(!tag)fail();let opening=cell.xml.slice(0,cell.xml.indexOf('>')+1).replace(/\s+t\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/, '>');opening=opening.slice(0,-1)+' t="n">';const prefix=tag.includes(':')?tag.split(':')[0]+':':'';
+   replacements.push({start:cell.start,end:cell.end,value:opening+'<'+prefix+'v>'+change.value+'</'+prefix+'v></'+tag+'>'});continue;
+  }
   const time=Date.parse(change.value+'T00:00:00Z');if(!Number.isFinite(time)||new Date(time).toISOString().slice(0,10)!==change.value)throw Error('tracker_patch_invalid');
   const serial=Math.round((time-Date.UTC(loaded.parsed.date1904?1904:1899,loaded.parsed.date1904?0:11,loaded.parsed.date1904?1:30))/86400000);
   const tag=/^<([^\s>]+)/.exec(cell.xml)?.[1];if(!tag)fail();let opening=cell.xml.slice(0,cell.xml.indexOf('>')+1).replace(/\s+t\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/, '>');opening=opening.slice(0,-1)+' t="n">';const prefix=tag.includes(':')?tag.split(':')[0]+':':'';

@@ -3,7 +3,7 @@ import {google,identity} from '../drive/provider';
 import {boundedBytes,readJson} from '../drive/shared';
 import type {RegionId} from '../../src/domain/hotels';
 import type {TrackerAdapter,TrackerEnv,ProviderSnapshot,ProviderWrite} from './service';
-import {prepareTrackerWorkbook,readTrackerSentRowContext,appendTrackerSentRows,type TrackerCellChange,type TrackerSentSourceCell} from './workbook';
+import {prepareTrackerWorkbook,readTrackerSentRowContext,appendTrackerSentRows,validTrackerCredit,type TrackerCellChange,type TrackerSentSourceCell} from './workbook';
 import {readNativeTracker,readNativeTrackerChangeHint,writeNativeTrackerBatch} from './native';
 import {appendNativeTracker,readNativeAppendSheetId} from './append-native';
 import type {SentAppendInput,SentAppendResult} from './append';
@@ -80,7 +80,7 @@ export async function writeTrackerBatch(env:TrackerEnv,owner:string,region:Regio
  if(region==='khao-lak'&&env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true'){const token=await access(env,owner),meta=await metadata(token,region,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict'};return writeNativeTrackerBatch(token,fileId,inputs);}
  if(region!=='phuket'||(env as CasEnv).TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict'};
  if(!inputs.length||inputs.length>100||inputs.reduce((sum,input)=>sum+input.changes.length,0)>300)throw Error('tracker_batch_limit');
- if(inputs.some(input=>!input.changes.length||input.changes.some(c=>!['R','U','V','W'].includes(c.field)||typeof c.value!=='string')))throw Error('tracker_patch_forbidden');
+ if(inputs.some(input=>!input.changes.length||input.changes.some(c=>c.field==='S'?c.expected!==null||!validTrackerCredit(c.value):!['R','U','V','W'].includes(c.field)||typeof c.value!=='string')))throw Error('tracker_patch_forbidden');
  const token=await access(env,owner),current=await readStable(token,region,fileId);
  if(!current.etag||inputs.some(input=>input.version!==current.version)||current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true)return {status:'conflict'};
  let bytes:Uint8Array;

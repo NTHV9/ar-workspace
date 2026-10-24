@@ -27,6 +27,7 @@ export async function trackerConflictsApi(request:Request,env:TrackerEnv,owner:s
  try{
   const {region,category,cursor:rawCursor}=parseTrackerConflictQuery(new URL(request.url));
   if(env.REQUEST_ACCESS&&!env.REQUEST_ACCESS.regions.includes(region as RegionId))return json({error:'tracker_forbidden'},403);
+  if(env.REQUEST_ACCESS&&env.REQUEST_ACCESS.administrator!==true)return json({error:'tracker_forbidden'},403);
   const cursor=rawCursor!==null?await decode(env,rawCursor,actor,region,category):null;
   const result=await backendRpc<Record<string,unknown>>(env,'ar_tracker_conflicts_page',{p_actor:actor,p_region:region,p_category:category,p_after_created_at:cursor?.createdAt??null,p_after_id:cursor?.id??null});
   if(result?.error==='tracker_forbidden')return json({error:'tracker_forbidden'},403);if(result?.error==='tracker_invalid')invalid();

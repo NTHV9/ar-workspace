@@ -72,10 +72,11 @@ begin
  perform public.ar_tracker_snapshot(actor,'khao-lak',lease,jsonb_build_array(r||jsonb_build_object('reviewFence',jsonb_build_object('workflow',-1,'tracking',0,'exception',0))));
  if (select sum(generation) from ar_private.tracker_current_dates where account_id=scope)<>g then raise exception 'stale preview adopted authority';end if;
  if strpos(pg_get_functiondef('public.ar_tracker_outbox(uuid,text,uuid)'::regprocedure),'q.desired_value as value')=0 then raise exception 'outbox still computes latest dynamic value';end if;
- -- Wrong nonempty account and incomplete blank identity must remain held.
+ -- Full corroboration permits Account reassignment; incomplete identity stays held.
  perform public.ar_tracker_snapshot(actor,'khao-lak',lease,jsonb_build_array(r||jsonb_build_object('rowKey',scope||'-wrong','accountNo','WRONG')));
  perform public.ar_tracker_snapshot(actor,'khao-lak',lease,jsonb_build_array((r-'transactionDate')||jsonb_build_object('rowKey',scope||'-incomplete')));
- if exists(select 1 from ar_private.tracker_rows where row_key in(scope||'-wrong',scope||'-incomplete') and account_id is not null) then raise exception 'unsafe account fallback';end if;
+ if not exists(select 1 from ar_private.tracker_rows where row_key=scope||'-wrong' and account_id=scope) then raise exception 'full corroboration did not resolve Account mismatch';end if;
+ if exists(select 1 from ar_private.tracker_rows where row_key=scope||'-incomplete' and account_id is not null) then raise exception 'unsafe incomplete account fallback';end if;
  -- A new invoice can be genuinely sent before its first source observation.
  insert into public.ar_invoices(hotel,account_id,id,invoice_no,folio_no,transaction_date,original,open,verification_state,collection_role,compressed,synced_at) values('TSAN',scope,'fresh','SYNTH-FRESH','SYNTH-FRESH-FOLIO',d-30,100,100,'verified','standalone',false,now());
  delivery2:=gen_random_uuid();

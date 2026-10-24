@@ -18,7 +18,7 @@ begin
   update ar_private.tracker_bindings set bootstrap_confirmed=true,lock_id=lease,lock_until=now()+interval '10 minutes' where tracker_bindings.region=region;
   row:=jsonb_build_object('rowKey',scope||h,'hotel',h,'accountNo','SYN-OLD','invoiceNo','SYN-SHARED','folio','SYN-FOLIO','transactionDate',(d-30)::text,'fields',jsonb_build_object('R',null,'U',null,'V',null,'W',null),'locator','{}'::jsonb);
   perform public.ar_tracker_snapshot(actor,region,lease,jsonb_build_array(row));
-  if not exists(select 1 from ar_private.tracker_rows r where r.region=region and r.row_key=scope||h and r.account_id=scope||'-old' and r.invoice_id='old') then raise exception 'nonblank Sheet account identity was not retained';end if;
+  if not exists(select 1 from ar_private.tracker_rows r where r.region=region and r.row_key=scope||h and r.account_id=scope||'-new' and r.invoice_id='new' and r.identity->>'accountNo'='SYN-OLD') then raise exception 'unique verified transfer did not preserve provider identity and map current ledger';end if;
   delivery:=gen_random_uuid();
   insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state,gmail_id,sent_at)
   values(delivery,actor,'send','synthetic-'||delivery,jsonb_build_object('expected',jsonb_build_object('mailbox',region,'sender',case h when 'KAT' then 'ar@katathani.com' else 'ar@thesandskhaolak.com' end)),'sent','synthetic-'||delivery,(d::timestamp at time zone 'Asia/Bangkok'));
@@ -26,7 +26,8 @@ begin
   values(delivery,actor,h,scope||'-new',array['new','missing'],'billing',null,(d::timestamp at time zone 'Asia/Bangkok'),'synthetic-'||delivery,200);
   if (select count(*) from ar_private.tracker_outbox q where q.delivery_id=delivery and q.state='pending' and q.attempts=0)<>2 then raise exception 'confirmed Sent intent missing or unexpectedly attempted';end if;
   items:=public.ar_tracker_outbox(actor,region,lease);
-  if exists(select 1 from jsonb_array_elements(items) q where q->>'deliveryId'=delivery::text) then raise exception 'unmapped sent invoice reached provider consumer';end if;
+  if not exists(select 1 from jsonb_array_elements(items) x join ar_private.tracker_outbox q on q.id=(x->>'id')::uuid where q.delivery_id=delivery and q.invoice_id='new') then raise exception 'uniquely transferred invoice did not reach provider consumer';end if;
+  if exists(select 1 from jsonb_array_elements(items) x join ar_private.tracker_outbox q on q.id=(x->>'id')::uuid where q.delivery_id=delivery and q.invoice_id='missing') then raise exception 'missing invoice reached provider consumer';end if;
   if exists(select 1 from ar_private.tracker_outbox q where q.delivery_id=delivery and q.state<>'pending') then raise exception 'missing provider identity fabricated a completed receipt';end if;
   if exists(select 1 from ar_private.tracker_history t where t.delivery_id=delivery) then raise exception 'missing Sheet mapping fabricated written history';end if;
  end loop;

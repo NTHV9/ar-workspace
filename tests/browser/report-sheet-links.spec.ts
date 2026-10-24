@@ -6,12 +6,15 @@ for(const tab of ['register','external'])test(`staff Reports hides admin views e
  await auditWorkspace(page);
  await page.route('**/api/access/me',r=>r.fulfill({json:{memberId:'00000000-0000-4000-8000-000000000001',email:'staff@example.test',displayName:'Synthetic Staff',active:true,administrator:false,regions:['phuket'],revision:1}}));
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[links[0]]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>r.fulfill({json:{lastSuccessAt:'2026-10-24T03:00:00Z'}}));
  const forbidden:string[]=[];page.on('request',r=>{const p=new URL(r.url()).pathname;if(p==='/api/invoice-register'||p==='/api/external-billing')forbidden.push(p);});
  await auditLogin(page);await auditRoute(page,'reports=1&reportsTab='+tab);
  const nav=page.getByRole('navigation',{name:'Reports views'});
  await expect(nav.getByRole('button',{name:'Invoice Register',exact:true})).toHaveCount(0);
  await expect(nav.getByRole('button',{name:'External billing activity',exact:true})).toHaveCount(0);
- await expect(page.getByRole('region',{name:'Google Sheets',exact:true})).toBeVisible();expect(forbidden).toEqual([]);
+ const sheets=page.getByRole('region',{name:'Google Sheets',exact:true});await expect(sheets).toBeVisible();expect(forbidden).toEqual([]);
+ const tracker=sheets.locator('.report-tracker');await expect(tracker).toContainText('Last successful synchronization:');await expect(tracker.getByRole('button')).toHaveCount(0);await expect(tracker.getByRole('alert')).toHaveCount(0);await expect(sheets.getByRole('link',{name:'Open Phuket Google Sheet (opens in a new tab)'})).toBeVisible();
+ await page.screenshot({path:`.tmp/tracker-admin/member-reports-${tab}.png`,fullPage:false});
 });
 test.beforeEach(async({page})=>{await page.route('**/api/reports/tracker?*',r=>r.fulfill({json:{connected:false,enabled:false,available:false,revision:0,lastCheckedAt:null,pending:0,conflictCount:0,conflicts:[]}}));});
 for(const width of [1280,390])test(`Reports Google Sheets ${width}: regional spreadsheet links open configured destinations in a new tab`,async({page,context})=>{

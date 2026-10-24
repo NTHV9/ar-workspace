@@ -1,3 +1,34 @@
+## 2026-10-25 — Invoice-local Sheet credit and administrative synchronization details
+
+The owner approves blank S being filled from the current Account credit rule;
+valid nonempty employee S controls only its Invoice. Clearing S removes the local
+override and restores the Account rule. An actual auto-fill echo retains default
+provenance; a later employee edit, including returning to an old fill value, stays
+an explicit override. Account rule changes preserve explicit per-Invoice overrides.
+Unknown Account rules are not invented. Only blank S may be filled by this path;
+R/U/V/W staff edits and deletions remain authoritative and are never backfilled.
+
+T is independent: preserve the workbook's Aging Master formula and the web's own
+due-date calculation, excluding T from comparisons and warning counts. This
+supersedes the older S/T reference-only rule for S and T respectively.
+
+A uniquely corroborated current Hotel + Invoice + Folio + posting-date tuple can
+reconcile a changed Account. Count unresolved source candidates too; incomplete
+evidence, duplicates, unknown zero and unverified sources remain held. Keep the
+provider identity separate from its current ledger relationship and audit moves;
+do not move or fabricate Sent history/recipients. Row positions are temporary
+write locations found from a fresh identity read, never Invoice identifiers.
+
+Retire warnings for currently matched, source-confirmed zero Invoices; preserve
+their audit records and all business history. A missing/failed source lookup,
+absent Sheet row or changed identity is not financial zero. Fresh native reads
+also reject duplicate complete tuples introduced after command selection.
+
+Only administrators see synchronization details, errors, queues, differences,
+Picker and management commands. Members retain the configured Sheet link and
+Last successful synchronization only, with a minimal backend status projection
+and denied detail/mutation routes. Existing regional authorization remains.
+
 ## 2026-10-25 — Confirmed-Sent row additions alongside unchanged Aging Master
 
 The owner authorizes the exact ten previously quarantined billing rows with actual

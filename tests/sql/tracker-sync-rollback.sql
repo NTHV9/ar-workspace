@@ -55,13 +55,12 @@ if (select last_reminder_stage from public.ar_invoice_workflow where hotel='KAT'
  result:=public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(jsonb_set(rows,'{0,rowKey}','"SYNTH-INTERNAL-ID-COLLISION"'),'{0,accountNo}',to_jsonb(scope)));
  if exists(select 1 from ar_private.tracker_rows where region='phuket' and row_key='SYNTH-INTERNAL-ID-COLLISION' and invoice_id is not null) then raise exception 'internal id bypassed known Account No mismatch';end if;
  perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,S}','"45"'));
- select id,revision into conflict,rev from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='S' and status='pending';
- perform public.ar_tracker_resolve(actor,'phuket',conflict,rev,'keep_web');
+ if (select credit_term from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>45 then raise exception 'invoice-local Sheet credit did not apply';end if;
  perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,S}','"45"'));
  if exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='S' and status='pending') then raise exception 'acknowledged reference difference reopened unchanged';end if;
  perform public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,S}','"30 days"'));
  if not exists(select 1 from ar_private.tracker_conflicts where region='phuket' and row_key=tracked_key and field='S' and reason='invalid_source_field' and status='pending') then raise exception 'nonnumeric credit reference was not held safely';end if;
- if (select credit_term from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>30 then raise exception 'invalid credit reference changed account authority';end if;
+ if (select credit_term from public.ar_invoice_workflow where hotel='KAT' and account_id=scope and invoice_id='i')<>45 or (select credit_term from public.ar_account_settings where hotel='KAT' and account_id=scope)<>30 then raise exception 'invalid credit changed invoice or Account authority';end if;
  --  -- Verified Sheet R wins over a mutable web date; settings and Sent stay separate.
  update public.ar_invoice_workflow set first_billing_date=stamp-1,revision=revision+1 where hotel='KAT' and account_id=scope and invoice_id='i';
  result:=public.ar_tracker_snapshot(actor,'phuket',lock_id,jsonb_set(rows,'{0,fields,R}',to_jsonb((stamp-2)::text)));
