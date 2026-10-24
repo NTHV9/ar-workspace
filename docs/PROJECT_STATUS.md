@@ -1,3 +1,40 @@
+## 2026-10-24 — Owner-requested stale write queue retirement
+
+**Implemented, tested, deployed and applied to the exact reviewed backlog.**
+The owner authorized closing stale Phuket/Khao Lak date-write jobs without
+resending mail or overwriting staff edits/deletions. The new service-only
+preview/apply command checks owner, region, exact IDs, fresh source, current
+authority, provider evidence and an immutable plan hash. Binding/outbox locks
+and NOWAIT account/invoice share locks prevent concurrent source publication
+from invalidating the decision. Replays return the original immutable receipt.
+
+Live result: Phuket's 20 old attempted jobs were superseded by already-observed
+Sheet authority, not marked as successful writes. Khao Lak's one confirmed-zero
+invoice job was retired; seven missing-row and three explicit other-account
+jobs were suppressed with durable, visible quarantine. Both regions now show
+zero pending writes; Khao Lak separately shows ten paused date updates with
+Hotel/Invoice/Stage/Reason. These ten still require source-row reconciliation;
+no old suppressed command resumes automatically and future new sends are not
+silently retired. Unrelated historical field differences remain untouched.
+
+Before/after proof: all 20 Phuket identities/dates match the original XLSX;
+the complete workbook SHA-256 remains identical. Native identity/date/key cells
+across all 1,419 bounded rows are unchanged. Database fingerprints match for
+80 current-date records, 31 workflows, 16 deliveries, 143 Sent events, 7,984
+source rows and all 31 scoped financial records. No email or provider write was
+performed. Private evidence is in ignored `.tmp/queue-cleanup-20261024/`.
+
+Verification: 4,439 unit tests / 328 files, 11 focused browser cases, TypeScript
+and production build pass. All 125 migrations / 18 SQL fixtures plus four
+independent PostgreSQL contention checks pass. Independent review cleared the
+confirmed-zero state and concurrent-financial-publication fixes. Desktop/mobile
+screenshots and the live expanded quarantine panel were inspected.
+
+Hosted migration `20261024153555_ar_tracker_owner_queue_retirement`; source
+`3d71988`; Worker `5ab7acc4-ffa0-4fa0-9ca3-7a1a12eb6129`. Live HTML and all
+56 JS/WASM/CSS assets match the qualified build; all 42 runtime binding
+descriptors/plain values are unchanged. Original files and file formats remain.
+
 ## 2026-10-24 — Native projected-value hints bypass lagging Drive versions
 
 **Implemented, tested, deployed and live-qualified.** Real native Undo
