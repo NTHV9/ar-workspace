@@ -1,6 +1,7 @@
 import type {BatchSelection} from './batch/selection';
 import {OperaStatusMenu} from './OperaStatusMenu';
 import {useTrackerRevision} from './reports/use-tracker-revision';
+import {startRefreshActivity} from './refresh/activity';
 import {isOwnRegisterChange} from './register/model';
 import {clearPeriodPreview} from './dashboard/period-preview-cache';
 import {SignInScreen} from './access/SignInScreen';
@@ -95,6 +96,7 @@ export function App() {
   const [refreshError,setRefreshError]=useState(''),[requestingRefresh,setRequestingRefresh]=useState(false);
   const [connected,setConnected]=useState(false);
   const openedOwner=useRef<string|null>(null);
+  const refreshActivityUse=useRef({lastUsed:Date.now()});
   const loadAbort=useRef<AbortController|null>(null);
   const loadedCatalog=useRef<{owner:string;region:string;publication:string}|null>(null);
   const pendingPublication=useRef<{owner:string;region:string;publication:string;force:boolean}|null>(null);
@@ -244,6 +246,10 @@ export function App() {
     if(params.has('usersAccess')||!accessReady||!session||review||recovery||writeHold||openedOwner.current===session.user.id+':'+region)return;
     openedOwner.current=session.user.id+':'+region;void requestRefresh('open');
   },[session?.user.id,review,recovery,region,accessReady,params.has('usersAccess')]);
+  useEffect(()=>{
+    if(!accessReady||!session||review||recovery||writeHold||params.has('usersAccess'))return;
+    return startRefreshActivity(region,session.access_token,()=>void requestRefresh('open'),refreshActivityUse.current);
+  },[session?.access_token,region,accessReady,review,recovery,writeHold,accessKey,params.has('usersAccess')]);
   useEffect(()=>{
     if(!accessReady||review||recovery||!session||params.has('usersAccess'))return;
     const controller=new AbortController(),token=session.access_token;

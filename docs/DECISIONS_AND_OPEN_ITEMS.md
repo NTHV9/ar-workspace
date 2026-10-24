@@ -1,3 +1,9 @@
+## 2026-10-25 — OPERA current refresh follows actual usage
+
+Follow-up owner clarification: count an active user's **entire authorized regional scope**, regardless of the currently selected region. A user allowed Phuket and Khao Lak keeps both regions eligible for proactive refresh; a one-region user keeps only that region eligible. This supports moving between regions with pre-refreshed data. Backend-derived grants and current database membership determine scope, never browser-supplied rights. Shared hotel jobs, idle expiry, manual/daily runs and fast Sheet synchronization remain as agreed.
+
+The owner confirms five-minute current OPERA checks only while users are actually using the application, account batching within durable steps, retained 07:00/19:00 Thai history/discovery and unchanged fast bidirectional Sheet sync. Display saved data/source time first, then adopt a complete verified publication. This supersedes the 1 October always-on proactive schedule. Backend jobs requiring OPERA keep their own scoped live reads; generic Sheet/Gmail/status/cache work must not keep OPERA activity alive. No new prewarm time, partial publication, source-check removal or monthly-cost guarantee is approved by this change. Engineering defaults and measured validation are in [the release report](ACTIVE_OPERA_REFRESH_20261025.md).
+
 ## 2026-10-24 — Successful web Gmail sends record history immediately
 
 The owner explicitly requests that a successful Gmail send API response for a

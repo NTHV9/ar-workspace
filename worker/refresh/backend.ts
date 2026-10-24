@@ -5,7 +5,7 @@ import type {BudgetEnvironment} from '../operations/budget';
 import { OperaError } from '../opera/client';
 import type { OperaEnv } from '../opera/probe';
 import {isHotelId} from '../../src/domain/hotels';
-export interface RefreshParams { invoiceTaxRulesProbe?:boolean; invoiceLedgerProbe?:boolean; invoiceGuestProbe?:boolean; scheduledMaintenance?:boolean; currentTickerStart?:number; invoiceAuditId?:string; invoiceReadAudit?:boolean; invoiceModelProbe?:boolean; invoiceRenderProbe?:boolean; invoiceContractJob?:string; folioTypeProbe?:boolean; acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean;  mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
+export interface RefreshParams { accountBatchVersion?:2; invoiceTaxRulesProbe?:boolean; invoiceLedgerProbe?:boolean; invoiceGuestProbe?:boolean; scheduledMaintenance?:boolean; currentTickerStart?:number; invoiceAuditId?:string; invoiceReadAudit?:boolean; invoiceModelProbe?:boolean; invoiceRenderProbe?:boolean; invoiceContractJob?:string; folioTypeProbe?:boolean; acceptanceId?:string; financialHistory?:boolean; actorId?:string; refreshReason?:string; financialProbe?:boolean; mailReconcile?:boolean; runId:string; hotel:string; accountId?:string; validateOnly?:boolean; historyAudit?:boolean; historyAuditOffset?:number; historyAuditLimit?:number; pdfProbe?:boolean; statementProbe?:boolean; documentJob?:boolean; reportDiscovery?:boolean; statementPostTrial?:boolean; printedVisibilityAudit?:boolean; statementHistoryAudit?:boolean; observedBatch?:string; combinedStatementAudit?:boolean }
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   GOOGLE_ONLY_AUTH?:string;
   REQUEST_ACTOR?:string;
@@ -52,7 +52,7 @@ export async function requestRefresh(env:RefreshEnv,hotel:string,accountId:strin
   if(job.id&&['queued','running'].includes(job.status)) {
     const canonical=await backendRpc<{hotel:string;account_id:string|null;reason:string}>(env,'ar_refresh_job',{p_run_id:job.id});
     if(canonical.hotel!==hotel||!isHotelId(canonical.hotel))throw new OperaError('invalid_response',undefined,'refresh_scope');
-    try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:canonical.hotel,accountId:canonical.account_id??undefined,refreshReason:canonical.reason}});}
+    try{await env.AR_REFRESH.create({id:job.id,params:{runId:job.id,hotel:canonical.hotel,accountId:canonical.account_id??undefined,refreshReason:canonical.reason,accountBatchVersion:2}});}
     catch{
       // A retry joins the durable instance with this exact database run ID.
       try{
