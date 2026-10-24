@@ -8,10 +8,10 @@ afterEach(()=>{vi.unstubAllGlobals();vi.clearAllMocks();});
 const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic',GMAIL_RECONCILE_ENABLED:'true'};
 it.each(['*/5 * * * *',currentRefreshCron])('five-minute OPERA prefetch %s uses shared stale checks without Gmail or historical imports',async cron=>{
  const calls:{path:string;args:any}[]=[];
- vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push({path:url.split('/').at(-1)!,args:JSON.parse(String(init.body))});return Response.json({status:'fresh',created:false});});
+ vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push({path:url.split('/').at(-1)!,args:JSON.parse(String(init.body))});return Response.json(url.endsWith('/ar_refresh_active_hotels')?['KAT','TSK','TLKL','WAKL','TLFO','TSAN']:{status:'fresh',created:false});});
  await worker.scheduled({cron},{...env,OPERA_REFRESH_ENABLED:'true',OPERA_HOTEL_IDS:'KAT,TSK,TLKL,WAKL,TLFO,TSAN',OPERA_CLIENT_ID:'synthetic',OPERA_CLIENT_SECRET:'synthetic',OPERA_APP_KEY:'synthetic',AR_REFRESH:{create:vi.fn(),get:vi.fn()}});
- expect(calls.map(c=>c.path)).toEqual(Array(6).fill('ar_request_refresh'));
- expect(calls.map(c=>c.args)).toEqual(['KAT','TSK','TLKL','WAKL','TLFO','TSAN'].map(hotel=>({p_hotel:hotel,p_account_id:null,p_reason:'open',p_stale_minutes:5})));
+ expect(calls.map(c=>c.path)).toEqual(['ar_refresh_active_hotels',...Array(6).fill('ar_request_refresh')]);
+ expect(calls.slice(1).map(c=>c.args)).toEqual(['KAT','TSK','TLKL','WAKL','TLFO','TSAN'].map(hotel=>({p_hotel:hotel,p_account_id:null,p_reason:'open',p_stale_minutes:5})));
  expect(mocked.send).not.toHaveBeenCalled();expect(mocked.draft).not.toHaveBeenCalled();
 });
 it('cron and manual request share an existing run and never create a second workflow',async()=>{const create=vi.fn();vi.stubGlobal('fetch',async()=>Response.json({id:'run',created:false,state:'running'}));expect(await requestMailReconcile({...env,AR_REFRESH:{create,get:vi.fn()}},'manual')).toMatchObject({created:false});expect(create).not.toHaveBeenCalled();});
