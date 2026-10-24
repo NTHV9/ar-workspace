@@ -1,3 +1,38 @@
+## 2026-10-24 — Live Sheet billing-date clear/restore test
+
+**Tested against one owner-authorized KAT invoice; all original row values
+restored.** Opened the original Phuket XLSX in Google's Office editor, preserving
+its file identity and format. Verified exact Hotel/Account/Invoice/Folio identity
+and backed up the target date/row privately before editing only its R cell.
+No email or reminder was sent, no OPERA accounting was changed, and no database
+date was manually overwritten to manufacture the result.
+
+The date was cleared at 10:24:58 UTC and imported by the ordinary scheduled
+synchronizer at 10:31:04 UTC. Sheet authority advanced generation 2 to 3; the
+live invoice page changed to `No billing sent` without a browser reload. A second
+normal Check changes synchronization completed at 10:35:50 UTC while the source
+date remained empty. The old outbound intent remained suppressed, attempts 0;
+neither synchronization reinserted the date. The existing Sent event stayed at
+one throughout, separate from the cleared current billing status.
+
+Undid the single source-cell edit. Clipboard readback of all 32 original row
+values matches exactly. Normal synchronization restored the source date and web
+first-billing date; generation advanced to 4 and the actual invoice page was
+visibly `Billed` again, verified at 10:43:46 UTC. All target source/business
+values are restored; natural audit/version changes from the authorized test
+remain. Private backups, timings and screenshots are under ignored
+`.tmp/live-sheet-clear-20261024/`; no customer data is committed here.
+
+**Open operational finding:** this test used the fallback scheduler and showed
+approximately six minutes to import the deletion, rather than real-time push.
+Immutable Worker binding inspection found `TRACKER_PUSH_ENABLED=false` and
+`TRACKER_NATIVE_BEST_EFFORT_ENABLED=false` in both the current release and the
+pre-email-repair release. The Reports UI also shows native writeback held. No
+runtime flags, permissions, costs or source code were changed in this test-only
+task. The earlier 19 October status entry documents restoration of those flags
+to true after a previous tracked-default deployment incident; the live drift
+needs follow-up. This single Phuket test does not qualify every Khao Lak row.
+
 ## 2026-10-24 — Recover the owner's explicitly requested pending sent delivery
 
 **Completed on the live database; no email sent again.** After the owner's
