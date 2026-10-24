@@ -1,7 +1,7 @@
 begin;
 do $$
 #variable_conflict use_variable
-declare actor uuid;scope text:='SYNTH-WARNING-LIFE-'||gen_random_uuid();lease uuid:=gen_random_uuid();r jsonb;before_dates jsonb;before_sent bigint;old_id uuid;result jsonb;d date:=current_date-30;
+declare actor uuid;scope text:='SYNTH-WARNING-LIFE-'||gen_random_uuid();lease uuid:=gen_random_uuid();r jsonb;before_dates jsonb;before_sent bigint;old_id uuid;result jsonb;d date:=current_date-30;history_count bigint;cycle integer;
 begin
  select id into strict actor from auth.users where lower(email)='ar@katathani.com';
  insert into public.ar_accounts(hotel,id,account_no,name,type,open,over90,items,verification_state) values('TSAN',scope,scope,'Synthetic warning lifecycle','SYNTHETIC',100,0,1,'verified');
@@ -18,6 +18,13 @@ begin
  perform ar_private.tracker_retire_closed_warnings('khao-lak');
  if exists(select 1 from ar_private.tracker_conflicts where id=old_id and status='pending') then raise exception 'confirmed exact zero with absent Folio remains a current warning';end if;
  if not exists(select 1 from ar_private.tracker_conflicts where id=old_id and status='archived' and retirement_reason='verified_zero') then raise exception 'closed warning audit disposition missing';end if;
+ select count(*) into history_count from ar_private.tracker_conflicts where row_key=scope;
+ for cycle in 1..3 loop
+  perform public.ar_tracker_snapshot(actor,'khao-lak',lease,jsonb_build_array(r||'{"accountNo":""}'::jsonb));
+  perform public.ar_tracker_membership(actor,'khao-lak',lease,jsonb_build_array(scope));
+ end loop;
+ if (select count(*) from ar_private.tracker_conflicts where row_key=scope)<>history_count then raise exception 'unchanged confirmed zero generates another archived warning on every poll';end if;
+ perform public.ar_tracker_snapshot(actor,'khao-lak',lease,jsonb_build_array(r));
  -- Reads also hide newly closed items before a later membership reconciliation.
  insert into ar_private.tracker_conflicts(region,row_key,field,reason) values('khao-lak',scope,'AB','synthetic_closed');
  result:=public.ar_tracker_conflicts_page(actor,'khao-lak','all',null,null);

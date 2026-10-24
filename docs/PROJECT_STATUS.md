@@ -1,6 +1,6 @@
 ## 2026-10-25 — Current warnings, proven closure and removed-row history
 
-**Implemented and tested; final deployment readback in progress.** The owner
+**Implemented, tested, deployed and enabled.** The owner
 approved fixing remaining zero-balance/removed-row warnings. Root cause: strict
 nullable Folio equality blocked exact-zero retirement, old removed rows retained
 pending warnings, and an open review panel cached rows after its count changed.
@@ -20,13 +20,30 @@ pending warnings, and an open review panel cached rows after its count changed.
   remains only Last successful synchronization and the original Sheet link.
 
 Qualification: 4,623 unit tests / 340 files; typecheck and production build; 41
-real-browser synthetic cases, including open-panel count/list refresh; all 132
+real-browser synthetic cases, including open-panel count/list refresh; all 133
 migrations and 22 disposable SQL rollback fixtures. RED reproductions cover the
 NULL-Folio closure, historical-hint identity error, incomplete Account-only change
 and stale open panel. Fresh review's Account edge was fixed and retested. The
 unchanged 2,028-row Preview capacity guard passes standalone; an earlier parallel
 browser/build run exceeded the unchanged 8-second guard and was not counted as
-passing. Hosted migration: `20261024210933_ar_tracker_warning_lifecycle`.
+passing. Hosted migrations: `20261024210933_ar_tracker_warning_lifecycle` and
+`20261024211654_ar_tracker_closed_warning_dedup`. The second is an additive
+follow-up; the applied first migration was not rewritten. A repeated-poll RED
+fixture reproduced closed-row warning-history growth; recording now uses the
+same current-zero predicate as display and archival, so reopened/unknown/changed
+identities can still create new warnings without repeating unchanged closed ones.
+
+Initial Worker release `ff4d8acedcc35c660e297a9701ce93b70541d3ff` /
+`c15ad7ab-66c2-4d53-a5e9-a97604519d69` passed production health and all 55 live
+asset hashes. Authenticated live Reports confirms current warnings reduced from
+3,723 to 140: Phuket 36, Khao Lak 104. Current review contains no removed Sheet
+rows and no source-confirmed closed target, while history is retained. Remaining
+fields are 70 identity, 66 credit differences awaiting identity and four tracking
+details; none is linked to a verified/cleared zero Invoice. Source dates for all
+2,016 present rows and all 143 actual Sent records retain their pre-change
+fingerprints; pending date writes remain zero. No mail was sent, no original Sheet
+date was intentionally changed, and Aging Master remains unchanged. Final release
+metadata and unchanged-repeat readback are recorded after the last deployment.
 
 ## 2026-10-25 — Sheet credit authority, safe Account moves and administrator details
 

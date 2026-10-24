@@ -21,12 +21,19 @@ establish closure. Missing Folio alone is not a contradiction; conflicting known
 identifiers, active or unresolved compatible debt, or missing source still hold.
 Do not change the stricter positive-debt matching/publication rules.
 
-Progress: implemented and qualified. Full unit4623, browser41 and disposable
-SQL132/22 passed; production build passed and fresh focused review is clear.
-Database migration applied; final Worker deployment and live readback pending.
+Progress: implemented, qualified and deployed. Full unit4623, browser41 and
+disposable SQL133/22 passed; production build and fresh review passed. Live current
+warnings3723→140; no removed or confirmed-closed rows remain in current review.
+Source dates2016 and actual Sent143 fingerprints are unchanged. Final metadata
+and repeat-poll stability readback ongoing.
 
 Ruling: an unresolved snapshot retains its prior mapped ledger, so separately
 record current observed identity on every row, including failed matches. Historical
 warning hints cannot authorize closure. Nonempty Account contradictions require
 the established complete transfer corroboration. Archived state is separate from
 resolved acknowledgements so return-to-Sheet can raise a new warning.
+
+Ruling: current-zero evidence gates warning creation as well as display/archive.
+Unchanged closed rows must not manufacture another archived warning each poll.
+The repeated-observation regression exercises three complete snapshots/membership
+rounds while still requiring later open/unknown/changed rows to raise warnings.
