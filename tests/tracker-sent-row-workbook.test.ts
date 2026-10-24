@@ -52,4 +52,10 @@ describe('confirmed Sent append-only XLSX seam',()=>{
   expect(parseTrackerWorkbook(fixture(),'phuket').rows[0]).not.toHaveProperty('agent');
   const p=unzipSync(workbook());p['xl/worksheets/sheet1.xml']=strToU8(main(zipSync(p)).replace(text('B3','SYNTHETIC AGENT'),'<c r="B3"><f>"SYNTHETIC AGENT"</f><v>1</v></c>'));expect(parseTrackerWorkbook(zipSync(p),'phuket').rows[0]).not.toHaveProperty('agent');
  });
+ it('reads all 49 mixed self-closing and child XFs from an Aging Master style layout',()=>{
+  const p=unzipSync(workbook()),xfs=Array.from({length:49},(_,i)=>i%3===2?`<xf numFmtId="${i===35?165:0}" applyAlignment="1"><alignment vertical="center"/></xf>`:'<xf numFmtId="0" />').join('');
+  p['xl/styles.xml']=strToU8(strFromU8(p['xl/styles.xml']).replace('formatCode="00000"','formatCode="yyyy-mm-dd"').replace(/<cellXfs>[\s\S]*?<\/cellXfs>/,`<cellXfs count="49">${xfs}</cellXfs>`));
+  p['xl/worksheets/sheet1.xml']=strToU8(strFromU8(p['xl/worksheets/sheet1.xml']).replace('<c r="R3" s="1"/>','<c r="R3" s="35"/>'));
+  const before=zipSync(p),after=appendTrackerSentRows(before,'phuket',[entry()]);expect(unzipSync(after)['xl/styles.xml']).toEqual(p['xl/styles.xml']);expect(main(after)).toContain('<c r="T10" s="35"><f>');expect(main(after)).toContain('<c r="R10" s="35" t="n">');
+ });
 });

@@ -187,7 +187,7 @@ function sentDateStyle(loaded:ReturnType<typeof load>):{style:number;changed?:st
  const styles=xml(loaded.entries,'xl/styles.xml'),prefix=/<((?:\w+:)?)styleSheet\b/.exec(styles)?.[1]??'';
  const section=/<(?:\w+:)?cellXfs\b[^>]*>([\s\S]*?)<\/(?:\w+:)?cellXfs\s*>/.exec(styles);if(!section)throw Error('tracker_sent_styles_invalid');
  const formats=new Map<number,string>();for(const match of styles.matchAll(/<(?:\w+:)?numFmt\b[^>]*\/?\s*>/g)){const a=attrs(match[0]);formats.set(Number(a.numFmtId),a.formatCode);}
- const xfs=[...section[1].matchAll(/<(?:\w+:)?xf\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?xf\s*>)/g)].map(m=>m[0]);
+ const xfs=[...section[1].matchAll(/<(?:\w+:)?xf\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?xf\s*>)/g)].map(m=>m[0]);
  const known=xfs.findIndex(xf=>formats.get(Number(attrs(xf.slice(0,xf.indexOf('>')+1)).numFmtId))==='yyyy-mm-dd');if(known>=0)return {style:known};
  const id=Math.max(163,...formats.keys())+1,format=`<${prefix}numFmt numFmtId="${id}" formatCode="yyyy-mm-dd"/>`;let changed=styles;
  const numFmts=/<(?:\w+:)?numFmts\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?numFmts\s*>)/.exec(styles);
