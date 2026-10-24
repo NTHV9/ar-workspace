@@ -1,3 +1,21 @@
+## 2026-10-24 — Recover the owner's explicitly requested pending sent delivery
+
+**Completed on the live database; no email sent again.** After the owner's
+specific request to update the previously reported delivery, read its durable
+provider receipt and independently re-read the exact Gmail message. It remained
+in Sent in the frozen sender's mailbox. Its original Gmail timestamp was used,
+rather than the recovery time. All selected workflow revisions still matched;
+there was no prior Sent event.
+
+Called the existing `ar_mail_confirm_sent` backend function through the database
+connector for only that exact owner/delivery/receipt, retaining its row locking,
+workflow checks, atomic history and duplicate protection. No direct table update,
+new migration, provider send or draft operation was used. The result was
+`state=sent, recorded=true`. Independent readback confirms cleared review reason,
+one Sent event and one tracker outbox entry. The outbox entry is not evidence of
+a completed Google Sheet write. Customer addresses, message content and document
+identifiers are deliberately omitted from this tracked note.
+
 ## 2026-10-24 — Record acknowledged web sends immediately; clarify staff status
 
 **Implemented, tested and deployed.** The owner explicitly requested
