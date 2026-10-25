@@ -1,6 +1,7 @@
 # Several Accounts, one human-sent email
 
-Status: proposed design for owner review; no implementation or hosted change.
+Status: approved by the owner in this conversation, including independent mixed
+PDF layouts. Implementation/release receipts are separate.
 
 ## Confirmed intent and approach
 
@@ -27,8 +28,9 @@ ownership and Sent-event schema each assume one Hotel/Account per message.
    emails or one combined email. The combined option covers the selected batch
    members; it does not silently select other outstanding Invoices.
 3. Combined mode shows one To/CC/BCC set, subject, rich/plain message and signature.
-   Recipients initially remain blank: no union, first-Account copy, OPERA fallback
-   or implicit sharing of stored recipient lists. Staff can type any valid set.
+   To initially remains blank: no union, first-Account copy, OPERA fallback or
+   implicit sharing of stored recipient lists. Preserve the existing explicit
+   regional self-CC preference independently. Staff can type any valid set.
 4. Keep Account tabs as document/attachment context. Changing the active tab in
    combined Email mode must retain the same common message and recipients, not
    create another account-specific email. Display the complete attachment list
@@ -59,6 +61,13 @@ attempt begins, its membership/message cannot be repackaged into another send.
   One email does not mean forcibly merging all Accounts into one PDF. Preserve
   file contents; disambiguate equal attachment filenames with Hotel/Account labels
   without changing the printed Invoice/Folio identity.
+- Owner clarification: PDF Workspace keeps the separate Hotel/Account tabs shown
+  in the current UI. Each Account may independently choose One combined PDF,
+  Statement + invoice bundle or Statement + each invoice. Batch-wide initial
+  options are defaults only. For example, one Account's three Invoices can become
+  one PDF and another Account's two Invoices can remain two PDFs, all attached to
+  one email. Account/mode/phase switching must preserve each editor project's
+  delivery selection; never coerce all Accounts to a shared PDF layout.
 - Keep current sender/file budget and 50-file limit across the complete message,
   including inline assets. Show total size early. If it exceeds the limit, require
   a smaller selection or a combined-PDF layout; do not silently split into emails.
@@ -126,6 +135,8 @@ the existing separate-message path. Combined Gmail Draft is outside this change.
   signature selection; unchanged separate mode and each PDF delivery layout.
 - Edited PDFs, duplicate filenames, large/over-budget packages, changed revisions,
   new holds or collection-policy changes and independently invalid one member.
+- Mixed per-Account PDF layouts in the same batch/email, including changing a
+  layout, switching Accounts, F5 and PDF-to-Email handoff without layout resets.
 - Exactly one MIME/provider send; every intended target recorded atomically;
   mixed purposes/stages, first-billing preservation, current counts and due dates.
 - Double-click/concurrent individual+combined requests, lost send response,
