@@ -1,3 +1,29 @@
+## 2026-10-25 — Report capture retirement and backed unused-preparation cleanup
+
+**Implemented and locally qualified; database guards enabled.** Daily AR and
+Dashboard copy writers and historical-log maintenance are retired, while atomic
+current publication, freshness, retained-zero evidence, Sent and Sheet dates stay.
+Hosted migrations: 20261025122056, 20261025131719, 20261025134534 and 20261025134536.
+
+The separately approved one-time cleanup uses a private exact inventory, verified
+recovery exports, an Admin-only receipt-bound backup read, and immutable unused
+job dispositions. Actual deletion uses existing managed retention and the existing
+AR_DOCUMENTS workflow with bounded steps; no caller-supplied authority or paths.
+Every provider attempt/Draft/uncertain work, shared/held/business reference and
+unresolved upload/generation is excluded. Real lifecycle, business IDs and history
+remain. Both older cleanup queues exclude explicitly retired jobs, preventing
+immutable-update failures and retry starvation. Active F5 continuation is retained.
+
+Qualification: 4,720 unit tests, typecheck/build, 142 migrations and 36 SQL rollback
+fixtures plus actual Save/Exit concurrency pass. A reproduced retired-job cleanup
+failure is repaired and covered. The exact App backup utility has five browser
+cases and is included in the full CI smoke inventory. Independent security review
+found two queue integration issues, both repaired; hosted advisors report INFO
+only. Complete same-head CI, runtime deployment, recovery verification and actual
+purge counts are separate release receipts; this entry does not claim deletion.
+No real mail, resend, OPERA accounting write or Sheet-date write is performed.
+
+
 ## 2026-10-25 — Live release verified; current Account filter metadata aligned
 
 **Deployed and enabled:** source `02f8de9fac24711e25de6a50c63d5997c1e60f9a`,

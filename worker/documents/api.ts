@@ -7,6 +7,8 @@ import {documentSource} from './source-policy';
 import {PDFDocument} from 'pdf-lib';
 import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput} from './jobs';
 import {isHotelId} from '../../src/domain/hotels';
+import {administratorEmail} from '../../src/access/model';
+import {boundedBody} from '../email/shared';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 async function bodyBytes(request:Request,max:number){
  const declared=Number(request.headers.get('Content-Length'));if(declared>max)throw new Error('document_upload_too_large');
@@ -26,6 +28,20 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
  try{
   if(!uuidPattern.test(owner)||!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)return json({error:'document_service_unavailable'},503);
   const url=new URL(request.url);const origin=request.headers.get('Origin');if(request.method!=='GET'&&origin&&origin!==url.origin)return json({error:'forbidden'},403);
+  const backup=/^\/api\/documents\/([0-9a-f-]{36})\/backup\/([0-9a-f-]{36})$/.exec(url.pathname);
+  if(backup){
+   const [,jobId,objectId]=backup;if(!uuidPattern.test(jobId)||!uuidPattern.test(objectId))return json({error:'not_found'},404);
+   if(request.method!=='GET')return json({error:'method_not_allowed'},405);
+   if(env.ACCEPTANCE||env.REQUEST_ACTOR!==owner||env.REQUEST_ACCESS&&(!env.REQUEST_ACCESS.administrator||env.REQUEST_ACCESS.email!==administratorEmail))return json({error:'document_forbidden'},403);
+   const receipt=await rpc(env,'ar_document_backup_target',{p_actor:owner,p_job_id:jobId,p_object_id:objectId}) as {job_id:string;object_id:string;storage_key:string;byte_count:number;sha256:string;mime:string};
+   const pattern=new RegExp(`^jobs/${jobId}/(originals|exports|projects)/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\\.(pdf|json)$`),path=typeof receipt?.storage_key==='string'?pattern.exec(receipt.storage_key):null;
+   if(receipt?.job_id!==jobId||receipt.object_id!==objectId||!path||path[1]==='projects'&&path[2]!=='json'||path[1]!=='projects'&&path[2]!=='pdf'||receipt.mime!==(path[2]==='json'?'application/json':'application/pdf')||!Number.isSafeInteger(receipt.byte_count)||receipt.byte_count<1||receipt.byte_count>104857600||!/^[0-9a-f]{64}$/.test(receipt.sha256))throw Error('document_backup_receipt_unverified');
+   const response=await readManagedStorage(env,receipt.storage_key,receipt.byte_count);
+   if(!response.ok){await response.body?.cancel();throw Error('document_file_unavailable');}
+   const bytes=await boundedBody(response,receipt.byte_count),sha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes).buffer))].map(n=>n.toString(16).padStart(2,'0')).join('');
+   if(bytes.length!==receipt.byte_count||sha!==receipt.sha256)throw Error('document_backup_bytes_changed');
+   return new Response(new Uint8Array(bytes).buffer,{headers:{'Content-Type':receipt.mime,'Content-Disposition':`attachment; filename="${objectId}.${path[2]}"`,'Content-Length':String(bytes.length),'X-Ar-Backup-Byte-Count':String(bytes.length),'X-Ar-Backup-Sha256':sha,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+  }
   if(url.pathname==='/api/documents'){
    if(request.method==='GET'){
     const offset=Number(url.searchParams.get('offset')??0);if(!Number.isSafeInteger(offset)||offset<0)return json({error:'document_request_invalid'},400);

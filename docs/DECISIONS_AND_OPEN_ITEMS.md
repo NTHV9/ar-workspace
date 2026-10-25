@@ -1,3 +1,21 @@
+## 2026-10-25 — Approved obsolete report and unused preparation cleanup
+
+The owner separately approves stopping the remaining report-only daily captures
+and historical-log maintenance, then removing only proven obsolete report rows
+after a complete verified recovery export. Canonical current AR source data,
+verified balances/zero/reopened evidence, actual Sent and Sheet dates remain.
+
+The owner confirms no old PDF preparation is actively being edited. A one-time
+exact inventory may retire unused old preparations after verified byte and
+metadata backups, immutable revision/snapshot/object receipts, and fresh negative
+provider/history/reference checks. This explicit approval supersedes the earlier
+no-retrospective-cleanup rule only for those individually backed dispositions.
+Any provider attempt/Draft/uncertain work, shared reference, unresolved generation
+or upload, business/Drive/remittance file or hold remains protected. Managed
+retention alone deletes exact acknowledged objects; no Storage metadata purge.
+F5 still resumes active work. General business-file month retention is unchanged.
+The private recovery data and exact customer identifiers must not enter Git.
+
 ## 2026-10-25 — Current work, direct staff sending and explicit preparation exit
 
 The owner approves the eight-item scope in
