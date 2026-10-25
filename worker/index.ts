@@ -1,9 +1,11 @@
+import {retiredReportRequest} from './dashboard/current-only-policy';
 import {safeAuthenticationDiagnostic} from './opera/auth';
 import {trackerApi} from './tracker-sync/api';
 import {trackerWatchCallback,maintainTrackerWatches,type TrackerWatchEnv} from './tracker-sync/watch';
 import {trackerConflictsApi} from './tracker-sync/conflicts-api';
 import {trackerPickerConfig} from './tracker-sync/picker';
 import {trackerAdapter} from './tracker-sync/provider';
+import {probeTrackerVersions} from './tracker-sync/version-probe';
 import {syncTracker,type TrackerEnv} from './tracker-sync/service';
 import {bulkSettingsApi} from './settings/bulk-api';
 import {warmPeriodSummaries} from './dashboard/precompute';
@@ -24,9 +26,7 @@ import {acceptanceEnvironment,acceptanceRows} from './acceptance/context';
 import {writesHeld} from './operations/write-hold';
 import {operationsApi} from './operations/api';
 import {readManagedStorage} from './operations/storage';
-import {observationsApi} from './reports/observations';
 import {externalBillingApi} from './billing/api';
-import {financialApi} from './financial/api';
 import type {FinancialIngestionEnv} from './financial/refresh';
 import {collectionPolicyApi} from './collection/policy-api';
 import {invoiceExceptionsApi} from './collection/api';
@@ -40,6 +40,7 @@ import { probeOpera, type OperaEnv } from './opera/probe';
 import { OperaError } from './opera/client';
 import { backendRpc, requestRefresh, type RefreshEnv } from './refresh/backend';
 import {currentRefreshCron} from './refresh/schedule';
+import {activeRefreshHotels,refreshActivityApi} from './refresh/activity';
 import {documentApi} from './documents/api';
 import {settingsApi} from './settings/api';
 import {requestMailReconcile,gmailReconcileCron,type ReconcileEnv} from './email/reconcile';
@@ -84,7 +85,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
   const settingsRequest=path.startsWith('/api/account-settings/')||path.startsWith('/api/invoice-history/');
   const rendererCheck=path==='/api/statement-renderer-proof'&&request.method==='GET';
   const operaProbe=path==='/api/opera/probe'&&request.method==='POST';
-  const refreshRequest=path==='/api/refresh'&&['GET','POST'].includes(request.method);
+  const refreshRequest=(path==='/api/refresh'||path==='/api/refresh/activity')&&['GET','POST'].includes(request.method);
   const collectionValidation=path==='/api/collection/validate-selection'&&request.method==='POST';
   const documentRequest=path==='/api/documents'||path.startsWith('/api/documents/');
   const pdfMatch=/^\/api\/pdf-validation\/([0-9a-f-]{36})\/([^/]+)\/(pdf|json)$/.exec(path);
@@ -134,16 +135,16 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
       user={...user,id:grant.workspaceOwnerId};env={...env,REQUEST_ACCESS:grant};
     }
     const dispatch=async():Promise<Response>=>{
+    if(retiredReportRequest(requestUrl))return json({error:'report_retired'},410);
     if(acceptanceRequest&&path==='/api/acceptance/exit'&&user.id)return acceptanceApi(request,env,user.id);
     if(writesHeld(env)&&request.method!=='GET'&&!/^\/api\/email\/deliveries\/[0-9a-f-]{36}\/(check|reviewed-match)$/.test(path))return json({error:'operations_write_hold',message:'New work is paused for recovery review. Saved data remains readable.'},503);
     if(acceptanceRequest){if(!user.id)return json({error:'unauthorized'},401);return acceptanceApi(request,env,user.id);}
+    if(path==='/api/refresh/activity'){if(acceptanceCookie(request))return json({error:'acceptance_action_unavailable'},409);return refreshActivityApi(request,env,env.REQUEST_ACTOR!);}
     const acceptanceId=acceptanceCookie(request);if(acceptanceId){if(!user.id)return json({error:'unauthorized'},401);env=await acceptanceEnvironment(env,user.id,acceptanceId);if(operaProbe||path==='/api/gmail/connect'||path==='/api/drive/connect'||path==='/api/operations/recovery-sent')return json({error:'acceptance_action_unavailable'},409);}
     if(path==='/api/mail-reconciliation'){if(request.method==='GET')return json({...await backendRpc<Record<string,unknown>>(env,'ar_mail_reconcile_status',{}),enabled:env.GMAIL_RECONCILE_ENABLED==='true',intervalMinutes:15});if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);return json(await requestMailReconcile(env,'manual'));}return json({error:'method_not_allowed'},405);}
     if(operationsRequest){if(!user.id)return json({error:'unauthorized'},401);return operationsApi(request,env,user.id);}
     if(driveRequest){if(!user.id)return json({error:'unauthorized'},401);return driveApi(request,env,user.id);}
-    if(observationsRequest){if(!user.id)return json({error:'unauthorized'},401);return observationsApi(request,env,user.id);}
     if(billingRequest){if(!user.id)return json({error:'unauthorized'},401);return externalBillingApi(request,env,user.id);}
-    if(financialRequest){if(!user.id)return json({error:'unauthorized'},401);return financialApi(request,env,user.id);}
     if(policyRequest){if(!user.id)return json({error:'unauthorized'},401);return collectionPolicyApi(request,env,user.id);}
     if(exceptionRequest){if(!user.id)return json({error:'unauthorized'},401);return invoiceExceptionsApi(request,env,user.id);}
     if(accountWorkspaceRequest){if(!user.id)return json({error:'unauthorized'},401);return accountWorkspaceApi(request,env,user.id);}
@@ -151,7 +152,13 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(dashboardRequest){if(!user.id)return json({error:'unauthorized'},401);return path==='/api/dashboard/management'?managementDashboardApi(request,env,user.id):path==='/api/dashboard/balance-accounts'?dashboardBalanceAccountsApi(request,env,user.id):path==='/api/dashboard/invoice-entries'?dashboardInvoiceEntriesApi(request,env,user.id):path==='/api/dashboard/aging-invoices'?agingInvoicesApi(request,env,user.id):path==='/api/dashboard/hotel-overview'?dashboardHotelOverviewApi(request,env,user.id):path==='/api/dashboard/payment-invoices'?dashboardPaymentInvoicesApi(request,env,user.id):dashboardBalancesApi(request,env,user.id);}
     if(registerRequest)return invoiceRegisterApi(request,env,user.id!);
     if(path==='/api/reports/sheets')return reportSheetLinks(request,env,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']);
-    if(path==='/api/reports/tracker-revisions'){if(request.method!=='GET'||requestUrl.search)return json({error:'tracker_invalid'},400);if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return json(await backendRpc(env,'ar_tracker_revisions',{p_actor:env.REQUEST_ACTOR??user.id!}));}
+    if(path==='/api/reports/tracker-revisions'){
+      if(request.method!=='GET'||requestUrl.search)return json({error:'tracker_invalid'},400);
+      if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);
+      const revisions=await backendRpc(env,'ar_tracker_revisions',{p_actor:env.REQUEST_ACTOR??user.id!});
+      if(background)background.waitUntil(probeTrackerVersions(env,user.id!,env.REQUEST_ACCESS?.regions??['phuket','khao-lak']));
+      return json(revisions);
+    }
     if(path==='/api/reports/tracker-conflicts'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerConflictsApi(request,env,user.id!);}
     if(path==='/api/reports/tracker'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerApi(request,env,user.id!,trackerAdapter);}
     if(path==='/api/reports/tracker-picker'){if(acceptanceId)return json({error:'acceptance_action_unavailable'},409);return trackerPickerConfig(request,env,user.id!);}
@@ -291,8 +298,10 @@ export default {
     if(!['0 0,12 * * *','*/5 * * * *',currentRefreshCron].includes(event.cron??'')||env.OPERA_REFRESH_ENABLED!=='true')return;
     const proactive=event.cron!=='0 0,12 * * *';
     // Five-minute current-data checks share the existing database freshness and
-    // hotel locks. Only the twice-daily schedule also imports financial history.
-    const results=await Promise.allSettled(configuredOperaHotels(env.OPERA_HOTEL_IDS).map(hotel=>requestRefresh(proactive?{...env,REFRESH_STALE_MINUTES:'5'}:env,hotel,null,proactive?'open':'scheduled')));
+    // hotel locks. The twice-daily schedule also maintains completed-file retention.
+    const active=proactive?new Set(await activeRefreshHotels(env)):null;
+    const hotels=configuredOperaHotels(env.OPERA_HOTEL_IDS).filter(hotel=>!active||active.has(hotel));
+    const results=await Promise.allSettled(hotels.map(hotel=>requestRefresh(proactive?{...env,REFRESH_STALE_MINUTES:'5'}:env,hotel,null,proactive?'open':'scheduled')));
     const failure=results.find(r=>r.status==='rejected');if(failure?.status==='rejected')throw failure.reason;
   },
 };

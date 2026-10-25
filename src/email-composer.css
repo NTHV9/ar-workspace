@@ -21,3 +21,7 @@
 .email-workspace .email-steps li:not(.complete):not(.current){color:var(--ar-text-muted,#526982)}
 
 .email-generated-name input{width:100%;min-width:0;font:inherit;font-size:12px;padding:7px 8px;border:1px solid var(--border,#d9e2e9);border-radius:6px;background:var(--surface,#fff);color:inherit}.email-generated-name input:focus-visible{outline:2px solid var(--accent,#188b85);outline-offset:2px}.email-generated-name input[aria-invalid="true"]{border-color:#bc4848}.email-generated-name input:disabled{background:#f4f6f8}.email-file>div{min-width:0;flex:1}
+
+.email-delivery-status{flex-shrink:0;padding:14px 24px;border-bottom:1px solid #dce6ef;line-height:1.5;background:#f1f6fc;color:#214565}.email-delivery-status strong{display:block;font-size:14px}.email-delivery-status p{font-size:12px;margin:4px 0 0;max-width:1000px}.email-delivery-status small{display:block;font-size:11px;margin-top:5px}.email-delivery-success{background:#e8f7f1;color:#126148;border-color:#b8ddce}.email-delivery-attention{background:#fff5e4;color:#765016;border-color:#ead1a5}@media(max-width:640px){.email-delivery-status{padding:12px 16px}.email-delivery-status strong{font-size:13px}.email-delivery-status p{font-size:11px}}
+
+.email-delivery-status button{margin-top:10px;padding:8px 12px;border:1px solid #cfb582;border-radius:8px;background:white;color:#765016;font:inherit;font-size:12px;cursor:pointer}

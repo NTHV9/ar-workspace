@@ -18,21 +18,50 @@ import type {MailFile} from './mime';
 import {verifySentEvidence,verifyDraftEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
 import {syntheticConversation,type ThreadProof} from './threads';
-export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string;signatureHotel?:string}};claimed?:boolean;error?:string}
+export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;draft_send_claimed_at?:string|null;verified_sent_evidence?:{gmailId:string;sentAt:string;mailbox:MailboxId}|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string;signatureHotel?:string}};claimed?:boolean;error?:string}
+const submittedSendReceipt=(d:Delivery)=>!!(d.provider_receipt_id&&/^[A-Za-z0-9_-]+$/.test(d.provider_receipt_id)&&(d.mode==='send'||d.mode==='draft'&&d.draft_send_claimed_at));
+const acknowledgedSend=(d:Delivery)=>d.state==='sent'||!!d.sent_at||submittedSendReceipt(d);
+function verifiedExternalSend(d:Delivery){
+ const proof=d.verified_sent_evidence;if(!proof||d.mode==='test'||typeof proof.gmailId!=='string'||!/^[-A-Za-z0-9_]{1,200}$/.test(proof.gmailId)||typeof proof.sentAt!=='string'||!Number.isFinite(Date.parse(proof.sentAt))||Date.parse(proof.sentAt)>Date.now()+300000||Date.parse(proof.sentAt)<Date.parse(d.created_at)-300000||proof.mailbox!==frozenMailIdentity(d.snapshot.expected).mailbox)return null;
+ return proof;
+}
 export const deliveryView=(d:Delivery)=>{
  const stage=isCollectionStageKey(d.stage)?d.stage:null;let stageLabel=stage?policyStageLabel(stage):null;
  if(stage&&d.stage_snapshot)try{const snapshot=parseStageSnapshot(d.stage_snapshot);if(snapshot.key===stage)stageLabel=snapshot.label;}catch{/* Keep the recorded stage key when its historical label cannot be verified. */}
- return {id:d.id,state:d.state,mode:d.mode,sentAt:d.sent_at,reason:d.reason,stage,stageLabel,recorded:d.state==='sent'&&d.mode!=='test'};
+ const verified=verifiedExternalSend(d);
+ return {id:d.id,state:d.state,mode:d.mode,gmailAccepted:acknowledgedSend(d)||!!verified,sentAt:d.sent_at??verified?.sentAt??null,reason:d.reason,stage,stageLabel,recorded:d.state==='sent'&&d.mode!=='test'};
 };
 async function record(env:EmailEnv,actor:string,d:Delivery,state:string,gmailId:string|null=null,draftId:string|null=null,reason:string|null=null){
  await emailRpc(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:state,p_gmail_id:gmailId,p_gmail_draft_id:draftId,p_reason:reason});
 }
 function assertDelivery(d:Delivery){if(d.error)throw Error(d.error);}
+// The success response belongs to the exact MIME and recipients we submitted.
+// Record that send immediately; a content readback is unnecessary on this path.
+// The atomic DB confirmation retains its workflow/revision and duplicate fences.
+async function confirmAcknowledgedSend(env:EmailEnv,actor:string,d:Delivery,id:string,sentAt:string,persistReceipt=true){
+ const accepted={...d,provider_receipt_id:id,state:'awaiting_evidence'};
+ try{
+  if(persistReceipt&&!await emailRpc<boolean>(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:'awaiting_evidence',p_gmail_id:id,p_gmail_draft_id:null,p_reason:null}))throw Error('email_record_unavailable');
+  const confirmed=await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:d.id,p_gmail_id:id,p_sent_at:sentAt});
+  if(confirmed.error||!['sent','review_required'].includes(String(confirmed.state)))throw Error('email_record_unavailable');
+  if(confirmed.state==='review_required'){
+   const fresh=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:d.id});
+   return {...deliveryView(fresh??accepted),...confirmed,gmailAccepted:true,sentAt,reason:fresh?.reason??'history_review_required'};
+  }
+  return {...deliveryView(accepted),...confirmed,gmailAccepted:true,sentAt,reason:null};
+ }catch{
+  // A concurrent checker may have committed, or confirmation may have committed
+  // before its response was lost. Read once before presenting a false failure.
+  try{const fresh=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:d.id});if(fresh?.state==='sent')return deliveryView(fresh);}catch{/* Keep the accepted send separate from unavailable history. */}
+  return {...deliveryView(accepted),gmailAccepted:true,recorded:false,reason:'history_recording_unavailable'};
+ }
+}
 async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,token:string){
  assertDelivery(delivery);if(!delivery.claimed)return deliveryView(delivery);
  try{
   const draft=delivery.mode==='draft';const message={raw,...(delivery.snapshot.expected.thread?{threadId:delivery.snapshot.expected.thread.threadId}:{})};const r=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/'+(draft?'drafts':'messages/send'),{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(draft?{message}:message)});
-  const id=draft?(r.message as {id?:unknown})?.id:r.id;if(typeof id!=='string'||!id||draft&&typeof r.id!=='string')throw Error('gmail_unavailable');
+  const id=draft?(r.message as {id?:unknown})?.id:r.id;if(typeof id!=='string'||!/^[A-Za-z0-9_-]+$/.test(id)||draft&&typeof r.id!=='string')throw Error('gmail_unavailable');
+  if(delivery.mode==='send')return confirmAcknowledgedSend(env,actor,delivery,id,new Date().toISOString());
   await record(env,actor,delivery,draft?'created':'awaiting_evidence',id,draft?String(r.id):null);
   if(draft)return {...deliveryView(delivery),state:'created',created:true,recorded:false};
  }catch{try{await record(env,actor,delivery,'awaiting_evidence',null,null,'provider_result_unconfirmed');}catch{/* durable pending claim prevents retry */}}
@@ -90,7 +119,7 @@ async function sendExistingDraft(env:EmailEnv,actor:string,d:Delivery,revision:n
  try{
   const result=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/drafts/send',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({id:d.gmail_draft_id,message:{raw,...(expected.thread?{threadId:expected.thread.threadId}:{})}})});
   if(typeof result.id!=='string'||!/^[A-Za-z0-9_-]+$/.test(result.id))throw Error('gmail_unavailable');
-  await record(env,actor,claim,'awaiting_evidence',result.id);
+  return confirmAcknowledgedSend(env,actor,claim,result.id,new Date().toISOString());
  }catch{try{await record(env,actor,claim,'awaiting_evidence',null,null,'provider_result_unconfirmed');}catch{/* The one-time claim still fences any resend. */}}
  try{return await checkDelivery(env,actor,d.id);}catch{return {...deliveryView(claim),state:'awaiting_evidence',recorded:false};}
 }
@@ -139,12 +168,26 @@ export async function sendSignatureDiagnostic(env:EmailEnv,actor:string,id:strin
 export async function checkDelivery(env:EmailEnv,actor:string,id:string){
  const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d)throw Error('email_missing');if(d.state==='sent')return deliveryView(d);
  const identity=frozenMailIdentity(d.snapshot.expected);if(!await gmailCanRead(env,actor,identity.mailbox))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor,identity.mailbox),headers={Authorization:'Bearer '+token};
+ // A durable provider receipt from our own successful send already proves the
+ // submitted MIME was accepted. Retrying its history only needs Gmail's date,
+ // not another download/inspection of the message or attachments. Draft-create
+ // receipts and uncertain POSTs never enter this path.
+ if(d.mode!=='test'&&!d.verified_sent_evidence&&submittedSendReceipt(d)&&d.provider_receipt_id){
+  try{
+   const id=d.provider_receipt_id;
+   const message=await googleJson(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata`,{headers});
+   const labels=message.labelIds;
+   const time=Number(message.internalDate);
+   if(message.id!==id||!Array.isArray(labels)||!labels.includes('SENT')||labels.includes('DRAFT')||!Number.isSafeInteger(time)||time<1||time>Date.now()+300000)throw Error('gmail_metadata_unavailable');
+   return confirmAcknowledgedSend(env,actor,d,id,new Date(time).toISOString(),false);
+  }catch{return {...deliveryView(d),recorded:false,reason:'history_recording_unavailable'};}
+ }
  let hits:{id:string}[]=[];
  // Gmail's web composer can replace RFC Message-ID and remove custom headers.
  // Its recorded message ID is a candidate identity for either path; the complete
  // evidence check below still requires SENT, no DRAFT, exact recipients/content
  // and attachment hashes. Draft creation itself never establishes sending.
- const trustedId=d.provider_receipt_id;
+ const trustedId=verifiedExternalSend(d)?.gmailId??d.provider_receipt_id;
  if(trustedId)hits=[{id:trustedId}];
  else{
   const search=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?'+new URLSearchParams({q:'in:sent rfc822msgid:'+d.message_id,maxResults:'2'}),{headers});
@@ -193,7 +236,20 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
   const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${encodeURIComponent(attachmentId)}`,{headers,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok){await r.body?.cancel();throw Error('gmail_unavailable');}
   const data=JSON.parse(new TextDecoder().decode(await boundedBody(r,18*1024*1024))) as {data?:string};if(typeof data.data!=='string')throw Error();return decodeUrl64(data.data);
  });
- if(result.status!=='verified'){if(result.status==='review_required')await record(env,actor,d,'review_required',messageId,null,result.reason??'message_content_unverified');return {...deliveryView(d),state:result.status==='not_sent'?d.state:'review_required',reason:result.status};}
- const confirmed=await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt});
- return {...deliveryView(d),...confirmed,reason:confirmed.state==='sent'?null:d.reason};
+ if(result.status!=='verified'){if(result.status==='review_required')await record(env,actor,d,'review_required',messageId,null,result.reason??'message_content_unverified');return {...deliveryView(d),state:result.status==='not_sent'?d.state:'review_required',reason:result.reason??result.status};}
+ try{
+  // Preserve independently verified external Sent evidence before the business
+  // transaction. This never upgrades a Draft-create receipt or skips verification.
+  if(d.mode!=='test'&&!await emailRpc<boolean>(env,'ar_mail_record_verified_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt,p_expected:d.snapshot.expected}))throw Error('email_record_unavailable');
+  const confirmed=await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt});
+  if(confirmed.error||!['sent','review_required'].includes(String(confirmed.state)))throw Error('email_record_unavailable');
+  if(confirmed.state==='review_required'){
+   const fresh=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});
+   return {...deliveryView(fresh??d),...confirmed,gmailAccepted:true,sentAt:result.sentAt,reason:fresh?.reason??'history_review_required'};
+  }
+  return {...deliveryView(d),...confirmed,gmailAccepted:true,sentAt:result.sentAt,reason:null};
+ }catch{
+  try{const fresh=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(fresh?.state==='sent')return deliveryView(fresh);}catch{/* A verified send remains sent even if history cannot be read. */}
+  return {...deliveryView(d),state:'awaiting_evidence',gmailAccepted:true,sentAt:result.sentAt,recorded:false,reason:'history_recording_unavailable'};
+ }
 }

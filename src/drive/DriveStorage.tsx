@@ -85,6 +85,7 @@ export default function DriveStorage({token}:{token:string}){
   </section></details><p className="drive-policy"><Archive size={15} aria-hidden="true"/>Drive archives apply to eligible older jobs. {status?.cleanupDisabled?'Automatic cleanup is disabled.':'Retained evidence, older files and Drive archives follow the scoped retention policy below.'}</p>
   {confirmTest&&<ConfirmDialog title={testAttempted&&testResult?.state!=='cleaned'?'Retry the same synthetic test?':'Run a synthetic connection test?'} confirmLabel={testAttempted&&testResult?.state!=='cleaned'?'Retry existing test':'Run synthetic test'} onConfirm={()=>void runTest()} onClose={()=>setConfirmTest(null)}><p>Create, read back and verify one synthetic PDF in <strong>{confirmTest.folderName}</strong>, then move only that file to Trash.</p><p>{testAttempted&&testResult?.state!=='cleaned'?'This reuses the existing command so an uncertain result does not create another test file.':testResult?.state==='cleaned'?'The previous test is complete. This creates a new synthetic test file.':'The PDF contains synthetic test content. This action does not use account documents.'}</p></ConfirmDialog>}
  <p><a href="/?operations=1">Operations & recovery →</a></p><StorageOperations token={token}/><RetentionStatus token={token}/>
+ <details><summary>Administrator maintenance</summary><p><a href="/?storage=1&preparationBackup=1">Preparation byte backup</a></p></details>
  </main>;
 }
 

@@ -50,8 +50,8 @@ describe('workspace invoice financial model',()=>{
   const p=packet(14),m=invoiceModel(p,now);expect(m.gross).toBe(4641000);expect(m.vat).toBe(303617);expect(m.taxableNet).toBe(4337383);expect(m.nonTaxable).toBe(0);expect(m.outstanding).toBe(m.gross);
   expect(m.lines).toHaveLength(14);expect(m.lines[0].reference).toBe('PRINTED-1');expect(m.printDate).toBe('21/09/26');expect(m.printTime).toBe('17:00');
  });
- it('keeps a partial payment out of gross/tax and uses the smaller current AR balance',()=>{
-  const p=packet();p.manifest.open-=500;p.invoice.balance=money(p.manifest.open);const m=invoiceModel(p,now);expect(m.gross).toBe(663000);expect(m.outstanding).toBe(613000);expect(m.vat).toBe(43374);
+ it('keeps an externally applied AR payment out of the printed invoice balance and tax',()=>{
+  const p=packet();p.manifest.open-=500;p.invoice.balance=money(p.manifest.open);const before=structuredClone(p),m=invoiceModel(p,now);expect(m.gross).toBe(663000);expect(m.outstanding).toBe(663000);expect(m.vat).toBe(43374);expect(p).toEqual(before);expect(p.invoice.balance.amount).toBe(6130);
  });
  it('does not add settlement or another invoice tax components into the footer',()=>{
   const p=packet(),extra=structuredClone(p.taxRows.at(-1)!);extra.posting.transactionNo=70000;if(!('referencePackageTransactionNo' in extra.posting))throw Error('Fixture');extra.posting.referencePackageTransactionNo=80000;p.taxRows.push(extra);
@@ -71,8 +71,13 @@ describe('workspace invoice financial model',()=>{
  it.each([true,false])('uses the RTF first-name/surname order only for the invoice guest profile (%s)',matches=>{const p=packet(),input={...p,invoice:{...p.invoice,guestProfileId:{id:'321'}},reservation:{...p.reservation,reservationGuest:{id:matches?'321':'999',givenName:'First',surname:'Last'}}};expect(invoiceModel(input,now).guest).toBe(matches?'First Last':'Example Guest');});
  it('uses the custom-reference RTF binding for other hotels and never invents a voucher from a confirmation ID',()=>{const p=packet(),other=JSON.parse(JSON.stringify(p).replaceAll('KAT','WAKL'));expect(invoiceModel({...other,customReference:'CUSTOM-123'},now).voucher).toBe('CUSTOM-123');expect(invoiceModel(other,now).voucher).toBe('');expect(invoiceModel({...p,customReference:'CUSTOM-123'},now).voucher).toBe('VOUCHER-1');});
 });
-it('preserves an adjustment supplement as the printed reference when no check is present',()=>{
+it('uses the AR reference when no check is present instead of substituting an operational remark',()=>{
  const p=packet(1);const posting=p.postings.invoicePostingsDetails[0];
  Object.assign(posting,{remark:'RATE DISCOUNT CORRECTION',reference:'Internal adjustment reference',checkNo:''});
- expect(invoiceModel(p,now).lines.find(l=>l.id===String(posting.transactionNo))?.reference).toBe('RATE DISCOUNT CORRECTION');
+ expect(invoiceModel(p,now).lines.find(l=>l.id===String(posting.transactionNo))?.reference).toBe('Internal adjustment reference');
+});
+
+it('preserves a blank AR reference instead of printing an operational remark',()=>{
+ const p=packet();Object.assign(p.postings.invoicePostingsDetails[0],{checkNo:'',reference:'',remark:'Internal operational note'});
+ expect(invoiceModel(p,now).lines[0].reference).toBe('');
 });

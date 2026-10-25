@@ -1,6 +1,27 @@
 import {test,expect} from '@playwright/test';
 import {auditWorkspace,auditLogin,auditRoute} from './fixtures/audit-workspace';
 
+for(const width of [1280,390])test(`Sent rows waiting for Sheet stay read only and bounded ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'khao-lak',url:'https://docs.google.com/spreadsheets/d/synthetic_khao_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=khao-lak',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:7,conflictCount:2,conflicts:[],quarantinedWrites:10,pendingRowAdds:17,uncertainRowAdds:2,heldRowAdds:3,rowAddLastSuccessAt:'2026-10-25T01:00:00Z',rowAddRows:Array.from({length:22},(_,i)=>({hotel:'TSK',invoiceNo:`SYNTH-${i+1}`,billingDate:i===0?null:'2026-10-24',state:['pending','writing','uncertain','hold','conflict'][i%5],reason:i===0?'synthetic_private_internal_reason':null}))}});});
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');const panel=page.locator('[aria-label="khao-lak tracker synchronization"]'),notice=panel.getByRole('complementary',{name:'Sent rows waiting for Sheet'});
+ await expect(notice).toContainText('Sent · waiting for Sheet');await expect(notice).toContainText('17 pending');await expect(notice).toContainText('2 uncertain — needs checking');await expect(notice).toContainText('3 held — needs review');await expect(notice).toContainText('Email is already sent.');await expect(notice).toContainText('Last row added:');
+ await expect(panel.getByRole('status')).toContainText('7 pending writes · 2 items to review');await expect(panel.getByText('10 date updates paused',{exact:false})).toBeVisible();
+ await notice.getByText('View waiting rows',{exact:true}).click();const table=notice.getByRole('table',{name:'Sent rows waiting for Sheet'});await expect(table.getByRole('row')).toHaveCount(21);
+ await expect(table.getByRole('row').nth(1).getByRole('cell')).toHaveText(['TSK','SYNTH-1','Not recorded','Pending','Needs checking']);await expect(table.getByRole('row').nth(2)).toContainText('Adding');await expect(table.getByRole('row').nth(3)).toContainText('Uncertain');await expect(table.getByRole('row').nth(4)).toContainText('Held');await expect(table.getByRole('row').nth(5)).toContainText('Conflict');
+ await expect(notice).toContainText('Showing the first 20 waiting rows.');await expect(notice.getByText('synthetic_private_internal_reason',{exact:false})).toHaveCount(0);await expect(notice.getByRole('button')).toHaveCount(0);await expect(notice.getByText(/resend/i)).toHaveCount(0);expect(commands).toEqual([]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);const bounds=await notice.boundingBox();expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width);
+ await page.screenshot({path:`.tmp/tracker-append-20261025/sent-rows-${width}.png`,fullPage:true});
+});
+
+for(const optional of [{},{pendingRowAdds:0,uncertainRowAdds:0,heldRowAdds:0,rowAddRows:[]}])test(`Sent row notice is absent for legacy or zero status ${JSON.stringify(optional)}`,async({page})=>{
+ await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:2,conflictCount:0,conflicts:[],...optional}});});
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('status')).toContainText('2 pending writes');await expect(page.getByRole('complementary',{name:'Sent rows waiting for Sheet'})).toHaveCount(0);expect(commands).toEqual([]);
+});
+
 test('healthy periodic status reads preserve an unconfirmed tracker command alert',async({page})=>{
  await page.clock.install();await auditWorkspace(page);let pending=0;const commands:unknown[]=[];
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
@@ -128,4 +149,38 @@ test('original file authorization rejects other files and connects only after ba
  await page.evaluate(()=>Reflect.get(window,'syntheticPickFile')('synthetic_other_file_12345'));await expect(page.getByRole('alert').first()).toContainText('not the configured original');expect(commands).toHaveLength(1);
  await authorize.click();await page.evaluate(id=>Reflect.get(window,'syntheticPickFile')(id),fileId);await expect(page.getByRole('button',{name:'Preview tracker import'})).toBeVisible();
  expect(commands).toEqual([{action:'connect',revision:0},{action:'connect',revision:0,selectedFileId:fileId}]);expect(await page.evaluate(()=>Reflect.get(window,'syntheticPickerGrants'))).toEqual([{scope:'https://www.googleapis.com/auth/drive.file',include_granted_scopes:false,login_hint:'ar@katathani.com'},{scope:'https://www.googleapis.com/auth/drive.file',include_granted_scopes:false,login_hint:'ar@katathani.com'}]);
+});
+
+for(const width of [1280,390])test(`paused date updates retain source problems without write actions ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'khao-lak',url:'https://docs.google.com/spreadsheets/d/synthetic_khao_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=khao-lak',r=>{
+  if(r.request().method()==='POST')commands.push(r.request().postDataJSON());
+  return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:0,conflictCount:0,conflicts:[],quarantinedWrites:10,quarantinedRows:[{hotel:'TSK',invoiceNo:'SYNTH-001',field:'R',reason:'missing_sheet_row'},{hotel:'TSK',invoiceNo:'SYNTH-002',field:'W',reason:'sheet_account_mismatch'}],quarantinedRowsTruncated:false,sheetActivity:[{actualDate:'2026-10-01',field:'U',invoices:3}]}});
+ });
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');const panel=page.locator('[aria-label="khao-lak tracker synchronization"]');
+ await expect(panel.getByRole('status')).toContainText('0 pending writes');await expect(panel.getByText('10 date updates paused',{exact:false})).toBeVisible();
+ await expect(panel.getByText('Automatic writes for these updates have stopped.',{exact:false})).toBeVisible();await expect(panel.getByText('Sheet values are preserved.',{exact:false})).toBeVisible();await expect(panel.getByText('OPERA and the current account',{exact:false})).toBeVisible();
+ await panel.getByText('View source rows needing review',{exact:true}).click();
+ const rows=panel.getByRole('table',{name:'Paused date updates'});await expect(rows.getByRole('row')).toHaveCount(3);await expect(rows.getByRole('row').nth(1).getByRole('cell')).toHaveText(['TSK','SYNTH-001','First billing','Sheet row missing']);await expect(rows.getByRole('row').nth(2).getByRole('cell')).toHaveText(['TSK','SYNTH-002','Follow 3','Sheet account does not match']);
+ await panel.getByText('Activity recorded in the sheet',{exact:true}).click();await expect(panel.getByRole('row').filter({hasText:'2026-10-01'})).toContainText('Follow 1');await expect(panel.getByRole('row').filter({hasText:'2026-10-01'})).toContainText('3');
+ await expect(panel.getByRole('button',{name:'Check changes',exact:true})).toBeVisible();await expect(panel.getByRole('button',{name:/retry write/i})).toHaveCount(0);expect(commands).toEqual([]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const panelBounds=await panel.boundingBox();expect(panelBounds!.x+panelBounds!.width).toBeLessThanOrEqual(width);
+ await page.screenshot({path:`${process.env.AR_QUEUE_SCREENSHOT_DIR??'.tmp/queue-cleanup-20261024'}/paused-dates-${width}.png`,fullPage:true});
+});
+
+for(const optional of [{},{quarantinedWrites:0,quarantinedRows:[],quarantinedRowsTruncated:false}])test(`paused date notice is absent for legacy or zero status ${JSON.stringify(optional)}`,async({page})=>{
+ await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:2,conflictCount:0,conflicts:[],...optional}});});
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('status')).toContainText('2 pending writes');await expect(page.getByText(/date updates paused/)).toHaveCount(0);await expect(page.getByRole('button',{name:'Check changes',exact:true})).toBeVisible();expect(commands).toEqual([]);
+});
+
+test('paused date details cap rows and explain truncation without exposing unknown reasons',async({page})=>{
+ await auditWorkspace(page);const commands:unknown[]=[];
+ await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
+ await page.route('**/api/reports/tracker?region=phuket',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:4,conflictCount:0,conflicts:[],quarantinedWrites:21,quarantinedRows:Array.from({length:21},(_,i)=>({hotel:'KAT',invoiceNo:`SYNTH-${i+1}`,field:'V',reason:i===0?'synthetic_private_internal_reason':'missing_sheet_row'})),quarantinedRowsTruncated:true}});});
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await page.getByText('View source rows needing review',{exact:true}).click();const table=page.getByRole('table',{name:'Paused date updates'});
+ await expect(table.getByRole('row')).toHaveCount(21);await expect(table.getByRole('row').nth(1).getByRole('cell')).toHaveText(['KAT','SYNTH-1','Follow 2','Source row needs review']);await expect(page.getByText('synthetic_private_internal_reason',{exact:false})).toHaveCount(0);await expect(page.getByText('Showing the first 20 paused updates.',{exact:false})).toBeVisible();await expect(page.getByRole('status')).toContainText('4 pending writes');expect(commands).toEqual([]);
 });

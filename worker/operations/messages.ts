@@ -1,5 +1,6 @@
 /** Public, sanitized explanations shared by API and UI. No provider details. */
 export const operationMessages:Record<string,string>={
+ document_invoice_direct_zero_tax_unverified:'Tax details could not be verified for this exact invoice. Use the invoice printed from OPERA for this item.',
  account_balance_only:'DRF accounts show balances only and do not have billing or collection work.',
  acceptance_recipient_not_authorized:'This isolated test can use only its explicitly authorized test recipient, with no CC or BCC.',
  operations_write_hold:'New work is paused for recovery review. Saved data remains readable.',

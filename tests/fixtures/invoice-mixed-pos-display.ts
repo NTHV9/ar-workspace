@@ -1,0 +1,17 @@
+import {sourceClaimsPosDisplayFixture} from './invoice-source-claims-pos-display';
+import {arOnlyTaxSource} from '../../worker/invoice/current-ar-tax';
+import {verifyArOnlySourceClaimsWithDisplayRegion} from '../../worker/invoice/ar-only-source-claims';
+import {money} from './invoice-packet';
+export function mixedPosDisplayFixture(){
+ const f=sourceClaimsPosDisplayFixture('posted'),p=f.packet,selected=(p.postings as {invoicePostingsDetails:Record<string,unknown>[];trxCodesInfo:Record<string,unknown>[]});
+ const original=structuredClone(selected.invoicePostingsDetails.find(s=>s.transactionNo===60001)!),entry=structuredClone(p.taxRows.find(e=>(e as {posting:{transactionNo:number}}).posting.transactionNo===60001)!);
+ for(const [id,amount]of [[60001,600],[60004,300],[60005,100]]){const s=id===60001?selected.invoicePostingsDetails.find(s=>s.transactionNo===60001)!:structuredClone(original),e=id===60001?p.taxRows.find(e=>(e as {posting:{transactionNo:number}}).posting.transactionNo===60001)!:structuredClone(entry),post=(e as {posting:Record<string,unknown>;postingBreakdown:{grossAmount:unknown;netAmount:unknown}});s.transactionNo=id;s.debitAmount=money(amount);Object.assign(post.posting,{transactionNo:id,debitAmount:money(amount),postedAmount:money(amount),transactionAmount:amount});post.postingBreakdown.grossAmount=post.postingBreakdown.netAmount=money(amount);if(id!==60001){selected.invoicePostingsDetails.push(s);p.taxRows.push(e);}}
+ const manual={transactionNo:80001,transactionCode:'MANUAL',transactionDate:'2026-01-03',checkNo:'POS-CHECK',reference:'  A literal routing narrative #101=>#102  ',debitAmount:money(107),cashierInfo:{cashierId:8},paidOut:false};
+ selected.invoicePostingsDetails.push(manual);selected.trxCodesInfo.push({hotelId:p.manifest.hotel,transactionCode:'MANUAL',description:'Independent embedded charge',transactionGroup:'OTHER'});
+ p.taxRows.push({posting:{...manual,hotelId:p.manifest.hotel,folioNo:88,folioWindowNo:1,guestInfo:{reservationId:{id:'777',type:'Reservation'}},transactionType:'Revenue',postedAmount:money(107),transactionAmount:107},postingBreakdown:{grossAmount:money(107),netAmount:money(100),taxes:[{transactionNo:800011,referenceTransactionNo:80001,transactionCode:'VAT',amount:money(7)}]}});
+ p.manifest.open!+=107;for(const key of ['amount','balance'])Reflect.set(p.invoice as object,key,money(p.manifest.open!));
+ const members=selected.invoicePostingsDetails.filter(s=>Number(s.transactionNo)>=60001),header={...f.page.windows[0].folios[0].postings[0],transactionNo:'80001',transactionCode:'SYNTHETIC-DESCRIPTOR',groupTypeInfo:{groupId:'POS-CHECK',groupDescription:'Mixed source venue',groupCount:6}};
+ f.page.windows[0].folios[0].postings=[header,...members.map(s=>({transactionNo:String(s.transactionNo),transactionCode:String(s.transactionCode),transactionDate:String(s.transactionDate),checkNo:String(s.checkNo),reference:String(s.reference),cashierInfo:{cashierId:(s.cashierInfo as {cashierId:number}).cashierId},groupTypeInfo:{subGroupId:'POS-CHECK'}}))];
+ p.arOnlySourceClaimsProof!.sourceBefore=structuredClone(arOnlyTaxSource(p));p.arOnlySourceClaimsProof!.sourceAfter=structuredClone(arOnlyTaxSource(p));f.proof.sourceBefore=structuredClone(arOnlyTaxSource(p));f.proof.sourceAfter=structuredClone(arOnlyTaxSource(p));f.proof.contexts[0].before=[structuredClone(f.page)];f.proof.contexts[0].after=[structuredClone(f.page)];
+ return {...f,region:verifyArOnlySourceClaimsWithDisplayRegion(p).posRegion!,manual};
+}

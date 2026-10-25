@@ -6,7 +6,7 @@ const decoder=new TextDecoder('utf-8',{fatal:true}),encoder=new TextEncoder();
 const MAX_FILE=8*1024*1024,MAX_PART=12*1024*1024,MAX_TOTAL=64*1024*1024;
 export const trackerHeaders:Readonly<Record<string,string>>={A:'Property',C:'Account No.',E:'เลขที่ Invoice',F:'Folio No.',G:'วันที่โพสต์',R:'วันที่วางบิล',S:'เครดิตเทอม (วัน)',T:'วันครบกำหนด',U:'อีเมลทวง #1',V:'อีเมลทวง #2',W:'อีเมลทวง #3',X:'วันนัดชำระใหม่',Y:'สถานะติดตาม',Z:'จำนวนเงินที่รับ',AA:'ผลต่าง',AB:'รายละเอียดการติดตาม',AC:'ผู้รับผิดชอบ',AG:'KEY (ระบบ-ห้ามแก้)'};
 export interface TrackerLocator {sheetName:string;sheetPath:string;row:number;key:string}
-export interface TrackerRow extends TrackerIdentity {rowKey:string;folio:string|null;transactionDate?:string|null;fields:TrackerValues;formulaFields?:TrackerField[];blockedWriteFields?:('R'|'U'|'V'|'W')[];locator:TrackerLocator;issues?:string[]}
+export interface TrackerRow extends TrackerIdentity {rowKey:string;folio:string|null;transactionDate?:string|null;agent?:string;property?:string;fields:TrackerValues;formulaFields?:TrackerField[];blockedWriteFields?:('R'|'S'|'U'|'V'|'W')[];locator:TrackerLocator;issues?:string[]}
 export interface ParsedTracker {rows:TrackerRow[];schemaFingerprint:string;sheetName:string;sheetPath:string;date1904:boolean}
 export interface TrackerCellChange {field:TrackerField;value:string;expected:string|null}
 export interface TrackerWorkbookEdit {rowKey:string;expectedIdentity:TrackerIdentity&{transactionDate?:string|null};changes:readonly TrackerCellChange[]}
@@ -71,6 +71,8 @@ function dateString(value:string,date1904:boolean):string|null {
  throw Error('tracker_date_invalid');
 }
 export {dateString as trackerDateValue};
+/** Canonical numeric text roundtrips through typed provider number cells. */
+export function validTrackerCredit(value:unknown):value is string {return typeof value==='string'&&/^(?:0|[1-9]\d{0,3})$/.test(value)&&Number(value)<=3650;}
 const dateFields=new Set<TrackerField>(['R','T','U','V','W','X']);
 const scalarTypes=new Set(['n','s','inlineStr','str']),dateTypes=new Set([...scalarTypes,'d']);
 function value(cell:Cell|undefined,field:TrackerField,date1904:boolean):string|null {
@@ -83,7 +85,7 @@ function blockedDateCell(cell:Cell|undefined):boolean {
  const inner=cell.xml.endsWith('/>')?'':cell.xml.slice(cell.xml.indexOf('>')+1,cell.xml.lastIndexOf('</'));
  return !!inner.replace(/<(?:\w+:)?v\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?v\s*>)/g,'').replace(/<(?:\w+:)?is\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?is\s*>)/g,'').trim();
 }
-function load(bytes:Uint8Array,region:RegionId){
+function load(bytes:Uint8Array,region:RegionId,sentIdentity=false){
  const archive=zip(bytes),entries=archive.entries,workbook=xml(entries,'xl/workbook.xml'),relationships=xml(entries,'xl/_rels/workbook.xml.rels');
  const date1904=/\bdate1904=["'](?:1|true)["']/.test(workbook),sharedEntry=entries.find(e=>e.name==='xl/sharedStrings.xml');
  const sharedParts=sharedEntry?[...xml(entries,'xl/sharedStrings.xml').matchAll(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si\s*>/g)].map(m=>m[1]):[],shared=sharedParts.map(texts),sharedRich=sharedParts.map(part=>/<(?:\w+:)?r(?:\s|>)/.test(part));
@@ -107,11 +109,12 @@ function load(bytes:Uint8Array,region:RegionId){
   if(!accountNo)issues.push('account_missing');if(!invoiceNo)issues.push('invoice_missing');
   let transactionDate:string|null=null;try{const posting=get('G');if(posting&&(posting.formula||!dateTypes.has(posting.type)))throw Error('tracker_row_identity_invalid');transactionDate=dateString(posting?.raw??'',date1904);}catch{issues.push('transaction_date_invalid');}
   if(keys.has(key.raw))throw Error('tracker_row_key_ambiguous');keys.add(key.raw);
-  if(accountNo&&invoiceNo){const identityKey=JSON.stringify([hotel,accountNo,invoiceNo,folio]);if(identities.has(identityKey))throw Error('tracker_row_identity_ambiguous');identities.add(identityKey);}
+  if(accountNo&&invoiceNo){const identityKey=JSON.stringify([hotel,accountNo,invoiceNo,folio,...(sentIdentity?[transactionDate]:[])]);if(identities.has(identityKey))throw Error('tracker_row_identity_ambiguous');identities.add(identityKey);}
   const fields:TrackerValues={};for(const field of trackerFields){try{fields[field]=value(get(field),field,date1904);}catch{fields[field]=get(field)?.raw??null;issues.push(field+'_invalid');}}
   const formulaFields=trackerFields.filter(field=>get(field)?.formula);
-  const blockedWriteFields=(['R','U','V','W'] as const).filter(field=>blockedDateCell(get(field)));
-  rows.push({rowKey:key.raw,hotel,accountNo,invoiceNo,folioNo:folio,folio,transactionDate,fields,...(formulaFields.length?{formulaFields}:{}),...(blockedWriteFields.length?{blockedWriteFields}:{}),locator:{sheetName:chosen.name,sheetPath:chosen.path,row:key.row,key:key.raw},...(issues.length?{issues}:{})});
+  const blockedWriteFields=(['R','S','U','V','W'] as const).filter(field=>blockedDateCell(get(field))||field==='S'&&!scalarTypes.has(get(field)?.type??''));
+  const agent=get('B'),aliases=agent&&!agent.formula&&scalarTypes.has(agent.type)&&agent.raw.trim()?{agent:agent.raw,property:get('A')?.raw??''}:{};
+  rows.push({rowKey:key.raw,hotel,accountNo,invoiceNo,folioNo:folio,folio,transactionDate,...aliases,fields,...(formulaFields.length?{formulaFields}:{}),...(blockedWriteFields.length?{blockedWriteFields}:{}),locator:{sheetName:chosen.name,sheetPath:chosen.path,row:key.row,key:key.raw},...(issues.length?{issues}:{})});
  }
  return {entries,archiveComment:archive.comment,chosen,parsed:{rows,schemaFingerprint:JSON.stringify([chosen.name,chosen.path,trackerHeaders]),sheetName:chosen.name,sheetPath:chosen.path,date1904} satisfies ParsedTracker};
 }
@@ -139,10 +142,14 @@ function patchLoadedWorkbook(loaded:ReturnType<typeof load>,edits:readonly Track
  for(const {rowKey,expectedIdentity,changes} of edits){const row=rows.get(rowKey);
  if(!row||row.issues?.some(issue=>identityIssues.has(issue)&&!(issue==='account_missing'&&canResolveWithoutAccountNumber(row))||changes.some(change=>issue===change.field+'_invalid'))||row.hotel!==expectedIdentity.hotel||row.accountNo!==expectedIdentity.accountNo||row.invoiceNo!==expectedIdentity.invoiceNo||(row.folio??null)!==(expectedIdentity.folioNo??null)||(expectedIdentity.transactionDate!==undefined&&row.transactionDate!==expectedIdentity.transactionDate))throw Error('tracker_identity_conflict');
  if(!changes.length||changes.length>4||new Set(changes.map(c=>c.field)).size!==changes.length)throw Error('tracker_patch_invalid');
- for(const change of changes){if(!['R','U','V','W'].includes(change.field)||!/^\d{4}-\d{2}-\d{2}$/.test(change.value))throw Error('tracker_patch_forbidden');
+ for(const change of changes){const credit=change.field==='S';if(credit?change.expected!==null||!validTrackerCredit(change.value):!['R','U','V','W'].includes(change.field)||!/^\d{4}-\d{2}-\d{2}$/.test(change.value))throw Error('tracker_patch_forbidden');
   if(row.fields[change.field]!==change.expected)throw Error('tracker_cell_conflict');const cell=loaded.chosen.map.get(change.field+row.locator.row);if(!cell||cell.formula)throw Error('tracker_formula_or_missing_cell');
   const reference=change.field+row.locator.row,prior=seen.get(reference);if(prior){if(prior.value!==change.value||prior.expected!==change.expected)throw Error('tracker_cell_conflict');continue;}seen.set(reference,change);
-  if(blockedDateCell(cell))throw Error('tracker_cell_metadata_unsupported');
+  if(blockedDateCell(cell)||credit&&!scalarTypes.has(cell.type))throw Error('tracker_cell_metadata_unsupported');
+  if(credit){
+   const tag=/^<([^\s>]+)/.exec(cell.xml)?.[1];if(!tag)fail();let opening=cell.xml.slice(0,cell.xml.indexOf('>')+1).replace(/\s+t\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/, '>');opening=opening.slice(0,-1)+' t="n">';const prefix=tag.includes(':')?tag.split(':')[0]+':':'';
+   replacements.push({start:cell.start,end:cell.end,value:opening+'<'+prefix+'v>'+change.value+'</'+prefix+'v></'+tag+'>'});continue;
+  }
   const time=Date.parse(change.value+'T00:00:00Z');if(!Number.isFinite(time)||new Date(time).toISOString().slice(0,10)!==change.value)throw Error('tracker_patch_invalid');
   const serial=Math.round((time-Date.UTC(loaded.parsed.date1904?1904:1899,loaded.parsed.date1904?0:11,loaded.parsed.date1904?1:30))/86400000);
   const tag=/^<([^\s>]+)/.exec(cell.xml)?.[1];if(!tag)fail();let opening=cell.xml.slice(0,cell.xml.indexOf('>')+1).replace(/\s+t\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/, '>');opening=opening.slice(0,-1)+' t="n">';const prefix=tag.includes(':')?tag.split(':')[0]+':':'';
@@ -156,3 +163,69 @@ function patchLoadedWorkbook(loaded:ReturnType<typeof load>,edits:readonly Track
 }
 export function patchTrackerWorkbookBatch(bytes:Uint8Array,region:RegionId,edits:readonly TrackerWorkbookEdit[]):Uint8Array {return prepareTrackerWorkbook(bytes,region).patchBatch(edits);}
 export function patchTrackerWorkbook(bytes:Uint8Array,region:RegionId,rowKey:string,expectedIdentity:TrackerIdentity&{transactionDate?:string|null},changes:readonly TrackerCellChange[]):Uint8Array {return patchTrackerWorkbookBatch(bytes,region,[{rowKey,expectedIdentity,changes}]);}
+
+/** Full combined-sheet schema required only for creating a confirmed-Sent row. */
+export const trackerSentHeaders=['Property','Agent','Account No.','ชื่อผู้เข้าพัก (Guest)','เลขที่ Invoice','Folio No.','วันที่โพสต์','ยอดค้าง (บาท)','0-30','31-60','61-90','91-120','121-150','151+','อายุใบ (วัน)','กลุ่มอายุ','สถานะอายุ','วันที่วางบิล','เครดิตเทอม (วัน)','วันครบกำหนด','อีเมลทวง #1','อีเมลทวง #2','อีเมลทวง #3','วันนัดชำระใหม่','สถานะติดตาม','จำนวนเงินที่รับ','ผลต่าง','รายละเอียดการติดตาม','ผู้รับผิดชอบ','พบครั้งแรก','อัปเดตล่าสุด','สถานะแถว','KEY (ระบบ-ห้ามแก้)'] as const;
+export interface TrackerSentSourceCell {value:string|number|null;formula?:true;date?:true}
+export interface TrackerSentRowIdentity extends TrackerIdentity {folioNo:string|null;transactionDate:string|null}
+export interface TrackerSentRowEntry {rowKey:string;identity:TrackerSentRowIdentity;values33:readonly (string|number|null|TrackerSentSourceCell)[]}
+export interface TrackerSentRowContext {sheetName:string;sheetPath:string;date1904:boolean;rows:{rowKey:string;row:number;identity:TrackerSentRowIdentity;agent:string;property:string}[];maxRow:number}
+const sentColumn=(index:number):string=>index<26?String.fromCharCode(65+index):'A'+String.fromCharCode(65+index-26);
+const sentColumnIndex=(column:string):number=>{let index=0;for(const c of column)index=index*26+c.charCodeAt(0)-64;return index-1;};
+const sentEscape=(value:string):string=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+function sentIdentityKey(identity:TrackerSentRowIdentity):string {return JSON.stringify([identity.hotel,identity.accountNo,identity.invoiceNo,identity.folioNo??null,identity.transactionDate??null]);}
+function sentLoad(bytes:Uint8Array,region:RegionId){
+ // Buffer.slice() aliases storage; the lossless ZIP writer requires owned slices.
+ const loaded=load(Uint8Array.from(bytes),region,true),map=loaded.chosen.map;
+ if(!trackerSentHeaders.every((text,index)=>{const cell=map.get(sentColumn(index)+'2');return cell&&!cell.formula&&scalarTypes.has(cell.type)&&cell.raw===text;}))throw Error('tracker_sent_schema_invalid');
+ const mainSheet=[...xml(loaded.entries,'xl/workbook.xml').matchAll(/<(?:\w+:)?sheet\b[^>]*\/?\s*>/g)].map(match=>attrs(match[0])).find(a=>a.name===loaded.chosen.name);if(mainSheet?.state&&mainSheet.state!=='visible')throw Error('tracker_sent_schema_invalid');
+ const keys=new Set<string>();for(const key of loaded.chosen.cells.filter(cell=>cell.column==='AG'&&cell.row>2&&cell.raw)){if(key.formula||!scalarTypes.has(key.type)||keys.has(key.raw))throw Error('tracker_row_key_ambiguous');keys.add(key.raw);}
+ let maxRow=2,last=0;for(const match of loaded.chosen.text.matchAll(/<(?:\w+:)?row\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?row\s*>)/g)){
+  const row=Number(attrs(match[0].slice(0,match[0].indexOf('>')+1)).r);if(!Number.isInteger(row)||row<1||row>1048576||row<=last)throw Error('tracker_sent_row_invalid');last=row;maxRow=Math.max(maxRow,row);
+ }
+ for(const cell of loaded.chosen.cells){maxRow=Math.max(maxRow,cell.row);if(cell.row>2&&cell.column==='A'&&trackerHotel(cell.raw,region)&&!map.get('AG'+cell.row)?.raw)throw Error('tracker_sent_key_missing');}
+ const rows=loaded.parsed.rows.map(row=>{if(row.issues?.some(issue=>['identity_invalid','invoice_missing','transaction_date_invalid'].includes(issue)))throw Error('tracker_identity_conflict');const agent=map.get('B'+row.locator.row);if(agent?.formula||agent&&!scalarTypes.has(agent.type))throw Error('tracker_identity_conflict');return {rowKey:row.rowKey,row:row.locator.row,identity:{hotel:row.hotel,accountNo:row.accountNo,invoiceNo:row.invoiceNo,folioNo:row.folioNo??null,transactionDate:row.transactionDate??null},agent:agent?.raw??'',property:map.get('A'+row.locator.row)?.raw??''};});
+ return {loaded,keys,context:{sheetName:loaded.chosen.name,sheetPath:loaded.chosen.path,date1904:loaded.parsed.date1904,rows,maxRow} satisfies TrackerSentRowContext};
+}
+export function readTrackerSentRowContext(bytes:Uint8Array,region:RegionId):TrackerSentRowContext {return sentLoad(bytes,region).context;}
+function sentDay(value:string):number {if(!/^\d{4}-\d{2}-\d{2}$/.test(value))throw Error('tracker_sent_date_invalid');const time=Date.parse(value+'T00:00:00Z');if(!Number.isFinite(time)||new Date(time).toISOString().slice(0,10)!==value)throw Error('tracker_sent_date_invalid');return time;}
+function sentDateStyle(loaded:ReturnType<typeof load>):{style:number;changed?:string} {
+ const styles=xml(loaded.entries,'xl/styles.xml'),prefix=/<((?:\w+:)?)styleSheet\b/.exec(styles)?.[1]??'';
+ const section=/<(?:\w+:)?cellXfs\b[^>]*>([\s\S]*?)<\/(?:\w+:)?cellXfs\s*>/.exec(styles);if(!section)throw Error('tracker_sent_styles_invalid');
+ const formats=new Map<number,string>();for(const match of styles.matchAll(/<(?:\w+:)?numFmt\b[^>]*\/?\s*>/g)){const a=attrs(match[0]);formats.set(Number(a.numFmtId),a.formatCode);}
+ const xfs=[...section[1].matchAll(/<(?:\w+:)?xf\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?xf\s*>)/g)].map(m=>m[0]);
+ const known=xfs.findIndex(xf=>formats.get(Number(attrs(xf.slice(0,xf.indexOf('>')+1)).numFmtId))==='yyyy-mm-dd');if(known>=0)return {style:known};
+ const id=Math.max(163,...formats.keys())+1,format=`<${prefix}numFmt numFmtId="${id}" formatCode="yyyy-mm-dd"/>`;let changed=styles;
+ const numFmts=/<(?:\w+:)?numFmts\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?numFmts\s*>)/.exec(styles);
+ if(numFmts){const count=[...numFmts[0].matchAll(/<(?:\w+:)?numFmt\b/g)].length,opening=numFmts[0].slice(0,numFmts[0].indexOf('>')+1).replace(/\s+count\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/,'>'),tag=/^<([^\s>]+)/.exec(opening)![1];const body=numFmts[0].endsWith('/>')?'':numFmts[0].slice(numFmts[0].indexOf('>')+1,numFmts[0].lastIndexOf('</'));changed=changed.replace(numFmts[0],opening.slice(0,-1)+` count="${count+1}">`+body+format+`</${tag}>`);}else{const rootEnd=changed.indexOf('>',changed.indexOf('styleSheet'));changed=changed.slice(0,rootEnd+1)+`<${prefix}numFmts count="1">${format}</${prefix}numFmts>`+changed.slice(rootEnd+1);}
+ const rTemplate=loaded.chosen.cells.find(c=>c.column==='R'&&c.row>2),template=xfs[rTemplate?.style??0];if(!template)throw Error('tracker_sent_styles_invalid');
+ const xf=template.replace(/\s+numFmtId\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\s+applyNumberFormat\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/^(<[^\s>]+)/,`$1 numFmtId="${id}" applyNumberFormat="1"`);
+ const opening=section[0].slice(0,section[0].indexOf('>')+1).replace(/\s+count\s*=\s*(?:"[^"]*"|'[^']*')/,'');changed=changed.replace(section[0],opening.slice(0,-1)+` count="${xfs.length+1}">`+section[1]+xf+section[0].slice(section[0].lastIndexOf('</')));return {style:xfs.length,changed};
+}
+/** Appends only; all prior row XML and unrelated ZIP records remain untouched. */
+export function appendTrackerSentRows(bytes:Uint8Array,region:RegionId,entries:readonly TrackerSentRowEntry[]):Uint8Array {
+ const {loaded,context,keys}=sentLoad(bytes,region);if(!entries.length||entries.length>100||context.maxRow+entries.length>1048576)throw Error('tracker_batch_limit');if(loaded.entries.some(e=>e.name.startsWith('_xmlsignatures/')))throw Error('tracker_signed_workbook_unsupported');
+ const identities=new Set(context.rows.map(row=>sentIdentityKey(row.identity))),dateColumns=new Set([6,17,19,20,21,22,23,29,30]);
+ const close=/<\/(?:\w+:)?sheetData\s*>/.exec(loaded.chosen.text);if(!close||[...loaded.chosen.text.matchAll(/<(?:\w+:)?sheetData\b/g)].length!==1)throw Error('tracker_sent_schema_invalid');const prefix=/^<\/((?:\w+:)?)/.exec(close[0])?.[1]??'';
+ const dateStyle=sentDateStyle(loaded),styleSection=/<(?:\w+:)?cellXfs\b[^>]*>([\s\S]*?)<\/(?:\w+:)?cellXfs\s*>/.exec(xml(loaded.entries,'xl/styles.xml')),styleCount=[...(styleSection?.[1]??'').matchAll(/<(?:\w+:)?xf\b/g)].length,templateStyles=new Map<string,number>();
+ const identityRows=new Set(context.rows.map(row=>row.row));for(const cell of loaded.chosen.cells){if(!identityRows.has(cell.row)||templateStyles.has(cell.column)||!Object.hasOwn(attrs(cell.xml.slice(0,cell.xml.indexOf('>')+1)),'s'))continue;if(!Number.isInteger(cell.style)||cell.style<0||cell.style>=styleCount)throw Error('tracker_sent_styles_invalid');templateStyles.set(cell.column,cell.style);}
+ let added='';for(let offset=0;offset<entries.length;offset++){
+  const entry=entries[offset],row=context.maxRow+offset+1;if(!entry.rowKey||entry.values33.length!==33||keys.has(entry.rowKey))throw Error('tracker_row_key_ambiguous');keys.add(entry.rowKey);
+  const values=entry.values33.map(input=>input!==null&&typeof input==='object'?input:{value:input});
+  if(values.some(cell=>!cell||cell.formula&&cell.date||Object.keys(cell).some(key=>!['value','formula','date'].includes(key))||cell.formula!==undefined&&cell.formula!==true||cell.date!==undefined&&cell.date!==true))throw Error('tracker_sent_cell_invalid');
+  const plain=values.map(cell=>cell.value),hotel=typeof plain[0]==='string'?trackerHotel(plain[0],region):null;
+  if(!hotel||typeof plain[2]!=='string'||!plain[2]||typeof plain[4]!=='string'||!plain[4]||plain[5]!==null&&typeof plain[5]!=='string'||plain[6]!==null&&typeof plain[6]!=='string'||plain[32]!==entry.rowKey||values.slice(0,7).some(cell=>cell.formula))throw Error('tracker_identity_conflict');
+  const identity:TrackerSentRowIdentity={hotel,accountNo:plain[2],invoiceNo:plain[4],folioNo:plain[5]||null,transactionDate:plain[6]===null?null:(sentDay(plain[6]),plain[6])};if(sentIdentityKey(identity)!==sentIdentityKey(entry.identity))throw Error('tracker_identity_conflict');const key=sentIdentityKey(identity);if(identities.has(key))throw Error('tracker_row_identity_ambiguous');identities.add(key);
+  added+=`<${prefix}row r="${row}">`;for(let index=0;index<33;index++){
+   const cell=values[index],value=cell.value,column=sentColumn(index),ref=column+row,style=templateStyles.get(column),styleAttr=style===undefined?'':` s="${style}"`;
+   if(value!==null&&typeof value!=='number'&&typeof value!=='string'||typeof value==='number'&&!Number.isFinite(value)||typeof value==='string'&&(value.length>32767||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)))throw Error('tracker_sent_cell_invalid');
+   if(cell.formula){if(index!==19||typeof value!=='string'||!value)throw Error('tracker_sent_formula_forbidden');const formula=value.replace(/^=/,'').replaceAll('{row}',String(row));added+=`<${prefix}c r="${ref}" s="${dateStyle.style}"><${prefix}f>${sentEscape(formula)}</${prefix}f></${prefix}c>`;continue;}
+   if(cell.date){if(!dateColumns.has(index)||typeof value!=='string')throw Error('tracker_sent_date_invalid');const serial=Math.round((sentDay(value)-Date.UTC(context.date1904?1904:1899,context.date1904?0:11,context.date1904?1:30))/86400000);if(serial<1||serial>100000)throw Error('tracker_sent_date_invalid');added+=`<${prefix}c r="${ref}" s="${dateStyle.style}" t="n"><${prefix}v>${serial}</${prefix}v></${prefix}c>`;continue;}
+   if(value===null){added+=`<${prefix}c r="${ref}"${styleAttr}/>`;continue;}if(typeof value==='number'){added+=`<${prefix}c r="${ref}"${styleAttr} t="n"><${prefix}v>${value}</${prefix}v></${prefix}c>`;continue;}
+   added+=`<${prefix}c r="${ref}"${styleAttr} t="inlineStr"><${prefix}is><${prefix}t xml:space="preserve">${sentEscape(value)}</${prefix}t></${prefix}is></${prefix}c>`;
+  }added+=`</${prefix}row>`;
+ }
+ let text=loaded.chosen.text.slice(0,close.index)+added+loaded.chosen.text.slice(close.index);
+ const dimension=/<(?:\w+:)?dimension\b[^>]*\/?\s*>/.exec(text);if(dimension){const a=attrs(dimension[0]),ref=/^([A-Z]{1,3})([1-9]\d*)(?::([A-Z]{1,3})([1-9]\d*))?$/.exec(a.ref??'');if(!ref)throw Error('tracker_sent_dimension_invalid');const maxCol=loaded.chosen.cells.reduce((max,c)=>Math.max(max,sentColumnIndex(c.column)),32),endCol=sentColumnIndex(ref[3]??ref[1])>maxCol?(ref[3]??ref[1]):maxCol<26?String.fromCharCode(65+maxCol):(()=>{let i=maxCol+1,result='';while(i){i--;result=String.fromCharCode(65+i%26)+result;i=Math.floor(i/26);}return result;})();const endRow=Math.max(Number(ref[4]??ref[2]),context.maxRow+entries.length);text=text.replace(dimension[0],dimension[0].replace(/\bref\s*=\s*(?:"[^"]*"|'[^']*')/,`ref="${ref[1]}${ref[2]}:${endCol}${endRow}"`));}
+ let output=serialize(loaded.entries,loaded.chosen.path,encoder.encode(text),loaded.archiveComment);if(dateStyle.changed){const archive=zip(output);output=serialize(archive.entries,'xl/styles.xml',encoder.encode(dateStyle.changed),archive.comment);}return output;
+}

@@ -1,0 +1,46 @@
+import {canonical} from './ar-tax';
+import {arOnlyTaxSource} from './current-ar-tax';
+import {verifyArTransfer,revalidateArTransfer,type ArTransferInput} from './ar-transfer';
+import {verifyTransferProjectionCalculation,type TransferProjectionCalculation} from './transfer-projection-calculation';
+import {amountCents} from '../opera/normalize';
+import type {InvoicePacket} from './model';
+export type TransferredCurrentArRootEvidence=TransferProjectionCalculation;
+export interface TransferredCurrentArRuleComponent {kind:'transferred-current-ar-rules-vat7';lineageBefore:ArTransferInput;lineageAfter:ArTransferInput;roots:TransferredCurrentArRootEvidence[]}
+export interface CurrentArRuleClaim {role:'taxable';component:'transferred-current-ar-rules-vat7';sourceKind:'ar-detail';signedCents:number;projectedVatUnits:bigint}
+type Row=Record<string,unknown>;
+const fail=():never=>{throw Error('document_invoice_transferred_current_ar_rules_unverified');};
+const object=(v:unknown):Row=>v&&typeof v==='object'&&!Array.isArray(v)?v as Row:fail();
+const rows=(v:unknown):Row[]=>Array.isArray(v)?v.map(object):fail();
+const text=(v:unknown)=>v==null?'':String(v);
+const id=(v:unknown)=>{const key=text(v);return /^[1-9][0-9]{0,15}$/.test(key)?key:fail();};
+const only=(value:Row,keys:string[])=>{if(Object.keys(value).some(key=>!keys.includes(key)))fail();};
+const signed=(p:Row)=>{let total=0;for(const [key,sign]of [['debitAmount',1],['creditAmount',-1]] as const)if(p[key]!==undefined){const n=amountCents(p[key],'THB');if(object(p[key]).amount!==n/100)fail();total+=n*sign;}if(!Number.isSafeInteger(total)||!total||p.debitAmount!==undefined&&p.creditAmount!==undefined&&amountCents(p.debitAmount,'THB')&&amountCents(p.creditAmount,'THB'))fail();return total;};
+/** Exact read scopes only; this discovery does not grant transfer permission. */
+export function discoverTransferredCurrentArRoots(packet:InvoicePacket):Row[]{
+ const selected=rows(object(packet.postings).invoicePostingsDetails),ids=new Set(selected.map(p=>id(p.transactionNo))),reservation=new Set<string>();if(ids.size!==selected.length)fail();for(const e of packet.taxRows){const key=id(object(object(e).posting).transactionNo);if(reservation.has(key))fail();reservation.add(key);}
+ const missing=new Set([...ids].filter(key=>!reservation.has(key))),seen=new Set<string>(),roots:Row[]=[];if(!missing.size||missing.size>20)fail();
+ for(const page of packet.arDetails??[]){const requested=page.ids;if(!Array.isArray(requested)||new Set(requested).size!==requested.length)fail();const response=object(page.response),values=rows(response.transactions);if(values.length!==requested.length)fail();for(const p of values){const key=id(p.transactionNo);if(!missing.has(key)||!requested.includes(key)||seen.has(key))fail();seen.add(key);roots.push(p);}}
+ if(seen.size!==missing.size)return fail();return roots;
+}
+/** Recompute transfer authority from raw lineage; normalized caller summaries
+ * and calculator response rows never authorize account or posting ownership. */
+export function verifyTransferredCurrentArRuleClaims(packet:InvoicePacket,evidence:TransferredCurrentArRuleComponent):Map<string,CurrentArRuleClaim>{
+ only(object(evidence),['kind','lineageBefore','lineageAfter','roots']);if(evidence.kind!=='transferred-current-ar-rules-vat7')fail();
+ const roots=discoverTransferredCurrentArRoots(packet),selected=rows(object(packet.postings).invoicePostingsDetails),outer=object(packet.arOnlySourceClaimsProof),source=canonical(arOnlyTaxSource(packet));if(canonical(outer.sourceBefore)!==source||canonical(outer.sourceAfter)!==source)fail();
+ const sorted=(values:unknown[])=>values.map(object).sort((a,b)=>id(a.transactionNo).localeCompare(id(b.transactionNo)));
+ for(const input of [evidence.lineageBefore,evidence.lineageAfter]){only(object(input),['manifest','account','invoice','postings','postedRows','sourceAccounts','sourceHistory','sourcePostings']);only(object(input.sourcePostings),['request','response']);only(object(input.sourcePostings.request),['hotel','accountId','transactionId','invoiceNo','folioNo','internalFolioWindowId']);const represented=arOnlyTaxSource({...packet,manifest:input.manifest,account:input.account,invoice:input.invoice,postings:input.postings});if(canonical(represented)!==source||canonical(sorted(input.postedRows))!==canonical(sorted(roots)))fail();}
+ const before=verifyArTransfer(evidence.lineageBefore),after=revalidateArTransfer(before,evidence.lineageAfter);revalidateArTransfer(after,{...evidence.lineageAfter,manifest:packet.manifest,account:packet.account,invoice:packet.invoice,postings:packet.postings,postedRows:roots});
+ const owned=new Set(roots.map(p=>id(p.transactionNo)));let budget=0;
+ const scan=(raw:unknown,depth=0):void=>{if(++budget>20000||depth>8)fail();if(raw==null)return;if(Array.isArray(raw)){for(const v of raw)scan(v,depth+1);return;}const r=object(raw);if(r.transactionNo!==undefined&&owned.has(id(r.transactionNo)))fail();for(const key of ['referenceTransactionNo','referencePackageTransactionNo'])if(r[key]!==undefined&&owned.has(text(r[key])))fail();if(r.financialTransactionIdList!==undefined){const members=Array.isArray(r.financialTransactionIdList)?r.financialTransactionIdList:[r.financialTransactionIdList];for(const member of members){const key=member&&typeof member==='object'&&!Array.isArray(member)?text((member as Row).id):text(member);if(owned.has(key))fail();}}for(const key of ['posting','postingBreakdown','taxes','subPostings'])if(r[key]!==undefined)scan(r[key],depth+1);};
+ for(const e of packet.taxRows)scan(e);for(const s of selected)if(!owned.has(id(s.transactionNo)))scan(s);
+ if(!Array.isArray(evidence.roots)||evidence.roots.length!==roots.length||new Set(evidence.roots.map(e=>e.postingId)).size!==roots.length)fail();
+ const claims=new Map<string,CurrentArRuleClaim>();for(const root of roots){const key=id(root.transactionNo),s=selected.find(p=>id(p.transactionNo)===key)??fail(),e=evidence.roots.find(e=>e.postingId===key)??fail();only(object(e),['postingId','rules','rulesAfter','generatedRules','generatedRulesAfter','calculation','calculationAfter']);
+  const info=object(root.aRInfo),amount=signed(s);if(root.transactionType!=='Revenue'||root.deferredTax!==false||root.transactionCode!==s.transactionCode||root.transactionDate!==s.transactionDate||text(root.folioNo)!==packet.manifest.folio_no||text(info.invoiceNo)!==packet.manifest.invoice_no||![before.sourceAccountNumber,before.destinationAccountNumber].includes(text(info.accountNumber))||signed(root)!==amount||amountCents(root.postedAmount,'THB')!==amount||object(root.postedAmount).amount!==amount/100||!before.postingIds.includes(key))fail();
+  if(root.transactionAmount!==undefined&&root.transactionAmount!==amount/100)fail();
+  for(const view of [s,root]){if(view.financialTransactionIdList!==undefined&&(!Array.isArray(view.financialTransactionIdList)||view.financialTransactionIdList.length)||view.groupTypeInfo!==undefined&&Object.keys(object(view.groupTypeInfo)).length)fail();if(view.transactionType!==undefined&&view.transactionType!=='Revenue'||view.transactionAmount!==undefined&&view.transactionAmount!==amount/100||view.postedAmount!==undefined&&(amountCents(view.postedAmount,'THB')!==amount||object(view.postedAmount).amount!==amount/100))fail();if(view.subPostings!==undefined&&(!Array.isArray(view.subPostings)||view.subPostings.length)||view.referenceTransactionNo!==undefined||view.referencePackageTransactionNo!==undefined||view.paidOut!==undefined&&view.paidOut!==false||view.deferredTax!==undefined&&view.deferredTax!==false||view.hotelId!==undefined&&view.hotelId!==packet.manifest.hotel)fail();if(view.folioWindowNo!==undefined&&(!Number.isSafeInteger(view.folioWindowNo)||Number(view.folioWindowNo)<=0)||view.internalFolioWindowID!==undefined&&text(view.internalFolioWindowID)!==before.internalFolioWindowId)fail();if(view.guestInfo!==undefined&&text(object(object(view.guestInfo).reservationId).id)!==packet.manifest.reservation_id||view.reservationId!==undefined&&text(object(view.reservationId).id)!==packet.manifest.reservation_id)fail();}
+  for(const field of ['folioWindowNo','cashierInfo','reference','remark'])if(s[field]!==undefined&&root[field]!==undefined&&canonical(s[field])!==canonical(root[field]))fail();
+  const selectedDefinitions=rows(object(packet.postings).trxCodesInfo).filter(d=>d.hotelId===packet.manifest.hotel&&d.transactionCode===s.transactionCode),arDefinitions=(packet.arDetails??[]).flatMap(p=>rows(object(p.response).trxCodesInfo)).filter(d=>d.hotelId===packet.manifest.hotel&&d.transactionCode===root.transactionCode),definition=object(object(e.rules).transactionCode);if(selectedDefinitions.length!==1||!arDefinitions.length||new Set(arDefinitions.map(d=>canonical(d))).size!==1||selectedDefinitions[0].transactionGroup!==arDefinitions[0].transactionGroup||object(object(definition.classification).group).code!==arDefinitions[0].transactionGroup)fail();
+  const {projectedVatUnits}=verifyTransferProjectionCalculation(e,packet.manifest.hotel,String(root.transactionCode),amount/100);claims.set(key,{role:'taxable',component:'transferred-current-ar-rules-vat7',sourceKind:'ar-detail',signedCents:amount,projectedVatUnits});
+ }
+ return claims;
+}

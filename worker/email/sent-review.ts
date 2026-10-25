@@ -25,5 +25,8 @@ export async function sentCandidates(env:EmailEnv,actor:string,id:string,pageTok
 export async function reviewSentMatch(env:EmailEnv,actor:string,id:string,input:{gmailId:string;proof:string;reason:string;confirmed:boolean}){
  if(input.confirmed!==true||!safeId(input.gmailId)||!/^[0-9a-f]{64}$/.test(input.proof)||typeof input.reason!=='string'||input.reason.trim().length<5||input.reason.length>1000)throw Error('email_invalid');
  const {d,headers}=await source(env,actor,id),fresh=await inspect(d,headers,input.gmailId);if(!fresh.eligible||fresh.proof!==input.proof)throw Error('email_sent_match_changed');
+ // Keep the verified rewritten identity and the human review audit independently
+ // of the following history transaction, so an unavailable commit is recoverable.
+ if(!await emailRpc<boolean>(env,'ar_mail_record_verified_review',{p_actor:actor,p_id:id,p_gmail_id:input.gmailId,p_sent_at:fresh.sentAt,p_expected:d.snapshot.expected,p_proof:input.proof,p_reason:input.reason.trim()}))throw Error('email_sent_match_changed');
  return emailRpc(env,'ar_mail_reviewed_sent',{p_actor:actor,p_id:id,p_gmail_id:input.gmailId,p_sent_at:fresh.sentAt,p_proof:input.proof,p_reason:input.reason.trim()});
 }

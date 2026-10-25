@@ -16,7 +16,7 @@ begin
  insert into ar_private.invoice_workflow_history(hotel,account_id,invoice_id,revision,actor,details)
  values('KAT',scope,'A',999,actor,'{"first_billing_date":"2026-08-01","last_reminder_stage":"Follow 1","last_reminder_date":"2026-09-01"}');
  insert into ar_private.mail_deliveries(id,owner,mode,message_id,snapshot,state,sent_at)
- values(delivery,actor,'send','<'||delivery||'@example.test>','{"draft":{"subject":"Immutable synthetic message","body":"Evidence only","recipients":{"to":["recipient@example.test"],"cc":[],"bcc":[]}}}','sent',now());
+ values(delivery,actor,'send','<'||delivery||'@example.test>','{"expected":{"mailbox":"phuket","sender":"ar@katathani.com"},"draft":{"subject":"Immutable synthetic message","body":"Evidence only","recipients":{"to":["recipient@example.test"],"cc":[],"bcc":[]}}}','sent',now());
  insert into public.ar_sent_events(delivery_id,owner,hotel,account_id,invoice_ids,purpose,sent_at,gmail_id,open_at_send)
  values(delivery,actor,'KAT',scope,array['A'],'billing',now(),'synthetic-'||delivery,100);
  insert into ar_private.invoice_workflow_history(hotel,account_id,invoice_id,revision,actor,details)

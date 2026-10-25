@@ -8,14 +8,14 @@ afterEach(()=>{vi.unstubAllGlobals();vi.clearAllMocks();});
 const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SECRET_KEY:'synthetic',GMAIL_RECONCILE_ENABLED:'true'};
 it.each(['*/5 * * * *',currentRefreshCron])('five-minute OPERA prefetch %s uses shared stale checks without Gmail or historical imports',async cron=>{
  const calls:{path:string;args:any}[]=[];
- vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push({path:url.split('/').at(-1)!,args:JSON.parse(String(init.body))});return Response.json({status:'fresh',created:false});});
+ vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push({path:url.split('/').at(-1)!,args:JSON.parse(String(init.body))});return Response.json(url.endsWith('/ar_refresh_active_hotels')?['KAT','TSK','TLKL','WAKL','TLFO','TSAN']:{status:'fresh',created:false});});
  await worker.scheduled({cron},{...env,OPERA_REFRESH_ENABLED:'true',OPERA_HOTEL_IDS:'KAT,TSK,TLKL,WAKL,TLFO,TSAN',OPERA_CLIENT_ID:'synthetic',OPERA_CLIENT_SECRET:'synthetic',OPERA_APP_KEY:'synthetic',AR_REFRESH:{create:vi.fn(),get:vi.fn()}});
- expect(calls.map(c=>c.path)).toEqual(Array(6).fill('ar_request_refresh'));
- expect(calls.map(c=>c.args)).toEqual(['KAT','TSK','TLKL','WAKL','TLFO','TSAN'].map(hotel=>({p_hotel:hotel,p_account_id:null,p_reason:'open',p_stale_minutes:5})));
+ expect(calls.map(c=>c.path)).toEqual(['ar_refresh_active_hotels',...Array(6).fill('ar_request_refresh')]);
+ expect(calls.slice(1).map(c=>c.args)).toEqual(['KAT','TSK','TLKL','WAKL','TLFO','TSAN'].map(hotel=>({p_hotel:hotel,p_account_id:null,p_reason:'open',p_stale_minutes:5})));
  expect(mocked.send).not.toHaveBeenCalled();expect(mocked.draft).not.toHaveBeenCalled();
 });
 it('cron and manual request share an existing run and never create a second workflow',async()=>{const create=vi.fn();vi.stubGlobal('fetch',async()=>Response.json({id:'run',created:false,state:'running'}));expect(await requestMailReconcile({...env,AR_REFRESH:{create,get:vi.fn()}},'manual')).toMatchObject({created:false});expect(create).not.toHaveBeenCalled();});
-it('a Gmail cron never starts an OPERA refresh or sends email',async()=>{const calls:string[]=[];vi.stubGlobal('fetch',async(url:string)=>{calls.push(url);return Response.json({id:'run',created:true,state:'complete'});});await worker.scheduled({cron:'*/15 * * * *'},{...env,OPERA_REFRESH_ENABLED:'true'});expect(calls.map(c=>c.split('/').at(-1))).toEqual(['ar_mail_reconcile_request','ar_period_summary_plan']);expect(mocked.send).not.toHaveBeenCalled();expect(mocked.draft).not.toHaveBeenCalled();});
+it('a Gmail cron never starts an OPERA refresh or sends email',async()=>{const calls:string[]=[];vi.stubGlobal('fetch',async(url:string)=>{calls.push(url);return Response.json({id:'run',created:true,state:'complete'});});await worker.scheduled({cron:'*/15 * * * *'},{...env,OPERA_REFRESH_ENABLED:'true'});expect(calls.map(c=>c.split('/').at(-1))).toEqual(['ar_mail_reconcile_request']);expect(mocked.send).not.toHaveBeenCalled();expect(mocked.draft).not.toHaveBeenCalled();});
 it('the read-only workflow checks exact claimed IDs and records outcomes',async()=>{const finish:any[]=[];vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{if(url.endsWith('/ar_mail_reconcile_guard'))return Response.json(true);if(url.endsWith('/ar_mail_reconcile_get'))return Response.json({state:'running',lease_until:new Date(Date.now()+600000).toISOString(),deliveries:[{id:'one',owner:'allowed'},{id:'two',owner:'allowed'}]});finish.push(JSON.parse(String(init.body)));return Response.json(true);});mocked.check.mockResolvedValueOnce({state:'sent'}).mockRejectedValueOnce(Error('provider unavailable'));const step={do:async(_name:string,...args:any[])=>args.at(-1)()};expect(await runMailReconcile(env,'run',step as never)).toMatchObject({checked:2,verified:1,unavailable:1});expect(mocked.check.mock.calls.map(c=>c.slice(1))).toEqual([['allowed','one'],['allowed','two']]);expect(finish[0]).toMatchObject({p_checked:2,p_verified:1,p_unavailable:1});expect(mocked.send).not.toHaveBeenCalled();});
 it('anonymous queue and reconciliation access is denied',async()=>{for(const path of ['/api/collection-queue','/api/mail-reconciliation'])expect((await handleApi(new Request('https://app.test'+path),{})).status).toBe(401);});
 
@@ -65,7 +65,7 @@ it('keeps Gmail and document maintenance running when financial pruning fails',a
 it('financial log maintenance runs independently when Gmail and file cleanup are disabled',async()=>{
  const calls=maintenanceHarness();
  await worker.scheduled({cron:'*/15 * * * *'},{...maintenanceEnv,GMAIL_RECONCILE_ENABLED:'false',RETENTION_ENABLED:'false'});
- expect(calls.map(c=>c.name)).toEqual(['ar_financial_service_actor','ar_period_summary_plan','ar_financial_log_prune']);
+ expect(calls.map(c=>c.name)).toEqual(['ar_financial_service_actor','ar_financial_log_prune']);
 });
 
 it('write hold prevents every scheduled maintenance request',async()=>{

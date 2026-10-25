@@ -7,7 +7,7 @@ import {TrackerSheetStatus} from './TrackerSheetStatus';
 
 interface SheetLink {region:RegionId;url:string|null}
 export function GoogleSheetsReports({token}:{token:string}){
- const member=useWorkspaceMember(),accessKey=JSON.stringify([member?.regions,member?.revision]);
+ const member=useWorkspaceMember(),accessKey=JSON.stringify([member?.memberId,member?.email,member?.username,member?.administrator,member?.regions,member?.revision]);
  const [result,setResult]=useState<{owner:string;rows:SheetLink[]}|null>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  const owner=token+accessKey,rows=result?.owner===owner?result.rows:null;
  useEffect(()=>{

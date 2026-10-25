@@ -7,22 +7,26 @@ const jobId='00000000-0000-4000-8000-000000000091',draftId='00000000-0000-4000-8
 const first:ThreadSummary={threadId:'a111',parentMessageId:'a112',subject:'Synthetic account · September documents',participants:['ar@katathani.com','billing@example.test'],latestAt:'2026-09-10T06:00:00Z',messageCount:1};
 const second:ThreadSummary={...first,threadId:'b111',parentMessageId:'b112',subject:'Synthetic account · Earlier conversation'};
 const selected:ThreadChoice={threadId:first.threadId,parentMessageId:first.parentMessageId,rfcMessageId:'<synthetic@example.test>',references:[],subject:first.subject,matchedRecipients:['billing@example.test'],parentDate:first.latestAt};
-async function setup(page:Page,options:{selected?:boolean;handoff?:boolean;failure?:string;disconnected?:boolean;delayPreview?:boolean;delaySelection?:boolean;historyChanged?:boolean;noSnippet?:boolean;paged?:boolean;alternateParent?:boolean}={}){
+async function setup(page:Page,options:{selected?:boolean;handoff?:boolean;failure?:string;disconnected?:boolean;delayPreview?:boolean;delaySelection?:boolean;historyChanged?:boolean;noSnippet?:boolean;paged?:boolean;alternateParent?:boolean;missingSelf?:boolean}={}){
  const calls:{path:string;method:string;body?:Record<string,unknown>;auth?:string}[]=[],unexpected:string[]=[];
- const user={id:'synthetic-threads-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-10T00:00:00Z'};
+ const user={id:'00000000-0000-4000-8000-000000000099',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-10T00:00:00Z'};
  const files=[{name:'Synthetic-statement.pdf',storage_key:`jobs/${jobId}/exports/synthetic.pdf`,byte_count:12000,sha256:'a'.repeat(64)}];
  const job={id:jobId,hotel:'KAT',account_id:'synthetic-thread-account',account_name:'Synthetic travel account',invoice_ids:['1','2'],state:'ready',revision:4,acknowledged:true,files:[],exports:files};
- let draft:EmailDraft={id:draftId,owner:user.id,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:job.account_id,account_name:job.account_name,invoice_ids:['1','2'],purpose:'billing',recipients:{to:['billing@example.test'],cc:[],bcc:['private@example.test']},subject:options.selected?first.subject:'New synthetic billing email',body:'Synthetic message to preserve.',exports:files,attachments:[],revision:2,package_changed:false,thread:options.selected?selected:null,gmail_handoff:options.handoff?'created':null};
+ let draft:EmailDraft={id:draftId,owner:user.id,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:job.account_id,account_name:job.account_name,invoice_ids:['1','2'],purpose:'billing',recipients:{to:['billing@example.test'],cc:options.missingSelf?[]:['ar@katathani.com'],bcc:['private@example.test']},subject:options.selected?first.subject:'New synthetic billing email',body:'Synthetic message to preserve.',exports:files,attachments:[],revision:2,package_changed:false,thread:options.selected?selected:null,gmail_handoff:options.handoff?'created':null};
  let releasePreview:()=>void=()=>{};const previewGate=new Promise<void>(resolve=>{releasePreview=resolve;});
- await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
+ await page.addInitScript(u=>{const session=JSON.stringify({access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u}),set=Storage.prototype.setItem;localStorage.setItem('sb-example-auth-token',session);Storage.prototype.setItem=function(key,value){set.call(this,key,value);if(this===sessionStorage&&key==='ar-google-tab-v1')set.call(this,value,session);};},user);
  await page.route('**/*',async r=>{
   const q=r.request(),url=new URL(q.url()),p=url.pathname;
   if(url.hostname==='example.supabase.co')return r.fulfill({json:{user}});
   if(!p.startsWith('/api/')){if(url.hostname==='127.0.0.1'||url.hostname==='localhost')return r.continue();unexpected.push(q.url());return r.abort();}
   calls.push({path:p+url.search,method:q.method(),body:q.postData()?q.postDataJSON():undefined,auth:q.headers().authorization});
   if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
-  if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic'}});
+  if(p==='/api/reports/tracker-revisions')return r.fulfill({json:{rows:[]}});
+  if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}});
+  if(p==='/api/access/me')return r.fulfill({json:{memberId:user.id,email:user.email,administrator:true,active:true,regions:['phuket','khao-lak'],revision:1,registered:true}});
+  if(p==='/api/access/signature')return r.fulfill({json:{revision:0,enabled:false,signature:{staffId:user.id,name:'',title:'',workplace:''}}});
   if(p==='/api/refresh')return r.fulfill({json:{jobs:[],running:false,hotels:[]}});
+  if(p==='/api/refresh/activity'){expect(q.method()).toBe('POST');expect(q.headers().authorization).toBe('Bearer synthetic-token');expect(q.postDataJSON()).toEqual({region:'phuket'});return r.fulfill({json:{active:true}});}
   if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[],refresh:{running:false,hotels:[]}}});
   if(p===`/api/documents/${jobId}`)return r.fulfill({json:job});
   if(p==='/api/email/open')return r.fulfill({json:draft});
@@ -44,8 +48,20 @@ async function setup(page:Page,options:{selected?:boolean;handoff?:boolean;failu
  });
  return {calls,unexpected,releasePreview};
 }
-const openComposer=(page:Page)=>page.goto(`http://127.0.0.1:5191/?documentJob=${jobId}&compose=1`);
+const openComposer=(page:Page)=>page.goto(`/?documentJob=${jobId}&compose=1`);
 const chooseExisting=async(page:Page)=>{await page.getByRole('button',{name:'Continue existing thread',exact:true}).click();await page.getByRole('button',{name:`Preview ${first.subject}`,exact:true}).click();};
+
+test('adding required self CC to a saved preparation is saved before thread search',async({page})=>{
+ const {calls,unexpected}=await setup(page,{missingSelf:true});await openComposer(page);
+ await expect(page.getByLabel('Email CC',{exact:true})).toHaveValue('ar@katathani.com');
+ await expect(page.getByRole('button',{name:'Continue existing thread',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Save message',exact:true}).click();
+ await page.getByRole('button',{name:'Continue existing thread',exact:true}).click();
+ await expect(page.getByRole('button',{name:`Preview ${first.subject}`,exact:true})).toBeVisible();
+ expect(calls.find(c=>c.method==='PUT')?.body?.recipients).toEqual({to:['billing@example.test'],cc:['ar@katathani.com'],bcc:['private@example.test']});
+ expect(calls.find(c=>c.path.includes('/threads?'))?.path).toContain('revision=3');
+ expect(calls.some(c=>/\/(send|gmail-draft|test-send)$/.test(c.path))).toBe(false);expect(unexpected).toEqual([]);
+});
 
 test('thread search and conversation paginate with authenticated explicit scope confirmation',async({page})=>{
  const {calls,unexpected}=await setup(page,{paged:true});await openComposer(page);
@@ -64,8 +80,8 @@ test('thread search and conversation paginate with authenticated explicit scope 
 
 test('dirty edits block selection; cancellation preserves draft and late preview cannot reopen it',async({page})=>{
  const {calls,unexpected,releasePreview}=await setup(page,{delayPreview:true});await openComposer(page);await page.getByLabel('Email message',{exact:true}).fill('Retain my unsaved draft');await expect(page.getByRole('button',{name:'Continue existing thread',exact:true})).toBeDisabled();
- await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();await page.getByRole('button',{name:'Continue existing thread',exact:true}).click();await page.getByRole('button',{name:`Preview ${first.subject}`,exact:true}).click();
- await page.getByRole('button',{name:'Close conversation review',exact:true}).click();releasePreview();await expect(page.getByRole('dialog',{name:'Conversation review',exact:true})).toHaveCount(0);await expect(page.getByLabel('Email message',{exact:true})).toHaveValue('Retain my unsaved draft');expect(calls.some(c=>c.path.endsWith('/thread'))).toBe(false);expect(unexpected).toEqual([]);
+ await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Message saved in this preparation.',{exact:false})).toBeVisible();await page.getByRole('button',{name:'Continue existing thread',exact:true}).click();await page.getByRole('button',{name:`Preview ${first.subject}`,exact:true}).click();
+ await page.getByRole('button',{name:'Close conversation review',exact:true}).click();releasePreview();await expect(page.getByRole('dialog',{name:'Conversation review',exact:true})).toHaveCount(0);await expect(page.getByLabel('Email message',{exact:true})).toHaveText('Retain my unsaved draft');expect(calls.some(c=>c.path.endsWith('/thread'))).toBe(false);expect(unexpected).toEqual([]);
 });
 
 for(const failure of ['email_revision_conflict','email_thread_unrelated','email_thread_unavailable'])test(`thread selection ${failure} retains saved message and allows cancellation`,async({page})=>{
@@ -73,7 +89,7 @@ for(const failure of ['email_revision_conflict','email_thread_unrelated','email_
 });
 
 test('selected subject survives template application and explicit clearing keeps current text',async({page})=>{
- const {calls,unexpected}=await setup(page,{selected:true});await openComposer(page);await page.getByRole('button',{name:'Choose template',exact:true}).click();await page.getByRole('button',{name:'Apply to message',exact:true}).click();await expect(page.getByLabel('Email subject',{exact:true})).toHaveValue(first.subject);await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();const body=await page.getByRole('textbox',{name:'Email message',exact:true}).textContent();
+ const {calls,unexpected}=await setup(page,{selected:true});await openComposer(page);await page.getByRole('button',{name:'Choose template',exact:true}).click();await page.getByRole('button',{name:'Apply to message',exact:true}).click();await expect(page.getByLabel('Email subject',{exact:true})).toHaveValue(first.subject);await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Message saved in this preparation.',{exact:false})).toBeVisible();const body=await page.getByRole('textbox',{name:'Email message',exact:true}).textContent();
  await page.getByRole('button',{name:'Start a new email',exact:true}).click();await page.getByRole('button',{name:'Confirm new email',exact:true}).click();await expect(page.getByLabel('Email subject',{exact:true})).not.toHaveAttribute('readonly','');await expect(page.getByLabel('Email subject',{exact:true})).toHaveValue(first.subject);expect(await page.getByRole('textbox',{name:'Email message',exact:true}).textContent()).toBe(body);expect(calls.at(-1)?.body).toEqual({revision:3,threadId:null,confirmed:true});expect(unexpected).toEqual([]);
 });
 

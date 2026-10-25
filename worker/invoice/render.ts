@@ -3,6 +3,7 @@ import {PDFDocument,StandardFonts,rgb,pushGraphicsState,popGraphicsState,rectang
 import fontkit from '@pdf-lib/fontkit';
 import noto from '../statement/fonts/noto-thai';
 import {supportedInvoiceTemplate,type InvoiceAssets,type InvoiceModel} from './types';
+import {validatedInvoiceDisplayLines} from './derive-display-model';
 
 const fail=():never=>{throw Error('document_invoice_layout_invalid');};
 // Tabs are display whitespace, not printable font glyphs. Keep identifiers and source records untouched.
@@ -17,6 +18,7 @@ export function invoiceAmountWords(cents:number){if(!Number.isSafeInteger(cents)
 
 export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Promise<Uint8Array>{
  if(assets.hotel!==model.hotel||!supportedInvoiceTemplate(assets.version)||model.lines.length===0||model.lines.length>=4000||new Set(assets.fixedText.map(t=>t.text)).size!==6)fail();
+ const displayLines=validatedInvoiceDisplayLines(model);
  const doc=await PDFDocument.create();doc.registerFontkit(fontkit);
  const latin=await doc.embedFont(StandardFonts.Helvetica),bold=await doc.embedFont(StandardFonts.HelveticaBold),thai=await doc.embedFont(Uint8Array.from(atob(noto),c=>c.charCodeAt(0)),{subset:true});
  const latinChars=new Set(latin.getCharacterSet()),thaiChars=new Set(thai.getCharacterSet());
@@ -84,7 +86,7 @@ export async function renderInvoice(model:InvoiceModel,assets:InvoiceAssets):Pro
  };
  add();
  const dateX=pos('TRX_DATE_SHORT').x0,descX=pos('DESCRIPTION').x0,refX=pos('REFERENCE_DISPLAYED').x0,debitRight=pos('DEBIT').x1,creditRight=pos('CREDIT').x1;
- for(const line of model.lines){const cells=[wrap(line.date,descX-dateX-6),wrap(line.description,refX-descX-6),wrap(line.reference,debitRight-60-refX)],height=Math.max(...cells.map(c=>c.length))*10+2;
+ for(const line of displayLines){const cells=[wrap(line.date,descX-dateX-6),wrap(line.description,refX-descX-6),wrap(line.reference,debitRight-60-refX)],height=Math.max(...cells.map(c=>c.length))*10+2;
   if(height>350||height>rowLimit-rowTop)fail();if(y+height>rowLimit)add();
   cells.forEach((lines,i)=>lines.forEach((s,j)=>write(s,[dateX,descX,refX][i],y+j*10)));
   for(const [n,right]of [[line.debit,debitRight],[line.credit,creditRight]])if(n){const s=money(n);if(width(s,8)>65)fail();write(s,right-width(s,8),y);}

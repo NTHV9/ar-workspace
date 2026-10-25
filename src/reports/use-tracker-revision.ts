@@ -12,7 +12,6 @@ export function trackerRevisionKey(value:unknown):string|null {
  * on the first valid read, then only on changes; dirty guards preserve edits. */
 export function startTrackerRevisionWatch(client:SupabaseClient,token:string){
   const controller=new AbortController();let prior:string|null=null,inflight=false,pending=false,queued=false;
-  let interval:ReturnType<typeof setInterval>;
   const poll=async()=>{
    if(controller.signal.aborted||inflight||document.visibilityState!=='visible')return;
    pending=false;inflight=true;try{
@@ -29,16 +28,17 @@ export function startTrackerRevisionWatch(client:SupabaseClient,token:string){
    if(inflight||queued||document.visibilityState!=='visible')return;
    queued=true;void Promise.resolve().then(()=>{queued=false;void poll();});
   };
-  const setFallback=(milliseconds:number)=>{clearInterval(interval);interval=setInterval(requestCheck,milliseconds);};
-  setFallback(60000);
+  // Visible clients also prompt the shared backend metadata/version probe.
+  // Keep this cadence with healthy Realtime: provider hints can arrive late.
+  // requestCheck gates hidden tabs and coalesces reads already in flight.
+  const interval=setInterval(requestCheck,5000);
   // Subscribe before the baseline read, then reread on SUBSCRIBED to close
   // changes occurring between the initial API snapshot and channel readiness.
   const channel=client.channel(`ar-tracker-revisions-${crypto.randomUUID()}`)
    .on('postgres_changes',{event:'*',schema:'public',table:'ar_tracker_publications'},requestCheck)
    .subscribe(status=>{
     if(controller.signal.aborted)return;
-    if(status==='SUBSCRIBED'){setFallback(60000);requestCheck();}
-    else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED')setFallback(10000);
+    if(status==='SUBSCRIBED')requestCheck();
    });
   document.addEventListener('visibilitychange',requestCheck);window.addEventListener('focus',requestCheck);requestCheck();
   return()=>{

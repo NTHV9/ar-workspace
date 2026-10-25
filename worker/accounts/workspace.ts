@@ -40,7 +40,7 @@ export async function accountWorkspaceApi(request:Request,env:RefreshEnv&EmailEn
   }
   if(match[4]||match[5])throw Error('account_workspace_invalid');params(url.searchParams,['page']);const page=integer(url.searchParams.get('page'),0);
   if(!account.trim()||account.length>200||/[\u0000-\u001f]/.test(account)||!Number.isSafeInteger(page)||page<0||page>1000000)throw Error('account_workspace_invalid');
-  const result=await backendRpc<{error?:string;rows:unknown[];total:number}>(env,'ar_account_workspace_read',{p_actor:actor,p_hotel:match[1],p_account:account,p_section:match[3],p_offset:page*20,p_limit:20});
+  const result=await backendRpc<{error?:string;rows:unknown[];total:number}>(env,'ar_account_workspace_read',{p_actor:actor,p_hotel:match[1],p_account:account,p_section:match[3]==='documents'?'email_records':match[3],p_offset:page*20,p_limit:20});
   if(result?.error==='account_workspace_forbidden')return json({error:result.error},403);
   if(result?.error==='account_workspace_missing')return json({error:result.error},404);
   if(!result||!Array.isArray(result.rows)||!Number.isSafeInteger(result.total)||result.total<0)throw Error('account_workspace_unavailable');

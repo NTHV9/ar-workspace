@@ -17,3 +17,8 @@ export function documentSource(input:{content:string;statementSource?:unknown;id
 export function assertStatementWorkflowPolicy(payload:Record<string,unknown>){
  if(['statementProbe','combinedStatementAudit','statementHistoryAudit','statementPostTrial','reportDiscovery','printedVisibilityAudit'].some(flag=>payload[flag]))throw Error('document_statement_source_retired');
 }
+
+/** Retired financial/report research routes cannot start new native calls. */
+export function assertInvoiceWorkflowPolicy(payload:Record<string,unknown>){
+ if(['pdfProbe','folioTypeProbe','invoiceContractJob','invoiceGuestProbe','invoiceLedgerProbe','invoiceTaxRulesProbe','invoiceRenderProbe','invoiceReadAudit','invoiceModelProbe'].some(flag=>payload[flag]))throw Error('document_invoice_source_retired');
+}

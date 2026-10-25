@@ -16,16 +16,33 @@ for(const fixture of ['sources','embeddedSources'])test(`${fixture}: opaque PDF.
  },fixture);
  expect(result.every((item:any)=>item.exported===true||item.issues===0)).toBe(true);
 });
-test('actual blue source raster stays blue with readable white replacement, while internal artwork is refused',async({page})=>{
+test('native deletion preserves internal artwork and blue replacements retain their background',async({page})=>{
  await page.goto('/tests/browser/native-background/harness.html');await page.waitForFunction(()=>!!(window as any).fixture);
  const result=await page.evaluate(async()=>{const f=(window as any).fixture,out:any={};
   for(const kind of ['blue','artwork']){const loaded=await f.loadSources(f[kind]),source=loaded.project.pages[0],runs=await f.detectText(source,loaded.documents),layer=f.createReplacementLayer(runs[0],kind),canvas=document.createElement('canvas');
    layer.text=kind==='blue'?'BILL':'';if(kind==='artwork')layer.deleted=true;
    const current={...source,layers:[layer],rowEdits:[{id:'force-raster',kind:'move',x:350,y:250,width:10,height:10,dx:1,dy:0}]};
-   try{await f.renderPage(current,loaded.documents,canvas,1.5);const data=canvas.getContext('2d')!.getImageData(60,54,75,24).data;let white=0,blue=0;for(let i=0;i<data.length;i+=4){if(data[i]>220&&data[i+1]>220&&data[i+2]>220)white++;if(data[i]<40&&data[i+1]<80&&data[i+2]>100)blue++;}out[kind]={white,blue,exported:(await f.exportProject({...loaded.project,pages:[current]},f[kind],loaded.documents))[0].bytes.length>0};}
+   try{await f.renderPage(current,loaded.documents,canvas,1.5);const data=canvas.getContext('2d')!.getImageData(60,54,75,24).data;let white=0,blue=0;for(let i=0;i<data.length;i+=4){if(data[i]>220&&data[i+1]>220&&data[i+2]>220)white++;if(data[i]<40&&data[i+1]<80&&data[i+2]>100)blue++;}const files=await f.exportProject({...loaded.project,pages:[current]},f[kind],loaded.documents);out[kind]={white,blue,exported:files[0].bytes.length>0};
+    if(kind==='artwork'){
+     const original=document.createElement('canvas'),edited=document.createElement('canvas');await f.renderPage(source,loaded.documents,original,4);await f.renderPage(current,loaded.documents,edited,4);
+     const before=original.getContext('2d')!.getImageData(274,176,8,8).data,after=edited.getContext('2d')!.getImageData(274,176,8,8).data;
+     out[kind].unchanged=Array.from(before).every((v,i)=>v===after[i]);out[kind].sourceInk=Array.from(before).filter((_,i)=>i%4!==3).filter(v=>v<30).length;
+     const exported=await f.loadSources([{id:'export',name:'Synthetic artwork proof',kind:'invoice',bytes:files[0].bytes}]),proof=document.createElement('canvas');await f.renderPage(exported.project.pages[0],exported.documents,proof,4);
+     const interior=proof.getContext('2d')!.getImageData(276,178,4,4).data;out[kind].exportedInk=Array.from(interior).filter((_,i)=>i%4!==3).filter(v=>v<30).length;exported.dispose();
+    }}
    catch(error){out[kind]={error:error instanceof Error?error.message:String(error)};}finally{loaded.dispose();}
   }return out;});
- expect(result.blue.exported).toBe(true);expect(result.blue.white).toBeGreaterThan(10);expect(result.blue.blue).toBeGreaterThan(500);expect(result.artwork.error).toMatch(/artwork/);expect(result.artwork.error).toMatch(/Restore original text/);
+ expect(result.blue.exported).toBe(true);expect(result.blue.white).toBeGreaterThan(10);expect(result.blue.blue).toBeGreaterThan(500);expect(result.artwork.error).toBeUndefined();expect(result.artwork.unchanged).toBe(true);expect(result.artwork.sourceInk).toBe(192);expect(result.artwork.exportedInk).toBeGreaterThan(30);
+});
+test('unqualified native deletion cannot mask artwork through the raster fallback',async({page})=>{
+ await page.goto('/tests/browser/native-background/harness.html');await page.waitForFunction(()=>!!(window as any).fixture);
+ const error=await page.evaluate(async()=>{const f=(window as any).fixture,loaded=await f.loadSources(f.artwork),source=loaded.project.pages[0],runs=await f.detectText(source,loaded.documents),layer=f.createReplacementLayer(runs[0],'removed');layer.text='';layer.deleted=true;
+  // An earlier overlay across the source boundary makes native removal
+  // ineligible. The fallback must independently refuse the underlying artwork.
+  const blocker={...layer,id:'prior-overlay',kind:'whiteout',x:layer.x-1,width:1,height:1,original:undefined,sourceText:undefined,deleted:undefined};
+  try{await f.renderPage({...source,layers:[blocker,layer]},loaded.documents,document.createElement('canvas'),1.5);return null;}catch(e){return e instanceof Error?e.message:String(e);}finally{loaded.dispose();}
+ });
+ expect(error).toMatch(/artwork/);expect(error).toMatch(/Restore original text/);
 });
 for(const merge of [false,true])test(`blue native replacement stays searchable through ${merge?'attached merged document map':'initial source'} export`,async({page})=>{
  await page.goto('/tests/browser/native-background/harness.html');await page.waitForFunction(()=>!!(window as any).fixture);

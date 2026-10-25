@@ -1,3 +1,258 @@
+## 2026-10-25 — Approved obsolete report and unused preparation cleanup
+
+The owner separately approves stopping the remaining report-only daily captures
+and historical-log maintenance, then removing only proven obsolete report rows
+after a complete verified recovery export. Canonical current AR source data,
+verified balances/zero/reopened evidence, actual Sent and Sheet dates remain.
+
+The owner confirms no old PDF preparation is actively being edited. A one-time
+exact inventory may retire unused old preparations after verified byte and
+metadata backups, immutable revision/snapshot/object receipts, and fresh negative
+provider/history/reference checks. This explicit approval supersedes the earlier
+no-retrospective-cleanup rule only for those individually backed dispositions.
+Any provider attempt/Draft/uncertain work, shared reference, unresolved generation
+or upload, business/Drive/remittance file or hold remains protected. Managed
+retention alone deletes exact acknowledged objects; no Storage metadata purge.
+F5 still resumes active work. General business-file month retention is unchanged.
+The private recovery data and exact customer identifiers must not enter Git.
+The owner subsequently requests deleting every local recovery copy created for
+this cleanup after verification finishes, including the earlier report exports
+and downloaded PDF archive. These are temporary safety copies, not a permanent
+local archive. Keep only customer-free aggregate verification/release receipts.
+
+## 2026-10-25 — Current work, direct staff sending and explicit preparation exit
+
+The owner approves the eight-item scope in
+[WORKSTREAM_SIMPLIFICATION_20261025](WORKSTREAM_SIMPLIFICATION_20261025.md),
+including the five preceding core findings. Keep current Dashboard balance,
+billing, aging/stage cards, filters and exact Invoice drills. Retire unused daily,
+historical and First billing/Rebilling report surfaces and report-only ingestion.
+Keep first actual billing date for due-date calculation, actual Sent evidence,
+OPERA invoice/tax source readers and Sheet-authoritative R/U/V/W dates including
+employee edits/deletions. Invoice Register remains an unused Admin surface.
+
+Staff use Review & send now; provider Create Gmail draft is Admin-only in UI and
+backend. Existing provider Draft and uncertain-send evidence remain recoverable.
+Persist verified external Sent identity/date before history confirmation, also
+for human-selected matches; a later failure must not imply that mail was unsent
+or authorize another send. External retries still verify the complete message.
+
+Documents & Gmail is not a resumable preparation backlog. Account Email history
+shows actual email attempts/evidence instead of never-attempted PDF/message work.
+Explicit Exit/Cancel requests exact-job discard, removes local batch resume state
+after accepted cleanup, and cleans never-attempted text and temporary bytes when
+admitted work permits. Cleanup skips an in-flight draft save and durably retries.
+Keep ownership/file receipts and every provider/business-history fact. New text
+cleanup requests are marked only on future explicit discarded closures, with no
+retrospective backfill/purge. Existing legacy/Drive/remittance policies remain.
+
+The owner explicitly confirms **F5/reload keeps the active preparation**. Do not
+abandon on unmount, visibility change or reload. Switching Accounts within one
+open batch and PDF-to-email handoff continue that work. Browser disappearance
+alone is not an acknowledged Exit/Cancel command.
+
+The owner replaces an off-page edit warning with prevention: normal drag/numeric
+position/size editing stops inside the page/allocated continuation extent while
+preserving text. Adding rows may allocate continuation pages; do not clip them to
+page 1. Restore/export retain safety checks against corrupted/outside geometry,
+and tolerant rendering must preserve original ink for an invalid replacement.
+Escape must not hide an admitted Create request before its result is visible.
+
+These are approved requirements, not a claim of deployment. Evidence and release
+state are recorded in the latest PROJECT_STATUS checkpoint.
+
+## 2026-10-25 — Verified reopened debt resumes normal work
+
+The owner removes the automatic Needs review barrier caused solely by a verified
+zero-to-nonzero OPERA balance. Such an Invoice follows normal billing/collection
+rules using its existing billing and reminder dates; it is not reset to unbilled.
+Retain the durable verified balance, reopened observation time and source_reopened
+audit transition. Release only the old canonical automatic reason, with a distinct
+policy audit record, when the current source is verified/cleared. Subsequent
+verified refreshes also heal a remaining old automatic flag.
+
+Explicit holds, unrelated review reasons, incomplete/unverified source data and
+all identity/send guards remain authoritative. No automatic sending, financial
+amount or Sheet-date changes follow from this policy. All six financially enabled
+hotels use the generic rule; TSUN remains pre-opening under its existing schema.
+This supersedes the earlier requirement for explicit review solely after a
+verified-zero invoice returned to a nonzero balance.
+
+## 2026-10-25 — Current warning work and archived warning history
+
+The owner approves repairing warnings for confirmed-zero invoices and rows no
+longer in the completed Sheet snapshot. Removed rows leave current review work
+without establishing financial zero or retracting business/Sent/date history.
+Retain the exact warning record as archived with a reason; reappearing rows are
+evaluated anew rather than treated as permanently acknowledged.
+
+Confirmed closure uses exact internal Hotel/Account/Invoice IDs, the durable
+verified-zero ledger and current verified/cleared zero state. Missing Folio alone
+is not a contradiction. Use the latest independently recorded provider identity,
+not a stale warning hint or old matched identity. Known identity contradictions,
+an unmatched nonempty Account without full corroboration, and compatible active
+or unknown debt still block closure. Positive-debt matching/writing rules remain.
+
+Status counts and pagination share a current-only projection, hiding confirmed
+closure immediately between synchronization cycles. Completed membership archives
+inactive records. An already-open administrator review refreshes when the status
+epoch changes and resets old cursors; staff still sees last-success timestamp only.
+No provider date write, resend, financial amount change or Aging Master change is
+part of this warning-lifecycle repair.
+
+## 2026-10-25 — Invoice-local Sheet credit and administrative synchronization details
+
+The owner approves blank S being filled from the current Account credit rule;
+valid nonempty employee S controls only its Invoice. Clearing S removes the local
+override and restores the Account rule. An actual auto-fill echo retains default
+provenance; a later employee edit, including returning to an old fill value, stays
+an explicit override. Account rule changes preserve explicit per-Invoice overrides.
+Unknown Account rules are not invented. Only blank S may be filled by this path;
+R/U/V/W staff edits and deletions remain authoritative and are never backfilled.
+
+T is independent: preserve the workbook's Aging Master formula and the web's own
+due-date calculation, excluding T from comparisons and warning counts. This
+supersedes the older S/T reference-only rule for S and T respectively.
+
+A uniquely corroborated current Hotel + Invoice + Folio + posting-date tuple can
+reconcile a changed Account. Count unresolved source candidates too; incomplete
+evidence, duplicates, unknown zero and unverified sources remain held. Keep the
+provider identity separate from its current ledger relationship and audit moves;
+do not move or fabricate Sent history/recipients. Row positions are temporary
+write locations found from a fresh identity read, never Invoice identifiers.
+
+Retire warnings using the durable exact verified-zero balance ledger and current
+verified/cleared source state; preserve their audit records and business history.
+Current rows need a validated match; archived rows must not contradict a pending
+identity warning. Historical confirmed closure does not expire merely because it
+was observed earlier than 15 minutes ago. A missing/failed source lookup, absent
+Sheet row or changed identity alone is not financial zero. Partial active or
+unverified Folio candidates block both matching and closure retirement. Fresh
+native reads also reject duplicate complete tuples after command selection.
+
+Only administrators see synchronization details, errors, queues, differences,
+Picker and management commands. Members retain the configured Sheet link and
+Last successful synchronization only, with a minimal backend status projection
+and denied detail/mutation routes. Existing regional authorization remains.
+
+## 2026-10-25 — Confirmed-Sent row additions alongside unchanged Aging Master
+
+The owner authorizes the exact ten previously quarantined billing rows with actual
+Sent dates, and automatic missing-row insertion for future confirmed sends. Keep
+Aging Master unchanged. This is append-only supplementation, not restoration of
+the paused complete financial publisher or LFS-only updater proposal. Existing
+rows and staff-edited/deleted dates are authoritative and must not be backfilled.
+Retain durable retries for safe failures and read back unknown provider outcomes;
+never resend mail or blindly repeat an uncertain insertion. The owner separately
+authorizes removing the exact three old closed GO rows after the correct ITS rows
+and actual billing dates are verified, preserving recovery and business history.
+The regional self-CC and activity-driven refresh changes are integrated into this
+release; their source and acceptance evidence remain in Git independently of chats.
+
+## 2026-10-25 — OPERA current refresh follows actual usage
+
+Follow-up owner clarification: count an active user's **entire authorized regional scope**, regardless of the currently selected region. A user allowed Phuket and Khao Lak keeps both regions eligible for proactive refresh; a one-region user keeps only that region eligible. This supports moving between regions with pre-refreshed data. Backend-derived grants and current database membership determine scope, never browser-supplied rights. Shared hotel jobs, idle expiry, manual/daily runs and fast Sheet synchronization remain as agreed.
+
+The owner confirms five-minute current OPERA checks only while users are actually using the application, account batching within durable steps, retained 07:00/19:00 Thai history/discovery and unchanged fast bidirectional Sheet sync. Display saved data/source time first, then adopt a complete verified publication. This supersedes the 1 October always-on proactive schedule. Backend jobs requiring OPERA keep their own scoped live reads; generic Sheet/Gmail/status/cache work must not keep OPERA activity alive. No new prewarm time, partial publication, source-check removal or monthly-cost guarantee is approved by this change. Engineering defaults and measured validation are in [the release report](ACTIVE_OPERA_REFRESH_20261025.md).
+
+## 2026-10-24 — Successful web Gmail sends record history immediately
+
+The owner explicitly requests that a successful Gmail send API response for a
+message submitted by this web app immediately record its billing/collection
+history. Do not make staff verify the same message/attachment readback before
+recording a normal successful web send. This replaces that earlier readback gate
+for direct sends and existing drafts explicitly sent from the web.
+
+Persist the immutable provider receipt and use the existing atomic history
+transaction. Sending remains a human action. A created draft is not sent; an
+ambiguous/failed provider response is not success and never permits automatic
+resending. Drafts sent outside the web and diagnostic emails retain independent
+evidence verification. Status must distinguish Gmail acceptance from history
+recording, and a failed history attempt retries the original delivery without
+sending another email. Keep receipt provenance, account/hotel identity, workflow
+revision and no-duplicate protections. Google Sheet master-date authority remains
+unchanged; recording a Sent event is not a claim that a Sheet write completed.
+
+## 2026-10-24 — Invoice comparison acceptance clarified by owner
+
+Invoice amounts and the wording/meaning of each item must match OPERA AR.
+Line breaks, row counts arising from equivalent grouping, and layout need not be
+100% identical, provided no important information is lost or changes meaning.
+Previously approved equivalent API accommodation wording remains accepted. The
+owner also explicitly accepts the API payment label without unavailable masked
+card/expiry details. Keep exact monetary/VAT/NonVAT and invoice identity checks.
+Do not spend further work on pixel/line-layout equivalence alone.
+
+## Final AR acceptance: amounts and item meaning — 24 October 2026
+
+The owner explicitly confirms that line grouping and layout do not need to match
+the native report 100%. Required amounts and item wording/meaning must agree.
+Keep exact AR identity, source ownership and the independently checked before-VAT,
+VAT, NonVAT, gross, outstanding, debit and credit requirements. Do not continue
+layout-only or grouping-only refinements after these criteria pass.
+
+The exact Accommodation Charge / Accommodate Charge wording pair is accepted as
+meaning-equivalent; the first 25 observed rows were a subset, not a count limit.
+The owner also explicitly accepts the API payment label for the identified
+KMasterCard case without the native masked-card/expiry detail, which the bounded
+source reads did not provide. Do not fabricate card details or hardcode a typo
+replacement. Other item meanings remain subject to source-backed verification.
+Preserve native baselines and report exact, accepted-semantic and layout-only
+differences separately.
+
+## AR parity is field-level, not total-only — 23 October 2026
+
+The owner reiterates that generated Invoices must agree with OPERA AR Invoices
+in tax detail, not merely the final total. Acceptance compares before-VAT, posted
+VAT and NonVAT separately, as well as gross, printed outstanding, debit/credit
+and relevant visible line content. Service-charge treatment must follow qualified
+source evidence; excluding service from a VAT calculation base does not by itself
+classify that service as NonVAT in the AR footer. Offset tax/base differences
+cannot pass because their gross cancels. Guest Folio is not an AR reference.
+
+## AR financial evidence excludes Guest Folio reports — 23 October 2026
+
+The owner explicitly rejects `folioReports` / Guest Folio PDFs as financial
+sources or tax-validation fallbacks for AR Invoice generation. Exact current
+OPERA AR Invoice PDFs are the acceptance references. Identifier-only reservation
+metadata may still be read with exact scope checks; it is not AR monetary proof.
+
+The replacement must use qualified AR-selected posted facts and independently
+validated rules where authorized, without per-Invoice overrides. Do not deploy a
+partial replacement that converts previously working invoices into mass refusals.
+Recorded-source replay is regression evidence, not a fresh provider interval.
+This supersedes earlier recommendations for native Guest aggregate controls in
+AR generation; existing production usage is legacy pending the complete cutover.
+
+## Shared current-rule and NonVAT qualification — 22 October 2026
+
+The owner delegates the choice of a correct automatic rule and confirms it must
+apply to future matching cases, not individual Invoice IDs. Prefer original posted
+VAT; when exact native selection is ambiguous, allow a bounded all-VAT7 current
+OPERA-calculator proof only with complete source coverage and stable rereads.
+Do not relabel calculated tax as historical posted VAT or apply VAT7 to mixed
+NonVAT invoices. See `INVOICE_FINAL_TAX_RULES_20261022.md` for the full contract.
+
+For direct NonVAT, retain explicit OPERA flags and a named owner-confirmed TSAN
+6002 Taxi Service policy, with strict metadata, zero posted tax and unchanged
+base-only effective OPERA calculations at actual signed amounts. The owner
+confirmed Airport and Taxi treatment and separately verified TSAN6002's flag is
+unchecked; no checkbox change is authorized or made. Zero calculator tax alone
+does not classify other codes. No per-invoice override or broad description match.
+
+## Printed Invoice amount versus remaining AR balance — 22 October 2026
+
+The owner clarified that an OPERA Invoice retains its invoice amount while the
+Statement shows the remaining receivable after separately applied payments.
+Independent current AR PDFs confirm this distinction. The Invoice footer and
+amount-in-words must use the complete selected invoice posting net, reconciled
+to OPERA `invoice.amount`, rather than substitute `invoice.balance`. Payments
+that are actual selected Invoice lines remain in its printed credit column and
+balance. External AR allocations absent from those lines do not reduce that
+printed Invoice balance. Statement/dashboard/open-balance and source-freshness
+checks continue to use OPERA's current AR balance. This supersedes earlier repair
+notes that described the current AR balance as the printed Invoice footer value.
+
 ## PDF corpus qualification and uploaded originals — 21 October 2026
 
 The owner requests testing all of our current bills, beyond representative hotel
@@ -465,3 +720,20 @@ Billing requirement/term/first billing/latest reminder และ note ใช้�
 - เจ้าของให้เอา Fit page ออกจาก Preview zoom; ใช้ Fit width เป็นค่าเริ่มต้น และคงเปอร์เซ็นต์ซูม/เลือกหน้าที่เหลือ. แทนข้อกำหนดเริ่ม Preview แบบ Fit page ใน checkpoint ก่อนหน้า
 - เพิ่มแถวต้องอยู่หลังข้อความทุกบรรทัดของแถวเดิม ไม่ตัดชื่อที่ wrap และไม่แบ่งกรอบหรือแถบ Balance Due. แถวใหม่ยังแก้ข้อความ/เพิ่มซ้ำ/ลบ/Undo ได้ และเนื้อหาด้านล่างเลื่อนตาม
 - ขอบเขตนี้เป็น PDF editor เท่านั้น ไม่เปลี่ยน source bytes, ยอด AR, การส่งอีเมล หรือ integration
+## Regional self CC and automatic account recipients — 25 October 2026
+
+The owner requests the sending region's AR mailbox in CC in addition to the
+Account's configured CC: `ar@katathani.com` for KAT/TSK and
+`ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN. The owner clarifies that self CC
+must always be present on editable email preparations, without pressing a button.
+Other recipient addresses remain editable and are preserved. Keep self exactly
+once in CC, comparing addresses without case or outer-whitespace differences;
+an existing self address in To/BCC is represented in CC instead of duplicated.
+
+Remove the confusing **Load account recipients** button. New preparations continue
+to receive the saved Billing/Collection recipients through the existing open-draft
+flow. Changing a message does not change Account settings; changing its purpose
+does not silently replace already edited recipients. Required self CC is visible
+and saved before the existing human-triggered Gmail draft or Send Now review.
+Retain already frozen Gmail delivery snapshots and uncertain/sent preparations;
+do not rewrite historic recipients or trigger replacement sends.

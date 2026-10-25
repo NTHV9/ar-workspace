@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic default CC verification</title></head><body><div id="root"></div><script type="module">
+import React from 'react';import{createRoot}from'react-dom/client';import EmailComposer from '../../../src/EmailComposer';import{CollectionPolicyProvider}from '../../../src/collection/PolicyContext';import{isHotelId}from '../../../src/domain/hotels';
+import '@fontsource/plus-jakarta-sans/latin-400.css';import '@fontsource/plus-jakarta-sans/latin-500.css';import '@fontsource/plus-jakarta-sans/latin-600.css';import '@fontsource/plus-jakarta-sans/latin-700.css';import '../../../src/styles.css';import '../../../src/ui-depth.css';import '../../../src/ui-typography.css';
+const hotel=new URLSearchParams(location.search).get('hotel');if(!isHotelId(hotel))throw Error('Synthetic hotel required');
+const job={id:'00000000-0000-4000-8000-000000000001',hotel,account_id:'synthetic',account_name:'Synthetic Travel',invoice_ids:['SYN-1'],manifest:[{id:'SYN-1',invoice_no:'SYN-1'}],state:'ready',revision:1,exports:[],files:[],acknowledged:true};
+createRoot(document.getElementById('root')).render(React.createElement(CollectionPolicyProvider,{token:'synthetic'},React.createElement(EmailComposer,{job,token:'synthetic',onClose:()=>{}})));
+</script></body></html>

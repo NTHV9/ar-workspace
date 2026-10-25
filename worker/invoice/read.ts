@@ -1,13 +1,17 @@
+import {readDirectZeroTaxEvidence} from './direct-zero-tax';
+import {readEmbeddedGenerateEvidence} from './embedded-generate-read';
+import {currentArTaxSource,refreshCurrentArRules} from './current-ar-tax';
+import {canonical} from './ar-tax';
 import {nativeTaxReport} from './tax-report-profile';
 import {readArTaxEvidence,readNativeInvoiceTaxControls,financialPostingFingerprint,type ArTaxReader} from './ar-tax-read';
 import {accountWithAddressee} from '../documents/addressee';
 import {OperaError,type OperaReader} from '../opera/client';
-import {historicalFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
+import {historicalFolioSelector,nativeFolioSelector,type DocumentInvoice} from '../documents/native-invoice';
 import {amountCents} from '../opera/normalize';
 import {readScopedInvoiceHistory} from '../opera/printed-invoices';
 import {collectPages} from '../opera/pagination';
 import {invoiceModel,invoiceTaxEntries,record,type InvoicePacket} from './model';
-type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>&Partial<Pick<OperaReader,'profile'|'folioReport'|'folioTypeName'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'>>;
+type Reader=Pick<OperaReader,'account'|'invoiceHistory'|'reservationFolios'|'financialTransactionDetail'|'invoicePostings'|'invoicePostingBreakdown'|'invoiceTransactionDetails'|'invoiceReservation'>&Partial<Pick<OperaReader,'accountsByNumber'|'profile'|'folioReport'|'folioTypeName'|'invoiceTransactionCodeRules'|'invoiceChargeSimulation'>>;
 const fail=():never=>{throw Error('document_source_changed');};
 const list=(value:unknown)=>{if(!Array.isArray(value))return fail();return value.map(record);};
 export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,qualifyArTax=false,onRenderStart:()=>void=()=>{}):Promise<InvoicePacket>{
@@ -67,20 +71,41 @@ export async function readInvoicePacket(reader:Reader,manifest:DocumentInvoice,q
  // Read their exact transaction identities, including all generated postings;
  // the model independently checks account/invoice/folio, amounts and tax facts.
  for(let offset=0;offset<missingIds.length;offset+=40){const ids=missingIds.slice(offset,offset+40);arDetails.push({ids,response:await reader.invoiceTransactionDetails(ids)});}
- let arTax:Pick<InvoicePacket,'arSimulations'|'nativeTaxControls'>={};
+ let arTax:Pick<InvoicePacket,'arTransfer'|'arSimulations'|'arPostedGenerates'|'nativeTaxControls'>={};
  if(qualifyArTax&&arDetails.length&&nativeTaxReport(manifest.hotel)&&reader.folioReport&&reader.folioTypeName&&reader.invoiceTransactionCodeRules&&reader.invoiceChargeSimulation){
-  arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,postings,arDetails,onRenderStart);
+  let ambiguousNative=false;
+  try{nativeFolioSelector(historical,manifest);}catch(error){if(error instanceof OperaError&&error.stage==='folio_window_ambiguous')ambiguousNative=true;else throw error;}
+  if(ambiguousNative){
+   // Only an ambiguous native selector invokes this alternative. Network/auth,
+   // source changes and invalid native PDFs never trigger a weaker fallback.
+   const before=structuredClone(currentArTaxSource({manifest,account,invoice,postings,taxRows,taxCodes:uniqueCodes,arDetails}));
+   const evidence=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,invoice,postings,arDetails,onRenderStart,true);
+   const reads=await Promise.allSettled([readInvoicePacket(reader,manifest,false),refreshCurrentArRules(evidence.arSimulations,code=>reader.invoiceTransactionCodeRules!(code))] as const);
+   if(reads[0].status==='rejected')throw reads[0].reason;if(reads[1].status==='rejected')throw reads[1].reason;
+   const fresh=reads[0].value,after=structuredClone(currentArTaxSource(fresh));if(canonical(before)!==canonical(after))throw Error('document_source_changed');
+   const qualified:InvoicePacket={...fresh,arSimulations:reads[1].value,currentArTaxProof:{version:1,sourceBefore:before,sourceAfter:after}};
+   invoiceModel(qualified);return qualified;
+  }
+  arTax=await readArTaxEvidence(reader as Reader&ArTaxReader,manifest,account,invoice,postings,arDetails,onRenderStart);
   const finalPostings=await reader.invoicePostings({...scope,invoiceNo:manifest.invoice_no,folioNo:manifest.folio_no,internalFolioWindowId:invoice.internalFolioWindowID as string});
   if(financialPostingFingerprint(finalPostings)!==financialPostingFingerprint(postings))throw Error('document_source_changed');
  }
  // Recheck the AR balance after the slower postings/tax reads to fence a payment
  // or adjustment arriving during preparation; accounting records remain read-only.
- const addressedAccount=await accountWithAddressee(reader,manifest.hotel,manifest.account_id,account);
+ // Reuse the exact linked-profile response already checked for the AR
+ // stationery. Consume its tax identity only after those scope checks pass;
+ // this adds no second lookup and never uses another folio payee's profile.
+ let stationeryProfile:unknown;const readProfile=reader.profile?.bind(reader);
+ const addressedAccount=await accountWithAddressee(readProfile?{profile:async profileId=>{const response=await readProfile(profileId);stationeryProfile=response;return response;}}:{},manifest.hotel,manifest.account_id,account);
+ const linkedTaxInfo=stationeryProfile===undefined?undefined:record(record(stationeryProfile).profileDetails).taxInfo;
+ const linkedTaxNumber=linkedTaxInfo==null?undefined:record(linkedTaxInfo).tax1No;
+ if(linkedTaxNumber!=null&&typeof linkedTaxNumber!=='string')throw Error('document_invoice_header_invalid');
  const ending=list(record(await reader.financialTransactionDetail(scope)).details);if(ending.length!==1||ending[0].hotelId!==manifest.hotel||record(ending[0].accountId).id!==manifest.account_id)fail();const last=list(ending[0].invoices).filter(i=>String(i.transactionNo)===manifest.id);if(last.length!==1||!valid(last[0])||amountCents(last[0].amount,'THB')!==amountCents(invoice.amount,'THB'))fail();
  const profileId=account.profileId&&record(account.profileId).id;
  const payeeWindow=Array.isArray(folioInfo.folioWindows)?list(folioInfo.folioWindows).find(w=>w.folioWindowNo===window&&w.internalFolioWindowID===invoice.internalFolioWindowID):undefined;
  const payee=payeeWindow?.payeeInfo?record(payeeWindow.payeeInfo):undefined;
- const payeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
+ const folioPayeeTaxNumber=profileId&&payee?.payeeId&&record(payee.payeeId).id===profileId&&typeof payee.payeeTaxNumber==='string'?payee.payeeTaxNumber:undefined;
+ const payeeTaxNumber=folioPayeeTaxNumber?.trim()||(typeof linkedTaxNumber==='string'?linkedTaxNumber.trim():undefined);
  return {...arTax,manifest,account:addressedAccount,invoice,reservation,postings,taxRows,taxCodes:uniqueCodes,arDetails,payeeTaxNumber,customReference:customReference as string|undefined};
 }
 export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,now?:Date,onRenderStart:()=>void=()=>{}){
@@ -96,9 +121,14 @@ export async function readInvoiceModel(reader:Reader,manifest:DocumentInvoice,no
   }
  }
  if(!packet)throw Error('document_invoice_source_unstable');
+ packet=await readDirectZeroTaxEvidence(packet,reader.invoiceTransactionCodeRules?.bind(reader),()=>readInvoicePacket(reader,manifest),reader.invoiceChargeSimulation?.bind(reader),reader.folioReport&&reader.folioTypeName?()=>readNativeInvoiceTaxControls(reader as Reader&Pick<ArTaxReader,'folioReport'|'folioTypeName'>,manifest,onRenderStart):undefined);
  try{return invoiceModel(packet,now);}catch(error){
   // Only tax-base/service classification can request this independent proof. Identity,
   // coverage, duplicate and monetary mismatches retain their original failures.
+  if(error instanceof Error&&error.message==='document_invoice_tax_code_unsupported'&&!packet.nativeTaxControls&&reader.invoiceTransactionCodeRules){
+   const qualified=await readEmbeddedGenerateEvidence(packet,code=>reader.invoiceTransactionCodeRules!(code),()=>readInvoicePacket(reader,manifest),reader.invoiceChargeSimulation?(code,amount)=>reader.invoiceChargeSimulation!(code,amount):undefined);
+   if(qualified)return invoiceModel({...qualified,directZeroTaxProof:packet.directZeroTaxProof},now);
+  }
   if(!(error instanceof Error)||!['document_invoice_tax_rate_unsupported','document_invoice_tax_code_unsupported'].includes(error.message)||packet.nativeTaxControls||!reader.folioReport||!reader.folioTypeName)throw error;
   const nativeTaxControls=await readNativeInvoiceTaxControls(reader as Reader&Pick<ArTaxReader,'folioReport'|'folioTypeName'>,manifest,onRenderStart);
   const invoice=record(packet.invoice),scope={hotel:manifest.hotel as Parameters<OperaReader['financialTransactionDetail']>[0]['hotel'],accountId:manifest.account_id,transactionId:manifest.id};

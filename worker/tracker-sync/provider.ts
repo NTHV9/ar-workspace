@@ -3,8 +3,10 @@ import {google,identity} from '../drive/provider';
 import {boundedBytes,readJson} from '../drive/shared';
 import type {RegionId} from '../../src/domain/hotels';
 import type {TrackerAdapter,TrackerEnv,ProviderSnapshot,ProviderWrite} from './service';
-import {prepareTrackerWorkbook,type TrackerCellChange} from './workbook';
-import {readNativeTracker,writeNativeTrackerBatch} from './native';
+import {prepareTrackerWorkbook,readTrackerSentRowContext,appendTrackerSentRows,validTrackerCredit,type TrackerCellChange,type TrackerSentSourceCell} from './workbook';
+import {readNativeTracker,readNativeTrackerChangeHint,writeNativeTrackerBatch} from './native';
+import {appendNativeTracker,readNativeAppendSheetId} from './append-native';
+import type {SentAppendInput,SentAppendResult} from './append';
 
 const XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',NATIVE='application/vnd.google-apps.spreadsheet';
 const targets={phuket:{name:'Master_KAT_AR_Tracker_Phuket.xlsx',mime:XLSX},'khao-lak':{name:'Master_SAN_AR_Tracker',mime:NATIVE}} as const;
@@ -56,6 +58,17 @@ export async function readTrackerWorkbook(env:TrackerEnv,owner:string,region:Reg
  return {version:snapshot.version,rows:snapshot.parsed.rows,schemaFingerprint:snapshot.parsed.schemaFingerprint,
   capabilities:{conditionalWrite:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'proven':'unverified',writeAssurance:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'cas':'held'}};
 }
+/** A change hint only. The normal adapter still rereads and validates all
+ * content/identity before committing any business facts or provider writes. */
+export async function readTrackerFileVersion(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<string>{
+ target(env,region,fileId);const token=await access(env,owner);
+ const observed=await metadata(token,region,fileId);
+ // Drive versions for native documents can lag committed cell edits. Read a
+ // bounded primitive-value projection for a hint; the full adapter remains the
+ // sole source of validated facts. No change token is assumed monotonic.
+ if(region==='khao-lak')try{return await readNativeTrackerChangeHint(token,fileId);}catch(error){if(!(error instanceof Error)||error.message!=='tracker_native_hint_too_large')throw error;}
+ return observed.version;
+}
 /** Version comparisons are observations, never atomic authorization. v3 If-Match
  * was ignored by the live synthetic probe; native conditional writes remain
  * unproven. Preserve a visible conflict hold rather than overwrite a collaborator. */
@@ -67,7 +80,7 @@ export async function writeTrackerBatch(env:TrackerEnv,owner:string,region:Regio
  if(region==='khao-lak'&&env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true'){const token=await access(env,owner),meta=await metadata(token,region,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict'};return writeNativeTrackerBatch(token,fileId,inputs);}
  if(region!=='phuket'||(env as CasEnv).TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict'};
  if(!inputs.length||inputs.length>100||inputs.reduce((sum,input)=>sum+input.changes.length,0)>300)throw Error('tracker_batch_limit');
- if(inputs.some(input=>!input.changes.length||input.changes.some(c=>!['R','U','V','W'].includes(c.field)||typeof c.value!=='string')))throw Error('tracker_patch_forbidden');
+ if(inputs.some(input=>!input.changes.length||input.changes.some(c=>c.field==='S'?c.expected!==null||!validTrackerCredit(c.value):!['R','U','V','W'].includes(c.field)||typeof c.value!=='string')))throw Error('tracker_patch_forbidden');
  const token=await access(env,owner),current=await readStable(token,region,fileId);
  if(!current.etag||inputs.some(input=>input.version!==current.version)||current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true)return {status:'conflict'};
  let bytes:Uint8Array;
@@ -79,4 +92,46 @@ export async function writeTrackerBatch(env:TrackerEnv,owner:string,region:Regio
  try{const confirmed=await readStable(token,region,fileId);if(await digest(confirmed.bytes)!==await digest(bytes))return {status:'conflict',version:confirmed.version};return {status:'written',version:confirmed.version};}
  catch{return {status:'uncertain'};}
 }
-export const trackerAdapter:TrackerAdapter={read:readTrackerWorkbook,write:writeTrackerCells,writeBatch:writeTrackerBatch};
+/** Appending is separate from date writeback: an existing identity is never
+ * modified, including a deliberately blank date or a changed staff formula. */
+export async function appendSentTrackerRow(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:SentAppendInput):Promise<SentAppendResult>{
+ target(env,region,fileId);if(env.TRACKER_SENT_ROW_APPEND_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+ let started=false;
+ try{
+  const token=await access(env,owner);
+  if(region==='khao-lak'){
+   if(env.TRACKER_NATIVE_BEST_EFFORT_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+   const meta=await metadata(token,region,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict',mutationStarted:false};
+   const gid=await readNativeAppendSheetId(token,fileId);
+   return appendNativeTracker(token,fileId,{sheetId:gid,sheetTitle:'ลูกหนี้ เขาหลัก',metadataId:input.plan.metadataId,rowKey:input.plan.rowKey,identity:input.identity,values:input.plan.values,priorUncertain:input.priorUncertain});
+  }
+  if(env.TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+  const current=await readStable(token,region,fileId);if(!current.etag||current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true)return {status:'conflict',mutationStarted:false};
+  const identityKey=(i:{hotel:string;accountNo:string;invoiceNo:string;folioNo?:string|null;transactionDate?:string|null})=>JSON.stringify([i.hotel,i.accountNo,i.invoiceNo,i.folioNo??null,i.transactionDate??null]);
+  const context=readTrackerSentRowContext(current.bytes,region),matches=context.rows.filter(r=>identityKey(r.identity)===identityKey(input.identity));
+  if(matches.length>1||context.rows.some(r=>r.rowKey===input.plan.rowKey&&identityKey(r.identity)!==identityKey(input.identity)))return {status:'conflict',mutationStarted:false};
+  const written=(bytes:Uint8Array):boolean=>{
+   const rows=prepareTrackerWorkbook(bytes,region).snapshot.rows.filter(r=>identityKey({...r,folioNo:r.folioNo??r.folio})===identityKey(input.identity));
+   return rows.length===1&&rows[0].rowKey===input.plan.rowKey&&(['R','U','V','W'] as const).every((field,index)=>rows[0].fields[field]===input.plan.values[[17,20,21,22][index]]);
+  };
+  if(matches.length===1)return {status:input.priorUncertain&&written(current.bytes)?'written':'exists',identityMatched:true,mutationStarted:false,version:current.version};
+  if(input.priorUncertain)return {status:'uncertain',mutationStarted:false,version:current.version};
+  const dates=new Set([6,17,19,20,21,22,23,29,30]);
+  const cells=input.plan.values.map((value,index):string|number|null|TrackerSentSourceCell=>{
+   if(value!==null&&typeof value==='object')return {value:value.formula,formula:true};
+   if(typeof value==='boolean')throw Error('tracker_append_invalid');
+   return dates.has(index)&&typeof value==='string'&&value!==''?{value,date:true}:value;
+  });
+  const bytes=appendTrackerSentRows(current.bytes,region,[{rowKey:input.plan.rowKey,identity:input.identity,values33:cells}]);
+  let response:Response|undefined;started=true;
+  try{response=await v2(token,fileId,'PUT',{headers:{'If-Match':current.etag,'Content-Type':XLSX},body:bytes as BodyInit});}catch{/* Readback can acknowledge a lost response without another upload. */}
+  if(response&&[412,429].includes(response.status)){await response.body?.cancel();return {status:'uncertain',mutationStarted:true,retrySafe:true,rejectedStatus:response.status,version:current.version};}
+  await response?.body?.cancel();
+  try{const after=await readStable(token,region,fileId);if(written(after.bytes))return {status:'written',identityMatched:true,mutationStarted:true,version:after.version};
+   const observed=readTrackerSentRowContext(after.bytes,region).rows.filter(r=>identityKey(r.identity)===identityKey(input.identity));
+   if(observed.length===1)return {status:'exists',identityMatched:true,mutationStarted:true,version:after.version};
+  }catch{/* The durable append command remains uncertain; never retry blindly. */}
+  return {status:'uncertain',mutationStarted:true};
+ }catch{return {status:'uncertain',mutationStarted:started,...(!started?{retrySafe:true}:{})};}
+}
+export const trackerAdapter:TrackerAdapter={read:readTrackerWorkbook,write:writeTrackerCells,writeBatch:writeTrackerBatch,appendSentRow:appendSentTrackerRow};

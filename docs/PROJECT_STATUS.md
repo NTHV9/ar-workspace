@@ -1,3 +1,2172 @@
+## 2026-10-25 — Approved obsolete work cleanup completed; temporary copies removed
+
+**Implemented, tested, deployed and enabled.** Runtime source
+`85bef92a471206ba4c57de81ce6d150cad3e1797`, Worker
+`aa6d8e2e-ada9-4230-9304-771bd79c8485`, passes same-head CI1057
+`40201587545`: 4,720 unit tests, 142 migrations/36 SQL fixtures plus actual
+Save/Exit concurrency, 534 browser cases, 3 performance and 15 publication
+checks. Live health and all 56 JS/CSS/WASM hashes match. Both obsolete history
+flags default false and are disabled live; ordinary retention and OPERA refresh
+remain enabled. Current Phuket and Khao Lak Dashboards work after the purge.
+
+All 222,473 rows in the exact 16 obsolete report datasets were removed only after
+verified encrypted recovery exports. They still read back empty after subsequent
+current refreshes. The exact 265 approved unused preparations are retired with
+immutable backup/revision/object receipts, their never-attempted message text is
+cleared, and resume is blocked. All 406 approved file objects (63,052,049 bytes)
+now have provider deletion acknowledgement, observed absence and deleted
+retention records; there are no remaining or uncertain objects in that set.
+The 97 protected older files (22,120,211 bytes) remain intact. Actual Sent events
+(143) and Sheet dates/membership (2,016 rows) retain their original fingerprints;
+Gmail attempts are unchanged and no new delivery was created. Background mail
+reconciliation continues updating its check timestamp, so the entire delivery
+row hash is not an immutable business-evidence checksum. Current money remained
+unchanged during the guarded report purge; later source verification timestamps
+continue to refresh normally.
+
+The exact cleanup used normal managed admission, hash checks, claims, arming,
+provider deletion and readback. First-pass eligibility observation and one
+source-refresh cancellation were rechecked before known stopped cleanup runs
+were retried; no uncertain provider command was blindly repeated. No real mail,
+resend, OPERA accounting write or Sheet-date write was performed.
+
+**Owner-requested local-copy disposal completed.** The downloaded PDF ZIP, both
+local report/metadata recovery sets, temporary recovery keys and exact private
+inventory copies were deleted and verified absent after all data/runtime checks.
+Only customer-free aggregate verification/release evidence remains. A broad
+recursive deletion was rejected by automatic policy; narrower verified exact-file
+removal completed the requested copy disposal. An additional optional cleanup of
+four stopped synthetic SQL test clusters and technical scratch files was also
+rejected; these contain synthetic/technical data, not the deleted customer
+recovery copies. Their known remaining size is approximately 307 MB plus 15 MB
+of technical scratch; no further deletion workaround was attempted.
+
+
+## 2026-10-25 — Obsolete report rows removed after verified recovery
+
+**Report data cleanup completed.** An encrypted private export of all 16 approved
+report-only datasets was decrypted and checked row-by-row against source counts
+and SHA-256 fingerprints: 222,473 rows. A guarded exact-table transaction rechecked
+those snapshots and external dependencies, removed only these report rows, and
+verified unchanged current Accounts/Invoices, verified balances, actual Sent and
+Sheet R/U/V/W fingerprints. All 16 read back empty. Database size fell from
+451,046,547 to 222,219,411 bytes. Actual Phuket and Khao Lak current Dashboards load.
+No PDF/preparation bytes have been deleted at this checkpoint.
+
+Runtime 4f3eea2133b31444906c8ebe955ba4089c849684 passed same-head CI1056
+(40199390141): 4,720 unit, 142 migrations/36 SQL fixtures and actual Save/Exit
+concurrency, 533 browser, 3 performance and 15 publication checks. Worker
+78c7c06b-d1b9-445c-95df-03935bb00b6b is healthy; all 56 JS/CSS/WASM hashes match.
+Both history flags are explicitly false; ordinary retention and OPERA refresh stay
+true. A simultaneous local SQL benchmark timed out under browser/decryption load;
+the final isolated hosted-order replay passes without weakening its timeout.
+
+Real browser use exposed a maintenance-entry omission: fresh navigation deliberately
+clears tab auth and successful Google sign-in opens Aging. A collapsed Admin-only
+Storage link now uses existing internal navigation to the protected backup utility,
+keeping that auth policy intact. The actual-App entry regression fails before the
+link and all six backup browser cases pass after it, with typecheck/build and an
+independent review. The repository history-maintenance flag now also defaults false.
+The full follow-up CI and preparation backup/deletion receipts remain separate.
+
+
+## 2026-10-25 — Report capture retirement and backed unused-preparation cleanup
+
+**Implemented and locally qualified; database guards enabled.** Daily AR and
+Dashboard copy writers and historical-log maintenance are retired, while atomic
+current publication, freshness, retained-zero evidence, Sent and Sheet dates stay.
+Hosted migrations: 20261025122056, 20261025131719, 20261025134534 and 20261025134536.
+
+The separately approved one-time cleanup uses a private exact inventory, verified
+recovery exports, an Admin-only receipt-bound backup read, and immutable unused
+job dispositions. Actual deletion uses existing managed retention and the existing
+AR_DOCUMENTS workflow with bounded steps; no caller-supplied authority or paths.
+Every provider attempt/Draft/uncertain work, shared/held/business reference and
+unresolved upload/generation is excluded. Real lifecycle, business IDs and history
+remain. Both older cleanup queues exclude explicitly retired jobs, preventing
+immutable-update failures and retry starvation. Active F5 continuation is retained.
+
+Qualification: 4,720 unit tests, typecheck/build, 142 migrations and 36 SQL rollback
+fixtures plus actual Save/Exit concurrency pass. A reproduced retired-job cleanup
+failure is repaired and covered. The exact App backup utility has five browser
+cases and is included in the full CI smoke inventory. Independent security review
+found two queue integration issues, both repaired; hosted advisors report INFO
+only. Complete same-head CI, runtime deployment, recovery verification and actual
+purge counts are separate release receipts; this entry does not claim deletion.
+No real mail, resend, OPERA accounting write or Sheet-date write is performed.
+
+
+## 2026-10-25 — Live release verified; current Account filter metadata aligned
+
+**Deployed and enabled:** source `02f8de9fac24711e25de6a50c63d5997c1e60f9a`,
+Worker `d517bf31-9d9a-47cd-b733-197979b8c8ea`. Same-head GitHub run1054
+`40180386297` passes4,674unit tests,137migrations/31SQL fixtures plus actual
+Save/Exit concurrency,528browser cases,3performance and15publication/Aging
+checks. Live health reports the exact commit and all55JS/CSS/WASM hashes match.
+Real Reports navigation opens Google Sheets, including return from an explicit
+Admin Register visit. Current OPERA publications are visible in both regions.
+
+Live validation found an existing Account-options defect: the historical Sent
+metadata UNION produced239tuples for238current Khao ledgers, correctly rejected
+by the client's completeness/identity guard. Enabled forward migration
+`20261025095512_ar_current_dashboard_options` changes only options to current
+Accounts, stable Hotel+ID ordering, current labels/types and filters. It retains
+actor validation, ACL, owner, search path, security definer and legacy branches.
+This is not name-based ledger merging or a rewrite of source/customer metadata.
+
+The regression reproduces the historical duplicate before the change and passes
+both-region200-row pagination, same IDs in distinct hotels, current metadata,
+filters and negative/security cases. Replay now passes138migrations/32fixtures
+and concurrency. Live Khao returns200+38unique choices; real Dashboard menus
+load without warning for Khao Lak and Phuket. The follow-up also corrects the
+retired external-billing loading caption to Reports. No financial formula, Sent
+record or Sheet date is changed. Follow-up same-head CI and Worker release
+receipts are recorded in [PR142](https://github.com/NTHV9/ar-workspace/pull/142)
+and [live health](https://ar-workspace.ar-c82.workers.dev/api/health).
+
+
+## 2026-10-25 — Current AR work and integrated PDF/mail/refresh repairs
+
+**Implemented, locally qualified; database changes enabled.** The owner-approved
+[eight-item scope](WORKSTREAM_SIMPLIFICATION_20261025.md) keeps current Dashboard
+balance/billing/aging/stage cards and exact Invoice drills, retires unused daily
+and historical/First billing reports and report-only jobs, and makes main-nav
+Reports open Google Sheets. Admin Register remains explicit; its Back context
+and dirty-work protection are preserved. Existing actual billing dates still
+drive due dates and Sheet R/U/V/W remains authoritative, including deletion.
+
+Staff use Review & send now; provider Draft creation/link/instructions are Admin-
+only in UI and backend. Actual old Draft recovery remains. Full verified external
+Sent evidence, including human-selected rewritten identities and review audit,
+is durable before the history transaction. Reopen/retry cannot imply unsent or
+resend; external retries still verify the full message after workflow review.
+
+Explicit Exit/Cancel abandons exact transient jobs and removes local batch resume
+state after accepted cleanup. Account Email history lists actual email attempts,
+not never-attempted preparation work. F5, same-batch Account switching and PDF→
+email continue work. Future-only discard requests clean never-attempted message
+text after the closure transaction, skip a locked save and durably retry; no old
+closed text is backfilled/purged. Provider Draft/uncertain work, original receipt
+ownership, business history and legacy/Drive/remittance rules remain protected.
+Escape cannot dismiss an admitted Create request before its result is visible.
+
+Normal PDF position/size/drag editing stays inside the allocated page extent
+without an off-page warning. Valid added rows still allocate continuation pages;
+strict restore/export rejects corrupt geometry and tolerant replacement retains
+original ink. No Invoice tax formula or OPERA accounting write is introduced.
+
+Current refresh now resolves retained-zero references once per account/page,
+preserving output/ownership/Drive/negative/pagination rules. A measured installed
+read completed in43ms after the former7.5s correlated path; this is query timing,
+not an end-to-end refresh guarantee. Bounded diagnostic counts/stages preserve
+the account-vs-summary money check; a transient provider inconsistency is not
+relaxed into publishing wrong balances.
+
+Qualification:4,674 unit tests/345files;528 distinct browser cases covered across
+the initial run and focused reruns after current UI/spec changes;137 migrations/
+31 SQL fixtures; actual concurrent Save/Exit RED40P01→GREEN plus locked-save retry
+and pre-migration text preservation;3 performance and15 publication/Aging cases;
+typecheck, build and90-asset connector build. Old test labels/default-tab setup,
+fixed local origins and a print-minute comparison were corrected without removing
+financial/identity/negative assertions or changing source formulas/baselines.
+81 generated synthetic captures were retained privately; tracked images restored.
+Astra review findings were repaired and re-reviewed. Security advisor:INFO only.
+
+Enabled migrations:`20261025091430_ar_refresh_retained_zero_scope`,
+`20261025091449_ar_preparation_email_records`,
+`20261025091458_ar_verified_external_sent_evidence`. Live readback confirms
+unchanged actual Sent events and Sheet dates, no retrospectively marked text
+cleanup and no backfilled Sent proofs. No real email is sent by qualification.
+
+**Cloudflare deployment/enablement evidence:** the release receipt in
+[PR142](https://github.com/NTHV9/ar-workspace/pull/142) and
+[live health](https://ar-workspace.ar-c82.workers.dev/api/health) identify the
+qualified commit, actual Worker version, same-head hosted checks and asset proof.
+This checkpoint's build result alone is not a claim that a Worker was deployed.
+The independent audit notes in this shared worktree remain outside this commit.
+
+
+## 2026-10-25 — Verified reopened balances resume normal work
+
+**Implemented, tested and enabled in the database.** The owner removes automatic
+Needs review solely because a verified balance changed from zero to nonzero.
+The generic source trigger retains the verified-balance/zero-since bookkeeping,
+reopened observation time and source_reopened audit, while normal collection work
+uses existing billing/reminder history. No new automatic review flag is created.
+
+An inaccessible internal helper clears only the exact former automatic reason
+when the current source is verified/cleared, records a policy_allow_reopened audit
+revision, and heals a remaining legacy flag on subsequent verified observations.
+Independent holds, other review reasons, notes/disputes, unknown-source checks,
+source identity and mail handoff guards are retained. This is not an Invoice-
+specific override. All six financial hotels are exercised; TSUN remains pre-opening.
+
+Qualification: 4,624 unit tests, typecheck, 134 migration replay and all 24 SQL
+fixtures pass. The existing invoice-exception fixture is now included in CI with
+the current mailbox contract and updated policy expectations; actor/hotel guards,
+command replay, manual holds, actual Sent facts and billing-method/thread gates
+remain asserted. Source0→positive failed RED before the rule change. Focused
+review found no production behavior, ACL or history blocker after fixture repairs.
+Hosted migration: `20261025054130_ar_reopened_balance_normal_work`.
+
+Live readback releases one existing automatic flag, leaving its balance, first
+billing date, credit term, due date and original reopening observation intact.
+The new history row identifies the policy change rather than claiming an operator
+review. No mail, OPERA ledger or Sheet write is part of this change. Same-head
+GitHub qualification remains authoritative at PR142 checks; final live/CI proof
+is attached there and in this task. Independent project-audit notes in this shared
+worktree are preserved and excluded from this policy commit.
+
+
+## 2026-10-25 — GitHub notification audit and committed browser guards
+
+**Implemented and locally tested.** The nine pictured failures and newer7cb9381
+were checked against actual Actions logs; provenance is in
+[CI_NOTIFICATION_REVIEW_20261025](CI_NOTIFICATION_REVIEW_20261025.md). All inspected
+failures were browser-stage failures after passing typecheck/unit/build (and the
+later isolated SQL service/contracts). Historical failures retain their original
+status; no old source is restored to repair a notification.
+
+- Real product repair: dirty propagation and beforeunload listener lifetime now
+  commit with visible email/template/Sent-review state via layout effects. Native
+  Browser Back, pending operations and genuinely unsaved recipients stay guarded;
+  the history/navigation algorithm and mail/database contracts are unchanged.
+- Test repair: exact batch recipient/export assertions wait for the completed
+  Review phase; deterministic save barriers cover delayed saves, failed retry and
+  rapid switching. Template fixtures start with actually saved required self CC;
+  a paired test retains a truly dirty parent after nested template save.
+- The old PDF raster comparison already has its stronger identical-pipeline
+  repair and negative controls. Current unmodified cases produce zero differing
+  pixels at1440/1280; shift and text-removal controls still detect corruption.
+
+Local evidence: full4,623unit/340files and build/typecheck pass; batch Edge8 and
+Chromium48 (including default/saved CC and threads); navigation Chromium33 and
+Edge22, affected repeated cases12; independent focused review has no blockers.
+An initial concurrent browser/build/unit run hit two unchanged5s finance-test
+timeouts; the exact86 finance cases pass in2.79s and the unchanged full suite
+passes in55.23s without competing browser work. No timeout was increased or test
+disabled. Original tracked screenshot evidence is preserved; generated captures
+are private QA outputs. Full smoke/performance/publication checks remain enabled.
+
+The authoritative complete remote result is the **same-head** workflow at
+[PR142 checks](https://github.com/NTHV9/ar-workspace/pull/142/checks); qualification
+must not be inferred from older emails or a focused local subset. Runtime release
+source is independently readable at the existing `/api/health` endpoint. Final
+Actions/release readback is attached to PR142 and this task. The deployed Sheet
+authority, warning lifecycle, activity refresh, self CC and all source/Sent/date
+protections below remain in the current branch.
+
+## 2026-10-25 — Current warnings, proven closure and removed-row history
+
+**Implemented, tested, deployed and enabled.** The owner
+approved fixing remaining zero-balance/removed-row warnings. Root cause: strict
+nullable Folio equality blocked exact-zero retirement, old removed rows retained
+pending warnings, and an open review panel cached rows after its count changed.
+
+- Add archived status and retirement reason while preserving exact warning,
+  financial, Sent and date records. Completed Sheet removal archives current
+  warning work without clearing debt; returned rows can raise new warnings.
+- Closure checks the exact internal ledger and durable verified-zero proof plus
+  current source state. Missing Folio alone is allowed, but compatible active or
+  unknown debt, contradictory actual identity and incomplete Account-only changes
+  do not borrow old closure evidence. Every snapshot separately records its latest
+  provider identity even when a match fails; old warning hints are not current
+  identity evidence. Positive-debt matching and provider-write guards are unchanged.
+- A shared current-warning projection drives status and paginated counts/rows.
+  Closed/removed items no longer inflate current review; administrator review
+  invalidates cached rows/cursors when current status changes. Member visibility
+  remains only Last successful synchronization and the original Sheet link.
+
+Qualification: 4,623 unit tests / 340 files; typecheck and production build; 41
+real-browser synthetic cases, including open-panel count/list refresh; all 133
+migrations and 22 disposable SQL rollback fixtures. RED reproductions cover the
+NULL-Folio closure, historical-hint identity error, incomplete Account-only change
+and stale open panel. Fresh review's Account edge was fixed and retested. The
+unchanged 2,028-row Preview capacity guard passes standalone; an earlier parallel
+browser/build run exceeded the unchanged 8-second guard and was not counted as
+passing. Hosted migrations: `20261024210933_ar_tracker_warning_lifecycle` and
+`20261024211654_ar_tracker_closed_warning_dedup`. The second is an additive
+follow-up; the applied first migration was not rewritten. A repeated-poll RED
+fixture reproduced closed-row warning-history growth; recording now uses the
+same current-zero predicate as display and archival, so reopened/unknown/changed
+identities can still create new warnings without repeating unchanged closed ones.
+
+Initial Worker release `ff4d8acedcc35c660e297a9701ce93b70541d3ff` /
+`c15ad7ab-66c2-4d53-a5e9-a97604519d69` passed production health and all 55 live
+asset hashes. Authenticated live Reports confirms current warnings reduced from
+3,723 to 140: Phuket 36, Khao Lak 104. Current review contains no removed Sheet
+rows and no source-confirmed closed target, while history is retained. Remaining
+fields are 70 identity, 66 credit differences awaiting identity and four tracking
+details; none is linked to a verified/cleared zero Invoice. Source dates for all
+2,016 present rows and all 143 actual Sent records retain their pre-change
+fingerprints; pending date writes remain zero. No mail was sent, no original Sheet
+date was intentionally changed, and Aging Master remains unchanged. Final release
+metadata and unchanged-repeat readback follow.
+
+Final source `5d15bc76c0648a234161d041449ab5ae25860037`, Worker
+`e797df77-dc51-4c2d-a910-4a76903696d3`: health OK / database verified / OPERA
+connected; all 55 qualified asset hashes match. Authenticated live Review displays
+the new current-only explanation, and status/page RPC counts agree at Phuket 36
+and Khao Lak 104. Both original bindings completed a post-guard sync without
+error; unchanged closed-row warning history stayed at 3,900 records across that
+repeat readback. The 2,016 source-date rows and all 143 Sent records have identical
+pre/post fingerprints. No known-zero or absent row appears in current review.
+Private aggregate proof: `.tmp/tracker-policy25/warning-lifecycle-final-proof.json`.
+
+## 2026-10-25 — Sheet credit authority, safe Account moves and administrator details
+
+**Implemented, tested, deployed and enabled.** Owner
+approved all four policies and administrator-only diagnostic details. Original
+Aging Master remains unchanged. This builds on the combined release recorded
+below, preserving activity refresh, regional self CC and Sent-row supplementation.
+
+- Valid employee S becomes an explicit per-Invoice credit override, surviving
+  Account-rule changes; blank S restores Account credit and creates a bounded
+  blank-only fill intent. Durable provenance distinguishes auto-fill from manual
+  values, including manual edits back to an older fill value. No-op observations
+  do not rewrite provenance. S-only publication freezes intent and reads unknown
+  outcomes without repeating them; held cells reuse their journal rather than
+  generating unbounded new commands. Existing date/T cells are outside this path.
+- T is excluded from import comparisons and historical pending T warnings are
+  resolved with audit retained. Web/workbook due formulas remain independent.
+- Snapshot and Preview share unique same-hotel Invoice/Folio/posting-date
+  matching, including safe Account reassignment. All unresolved candidates count
+  toward ambiguity, including cached-zero unknown rows. Moves are audited and
+  old Sent history is not copied. Provider row keys and fresh positions remain
+  distinct from the mapped current ledger. Native write rereads recheck complete
+  tuple uniqueness before any mutation.
+- Closed warning retirement uses the durable exact verified-zero balance ledger
+  plus current verified/cleared zero state, rather than requiring historical
+  Invoices to be re-fetched within 15 minutes. Current rows need a validated
+  match; archived rows cannot contradict an identity warning. Missing source,
+  active/unknown competitors (including partial Folio) and changed identity do
+  not establish zero. Warnings are resolved with audit and business history kept.
+- Staff GET status returns only lastSuccessAt; detail, Picker and management
+  commands are denied at the backend. UI defaults to limited visibility and
+  clears cached details on access/identity changes; the original Sheet link stays.
+
+Qualification: 340 unit files / 4,623 tests; typecheck and production build;
+40 real-browser synthetic cases including staff/admin access transitions and
+existing synchronization pages; 131 migrations and all 21 disposable tracker
+SQL rollback fixtures. The unchanged 2,028-row Preview capacity guard passes
+(1.368 seconds in the pre-index final run). Fresh review findings were fixed and
+regression-tested: fill echo continuity, intent freeze revalidation, unknown
+post-upload readback, current identity retirement, source ambiguity and Preview
+policy parity. Hosted migrations are `20261024201427_ar_tracker_credit_identity_policy`,
+`20261024202605_ar_tracker_closed_warning_evidence`, and
+`20261024203028_ar_tracker_partial_source_ambiguity`. The latter two are additive
+follow-ups; the already-applied first migration was not rewritten.
+No real email was sent and no intentional staff date change was used for testing.
+
+Live initial release source `66946c2c09a1d353f9d5149d13bfbd2d52206fbc`, Worker
+`b75dad4e-0aa5-4bac-b95b-84f94f2e0d61`: health database verified / OPERA connected;
+all 55 deployed JS/CSS/WASM assets match the qualified build. Admin Reports was
+checked in the authenticated live browser and both original trackers synchronized
+successfully. Blank-only S fills were actually published and read back in both
+original tracker formats. Staff scenarios were tested in the synthetic browser
+and backend suite; no real staff permissions/session was changed to simulate them.
+The 143 actual Sent records and all 2,016 present rows' R/U/V/W values have the
+same before/after fingerprints. Some historical warnings with contradictory Folio
+or unresolved source identity intentionally remain for review; no financial zero
+was inferred to make the warning count disappear.
+
+**Final readback:** source `bca120983611b53b88cd7fcfde5861d8a9ad1736`, Worker
+`19ec17ec-a9c3-439b-ac9c-7b6724675624`, health OK / database verified / OPERA
+connected. All 55 qualified asset hashes match. All 725 initial blank S intents
+are written and read back: Phuket 231, Khao Lak 494; no pending/uncertain credit
+intent or date write remains. Both original bindings last synchronized without
+error. The final fingerprints of all 2,016 present rows' R/U/V/W values and all
+143 Sent records exactly equal their pre-release fingerprints. Pending warning
+fields reduced from Phuket 10,766 / Khao Lak 5,184 to 2,395 / 1,328 through policy
+retirement and verified reconciliation; remaining identity contradictions are
+retained for administrator review, not declared harmless or financially zero.
+Private aggregate evidence: `.tmp/tracker-policy25/completion-proof.json` and
+`live-assets-proof.json`; no customer documents or recipient data were committed.
+
+## 2026-10-25 — Combined release: Sent rows, activity refresh and regional self CC
+
+**Implemented, tested, deployed and enabled together.** Production health readback
+confirms source `8f519891ca780b33ea9049d5c63dd9893bdf195d`, Worker
+`fdec8b36-fee2-4823-8c71-13aae12bb52f`. Live HTML and all 56 qualified JS/WASM/CSS
+assets match. Git ancestry explicitly includes self-CC `893c28d`, activity refresh
+`2a20741`, and the later native endpoint/style/owner-review fixes; the combined
+release does not replace the site with either older worktree snapshot. Source
+and verification evidence are retained in Git and this record independently of
+the two source chats. The owner chose to delete those chats themselves after
+stopping app control; no successful chat deletion is claimed here.
+
+- Regional self CC is now live: required self CC is combined with saved Account CC
+  without duplication. Automatic recipients remain and the redundant Load account
+  recipients button is removed. Existing delivery snapshots are preserved.
+- Activity-driven OPERA refresh remains live: active users cover all authorized
+  regions, shared five-minute optional work, preserved 07:00/19:00 runs, account
+  batching, idle handling and fast independent Sheet synchronization.
+- Missing confirmed-Sent rows are appended to the original trackers with durable
+  plans and readback. Existing exact rows, staff edits and cleared date cells are
+  not backfilled. Transient preflight failures, explicit 429 rejection and Phuket
+  CAS 412 can retry; unknown mutations remain readback-only rather than risking
+  another insertion after an external Aging Master rebuild. New invalid/ambiguous
+  source or alias/identity conflicts hold visibly for review. No resend is involved.
+
+**Actual ten-row recovery completed.** All ten private append jobs are written;
+fresh original native Sheet readback finds exactly one correct-account row per
+invoice. Three dates are 23 October and seven are 24 October, matching immutable
+actual Sent evidence. After verifying the new ITS rows, the exact three closed
+old GO rows were removed as explicitly authorized. The complete pre-change
+recovery copy and exact removal proof are private; no business/Sent history was
+deleted. All 143 Sent events retain the same fingerprint.
+
+Preservation readback compared 1,360 remaining original keyed data rows: no
+semantic change to staff tracking, formats or notes, including 4,985 blank date
+cells. Google Sheets adjusted 21 existing `=G{row}+1` date formulas to their moved
+invoice rows after the authorized three-row deletion; each still refers to the
+same invoice posting date. Neither formulas nor blanks were restored from Sent.
+The owned synthetic provider fixture was deleted by its exact created ID; the
+recovery copy is retained. Private evidence: `.tmp/tracker-append-20261025/`.
+
+Verification on the combined source: **4,548 unit tests / 336 files**, TypeScript
+and production build pass. Browser verification covers **113 cases**: 87 initial
+passes, 21 conversation reruns after explicitly mocking the newly legitimate
+authenticated activity heartbeat, and five additional activity/background cases.
+No product assertion or visual baseline was relaxed; generated screenshots stay
+private and original tracked images were restored. All 127 then-local migrations
+and 19 tracker rollback fixtures passed before integrating the already-qualified
+activity migration. Independent source/merge review found no material issue.
+
+Both complete existing Aging Master build/restore/candidate/readback validation
+flows ran on owned synthetic Phuket and Khao Lak copies (including LFS). Appended
+R/U/W dates survive row moves and existing cleared blanks stay blank. The actual
+mixed 49-XF style case reproduced a parser failure and passed after its narrow
+lazy-match fix. Aging Master itself is unchanged; it still regenerates derived T
+from posting date according to its existing behavior. No original updater run,
+test email, provider draft, OPERA accounting mutation or paid resource was used.
+
+Hosted versions: activity `20261024180635`, Sent append `20261024181200`, exact
+reviewed quarantine restoration `20261024182021`. Both append policies are enabled;
+older suppressed work remains terminal except the exact ten reviewed IDs. The
+paused full financial publisher/LFS-only updater experiment remains paused.
+
+## 2026-10-25 — Activity-driven OPERA refresh and fewer durable steps
+
+Individual release checkpoints below are historical; the combined release above
+is the current live status.
+
+- Owner follow-up changes active scope from the viewed region to every authorized region of the active user. Backend uses the full verified grant; viewed-region admission and database membership checks remain. Dual-region/admin activity keeps all six hotels eligible, single-region staff retain only their region. No new schema/resource/RPC or client-rights payload added. Three scope cases reproduced the old behavior RED before the update; independent review found no material issue.
+- **Rights-scope follow-up deployed/enabled:** Worker `e718db48-1d78-4439-af6e-f6f08c9a089d`, source `dcbdf3f3ba0039e0a93a0a3072cbc7cccae3da4d`. Preserved concurrently deployed tracker source `8a33b9f` (previous Worker `2fc49ccf-9562-44a0-8c4c-2c4c168c02c9`) by merging both implementations; did not revert its confirmed-Sent row append. Final combined 4,530 tests/335 files, 62 focused scope/access cases and production build pass. Initial four-worker run hit an unchanged native-hint test's five-second timeout; final two-worker full run passed without relaxing assertions/deadlines. Hosted all-authorized-region touch assertion passed and rolled back. Health200/database_verified, activity route401 and all42 other runtime bindings verified unchanged. Daily cron/Sheet/idle rules remain.
+- Owner authorizes activity-gated five-minute current refresh, account batching, preserved 07:00/19:00 Thai runs/fast Sheet synchronization and saved-first rendering. Implemented private six-minute actor/hotel activity leases, minute visible/recent-use heartbeats, ten-minute idle handling and immediate stale-on-open wake. Generic Sheet/Gmail background work never renews OPERA activity.
+- New refresh instances use ten-account steps with three independent reads and exact staged-ID retry recovery; legacy instances retain their durable layout. Keep complete identity/pagination/zero proof, shared hotel locks and atomic publication. Existing document/history live reads and two Workflow slots remain. Synthetic 30-account comparison: 30→3 checkpoints, 60 unchanged source reads, 3,000→2,400 ms; not a live speed or monthly-cost guarantee.
+- Release is based on actual 24 October deployed source `3d71988` (Worker `5ab7acc4-ffa0-4fa0-9ca3-7a1a12eb6129`), including latest fast native Sheet probing and quarantine UI. Preserved the later owner-pause documentation; no paused experiment restored. The old runtime COMMIT_SHA binding was stale, so exact Worker release evidence was used instead.
+- Latest-base 4,471 unit tests/330 files, TypeScript, production build and Worker dry-run pass; local PostgreSQL activity/ACL/retry fixture passes after its RED check. Independent reviewer finding repaired with three RED→GREEN wake tests; latest-base review has no additional material findings. [Evidence, choices and limits](ACTIVE_OPERA_REFRESH_20261025.md).
+- **Deployed/enabled:** hosted migration `20261024180635_ar_refresh_activity_batches`, Worker `d95d4009-6600-4ccc-a6b2-ad6c82594217`, source `0f96efd8fd199ac922ac3503e333a64dfeea5600`. Health200/database_verified and eight anonymous route/method boundaries verified. All41 other runtime bindings preserved, along with four Workflows and cron expressions. Actual hosted activity/ACL assertions pass and roll back; idle observation at01:11 ICT has zero activity rows and zero new optional runs since01:10. Six browser cases also pass against deployed assets using synthetic intercepted business APIs. Closed signed-in Edge prevents measuring actual employee wake/OPERA latency in this session. No test email, original Sheet edit or accounting mutation.
+
+## 2026-10-25 — Regional self CC and simpler recipient preparation
+
+**Historical local checkpoint; subsequently integrated, deployed and enabled in
+the combined release recorded above.**
+Work is isolated in the managed `default-self-cc` worktree on
+`codex/default-self-cc-20261025`, based on `aff8494`, rather than the older branch
+in the original checkout. The baseline EmailComposer file was also compared with
+the active OPERA-refresh branch and was identical. Integrate only this feature's
+diff into the latest release line after concurrent work; do not deploy an older
+whole-worktree snapshot over another release.
+
+- Editable email preparations automatically include `ar@katathani.com` for KAT/TSK
+  or `ar@thesandskhaolak.com` for TLKL/WAKL/TLFO/TSAN, alongside saved Account CC.
+  The owner clarifies self CC is required; other recipients remain editable. Self
+  appears once in CC, including when it was already present in another field.
+- The redundant **Load account recipients** button/handler is removed. Existing
+  automatic Account recipient loading remains; message edits do not change Account
+  settings. CC is visible, marked for saving and persisted through the existing
+  revision-protected save before human-triggered Gmail draft, Send Now or batch
+  review. Frozen Gmail deliveries, uncertain results and closed packages retain
+  their original snapshots; no historical message is rewritten or resent.
+- Verification: full Vitest suite **4,455 passed / 329 files** using
+  `node node_modules/vitest/vitest.mjs run --maxWorkers=2 --testTimeout=15000`;
+  `pnpm build` passed. The first full run had one existing Invoice read test exceed
+  its 5-second budget under concurrent load; all six tests in that file passed in
+  isolation, and the full rerun above passed without code changes to that area.
+- Production-built browser verification **85 passed**: 78 email/composer/thread/
+  regional cases, 2 automatic-recipient cases, and 5 native-PDF batch cases.
+  Commands: `node node_modules/vite/bin/vite.js build --config vite.browser.config.ts`
+  then `node node_modules/@playwright/test/cli.js test --config playwright.self-cc.config.ts --workers 2`.
+  The dedicated local preview uses port 52873 and does not reuse other chats'
+  servers. Legacy test fixtures were updated for current Google tab sessions,
+  signature identity, tracker revision reads and relative URLs; production auth
+  was not modified. Batch assertions verify separate edited CC recipients plus
+  self in each account snapshot, all three file layouts, retry and no resend of
+  uncertain delivery. Provider APIs and email delivery are simulated.
+- Actual desktop/mobile component screenshots were inspected. All seven original
+  design PNGs and the supplied Codex design notes were read only as references;
+  they are not current-site screenshots or a basis for reverting the interface.
+  Original reference/QA images remain unchanged in Git; fresh synthetic evidence
+  stays in `.tmp/self-cc-evidence/`. Independent focused review found no actionable
+  code regression; its requested batch CC coverage was added and passed.
+- No real email, provider draft, OPERA/Sheet write, schema migration, deployment,
+  global configuration or dependency change was made. Cloudflare deployment
+  metadata was read only while checking version safety; it does not certify a
+  live deployment of this feature. Other chats' worktrees/checkouts were not edited.
+
+## 2026-10-25 — Owner paused replacing Aging Master
+
+The owner withdrew the web financial-publisher/LFS-only updater change before
+production rollout and asks staff to continue using Aging Master as before.
+All feature implementation and test workers stopped. Local experimental code,
+plans and synthetic migration were saved in named recoverable Git stashes in the
+web and separate updater repositories, then removed from the active checkouts.
+Preexisting unrelated updater changes were preserved. No hosted migration,
+publisher enablement, deployment, provider write, email, executable build/run or
+replacement was performed for this feature. Existing production tracker/date
+synchronization and the ten suppressed source-review jobs remain unchanged.
+
+## 2026-10-24 — Read-only investigation of the ten quarantined Khao Lak rows
+
+The original native Sheet's recorded updater log ends at business date 23 October,
+runtime 13:45, with all five Khao Lak source properties represented. The seven
+missing current invoices are absent from both the active and archived-cleared
+Sheet identity columns. Their OPERA posting dates are 23 October, but none is
+present in the complete retained 23 October closing dashboard captures; all are
+present on 24 October. Capture times and scope were checked against the current
+capture/view definitions. This supports a later AR membership/publication versus
+the older report snapshot, not a claim that posting date proves creation time or
+that the parser definitely omitted seven rows.
+
+For the three account mismatches, distinct OPERA ledger IDs confirm a real change:
+old-account records reached verified zero, while the current other-account records
+are open. The old-account zero observations occurred during 11:03–11:12 and
+13:44–13:53 on 23 October (ICT); the Sheet still contains the old account and
+old amounts. A later same-day retained OPERA capture contains the current account.
+The financial change is provider-origin evidence, but does not establish whether
+the updater input was stale or its parser grouped the input incorrectly.
+
+Read-only inspection of the separate Aging Master source shows the active output
+is rebuilt from report-derived account rows; prior tracking is joined separately.
+This is not qualification of the exact executable used on the staff PC. The actual
+23 October input PDFs and that PC's run log were not found among accessible local
+files or connected Drive PDFs; local updater logs end earlier. Those exact inputs
+are required to distinguish report-time differences from parser/import defects.
+No updater run, Sheet/date write, queue reactivation, mail, application change or
+deployment occurred. Existing paused commands stay suppressed.
+
+## 2026-10-24 — Owner-requested stale write queue retirement
+
+**Implemented, tested, deployed and applied to the exact reviewed backlog.**
+The owner authorized closing stale Phuket/Khao Lak date-write jobs without
+resending mail or overwriting staff edits/deletions. The new service-only
+preview/apply command checks owner, region, exact IDs, fresh source, current
+authority, provider evidence and an immutable plan hash. Binding/outbox locks
+and NOWAIT account/invoice share locks prevent concurrent source publication
+from invalidating the decision. Replays return the original immutable receipt.
+
+Live result: Phuket's 20 old attempted jobs were superseded by already-observed
+Sheet authority, not marked as successful writes. Khao Lak's one confirmed-zero
+invoice job was retired; seven missing-row and three explicit other-account
+jobs were suppressed with durable, visible quarantine. Both regions now show
+zero pending writes; Khao Lak separately shows ten paused date updates with
+Hotel/Invoice/Stage/Reason. These ten still require source-row reconciliation;
+no old suppressed command resumes automatically and future new sends are not
+silently retired. Unrelated historical field differences remain untouched.
+
+Before/after proof: all 20 Phuket identities/dates match the original XLSX;
+the complete workbook SHA-256 remains identical. Native identity/date/key cells
+across all 1,419 bounded rows are unchanged. Database fingerprints match for
+80 current-date records, 31 workflows, 16 deliveries, 143 Sent events, 7,984
+source rows and all 31 scoped financial records. No email or provider write was
+performed. Private evidence is in ignored `.tmp/queue-cleanup-20261024/`.
+
+Verification: 4,439 unit tests / 328 files, 11 focused browser cases, TypeScript
+and production build pass. All 125 migrations / 18 SQL fixtures plus four
+independent PostgreSQL contention checks pass. Independent review cleared the
+confirmed-zero state and concurrent-financial-publication fixes. Desktop/mobile
+screenshots and the live expanded quarantine panel were inspected.
+
+Hosted migration `20261024153555_ar_tracker_owner_queue_retirement`; source
+`3d71988`; Worker `5ab7acc4-ffa0-4fa0-9ca3-7a1a12eb6129`. Live HTML and all
+56 JS/WASM/CSS assets match the qualified build; all 42 runtime binding
+descriptors/plain values are unchanged. Original files and file formats remain.
+
+## 2026-10-24 — Native projected-value hints bypass lagging Drive versions
+
+**Implemented, tested, deployed and live-qualified.** Real native Undo
+tests showed that committed cell values can precede Drive version changes by up
+to minutes. Version-only probing therefore cannot guarantee prompt native edits.
+The Khao Lak hint now reads a fixed six-range primitive-value projection directly
+from the original native Sheet (headers, hotel/account/invoice/folio/base date,
+R–AC mapped fields and stable keys), after existing identity/metadata checks.
+Unused guest/financial columns are excluded. Responses are capped at 1 MiB and
+canceled on overflow; size-only fallback retains the pinned Drive version path.
+Schema/authorization errors fail closed. Original Phuket XLSX stays metadata-only
+and necessarily waits for Google to save the actual file.
+
+The projection is never imported as business facts. Only a private opaque
+96-bit SHA-256-derived, 30-digit equality hint persists. The complete typed reader
+still validates every business/date/identity rule before publication. A restored
+value can produce an older fingerprint; SQL fixture regression 1 → 2 → 1 proves
+each difference queues exactly once without assuming monotonic versions. No new
+migration, permissions, credentials, resources or paid service was needed.
+
+Verification: 4,439 tests across 328 files pass with bounded local parallelism;
+focused native-hint/provider and existing native suites pass; production typecheck
+passes. All 124 local migrations / 17 SQL fixtures pass with the non-monotonic
+regression. Independent review found no blocker. Native probes now include one
+Sheets values request per eligible shared check (about 12/minute at five seconds),
+plus existing identity/metadata calls; earlier metadata-only descriptions are
+historical for the preceding releases, not this native path. Hidden pages retain
+their existing no-poll behavior.
+
+Final source `44c07f9` is live as Worker
+`b12392ec-6bb6-458e-b86b-da3e3d53a413`. All 42 runtime binding descriptors/plain
+values match the approved enabled baseline; secrets were not read. Production
+HTML and all 56 built JS/WASM/CSS assets match. Hosted native probe state is a
+30-digit projected-value hint (not the size fallback / lagging Drive counter),
+and actual full native synchronization succeeds with no provider error.
+
+Final single-client-clock UI qualification: clearing the owned native billing
+cell changed the already-open invoice page to `No billing sent` within 22.977s;
+Undo returned it to `Billed` within 19.517s. No Reload / Check changes was used
+during either timing. All 33 displayed row values match their fresh pre-test
+backup; readback also confirms the exact original date number and number format.
+The original Phuket test row's 32 values were likewise restored exactly; its
+tested clear propagated within 19.036s, while XLSX save/restore varied and one
+earlier bounded 39s observation did not yet see completion. Original file format
+and IDs were preserved, so no uniform instantaneous or sub-five-second end-to-end
+claim is made for Office saves. Both actual current Sheet/web dates match their
+original values and each selected invoice retains one Sent event. No email or
+OPERA accounting write was performed. Private proof is under ignored
+`.tmp/tracker-push-20261024/`; natural audit/version records remain.
+
+## 2026-10-24 — Bounded native-grid read optimization
+
+**Implemented, tested and live full-read qualified.** Small
+occupied native grids (201–2,000 rows, at most 66,000 cells) can be read in one
+bounded grid request instead of serial 200-row requests. Both AG-key observations,
+the existing parser/schema fingerprint, duplicate/identity/formula/date checks,
+movement detection, normalized-data limit and best-effort write contract remain.
+Requests use Google's supported compact JSON parameter. Fast responses are capped
+at 8 MiB; declared/streamed oversize is canceled and falls back to existing paged
+reads. Other errors fail closed. Larger grids use paging directly.
+
+Actual authorized read-only payload qualification measured 8,089,040 compact UTF-8
+bytes for the current 1,419-row typed grid, so the initial 4 MiB prototype would
+always have fallen back. The bounded 8 MiB path is qualified with a dense synthetic
+fixture as well as normal/fallback parity tests; no customer grid is in Git. This
+byte/row cap is not a measured heap cap. Successful live full synchronization is
+completed successfully before timing another edit. No response cap above the existing
+16 MiB paging limit was added.
+
+Independent review caught an unneeded Promise.race timeout releasing the probe
+lease while I/O continued; that unshipped prototype was removed. A regression now
+proves the lease is not released before the provider read settles. Oversized
+response cancellation has explicit declared/streamed regression assertions.
+
+Verification: 4,415 tests across 326 files pass with two local file workers;
+native/provider focused qualification passes 76 tests. Default-concurrency local
+runs hit unchanged 5-second financial-test timeouts in
+`invoice-native-nonvat-integration`, `invoice-transfer-read` and
+`invoice-source-claims-display-membership`; the focused cases and complete bounded
+run pass without raising test timeouts or changing their assertions. Typecheck
+and independent review pass. Existing migration/probe/permission logic is unchanged.
+
+## 2026-10-24 — Shared active-client tracker version probes
+
+**Implemented, tested and deployed; native hint superseded by the direct-value
+qualification above.** Restoring push flags alone did not eliminate the
+provider delay: actual native edits changed Drive modifiedTime within four
+seconds, but the corresponding notifications arrived about 90 seconds later.
+Keep push/fallback and add shared metadata-version probes while visible clients
+are active. The original files and all financial/date authority rules remain.
+
+Visible clients request authorized revisions every five seconds, retaining
+Realtime hints, hidden-page suppression, single-flight/coalescing and dirty
+editor protection. The existing authenticated revision endpoint returns cached
+revisions immediately and probes only the member's allowed regions in waitUntil.
+Provider ownership remains the shared workspace. A five-second shared per-region
+cooldown and 45-second lease prevent every tab/user reading the provider. Existing
+credential lookup and identity verification remain; successful probes read file
+metadata, never media/Sheet contents. Only a changed version hints the existing
+full validated sync. Unchanged versions enqueue no new work; an existing pending
+wake can still retry dispatch after a transient failure.
+
+Private cache state is bounded to one row per region, service-only with RLS,
+binding/owner/region checks, fresh lease tokens and binding-removal cascade.
+Version-baseline advancement and the existing durable wake enqueue are atomic.
+No financial/history data is stored in that cache. Migration was created with
+the pinned CLI, qualified on isolated PostgreSQL, applied separately through
+the migration connector, then its unchanged local file was aligned to observed
+hosted migration version `20261024114048_ar_tracker_active_version_probe.sql`.
+The older pending tracker resolver alias migration was not applied in this task.
+
+Verification: all 4,400 unit/integration tests across 326 files pass; 124 local
+migrations and 17 SQL rollback fixtures pass; 24 tracker/report browser cases,
+production build/typecheck and independent review pass. Hosted readback confirms
+RLS, backend-only execution and no anonymous/authenticated RPC grants. No provider
+permissions, credentials, paid resources, cron schedule or Invoice logic changes.
+Five seconds is the check cadence, not a promised end-to-end update time.
+
+## 2026-10-24 — Restore approved tracker push/runtime flags
+
+**Implemented, tested and deployed; follow-up live qualification is above.** The
+owner requests prompt Sheet-to-web updates after the live clear test revealed
+six-minute fallback latency. Immutable version inspection confirms tracked false
+Wrangler defaults overwrite the previously approved live true push and native
+writeback flags, despite `--keep-vars`; the same failure was documented and
+temporarily corrected on 19 October. Restore the two approved flags in deployment
+source so future releases do not repeat that overwrite.
+
+Two regressions project the actual shipped variables into the real notification
+callback and native write boundary. Before the fix, the verified callback returned
+503 and an otherwise-qualified native date write returned conflict; after the
+flag restoration, both pass. All 4,388 tests across 324 files and production
+build/typecheck pass. Independent review found no blocker. Existing channel-token
+verification, exact original file identity, row identity, lease/coalescing,
+conditional Phuket writes, native uncertainty handling and fallback cron remain
+unchanged. No application code, schema, OAuth scopes, sharing, costs or resources
+are added. Live binding comparison and reversible live timing remain required.
+
+## 2026-10-24 — Live Sheet billing-date clear/restore test
+
+**Tested against one owner-authorized KAT invoice; all original row values
+restored.** Opened the original Phuket XLSX in Google's Office editor, preserving
+its file identity and format. Verified exact Hotel/Account/Invoice/Folio identity
+and backed up the target date/row privately before editing only its R cell.
+No email or reminder was sent, no OPERA accounting was changed, and no database
+date was manually overwritten to manufacture the result.
+
+The date was cleared at 10:24:58 UTC and imported by the ordinary scheduled
+synchronizer at 10:31:04 UTC. Sheet authority advanced generation 2 to 3; the
+live invoice page changed to `No billing sent` without a browser reload. A second
+normal Check changes synchronization completed at 10:35:50 UTC while the source
+date remained empty. The old outbound intent remained suppressed, attempts 0;
+neither synchronization reinserted the date. The existing Sent event stayed at
+one throughout, separate from the cleared current billing status.
+
+Undid the single source-cell edit. Clipboard readback of all 32 original row
+values matches exactly. Normal synchronization restored the source date and web
+first-billing date; generation advanced to 4 and the actual invoice page was
+visibly `Billed` again, verified at 10:43:46 UTC. All target source/business
+values are restored; natural audit/version changes from the authorized test
+remain. Private backups, timings and screenshots are under ignored
+`.tmp/live-sheet-clear-20261024/`; no customer data is committed here.
+
+**Open operational finding:** this test used the fallback scheduler and showed
+approximately six minutes to import the deletion, rather than real-time push.
+Immutable Worker binding inspection found `TRACKER_PUSH_ENABLED=false` and
+`TRACKER_NATIVE_BEST_EFFORT_ENABLED=false` in both the current release and the
+pre-email-repair release. The Reports UI also shows native writeback held. No
+runtime flags, permissions, costs or source code were changed in this test-only
+task. The earlier 19 October status entry documents restoration of those flags
+to true after a previous tracked-default deployment incident; the live drift
+needs follow-up. This single Phuket test does not qualify every Khao Lak row.
+
+## 2026-10-24 — Recover the owner's explicitly requested pending sent delivery
+
+**Completed on the live database; no email sent again.** After the owner's
+specific request to update the previously reported delivery, read its durable
+provider receipt and independently re-read the exact Gmail message. It remained
+in Sent in the frozen sender's mailbox. Its original Gmail timestamp was used,
+rather than the recovery time. All selected workflow revisions still matched;
+there was no prior Sent event.
+
+Called the existing `ar_mail_confirm_sent` backend function through the database
+connector for only that exact owner/delivery/receipt, retaining its row locking,
+workflow checks, atomic history and duplicate protection. No direct table update,
+new migration, provider send or draft operation was used. The result was
+`state=sent, recorded=true`. Independent readback confirms cleared review reason,
+one Sent event and one tracker outbox entry. The outbox entry is not evidence of
+a completed Google Sheet write. Customer addresses, message content and document
+identifiers are deliberately omitted from this tracked note.
+
+## 2026-10-24 — Record acknowledged web sends immediately; clarify staff status
+
+**Implemented, tested and deployed.** The owner explicitly requested
+that a successful Gmail send response record business history immediately rather
+than require message/attachment readback. Direct web sends now persist their
+validated Gmail receipt and call the existing atomic history confirmer in the
+same request. Sending an existing Gmail draft from the web follows the same path
+after its existing pre-send MIME check. Successful sends no longer download
+their own message bodies or attachments before recording history. No schema or
+financial calculation changes are included.
+
+Ambiguous POSTs and malformed responses still never count as sent and never
+trigger a repeated provider POST. Externally sent Gmail drafts retain independent
+Sent evidence verification; diagnostics retain full verification. A durable send
+receipt can retry history using only its exact Gmail ID, Sent labels and original
+timestamp. Draft creation receipts are excluded using the persisted draft-send
+claim. Confirmation keeps existing row locks, revision checks and duplicate
+guards. One bounded status read handles a concurrent confirmation or committed
+history whose response was lost. No direct date/history SQL repair was performed.
+
+The composer now has a prominent desktop/mobile status: Sent/history recorded,
+Gmail draft/not sent, Sent/history needs attention, or unknown/do not resend.
+Reasons identify the specific failing step. Accepted messages cannot become
+sendable drafts. A lost browser response closes confirmation, blocks resubmission
+and recovers the saved delivery through bounded GETs with a reload action.
+
+Validation: regression REDs preceded each backend change; all 4,386 unit/
+integration tests across 324 files pass, including six-mailbox receipt isolation,
+normal/lost provider responses, malformed receipts, failed/racing/lost history
+responses, manually sent drafts and metadata negatives. Composer/recovery/
+navigation browser suites and focused accepted-draft/mobile cases pass. Production
+build/typecheck pass. Independent review found no remaining blocker. Desktop and
+mobile synthetic screenshots were inspected; original tracked screenshot evidence
+was preserved. No actual customer email was sent as part of this qualification.
+
+Runtime source `cd6d8ec` is deployed as Worker
+`c840f97d-106a-4076-a3e1-a88a9ca08fd9`, preserving runtime variables.
+Production HTML and all 56 built JS/WASM/CSS assets match the qualified build.
+No hosted migration was applied. The previously reported staff delivery still
+had its old review flag and no Sent event at the final read-only check; this is
+not a claim that its history was repaired. No signed-in AR browser tab was
+available for its normal Check sent status action. That existing delivery can
+use the new durable-receipt recovery path without another send.
+
+## 2026-10-24 — Gmail attachment filename fallback evidence repair
+
+**Implemented, tested and deployed.** A staff
+delivery was independently present in Gmail Sent with the intended recipients.
+Both actual attachment byte lengths and SHA-256 digests matched its frozen
+preparation, but Gmail exposed our ASCII MIME fallback filename instead of the
+original UTF-8 filename. The verifier rejected that name and left the delivery
+in review without recording Invoice history. No message was resent and no
+business history or dates were manually changed during diagnosis.
+
+The MIME builder and verifier now share the existing deterministic ASCII
+fallback. Verification accepts only the original name or its exact emitted
+fallback for non-inline files, while retaining size, downloaded-byte length,
+SHA-256, attachment count, inline filename/CID, recipient, message identity,
+thread and body checks. Alias collisions resolve by hash; indistinguishable
+distinct original names remain review-required. Each expected file can be
+consumed once. Attachment metadata failures now report their own stage even
+after an inline logo has verified. MIME output itself is unchanged.
+
+Validation: regression reproduced before implementation; 4,363 unit/integration
+tests across 323 files pass, build/typecheck pass, 31 email browser tests pass,
+and independent code review found no blocking issue. A read-only replay of the
+actual existing Sent message, frozen full envelope/body and both original
+attachment bytes passes the patched verifier. Real customer data remained in
+memory/private tool context, outside Git. No hosted SQL migration was applied.
+
+Runtime source 409871e was deployed with existing runtime variables preserved
+as Worker `64b10c69-278d-4e3b-9571-c0c4fc4773db`. Its only runtime delta from
+the previous production source is the three email filename/evidence files;
+financial/PDF generation, UI assets and database schemas are unchanged. The
+existing delivery can be reconciled through its normal Check sent status path;
+diagnostic replay did not call confirmation RPCs or modify real Invoice history.
+
+## 2026-10-24 — Full PDF Workspace and Google Sheet CI expansion
+
+**Implemented on the current branch; committed-head GitHub qualification is the
+activation gate.** The owner explicitly paused the actual staff Sent/Sheet case
+and requested completion of whole-workflow CI coverage first. No hosted migration,
+production provider action, email, Sheet/date correction or app deployment was
+performed in this task. Deployed app remains ff88342 / Worker ae0fe3e8-d9ee-4da0-9f03-77ac06fea644.
+
+The browser selection retains all previous342 cases and now collects454 cases
+across40 files. It includes full document preparation/cleanup/review handoff,
+PDF package/session/batch workflows, original-field edits and all mapped Sheet
+UI/background paths. Detailed feature-to-test and field-authority maps are in
+`docs/CI_WORKFLOW_COVERAGE_20261024.md`.
+
+Local qualifications:49 DocumentRoute cases,27 email/supplemental/recovery cases,
+5 joined batch cases with actual reviewed-byte account isolation,52 Sheet UI cases,
+161 focused Sheet units,123 ordered migrations and16 real local SQL fixtures,
+and10 actual subprocess isolation guards pass. Fullunit run4356/323 files passes;
+TypeScript, build and90 public asset checks pass. One earlier concurrent local
+unit run hit the existing5second limit during initial PDF parsing; the exact20
+case file and the full serial run passed without changing timeouts or source.
+
+The28-field catalog uses keyboard edits, Preview/export, fixed anchors, independent
+expected glyphs, a universal edited-region RGB difference limit of1 and exact
+unchanged neighbors. Native text from the actual edited snapshot is an additional
+semantic check. Source-font ink bounds prevent the reference itself clipping an
+adjacent line or leaving an original curved glyph's fringe. Wrong-glyph, black
+rectangle and gray-background real-PDF mutants fail. Final integrated/remote field
+results are recorded with the committed-head run rather than inferred from counts.
+
+New CI-only PostgreSQL17.6 service is loopback-published and independently attested
+by its GitHub-created container ID before SQL. The runner requires exact address,
+admin/bootstrap identity and freshness, scrubs inherited libpq/provider settings,
+creates only its random scratch database and cleans up only owned resources.
+Browser failures retain screenshots/traces and HTML/JSON reports; SQL failures
+retain only report.json and *-psql.log, never cluster/password files. Ubuntu24.04
+pins the already-qualified OS; no existing check was removed or skipped.
+
+Real SQL replay exposed the resolver's conflicting inner c alias. The new guarded
+migration20261024064334_ar_tracker_resolve_authority_alias changes only that alias
+and preserves grants/security/search_path. A behavioral fixture reproduces the
+old error before the migration and passes afterward. This fix is BRANCH-ONLY;
+it is not applied to the hosted database or used to resolve any real conflict.
+The local auth/storage stand-ins and mocked adapter RPC are explicitly separate
+from real Google/Supabase/OPERA/Gmail service verification.
+
+Final committed-head CI run and enabled-scope confirmation are posted to
+[PR #142](https://github.com/NTHV9/ar-workspace/pull/142) after remote verification.
+
+## 2026-10-24 — Repository cleanup and broader PDF regression repair
+
+**Repository cleanup completed; editor fixes implemented and locally qualified.**
+Closed superseded PRs #117–#141 only after refreshing each exact head and verifying
+all 25 are ancestors of deployed source9f8b943. Every closure links to #142; only
+#142 remains open. Branches, commits and Actions history remain. Public asset
+hashes were unchanged by cleanup. Details and historical coverage are recorded in
+`docs/GITHUB_CLEANUP_AUDIT_20261024.md`.
+
+Inspected all216 historical failed-run job inventories and214 available latest-job
+logs, plus both earlier retry attempts. Mapped39 error signatures across36 titles.
+Two cancelled/no-step jobs have missing logs and remain explicitly undiagnosed.
+Every affected test file remains configured; old failures were not automatically
+classified as harmless solely because they were old or current CI was green.
+
+Expanded current PDF testing exposed three genuine defects: blank header image
+bounds rejected address growth, helper reflow changed pointer coordinates during
+dragging, and native graphic IDs replaced generated movement command IDs.
+Repairs use qualified native-only supported-left source removal and a bounded
+residual-pixel proof, captured gesture coordinates, stable helper layout and
+sanitized geometry with command-owned IDs. Original right-header proof and all
+text, vector, overlay and strict export guards remain. Unknown proof fails closed.
+Only active-page proof work runs, with abort/release and a shared64MiB budget.
+No OPERA/financial renderer, VAT/Non-VAT, database, billing-date or email-history
+change is included. No live billing/email action was performed.
+
+Six private real Workspace Invoice samples qualify address growth with exact
+opposite-column/body pixels, strict export and Undo preserved. Measured proof work
+in the final concurrent-load run was855–4313ms and ready state2159–4173ms, retaining
+358020–379134bytes per grid. Source images and customer text are kept private.
+The opacity-page negative explicitly tests unavailable proof; a separate actual
+unsupported-left case qualifies while its unremoved text remains occupied.
+
+Updated stale PDF tests to check native removal/preservation, independent-field
+semantics and real occupied/blank destinations rather than require unsafe flow
+or raster-only output. Dense overflow coverage now uses recognized table headings
+and enough rows to exhaust spare whitespace. All PDF editor suites are included
+in CI through **/pdf-editor.spec.ts. Production UI tests retain all API interception
+and error checks, using current Google/tab authentication and preview semantics.
+
+Local qualification: 4,346 unit/integration tests across323 files; all122 PDF
+cases (121 in the complete run plus one unchanged layout assertion rerun after
+moving its capture into the test artifact directory); three performance cases;
+production build and90 public assets pass. All tracked reference images were
+restored exactly. The public baseline also passed two synthetic-API UI cases at
+1440x900 and1280x800. Independent source/safety review approved the scoped fixes.
+The expanded GitHub smoke selection now collects342 cases. This entry records
+pre-publication qualification; committed-head CI and the final deployed Worker
+version are recorded separately in the completion comment on
+[PR #142](https://github.com/NTHV9/ar-workspace/pull/142).
+
+The first expanded remote run40027126417 passed340/342 browser cases; two old
+row-roundtrip metrics compared different rasterization pipelines. A test-only
+follow-up now requires exact independently normalized full-page RGBA equality,
+matching dimensions/nonempty ink and Undo/Redo, with deliberate movement/removal
+mutants proving rejection. Both targeted cases pass; no runtime code or tolerance
+relaxation was used. Deployment still awaits the updated committed-head workflow.
+
+## 2026-10-24 — PDF address Delete Row scope repair
+
+**Implemented / tested / deployed / enabled.** Reproduced the owner's
+actual Delete Row symptom against an Invoice generated by the production renderer:
+removing a left address row also removed the aligned right Voucher. The native
+Delete Row path used a page-wide band for every source field. Git history confirms
+this path predates the latest CI repair; it was not a rollback from GitHub.
+
+Non-table source fields now use the existing source-owned deletion mask. Inserted
+rows and recognized transaction tables retain their row deletion behavior. Existing
+spacing is preserved rather than compacting unrelated fields. Added a permanent
+browser regression covering opposite-header pixels, exported content and Undo/Redo.
+Private real Workspace invoices from all six previously qualified hotels passed
+address deletion, unchanged right-side pixels, strict export against an equivalently
+rasterized baseline and Undo. The export comparison normalizes rasterization first;
+native-vs-raster antialiasing is not misreported as lost content. A second browser
+case preserves a prior bounded column move across deletion and Undo. Local checks:
+4,339 unit/integration tests, 251 smoke cases plus the added mixed-edit regression,
+typecheck, production build and public asset validation pass. No financial calculation,
+OPERA source, Sheet status, email, schema or provider configuration changes.
+
+The prior CI repair b4206e2 passed actual GitHub run 40014767555 and was deployed as
+Worker 9bfe8acb-822b-4ce7-8373-9cf8842789b7 before this newly reported issue.
+Private reproduction/qualification evidence remains under .tmp/ci-repair/.
+
+Release source `9f8b9438a25e53fd51053bf4455d331749c2d2e0` passed actual GitHub
+[run 40018814886](https://github.com/NTHV9/ar-workspace/actions/runs/40018814886):
+4,339 unit/integration tests, 252 browser cases, three performance cases and 15
+polling/Aging cases. Deployed with --keep-vars as Worker
+`0dff633f-2393-4aa4-9f98-01723f2674be`. Post-deployment public HTML, application
+entry, DocumentRoute/PDF editor chunk and stylesheet match the qualified build by
+SHA-256. Existing schedules and all four Workflow bindings were preserved.
+No production email, billing record or Sheet write was performed for this repair.
+
+## 2026-10-24 — GitHub verification repair (local qualification)
+
+Investigated actual failed Actions runs 39860906317 / 39860900330 at older commit
+21b7440. The same workflow ran on both feature-branch push and pull_request, creating
+duplicate failure notifications. It now verifies all PRs and main pushes, supports
+manual dispatch, and cancels superseded runs. No checks were disabled or skipped.
+
+Updated stale Collections browser assertions to retain cross-account/stage/filter
+selection per the owner-approved batch workflow, while preserving exact requested
+invoice IDs, separate billing/collection groups, and true source-change invalidation.
+Dashboard test now coordinates the tracker revision event that correctly invalidates
+cached previews; unavailable data still stays unknown rather than becoming zero.
+
+Fixed three actual PDF editor problems: quantized self-edge movement rejection,
+preexisting Whiteout overlap blocking row growth, and strictly provable standalone
+translucent-text deletion. Original glyph/background/artwork, opposite-column and
+Undo checks remain; new opacity/artwork negative controls pass independently.
+
+Local final verification: 4,339 unit/integration tests; 250 browser smoke cases;
+three configured performance cases; 15 polling/continuous-Aging cases; typecheck,
+production build and public asset bundle pass. Focused independent review approved.
+Generated screenshots are retained privately; every tracked evidence image was
+restored to its original baseline. AR-only financial/source code and database
+migrations have no changes in this patch. Production remains version
+fe256593-7393-4fcc-bf82-a6b96ef42f62 during this CI repair. Actual GitHub PR-head
+verification is required before reporting remote CI success; evidence goes in
+ignored .tmp/ci-repair/ together with the Actions run link.
+
+## 2026-10-24 — AR-only Invoice release deployed and live-verified
+
+**Implemented / tested / deployed / enabled:** production source commit
+`4ff69f9` is deployed as Cloudflare Worker version
+`fe256593-7393-4fcc-bf82-a6b96ef42f62` at
+https://ar-workspace.ar-c82.workers.dev. Deployment used --keep-vars; workflow
+bindings and schedules remain in place. All 1,072 tested source files matched
+the frozen validation manifest immediately before deployment.
+
+Qualification completed against actual OPERA AR Invoice PDFs: 1,402 cases,
+9,814 monetary fields, no lost previously qualified cases and no Guest financial
+source/fallback. Final PDF evidence comprises 1,632 pages. TAX ID values are
+verified; item content follows the owner's explicit API-wording/payment-label
+and non-identical-layout allowances. 4,334 tests / 322 files and build passed.
+
+After deployment, the administrator used the actual Collections UI to create
+invoice-only preparations for KAT, TSK, TLKL, TSAN, TLFO and WAKL, opened PDF
+Workspace and final previews, and downloaded six reviewed PDFs / ten pages.
+Independent re-extraction matched all 42 native monetary fields and every parsed
+item row in those six files. These include the retained-wrapper, actual posted
+VAT, exclusive zero-tax net, mixed VAT/NonVAT and partial-balance source cases.
+
+All six exact test preparations were explicitly discarded after verification.
+Read-only database checks confirm workspace source/version on all six, all closed,
+zero email drafts, zero sent events, zero external-billing records and zero tracker
+history rows for the tested scope/time. Existing open stored-file counts remain
+unchanged: native ready 131, workspace ready 245, and the prior uncertain outcome
+is preserved. Temporary authenticated provider previews were stopped and their
+exact nonce/session files removed. No OPERA ledger or billing/Sheet history write,
+email send, paid service or access expansion was performed.
+
+Private evidence remains ignored: `.tmp/ar-only-final-validation/` (frozen test
+logs, deployment record, live-job IDs, downloaded PDFs and live checks) and
+`.tmp/invoice-parity-20261022/final-corpus-evidence-manifest.private.json`.
+Native baselines were never rewritten. New generation is AR-only; retained legacy
+bytes remain readable, while pending legacy generation does not call Guest reports.
+This completes the current replacement/qualification/cutover goal; it is not a
+promise that unknown future malformed provider data will be silently accepted.
+
+## Release candidate verified — production deployment pending
+
+Final frozen source checkpoint: 322 test files / 4,334 tests pass, build passes,
+source manifest unchanged across 1,072 files (SHA-256
+17c67fec2d6eb7c7c265d1aa54a0a7a0908cef87c5478f1aef07979d88cdd7db).
+Root inspected the saved full logs and exit-code summary. Changed-file sensitive
+pattern scan found no secret, one-time recipient, supplied PIN or private/binary
+customer evidence files among the 229 changed paths.
+
+Final corpus evidence satisfies the owner's clarified content criteria: all 1,402
+cases and 9,814 monetary fields match actual AR, TAX ID is verified, and item
+wording matches or uses the explicitly accepted API equivalents. Line-layout
+identity is not required. Latest 75 affected PDFs match native body details exactly.
+Independent financial, display, retained-case and production-routing reviews are
+approved. Release is ready for commit/deploy and live route verification; it is not
+yet deployed or enabled. No ledger, billing/Sheet history or email writes performed.
+
+## Owner-approved payment label completes corpus comparison criteria
+
+Owner explicitly accepts the API payment label without masked card/expiry details
+that are absent from the API. This does not waive payment identity/date/amounts.
+The consolidated final corpus manifest now covers all 1,402 PDFs / 1,632 pages:
+9,814 native monetary fields match; TAX ID 1,399 exact headers + three address
+placements; bodies 1,396 exact, four accepted equivalent accommodation wording,
+one explicitly accepted API payment label, and one verified native line-wrap
+extraction difference. All 75 targeted repaired PDFs match native body details.
+
+Latest display guards and production-routing review are completing. No deployment
+or production enablement yet; final verification must use the actual deployed
+AR-only route and preserve stored artifacts/history.
+
+## Complete generated PDF audit: monetary pass, bounded display differences
+
+All 1,402 generated PDFs / 1,633 pages reopen successfully and match all 9,814
+native monetary fields, with zero missing fields, parser problems or out-of-page
+text. Every generated body matches its source-derived model. Native body results:
+1,321 exact; four accepted equivalent-description cases (65 rows); 77 outstanding
+(75 reference-only, one description-only, one three-member grouping difference).
+These display differences block deployment; financial qualification stays retained.
+
+TAX ID qualification is complete: 1,399 exact header fields and three native-address
+values. Two initial parser ambiguities were literal TAX ID lines in the address
+plus a separate empty report TAX ID field. Native/generated header images confirm
+both address values are present. A field-label adjacency check resolves only those
+two, retaining the original full audit and separate recheck evidence; 39 positive
+controls still pass. No native baseline or runtime value was altered.
+
+Agents are grouping outstanding display differences by source-backed shared rules.
+No full monetary replay is being restarted. Production remains unchanged.
+
+## Final routing regression/build checkpoint; PDF audits running
+
+AR-only production routing is implemented and independently approved, but not
+deployed. Final full suite: 321 files / 4,309 tests pass; fresh typecheck/build pass;
+Worker deploy --dry-run passes. Workspace generation selects AR-only, pending
+native/missing-source generation retires explicitly, stored ready/reviewed/draft/
+uncertain bytes and immutable snapshots remain intact. Safe metadata probes stay
+available; nine old invoice/report diagnostic workflow flags retire before effects.
+
+All 1,402 PDFs have been rendered. Independent full-corpus monetary extraction,
+body comparison and TAX ID header audits are running on those files; no completion
+claim yet. Seven targeted display replays preserve all monetary fields and use
+whole exact paired provider responses; original 1,402 monetary evidence remains.
+
+Actual read-only production checks confirm active v2 invoice templates for all six
+hotels and no queued/running open document jobs. Existing native ready files: 131;
+workspace ready files: 245. No DB writes or changes to those files. Admin browser
+sign-in succeeded for later live verification. No deployment/enablement.
+
+## Complete recorded-source monetary qualification: 1,402 / 1,402
+
+The immutable combined replay completed: all 1,402 cases match all seven actual
+native AR monetary fields, zero refusals, zero monetary mismatches, zero Guest
+calls. Identity-level retention loses none of the previous 1,395 passing cases
+and adds all seven remaining cases. All 1,402 source-derived models are captured
+under replay run cebc20c9-a086-443d-b310-daf83055d851 for the PDF/body audit.
+
+This is NOT deployment readiness. Complete generated-PDF/body/header qualification
+and final production-routing review remain. Two saved replay inputs lack requested
+POS metadata, already available as exact whole responses in their fresh captures;
+only those cases need evidence supplementation, not a full financial rerun.
+Display label controls match 2,998 KAT and 5,559 non-KAT rows; country labels 1,129;
+City Ledger display 62 cases / 138 rows. These are scoped controls, not complete
+native-body parity. Full build passes. The broad suite had 4,262 passing tests and
+one fixture-index failure, corrected test-only and its 18-test suite passes.
+No deployment or production enablement.
+
+## Combined run started; final two fresh PDFs checked
+
+The immutable combined replay is running over all 1,402 cases with per-run model
+capture for the subsequent complete PDF/body audit. No aggregate pass is claimed
+until completion. The two final exact fresh provider reads both pass; two PDFs /
+four pages independently match all 14 native monetary fields with no parser or
+bounds problems. Embedded cancellation now matches the complete 21-row native body.
+The V6 PDF has equal row count/date/description/debit/credit, with one incomplete
+printed reference remaining; source-backed reference diagnosis is isolated while
+the existing full run continues. No restart of POS financial qualification.
+
+Private evidence: final-embedded-live and final-embedded-output. Authenticated
+preview stopped and exact nonce/session files removed. Full tests/build and final
+independent counters are running separately. Production is unchanged.
+
+## V6 actual target matches all native monetary fields
+
+The first integrated V6 recorded-source replay for the remaining embedded-Revenue
+case passes all seven native AR monetary fields, with zero missing metadata and
+zero Guest calls. Exact paired current root/child metadata corroborates original
+posted VAT ownership; runtime values are not copied from native controls.
+All known monetary gaps now have individually passing targets. This does NOT yet
+prove combined 1,402-case retention, fresh V6 reads, or complete visible-body parity.
+Focused implementation tests/typecheck pass; independent review and the combined
+display hooks remain active. Evidence: target-v6-replay.private.json (private).
+No deployment or production enablement.
+
+## Complete native reference integrity check
+
+Parent independently checked all 1,402 native comparison records: each identifies
+OPERA AR Batch Statements + Print Invoices, has complete expected page membership,
+and points to an existing split PDF. All 102 original batch SHA-256 hashes match
+their stored provenance. Each of the 1,702 split pages was then text-hash compared
+with its exact zero-based page in the original batch: all match, zero differences.
+This validates the AR reference corpus; it does not claim the new renderer already
+matches every reference. Guest Folio files were not used. Private evidence:
+native-corpus-integrity.private.json and native-corpus-page-integrity.private.json.
+V6 financial and the remaining display implementations/reviews continue.
+
+## PDF layout and TAX ID follow-through
+
+Root visually inspected all eight retention/taxless generated pages: no clipped
+rows or text overlap; the known TLKL POS grouping discrepancy remains explicit.
+A coordinate-bounded TAX ID verifier compares the left header row independently
+of footer/company tax numbers. Latest nine PDFs match native header TAX ID fields.
+The verifier was additionally checked against 39 previously generated positive-TAX
+controls: 36 exact header values and three matching values printed in native
+address blocks. Those 39 are prior artifacts, not newly generated qualification.
+Private tax-header-verification artifacts preserve exact results without changing
+native PDFs, parsers' financial baselines or runtime values. No deployment.
+
+## Fresh retention/taxless qualification: six reads and PDFs
+
+All six exact targets passed fresh AR-only reads. Six generated PDFs / eight pages
+independently match all 42 native monetary fields, with zero missing fields,
+parser problems or out-of-page text. The five KAT native bodies match completely.
+TLKL's newly qualified financial case still prints 44 body rows versus native 37:
+a POS check is not yet grouped. Its fresh packet is queued for display diagnosis.
+This is not a complete visible-body pass for all six.
+
+One originally unqualified target has no legacy model. The verifier now reports
+that missing legacy baseline explicitly rather than crashing or inventing one;
+its seven native-PDF monetary comparisons still pass independently. Captured
+source precedes the final selected-wrapper contradiction preflight tightening.
+Evidence: retention-taxless-live and retention-taxless-output (private).
+Authenticated preview stopped and exact nonce/session files removed. No deployment.
+
+## Retention and exclusive zero-tax net: targeted replay passed
+
+After deterministic selection of the unchanged prior net-base proof, the five
+previously rejected KAT cases again match all seven native monetary fields.
+The new shared exclusive NonRevenue zero-tax net profile also matches its actual
+TLKL target. Parent combined six-case replay: 6/6, all 42 monetary fields exact,
+35 KAT and eight non-KAT display-label controls exact, zero Guest calls.
+
+This is recorded-source qualification, not a fresh provider/PDF or full-corpus
+retention claim. One saved target lacks newly requested POS display metadata;
+fresh qualification must capture the real paired response. Independent review
+and V6 embedded-Revenue implementation remain in progress. No deployment.
+
+## Full V5 replay: aggregate unchanged, retention not yet qualified
+
+The complete 1,402-case recorded-source replay completed with 1,395 monetary
+matches, seven unqualified and zero monetary mismatches or Guest calls. Comparing
+identities, rather than counts, found five newly qualified cases and five earlier
+KAT cases now rejected by the posted-wrapper verifier. This is NOT a retention
+pass. Actual paired KAT leaf metadata was supplied; independent source/profile
+diagnosis is required before changing the guard. The other two financial gaps
+remain the planned taxless NonRevenue and embedded Revenue profiles.
+
+Display witness comparisons pass 2,963 KAT and 5,551 non-KAT label controls.
+This is not a whole-corpus visible-body qualification. Private evidence:
+v5-full-retention-comparison.private.json and ar-only-display-replay.private.json.
+Production remains unchanged; no deployment/enablement.
+
+## Fresh footer / zero-group qualification — 2026-10-24
+
+Three exact targets passed fresh AR-only reads and generated 3 PDFs / 7 pages.
+Independent PDF extraction matches all 21 native monetary fields, with no missing
+fields, parser failures or out-of-page text. No Guest Folio calls. The authenticated
+preview was stopped and its exact nonce/session files removed after capture.
+
+Two complete native bodies match (37 and 24 rows), including the independently
+approved source-bound zero POS group suppression. The third generated body has
+23 rows versus native 21: a same-date miscellaneous debit reversal pair remains
+visible, plus one reference whitespace difference. This is an unresolved display
+qualification item despite exact financial totals; shared-rule diagnosis is active.
+Evidence is private in footer-zero-live and footer-zero-output under the ignored
+invoice-parity audit directory. No deployment or production enablement.
+
+Separately, the approved NA-package marker reference fix was rerendered from a
+verified prior fresh capture: all seven monetary fields and the complete native
+body match, with clean visible wrapping and no overlap. This was not a new live read.
+
+## Owner clarification: semantically equivalent API descriptions
+
+On 2026-10-23 the owner accepted API wording when its meaning matches the native
+AR description. This specifically resolves the 25 observed routed rows using
+"Accommodation Charge" versus native "Accommodate Charge" as an accepted display
+difference. It does not waive exact monetary, VAT/Non-VAT, date, reference, or
+invoice identity checks, and does not authorize arbitrary description differences.
+No runtime hardcoded spelling replacement is needed. This clarification does not
+change the last verified whole-corpus checkpoint or imply deployment.
+
+## Fresh 59-case qualification with display integration
+
+All 59 new cases passed fresh AR-only provider reads at the reviewed combined
+financial/POS/City/country checkpoint. Parent generated 59 PDFs / 118 pages and
+reopened them against actual native AR references: all 413 monetary fields match,
+no missing fields or out-of-page text, and TAX ID/line counts retain the reference
+baseline. Expected financial-line text changes are 133 descriptions and 36 references.
+Country names are present and native-equal on all 59 generated/native header pairs.
+
+Full body parity is explicitly incomplete: 24 PDFs match every parsed native row;
+26 differ only in descriptions (known TSAN rate-label scope); nine have additional
+reference/order/grouping differences. Two have different row counts. All 59 generated
+bodies match their models, so remaining differences are source/display logic rather
+than unexplained rendering loss. Display implementation work owns the nine cases;
+TSAN routed-origin and property label policy remain separate work. No deployment.
+
+Fresh data and renderer were frozen before subsequent work; providers were stopped
+and nonce/session files removed. Country independent review passed 31 focused tests
+and typecheck; SourceClaims/City/inclusive financial/display review passed 195 tests.
+Recorded whole-corpus monetary checkpoint remains 1,395 matches / seven unresolved.
+
+## Combined recorded checkpoint: 1,395 / 1,402
+
+The separate actual-posted-net certificate for current inclusive-flag charges adds
+three matches. Combined source/financial/display integration retains every earlier
+match: 1,395 monetary matches, seven unresolved, zero seven-field discrepancies or
+Guest calls. The current snapshot includes independently reviewed SourceClaims POS
+and City integration; fresh 59-case qualification is being batched with the small
+country-label change, rather than repeating provider reads for each display edit.
+
+All 87 newly required POS metadata contexts have now been read twice, stably, with
+one current page per context. They are added as exact provider witnesses for the
+next combined replay; no result data is spliced. Country header controls independently
+match configured property country names in all 1,129 candidate native AR address
+blocks. This supports a source-bound display change, not a runtime hardcoded table.
+
+The remaining seven monetary cases have explicit work ownership: mixed taxless
+NonRevenue, one embedded F&B service child, two manual MISC footer exclusions, one
+Other revenue role, and two posted wrapper-component policies. No case-specific
+exception or nominal tax recalculation is authorized. Production remains unchanged;
+temporary authenticated metadata previews are stopped and nonce/session removed.
+
+## Current checkpoint: 1,392 monetary matches / 10 unresolved
+
+The recorded replay of exclusive posted NonRevenue net claims admits 56 additional
+invoices and retains all 1,336 previous matches. All seven native AR monetary fields
+match and Guest calls remain zero. A subsequent independent review closed a separate
+absent-subtype base-scope guard; the final combined replay will include that tightening
+and the SourceClaims POS display companion. This is not yet fresh 56-case PDF
+qualification. Fresh capture is intentionally deferred until the display companion
+is ready to avoid regenerating the same batch twice.
+
+Current raw replay shows 63 grouped POS cases / 395 groups because the new financial
+owner still needs the shared display companion; this is an acknowledged intermediate
+body regression, not a deployment-ready result. Exact saved City detail blocks supply
+59 cases / 130 auxiliary rows without fabricating or splicing responses. Other cases
+require complete matching request blocks/fresh reads; display gaps never qualify money.
+
+The country configuration getter's failure was a real API limit mismatch: provider
+requires at most 20, while the getter requested 200. The query/response bound is fixed
+and 32 focused tests pass. All six property reads now return stable paired metadata
+for 42 property/country combinations with no missing requested codes. Applying these
+labels to the PDF still requires native-header comparison; no country label is guessed.
+
+Bounded API alternatives audit is complete at current access: version-correct EFolio
+still returns the subscription gateway 403; three exact AR folio-history searches
+return no IDs/links both on their known folio dates and with dates omitted. This does
+not prove universal archive absence. Implementation proceeds using available posted
+source data; no subscription/access/production changes. All previews are stopped.
+
+## City Ledger artifact checkpoint (core hooks still pending)
+
+The isolated display implementation passed independent review after binding the
+serialized catalog to the exact invoice/account identity. Parent generated all 63
+financially admitted candidate PDFs / 76 pages. All 441 native monetary fields
+match, with zero extraction or bounds errors. All 63 bodies match their models;
+47 match complete native bodies, while other previously identified description,
+grouping or placement gaps remain. Two financially unqualified source cases were
+not promoted by a display proof.
+
+The old-baseline verifier flagged three TAX ID differences. A targeted comparison
+confirms all 63 current financial models retain TAX ID and guest counts exactly;
+the three differences predate this display change and are in legacy saved models.
+No claim of full 63-body parity or production integration is made. API alternatives
+remain the owner's current priority before further financial policy expansion.
+
+## Direct API investigation prioritized by owner
+
+The owner requested a detailed Developer Portal, documentation and Postman audit
+before further inferred footer policies. Existing qualified work is retained; the
+new exclusive NonRevenue policy expansion is held pending this investigation.
+Actual SSO Portal access and official Postman AR Invoice Postings were inspected.
+The Portal AR OpenAPI 26.4 contract was downloaded and compared structurally with
+26.3: all 62 operations, parameters, responses and definitions are unchanged.
+
+A fixed readonly EFolio GraphQL query against one exact AR invoice, using the
+current app credentials, returned HTTP 403 with sanitized reason
+"No Subscribed Plan or API found". Current app was matched internally to TLK-Test;
+no credential or key suffix was persisted in this status. Its Portal subscription
+view shows API Catalog, Hospitality Property and OAuth, without a Data API tab.
+This does not establish the hotel's overall commercial entitlement. No subscription
+or security settings were changed. Authenticated preview stopped and nonce removed.
+
+Fresh paired AR history reads on three exact printed/reference invoices were stable
+and returned one target each, with no stored-folio identifiers. Documented CSH AR
+folio-history discovery is the next bounded source check; stored-ID absence is not
+proof that no stored AR PDF exists. Findings and primary citations are consolidated
+in OPERA_AR_DIRECT_API_AUDIT_20261023.md. No production deployment.
+
+## Explicit revenue and mixed-shape increment qualified for money
+
+Full recorded replay now matches 1,336 / 1,402 native AR invoices, with 66 unresolved.
+All 1,328 prior matches remain; eight additional cases pass all seven monetary
+fields with zero Guest calls. Independent review passed eight suites / 150 tests
+and typecheck. The increment handles genuine absent subtype with explicit revenue
+metadata and correct whole-remainder strategy selection; VAT remains actual posted.
+
+All eight fresh provider reads passed. Eight generated PDFs / 26 pages were reopened:
+all 56 native financial fields match, no missing fields or bounds errors, counts
+and TAX ID unchanged. Seventeen approved descriptor and two reference changes only.
+However all eight bodies still differ in row grouping: the shared SourceClaims
+profiles do not yet expose verified POS display groups. Generated bodies match their
+models, but this is not native body parity. The display integration remains required.
+
+The newly retained per-transaction rateCode was probed on the 25 TSAN wrapper rows;
+all 25 were found but the provider supplied no rateCode. No guessed descriptor or
+origin was introduced. Authenticated preview stopped and session/nonce removed.
+The earlier six four-property PDF controls were also visually inspected across all
+seven rendered pages; no clipping or overlap observed. Production remains unchanged.
+
+## Direct transaction rate metadata identified
+
+The documented CSH summary posting schema includes optional `rateCode` (max 20),
+meaning the rate associated with that transaction. Our existing display projection
+omitted this field. Therefore earlier projected summary responses cannot establish
+that the upstream transaction rate is absent. A narrow validated projection and
+paired probe are approved, with no financial-policy change. If present, exact
+posting identity must bind the rate; the destination reservation's current rate
+must not be assumed to describe a routed historical charge.
+
+Two TSK wrapper refusals are also isolated: one has VAT explicitly based on net
+plus service while the current narrow profile expects net-only, and the second
+has a fractional-satang posted service deviation from the current ratio. Neither
+is being fixed by changing source money or loosening a tolerance. Actual posted
+component ownership remains the required path. Production remains unchanged.
+
+## Mixed-shape planner diagnosis and routed-label evidence
+
+The remaining known-role WAKL case fails because a discount-shaped scope suppresses
+the posted-VAT strategy, then the earlier positive multi-VAT strategy rejects a
+mixed scope. A private diagnostic selecting the existing posted-source verifier
+passes all seven native fields without changing any monetary verifier. This proves
+a planner-selection defect, not production qualification; a whole-shape selection
+fix preserving valid existing discount strategies is requested.
+
+The targeted TSAN summary-posting read is stable but returned no typed original
+reservation information. Transaction-detail and summary reads therefore do not
+yet support an original-reservation rate binding. No guest-name/reference parsing,
+rate-code exception or hardcoded descriptor was introduced. Both temporary read
+sessions were stopped and their nonce/session files removed. Production unchanged.
+
+## Optional transaction subtype confirmed by independent API read
+
+A new narrowly scoped documented GET list reader passed 19 focused tests. Actual
+paired TLKL reads for the two candidate transaction codes were stable and confirm
+explicit Revenue/F&B classification and revenue=true, with absent transaction
+subtype and false nonTaxable/taxInclusive/manual/paidout/deposit/comp flags. This
+agrees with the existing exact-code metadata; the missing subtype is not a parser
+omission. Oracle documentation permits an optional subtype. Implementation of the
+separate explicit-revenue-base certificate is authorized under the written source
+contract; no new case has been claimed as matched yet, and actual posted VAT must
+remain the source of money.
+
+The TSAN routed-wrapper detail probe returned all requested 25 IDs stably but no
+typed original-rate/routing identity or missing native descriptor. Its transaction
+code description remains different from the native AR wording; this evidence does
+not justify a text fallback. Both temporary previews were stopped and credentials
+removed. Financial checkpoint remains 1,328 matched / 74 unresolved, not deployed.
+
+## Remaining financial work grouped by source cause
+
+The 74 unresolved cases are now separated into disjoint causes: 54 default/all-charge
+POS mapping-role gaps, seven missing-subtype-only cases, four other typed role/map
+gaps, three missing property-mapping captures, two excluded-footer policies, two
+embedded rounding policies, one mixed NonVAT/residual policy and one residual
+case requiring diagnosis. These categories identify work, not accepted invoices.
+
+The missing WAKL evidence has now been fetched using the existing property-scoped
+getter: discovery plus all six returned interface mappings are stable on paired
+reads. The three cases still require role analysis; they are not automatically
+qualified by availability. A narrowly scoped documented transaction-code list
+read is being prepared to clarify the missing subtype evidence. No new service,
+access or paid API plan was enabled. Preview stopped and session/nonce removed.
+
+## Four-property descriptor qualification
+
+TLFO/TLKL/TSK/WAKL now use independently qualified current English AR rate-label
+policy with unchanged dated reservation, package-code, translation and paired-source
+guards. KAT remains compatible; TSAN is not enabled under this policy. Full replay
+retains 1,328 financial matches / 74 unresolved and all 2,998 KAT wrapper checks.
+All 2,892 comparable labels on the four newly enabled properties match native AR.
+POS display evidence now covers 135 cases / 1,233 groups, with no missing metadata
+requests in this replay. These counts do not replace full PDF body qualification.
+
+Fresh provider reads for six cases across all four properties passed. Six generated
+PDFs / seven pages were reopened: all 42 monetary fields and all six complete
+bodies (date, description, reference, debit, credit and row counts) match native AR.
+Only 34 expected descriptions changed; counts and TAX ID remain equal, no bounds
+or extraction errors. Temporary preview stopped; session and nonce removed.
+No production deployment or enablement. TSAN descriptor and City Ledger work remain.
+
+## City Ledger ownership evidence closed
+
+Exact-ID detail probes returned all 164 candidate source IDs. Typed current AR
+invoice ownership partitions 74 initial groups into 69 two-row offsetting pairs
+and five foreign-invoice exclusions. All 138 retained rows uniquely match native
+AR date, reference, debit/credit and returned transaction-code description. Source
+snapshots are stable under the existing exact-ID ordering normalization; other
+fields are unchanged. The display-only implementation is still pending, and must
+not alter financial aggregates or infer current ownership from account equality.
+
+Four non-KAT property rate-description policies are independently approved for
+implementation. TSAN remains separate: canonical reference matching identifies
+25 genuine counterexamples to a universal primary-description fallback. Those
+cases must not be hidden by an invoice/rate-code exception. No deployment.
+
+## Source coverage updates for body parity
+
+All 49 previously missing POS display metadata contexts were read twice with stable
+responses and zero read errors. Replay now includes this evidence; combined replay
+is deferred until the next source-code checkpoint rather than repeated unchanged.
+The remaining City Ledger ownership probes completed 59 paired reads / 148 exact
+transaction IDs, including selected-source before/after snapshots. Full ownership
+analysis is in progress. These reads are evidence collection, not automatic row
+admission. Temporary authenticated previews were stopped and session/nonce removed.
+
+## Explicit reference suffix correction qualified
+
+The shared display helper now preserves an explicit AR reference beginning with
+its exact check number plus a whitespace-delimited nonempty suffix. Existing
+RoutedFrom behavior remains unchanged; no invoice-specific rule or remark fallback.
+Independent six focused tests passed. Two regenerated PDFs / three pages preserve
+all 14 native monetary fields and match both source-model bodies. Native comparison
+has zero reference differences; the separate City Ledger row-pair gap remains in
+one document. No out-of-page text, changed counts/TAX ID, or financial changes.
+
+## Fresh transfer / posted-fee qualification
+
+All 21 newly admitted cases passed fresh AR-only provider reads. One read detected
+source change and refused; one exact-scope retry completed with stable evidence.
+The frozen renderer produced 21 PDFs / 74 pages. Reopened generated PDFs match
+all 147 native AR financial fields, with zero missing fields, out-of-page text or
+Guest calls. Counts and TAX ID remain equal; 15 canonical reference changes only.
+This qualifies monetary output for this increment, not full body parity or cutover.
+The temporary preview was stopped and nonce/session files removed.
+
+After the shared POS identity guard change, full captured replay remains 1,328
+matched / 74 unresolved, zero monetary mismatches. Independent fee-integration
+review passed ten suites / 226 tests and typecheck. A separately verified direct-zero
+membership closure defect is being fixed with focused tests before final cutover.
+The two explicit split/routing reference suffix losses have a shared helper fix;
+independent review and rendered verification are pending. No deployment/enabling.
+
+## Latest recorded checkpoint: 1,328 matched / 74 unresolved
+
+Whole-corpus replay of the shared transferred-current-rule and posted mapped-fee
+components now matches all seven monetary fields for 1,328 of 1,402 native AR
+references. All 1,307 previous matches remain; 21 are additional matches, with
+zero monetary mismatches or forbidden Guest calls. This is captured-source replay,
+not fresh qualification of the 21 new cases. Transfer calculator evidence in the
+capture is single-read; fresh paired reads remain required. Independent review of
+the fee integration is in progress. Production is unchanged, not deployed/enabled.
+
+Earlier fresh display qualification generated 89 PDFs / 154 pages; all 623 native
+AR monetary fields matched. Full visible-body parity is NOT complete: non-KAT
+rate descriptions differ and three examples omit offsetting City Ledger rows.
+A full source census also finds similar offset pairs absent from native PDFs, so
+inserting every zero-sum pair is not justified. Exact ownership probes are prepared.
+The body verifier now uses actual signature-image geometry to exclude cashier
+text on continuation pages. All 89 generated bodies exactly match their models;
+20 match native bodies completely. Remaining observed differences are 526 rate
+descriptions, two split/routing reference suffixes and three offset-pair row counts.
+Date/debit/credit differences are zero for aligned rows. Model fidelity alone does
+not qualify native parity.
+
+Paired provider reads for all 69 non-KAT rate profiles succeeded with stable
+responses. Their property-specific native-label analysis remains pending; ambiguous
+native joins and missing dated rate bindings are not counted as matches. Temporary
+authenticated preview was stopped and its nonce/session files removed.
+
+## Latest financial checkpoint: 1,302 matched / 100 unresolved
+
+The bounded ordinary-revenue zero-posted-VAT profile admits one additional case
+without changing any previous match. Whole-corpus replay compares all seven native
+AR monetary fields: 1,302 matches / 100 unresolved, zero monetary mismatches or
+Guest calls, and 2,998 native-equal wrapper labels. Fresh read and generated PDF
+inspection of the new case pass all seven financial fields on one page, with no
+missing fields or out-of-page text. Six canonical reference changes only; financial
+lines, IDs, amounts, descriptions, counts and TAX ID are preserved.
+
+An initially overrestrictive residual guard was corrected to admit embedded-tax
+Revenue through the existing strict validator. A bounded shared-claim composition
+is being implemented for zero-tax roles plus already-verifiable ordinary POS,
+with full original source, global ID ownership and a single financial aggregation.
+This addresses legitimate combinations rather than per-invoice exceptions.
+
+All remaining 72 display-metadata inventory contexts were read twice successfully
+and stably, with complete first pages by logical outer-row counts. Combined with
+five prior contexts, all 846 source group memberships and native descriptions match.
+Native ordering is date plus the existing representative posting ID, not API order
+or minimum member ID. Runtime grouped-display integration remains unqualified.
+
+Eight scoped Header/MappingCodes metadata probes returned stable responses. Extra
+fiscal/tax-type fields were absent; exported mapping values are not automatically
+interpreted as tax roles. These observations do not remove the remaining financial
+or routed/split display gaps. Temporary previews were stopped and nonce/session
+files removed. Production is unchanged: not deployed or enabled.
+
+## Current display-source result
+
+All five corrected CheckNo metadata reads succeeded and were stable. The earlier
+projection failure was an actual 21-character group/subgroup key identical to the
+validated check number, beyond the general schema's 20-character group-key limit.
+Only exact equality permits the longer bounded key; arbitrary long identifiers
+remain rejected. Independent client review: 30 focused tests passed.
+
+The five response scopes contain 35 explicit groups whose declared counts and
+source member identities match. Group descriptions match all 35 native AR labels.
+Group headers reuse existing member IDs, so they must never become additional
+financial postings. Grouped presentation proof/renderer work is still pending;
+header reference is an opaque key and cannot replace the explicit AR reference.
+
+## Latest recorded checkpoint: mapped-sales replay 1,301 / 101
+
+The separate mapped-sales profile adds five cases in the complete 1,402-case
+captured-source replay, retaining all 1,296 previous financial matches. There are
+zero seven-field monetary mismatches or forbidden Guest calls. All 2,998 qualified
+wrapper labels now match actual native AR rows; the 73 corrected labels remain.
+The five-case increment passed independent review and fresh provider reads. Five
+generated PDFs / six pages were reopened: all 35 native AR financial fields match,
+no missing fields or out-of-page text, unchanged TAX ID/row count/financial lines;
+one canonical reference changed. Last-page visuals were inspected. Combined
+A+/B checkpoint: 263 files / 3,213 tests, typecheck/build passed. It is not deployed
+or enabled.
+
+The next zero-posted-tax audit covers all 27 captured candidate invoices / 34 atoms,
+not only the eight refusals. Existing explicit NonVAT classifications match native
+NonVAT for all 27. Two excluded-footer counterexamples remain distinct; five
+ordinary-revenue candidates now have paired current rules, selected-source and
+calculation reads. Four return a single base; one inclusive calculation returns
+a base echo plus subtotal-bucket state, not two monetary charges. The bounded
+interpretation passed independent review; implementation of a separate proof and
+whole-invoice qualification remains pending. No financial inference was implemented
+from their names, empty Generates, or aggregate matching totals.
+
+## 2026-10-23 — Signed multi-VAT composition qualified; 106 financial cases remain
+
+Recorded whole-corpus replay: 1,296 seven-field financial matches / 106 unresolved,
+zero monetary mismatches or Guest calls; every prior 1,289 match retained. The
+seven new cases completed fresh reads and generated-PDF inspection: seven PDFs /
+27 pages, all 49 financial fields equal actual saved native AR PDFs, no missing
+financial fields or out-of-page text. Seven canonical reference changes only;
+line IDs, dates, descriptions, amounts, counts and TAX ID stay unchanged.
+Independent review approved the signed proof and its composition with strictly
+positive ordinary mapped-fee checks; no fee is admitted inside signed/repeated
+VAT scopes. A separate mapped-sales profile is still being qualified.
+
+The earlier display core checkpoint is independently revalidated on all 13 fresh
+packets: 73 native-equal labels and 91 native-equal financial fields. Full POS row
+presentation is still unfinished. All eight actual TSAN arrangement headers were
+read stably and explain 694 native venue labels; OPERA omitted member-code lists.
+CheckNo grouping exists in real responses, but a response-projection assumption
+currently rejects the normal diagnostic getter. Bounded type/length-only probes
+are localizing it; this is not evidence that the OPERA API is unavailable.
+
+A direct-zero-tax audit found two actual AR footer counterexamples: some amounts
+are included in gross but excluded from both before-VAT and NonVAT. Do not enforce
+an invented gross=net+VAT+NonVAT identity or classify these amounts by a blanket
+empty-Generates rule. A separate source-backed excluded-footer role is under audit.
+
+Production remains unchanged; no cutover, email, ledger or billing/Sheet writes.
+Temporary authenticated previews used this turn were stopped and nonce/session
+files removed. Customer packets and rendered evidence remain Git-ignored.
+
+## 2026-10-23 — Display core qualified on fresh changed cases; remaining financial work active
+
+Implemented and independently reviewed locally: shared KAT rate-display proof is
+integrated after financial validation on every successful reader branch. Final
+combined checkpoint: 257 files / 3,097 tests, typecheck and build passed.
+
+Complete 1,402-case recorded replay retains 1,289 financial matches / 113 unresolved,
+zero monetary mismatches and forbidden Guest calls. Within financially qualified
+cases, 2,962 wrapper labels equal actual AR reference rows; 73 labels change across
+13 cases. The other 36 labels from the 2,998-row helper audit belong to financially
+unqualified cases and are not counted as qualified document output.
+
+All 13 changed cases were then read fresh from OPERA and rendered as 13 PDFs /
+13 pages. Reopening generated and actual native AR PDFs verifies all 91 financial
+fields exactly, all 73 changed labels equal native and present in printed output,
+no missing financial fields or out-of-page text. Five reference changes use the
+already reviewed canonical AR-reference rule. Row counts, IDs, dates, amounts and
+TAX ID are unchanged. Representative changed rate profiles were visually compared
+side by side. This resolves the known five label/reference discrepancies through
+shared metadata rules, without per-invoice substitutions.
+
+Still incomplete: full native POS grouping/reference/venue-label parity and 113
+financial cases. Source probes for five representative display scopes returned
+stable responses but no grouping headers through the existing plain folio query;
+these are diagnostic metadata reads, not Guest PDF financial evidence. The scoped
+previews were stopped and temporary nonce/session files removed. Further signed
+multi-VAT work is in progress, outside the verified checkpoint above.
+
+Additional visual gap recorded: native country names versus current ISO country
+codes in two representative billing addresses. This is not a monetary mismatch,
+but whole-document visual/content parity is not claimed.
+
+Production routing/version remains unchanged: not deployed or enabled. No emails,
+ledger changes, billing/Sheet writes or new paid/access changes.
+
+## 2026-10-23 — AR-only financial replay 1,289; visible POS grouping remains open
+
+Implemented locally, not deployed or enabled: mapped taxable-fee, typed discount,
+and positive multi-VAT profiles with property-scoped source/configuration proofs.
+The latest complete recorded 1,402-case replay matches all seven financial fields
+for 1,289 cases, leaves 113 unqualified, and records zero monetary mismatches or
+forbidden Guest/Folio calls. All 1,274 prior matches remain; 15 new multi-VAT cases
+completed fresh-provider reads and produced 15 PDFs / 47 pages. Reopening generated
+and actual native AR PDFs verified all 105 financial fields exactly, no missing
+fields or out-of-page text. Ten canonical reference changes are the only line
+changes from prior models; IDs, dates, descriptions, amounts, counts and TAX ID
+remain unchanged. Refusals are not passes.
+
+Mapped-fee qualification completed with 31 fresh packets and 31 generated PDFs /
+92 pages: 217 financial fields equal saved actual OPERA AR Invoice references.
+Typed-discount qualification completed with three fresh packets and three rendered
+PDFs: reopening both native AR and generated PDFs verified all 21 fields exactly,
+with no missing financial fields or out-of-page text. Representative visual review
+still shows a native grouped POS row versus separate base/discount/VAT/service
+rows in the web document, and differing visible check references. Therefore these
+are financial passes, not complete visible-line/body parity or release approval.
+
+The display audit now covers all 47 KAT rate profiles: 419 proof passes / two
+unsupported cases; 2,998 admitted wrapper labels match native AR rows. Seventy-three
+label changes across 13 cases are source-backed. The two unsupported date bindings
+retain original text; core display integration and fresh qualification remain open.
+
+Pre-display multi-VAT regression checkpoint: 256 files / 3,082 tests passed, plus
+typecheck. Independent review and combined final verification remain pending.
+Production stays at the prior deployed version; no billing/Sheet writes, emails,
+ledger changes or paid/access changes were performed for this qualification.
+The scoped multi-VAT preview was stopped and exact nonce/session files removed.
+Private diagnostic evidence remains outside tracked files. Native AR references
+are saved genuine AR PDFs, not newly printed references for every invoice.
+
+## 2026-10-23 — Receipt-backed POS qualified; mapped-fee replay progresses
+
+Task 2E1 and canonical display-reference integration passed independent review
+and the full suite (248 files / 2,950 tests at that checkpoint). Final recorded
+1,402-case replay admitted 1,240 exact seven-field AR matches with 162 unresolved,
+zero money mismatches/Guest calls and all 1,212 prior matches retained.
+
+All 28 new cases were read fresh from OPERA with complete proof intervals and
+rendered privately into 28 PDFs / 79 pages. Reopening the PDFs found all 196 money
+values equal to the previously captured actual AR PDF references, no missing
+fields and no out-of-page text. IDs, dates, descriptions and line amounts are
+unchanged; 23 references across 20 PDFs changed intentionally to canonical AR
+reference rather than remark fallback. Independent native-line audit checked all
+1,402 pairs, aligned 1,105 and verified 165 applicable rows exactly; unaligned
+layouts were not claimed. Known five blank-reference gaps are addressed by this
+shared rule. Full visible-description parity remains unfinished.
+
+Fresh RTP metadata now supplies the exact five-case native label in scoped
+primaryDetails.description; folioText itself is empty. Primary-description use is
+not enabled: fallback/report semantics and three source-derived negative controls
+must be checked first. No hardcoded description or rate-plan exception.
+
+Task 2E2 adds a separate positive mapped-taxable-fee profile without a receipt or
+10% service assertion. Astra independently reviewed 150 focused tests; full suite
+250 files / 2,989 tests, typecheck/build passed. Initial actual-corpus replay:
+1,271 matched / 131 unresolved, zero money mismatches/Guest calls, all 1,240 prior
+matches retained and 31 new candidates (1 KAT, 1 TLKL, 29 TSAN). Fresh/new-admission
+and generated-PDF qualification remains pending; this is not deployment readiness.
+
+## Fresh AR UI reference attempt
+
+The owner questioned use of saved PDFs versus current UI. Clarified that the
+1,402 references are real OPERA AR PDFs downloaded earlier, not newly printed
+this round. This turn opened Edge OPERA, signed into Cashier as previously
+authorized, searched TSAN/PTA0002 and selected Invoice 17578/Folio37641. Processed
+Create Statement with Print Invoices and Preview (not Email). Batch1805250 showed
+both statement and tsan_ar_folio_vat Complete/Finished Successfully. The new PDF
+could not be downloaded through the current browser flow; the viewer closed and
+reopening the observed URL returned Report not found. No new PDF/reference parity
+pass is claimed from that attempt. The existing captured reference remains intact.
+The main AR tab is kept for continuation. No repeated print command was issued.
+
+No production routing change, ledger movement, email, app billing/Sheet history,
+access expansion or paid service occurred. The AR preview operation may update
+OPERA print/statement history within the owner's prior authorized print scope.
+Temporary API previews are stopped and nonce/session files removed. Goal active;
+complete source coverage, text semantics and final cutover verification remain.
+
+## 2026-10-23 — Service candidate receipt corpus captured; proof implementation started
+
+Previous Goal turn was progress: corrected INT mapping operation and verified live
+mappings. This turn captured paired exact-check GETs for 218 distinct opaque check
+IDs used by 50 candidate Invoices (39 TLKL checks, 179 TSAN). All pairs were stable
+with no request errors; 205 returned receipt text and 13 returned empty objects.
+Missing receipt data is not a zero amount or a qualified case. Raw data remains
+ignored/private under service-receipts with a scoped manifest.
+
+Actual mappings show SC-family alone does not distinguish automatic service from
+tips: one SC1 slot carries tips. Mapping joins must use itemNumber/splitPost and
+actual context, not itemizer labels or code-name guesses. Astra supplied a bounded
+full-receipt service proof plan; Sol has started parser/mapping/proof work, not yet
+qualified. It requires separately matching posted base, service, VAT and payment
+buckets, complete identity/closure and stable source/config evidence; no amount
+replacement. Split/adjusted receipt cases must remain separately investigated.
+
+The owner asked whether known OPERA codes such as 6000/6002 suffice. Clarified that
+codes and property-specific rules are central and already used for explicit
+NonVAT, while POS can post VAT as a separate code with no Generates on its base
+code. Missing Generates alone is not NonVAT proof in that arrangement.
+
+Astra is also evaluating whether exact typed fee mappings and complete posted
+proof can qualify additional cases without unnecessarily requiring an available
+receipt. This is evidence research, not permission to broaden rules blindly or
+shrink the Goal to only the first full-receipt profile. Corpus baseline remains
+1,212 matched / 190 unresolved; no new financial admissions or deployment claimed.
+
+All temporary previews stopped and nonce/session files removed. No emails,
+ledger/history/Sheet writes, access changes or paid additions occurred.
+
+## 2026-10-23 — POS mapping source corrected and verified live
+
+Previous Goal turn was progress (new exact-check/transaction-detail evidence).
+This turn identified why mapping projections were empty: the initial FOF customData
+operation returns customDataInfo, not transaction mappings. Safe key/type-only
+inspection proved this without reading arbitrary config values. Corrected to the
+documented INT getHotelInterfaceDetails operation, requesting only
+TransactionCodesInfo and preserving discovered-logo authorization and projections.
+
+All 13 active POS interface mappings in three properties now return nonempty,
+stable paired results. Actual typed SC itemizers and distinct tip/discount/tax
+mappings are available for the target codes. Seven scoped receipt bodies are
+captured privately. Two initial receipts reconcile with full selected postings;
+two others show adjustment/split-payment hazards that must not be hidden by using
+whole-receipt totals. Additional receipt/context audit is in progress.
+
+Client verification: 243 files / 2,862 tests, typecheck, build and whitespace checks
+pass (existing bundle-size warning). No financial rule or production routing
+changed; the qualified corpus baseline remains 1,212 / 1,402 with 190 unresolved.
+Astra is defining a source-backed service-role proof from the newly verified
+mapping/receipt evidence; Sol awaits that scope. This is concrete progress, not a
+blocked turn or completion claim. See AR_ONLY_POS_SOURCE_PROBE_PLAN_20261023.md.
+
+Temporary previews stopped, nonce/session credentials removed. No email, ledger,
+billing/Sheet history, access expansion or new paid service occurred.
+
+## 2026-10-23 — Fresh POS evidence probes advance active Goal
+
+Previous Goal turn classified as progress: new Goal activation, official-contract
+inspection and exact missing-field inventory. This turn added/tested narrow GET
+capabilities for check details, active POS discovery and transaction-code mappings.
+No financial-model or production routing changes. 243 files / 2,858 tests,
+typecheck/build and whitespace checks pass; existing bundle warning remains.
+
+Five fresh exact transaction-detail probes returned all 25 requested posting IDs.
+Paired details and selected AR sources were stable (selected-row order normalized
+only). None returned parent/group/receipt/description linkage fields; this route
+supplied no new ownership proof for those samples. It was not an API failure.
+
+Three-property POS discovery returned 13 active interfaces. Four exact-check GETs
+returned stable plain receipt text through `checkDetailsInfo`; structured check
+number/date fields were absent. These real receipts are new evidence requiring
+identity, date, outlet and posting reconciliation before financial qualification.
+Astra is assessing them. All 13 mapping responses projected to empty details;
+Sol is investigating safe raw structure to distinguish omitted data from a decoder
+shape issue. Do not conclude mapping configuration is absent from this result.
+
+No new corpus admissions are claimed: baseline remains 1,212 matched / 190
+unqualified. Four existing rule witnesses were identified for three replay lookup
+gaps and labelled recorded-source evidence, not new live reads. Raw receipts and
+metadata stay ignored/private. Temporary previews stopped, nonce/session files
+removed; no ledger, mail, billing/Sheet, access or paid-service changes.
+
+Next action: assess exact receipt evidence and diagnose mapping projection safely;
+use typed itemizer configuration only with source-backed joins. See
+`AR_ONLY_POS_SOURCE_PROBE_PLAN_20261023.md` for official references and boundaries.
+Goal remains active; no completion or blocked audit is warranted while these
+concrete source investigations are yielding evidence.
+
+## 2026-10-23 — Owner-created completion Goal active
+
+The owner explicitly requested a Goal to complete remaining AR-only qualification,
+shared fixes and production cutover only after complete field-level acceptance.
+A new active Goal was created after confirming no tool-managed Goal existed.
+Astra High continues planning/independent review; Sol Medium implements bounded
+reviewed changes. No token budget was imposed by the owner.
+
+Current baseline remains 1,212 matched / 190 unqualified; production unchanged.
+Research now prioritizes exact POS receipt/posted identities and authoritative
+roles, not broader aggregate-rate acceptance. Official Oracle contracts expose
+richer transaction-detail fields and a scoped check-details GET. Most exact direct
+POS posting IDs were not requested through the richer transaction-details route
+in prior captures. These are investigation leads, not verified integration success
+or new runtime financial proof. No invented query flags or ID mappings are allowed.
+
+All goal success conditions retain actual AR PDF references, separate VAT/NonVAT/
+before-VAT checks, regression coverage, fresh source/PDF qualification and explicit
+implemented/tested/deployed/enabled reporting. No emails, ledger/history changes,
+paid additions or access expansion are part of this Goal.
+
+## 2026-10-23 — Net-base wrapper VAT locally qualified against AR PDFs
+
+Task 2D1 is implemented and independently reviewed. Exact source/rule ownership
+qualifies VAT-on-net components while retaining posted SVC in before-VAT, with
+all residual checks unchanged. No per-Invoice override or Guest financial source.
+Review counterexamples for linked descendants, source-money contradictions and
+identity aliases are fixed. Full evidence: `AR_ONLY_NET_VAT_VALIDATION_20261023.md`.
+
+Final tests: 242 files / 2,839 tests; 349 focused tests; typecheck/build and diff
+checks pass. Astra final independent net-base suites pass 60/60. Full recorded
+1,402-case replay: 1,212 matched / 190 unqualified, zero money mismatches and zero
+forbidden calls; all previous 1,202 matches retained, exactly ten new admissions.
+
+Ten fresh provider-backed packets pass the final verifier. Ten generated PDFs
+(11 pages) were reopened and all 70 footer values match actual OPERA AR references:
+before-VAT, VAT, NonVAT, gross, printed outstanding, debit and credit. Model lines
+and tax identity are unchanged; no out-of-page text was detected. Representative
+footer visually checked. This is cohort qualification, not fresh full-corpus proof.
+
+Separate pre-existing text gaps remain in five native PDFs: 35 descriptions and
+five references differ from the previous generated model. Dates and monetary
+values of all 112 visible rows agree. Do not claim complete document-text parity.
+
+Production unchanged; AR-only routing is not deployed/enabled. All temporary
+previews stopped and credentials removed. No ledger, email, billing/Sheet history,
+permissions or paid-service changes. Complete replacement remains unfinished.
+
+## 2026-10-23 — Remaining 217 audited; explicit NonVAT stage qualified locally
+
+All 217 remaining development cases were reproduced and categorized in
+`AR_ONLY_REMAINING_AUDIT_20261023.md`. Five missing metadata pairs were fetched
+twice successfully; no API outage was established. An additional 21 wrapper rule
+pairs were captured twice without change for the next net-base proof assessment.
+
+Task 2C now uses an independent explicit-NonVAT envelope. Exact signed candidates,
+paired rules/calculations, whole-source snapshots and strict taxable residuals are
+required. Identity claims precede wrapper processing. Review exposed acceptance
+of nested/deferred/linked children; failing regressions were added and the new
+profile now rejects these shapes before evidence reads and before model admission.
+Legacy proof contracts remain unchanged. Astra independently approved the final
+source-shape/child-link checks after 80 NonVAT tests; broader focused checks passed.
+
+Final full verification: 240 files / 2,779 tests, 289 focused tests, typecheck,
+build and whitespace checks pass. Existing large-bundle warning remains.
+Recorded-source replay: 1,202 seven-field AR matches, 200 unqualified, zero
+monetary mismatches and zero forbidden Guest calls. This is 17 more qualified
+cases in the replacement, not a production deployment. Two remaining replay
+cases need newly requested metadata captures; do not call these API failures.
+
+Fresh provider reads for the 19-case explicit-policy cohort yielded 17 qualified
+models, all seven money fields matching native AR references. One transient
+pagination duplicate was reread once successfully. The other two emitted no
+model (source-change fence and unqualified direct-zero tax). All 17 captured
+source/proof packets were revalidated through the final verifier: all passed,
+lines and tax identity unchanged, zero forbidden calls. This covers this cohort,
+not a fresh full-corpus certification or a PDF Workspace user-flow test.
+
+Production routing is unchanged and the AR-only replacement remains disabled.
+All diagnostic previews stopped and nonce/session credentials removed. No emails,
+ledger, billing history, Sheet dates, access settings or paid subscriptions changed.
+Next bounded opportunity: ten net-base wrapper cases with explicit posted links
+and matching Generates buckets; ambiguous POS roles/partitions, allocation and
+transfer cases remain separate. The complete automatic replacement is unfinished.
+
+## 2026-10-23 — AR-only direct POS stage implemented and independently reviewed
+
+Local Task 2B adds exact selected POS membership, source closure, explicit paired
+transaction-code roles and sign-separated VAT validation. Actual posted VAT is
+retained. Missing window identity and unselected same-check siblings are treated
+as ambiguity; known distinct windows remain separate. POS identities are claimed
+before wrapper processing to prevent double counting across structures.
+
+Astra found two issues in the initial implementation (cross-structure duplicate
+identity and incomplete check closure). Five red regressions reproduced them;
+Sol fixed them. Astra independently reran all nine focused files (182 tests) and
+found no remaining actionable P0-P2 findings in the bounded diff.
+
+Final verification: 238 files / 2,699 tests, typecheck, build and diff checks pass.
+Existing large-bundle warning remains. Full private replay: 1,185 exact seven-field
+AR matches, 217 unqualified, zero monetary mismatches, zero forbidden report calls.
+All 1,139 prior admitted cases remain admitted; 46 new matches span five hotels.
+
+Remaining categories: 163 ambiguous/unsupported roles, 17 partition-rate cases,
+19 missing rule captures in the replay (not proven API failures), two source-shape,
+two scope, twelve strict-tax-profile and two transfer cases. This is a development
+inventory, not a count of newly broken production invoices. Replay combines
+captured Invoice source with stable current paired POS metadata where absent from
+older captures; it proves regression results, not a fresh live interval or history.
+
+Production remains unchanged; AR-only routing is not deployed/enabled. Complete
+coverage and fresh live qualification are outstanding. No email, accounting,
+billing-history, Sheet or paid configuration changes occurred.
+
+## 2026-10-23 — AR-only replacement: local posted-generate proof stage
+
+Owner approved removing Guest Folio/`folioReports` from AR financial evidence,
+including fallback. Astra High plans/reviews; Sol Medium implements. Production
+is unchanged at source `6fdf0ae9a91f1f269bf0b51c5dbd0d071b98f380`; this replacement
+is not deployed or enabled. Earlier release entries describe legacy behavior.
+
+Implemented locally: capability-restricted AR reader, full-VAT selected-source
+proof, and posted-generate graph proof. Graph qualification checks exact base and
+service membership in the VAT bucket, actual signed posted VAT, complete source
+and rule stability, and separately qualified residual rows. No per-Invoice rule.
+
+Tests: 236 files / 2,656 tests, typecheck and build passed (existing large-chunk
+warning). Private captured-source replay: 1,139 monetary matches, 263 unqualified,
+zero mismatches and zero forbidden report calls. The newly admitted graph case
+preserves all lines and tax identity as well as the seven native AR money fields.
+Replay only normalizes exact transaction-detail request ID order; no source rows
+or monetary evidence are invented. It is not a fresh live-source certification.
+
+Remaining development includes direct POS, NonVAT, embedded rules and transfers;
+261 cases fail the current strict tax profile and two fail transfer qualification.
+Paired read-only current rule capture covers 187 property/code pairs with zero
+read errors or changes. This does not establish historical rule membership.
+Diagnostic preview stopped and temporary credential files removed. Independent
+Astra review passed with no actionable P0-P2 findings and an independent rerun
+of all 139 focused tests. No routing cutover, email, ledger, Sheet or billing write.
+
+Correction to prior blocker explanation: one split-footer case was an internal
+Guest-report parser limitation, not missing provider totals. Its prototype was
+archived and excluded because Guest reports are not accepted AR financial proof.
+The requested complete automatic AR-only replacement remains unfinished.
+
+## 2026-10-23 — Shared zero-tax qualification released; four source blockers remain
+
+Source `6fdf0ae9a91f1f269bf0b51c5dbd0d071b98f380`, Worker
+`9ad734ea-a578-4188-9fa5-30260ce79048` deployed. Ordinary reads proactively qualify
+direct zero-tax groups with stable explicit NonVAT proof or complete native
+aggregate controls. No per-Invoice override or guessed NonRevenue exclusion.
+Identical reordered postings are normalized by unique ID; all contents stay fenced.
+
+Full 1,402 replay: 1,398 monetary matches, four expected refusals, all previous
+matches retained, 39 tax identities retained, no other-field regression. Fresh
+provider-backed 27-case execution: 23 generated PDFs independently match seven
+current AR fields, four unqualified cases return no PDF. WAKL corrected. The four
+remaining cases require an exact automatic AR tax source; refusal is not completion.
+
+233 files / 2,578 tests, typecheck/build and independent reviews pass. Exact-source
+live health/database and six unauthenticated boundary checks pass. All previous
+runtime bindings preserved except COMMIT_SHA. No migration, email, billing/Sheet
+date or ledger write. Temporary diagnostics stopped and credentials removed.
+
+Completion audit: reference capture, TAX ID, qualified WAKL fix, regression tests,
+qualified deployment and reporting are complete. Automatic correction of four
+source-limited cases remains unproven; the overall goal must not be marked complete.
+The same exact-source blocker has been verified across consecutive goal turns.
+Prepared integration questions are in `AR_INVOICE_PARITY_AUDIT_20261022.md`.
+
+## 2026-10-23 — Complete AR reference capture; TAX ID released
+
+Later qualification evidence: fresh internal tax-control reads across all 27
+direct-zero-tax candidates produced 17 complete footers independently matching
+current AR references, nine strict folio-selector refusals, and one incomplete
+footer. These controls are not counted as AR parity references. Injecting the
+fresh complete WAKL control into the existing aggregate qualifier reproduces all
+seven AR fields; a normal-read integration is still required. A blanket native
+requirement would newly block six currently matching invoices, so their existing
+explicit NonVAT provenance must remain qualified. No monetary runtime change was
+deployed from this experiment. Temporary diagnostics stopped and credentials removed.
+
+All 1,402 candidates now have exact current AR Invoice references: 1,397 monetary
+matches and five unresolved cases, no missing or ambiguous references. KAT's
+remaining 129 were captured through strict selected groups and single-Invoice
+proofs. The final previously printed invoice was found with a positive balance;
+absence from a displayed list was not treated as zero.
+
+TAX ID fallback is deployed as source `643c2c09ee718f85235bb540ed3771c2b068e0c7`,
+Worker `d5e6ce2f-5c09-4388-bc83-77d1c3284c1b`. 231 files / 2,549 tests,
+TypeScript/Vite builds and independent review pass. All 1,402 captured-source
+replays preserve non-tax-ID model fields; 39 generated PDFs show the same tax ID
+as native AR. Fresh provider-backed samples for KAT, TSK, WAKL and TSAN confirm
+TAX ID in PDF and unchanged seven monetary fields. Health verifies exact commit
+and database; six unauthenticated routes reject access. All 42 prior runtime
+bindings remain unchanged except COMMIT_SHA. No database migration.
+
+Five monetary/source cases remain: one refusal and four NonVAT/base differences.
+Fresh API reads cover their exact postings and all 14 relevant hotel/code rules
+across 27 affected-branch candidates. Blanket NonRevenue exclusion was rejected
+because an actual TLKL counterexample has the same relevant classification flags
+but different native footer treatment. No speculative monetary rule was deployed.
+Full findings and boundaries: `AR_INVOICE_PARITY_AUDIT_20261022.md`.
+
+Temporary remote diagnostics were stopped and nonce/session files removed.
+No email, ledger, Sheet dates or application billing history changed. Goal active;
+remaining work is shared monetary/source correction and complete-set verification.
+
+## 2026-10-23 — Goal continuation checkpoint: 1,266 matches
+
+The sixth TSAN selected group completed and all 20 matched with exact selected-set verification. Aggregate now 1,266 matches, five needs-review, 131 awaiting references and no unresolved captured identities. No print queue currently pending; next is the final two TSAN invoices, then remaining KAT selected groups. Main and auxiliary OPERA pages are retained; partial KAT selection is saved. Goal remains active, including TAX ID and shared tax fixes, tests and deployment. No production change yet.
+
+## 2026-10-23 — Owner authorized autonomous completion, fixes and deployment
+
+An active Goal now explicitly covers finishing the AR audit, shared VAT/Non-VAT and TAX ID fixes, regression/integration tests, qualified deployment and live verification while the owner is away. No runtime changes or deployment claimed yet. Latest verified aggregate: 1,246 monetary matches, five needs-review cases, 151 awaiting references, no unresolved identities among captured references. WAKL reference acquisition is complete (232 matches plus one difference). Small explicitly selected Invoice groups recovered the previously failed WAKL output and 100 TSAN references. Exact selected-set proofs are checked before counting results. Active queue and partial KAT selection are saved privately for continuation.
+
+## 2026-10-23 — Continued AR comparisons and exact Invoice identity proof
+
+Current aggregate crossed 800 monetary matches. Five needs-review cases now include one generation refusal and four confirmed Non-VAT/base differences; no production repair in this audit. Selected-Invoice AR reprints are resolving duplicate Folios with recorded UI selector evidence, not amount-only matching. TSAN99 matched completely; TSAN122 still processing; KAT proceeding. WAKL59 failed output and later expired queue remain explicit missing references. See current AR_INVOICE_PARITY_AUDIT_20261022.md and private aggregate for incremental counts.
+
+## 2026-10-23 — AR audit: 518 matched, explicit identity and report exceptions
+
+518 matched; four needs-review; 16 identities unverified; 864 awaiting AR references. Final WAKL59 batch stalled, one print skipped, then combined report returned Report not found; no pass claimed and smaller selected-Invoice output still required. TSAN16 native groups have repeated account/Folio and sometimes same date/description, so amount-only matching rejected. TSAN large99 batch stalled at one report while smaller batches continue. All partial evidence retained; production unchanged.
+
+## 2026-10-23 — AR audit continued; three confirmed Non-VAT differences
+
+459 matched, four needs-review (one TLKL generation refusal plus one WAKL and two TSAN Non-VAT differences), 939 awaiting references. All three monetary differences independently parsed and visually confirmed. One TSAN AR report's tax sections do not reconcile to its own printed gross; preserve evidence and investigate report classification rather than force arithmetic. TSK/TLKL/TLFO references complete; final WAKL batch and next TSAN batch in progress. No production changes. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — AR audit found split-posting Non-VAT mismatch
+
+Actual WAKL AR PDF and web PDF visually confirm a before-VAT/Non-VAT classification difference on one split food posting; gross and posted VAT match. The direct no-tax check-group path is implicated; no per-invoice override or runtime fix applied. Aggregate 383 matches, two needs-review cases (existing TLKL refusal plus WAKL mismatch), 1,017 awaiting references. TLFO109/109 complete; WAKL104 match plus one mismatch. Remaining WAKL reports continue with Preview-only destinations. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — TLFO AR parity complete; WAKL in progress
+
+TLFO 109/109 candidates match actual OPERA AR Invoice PDFs on all seven monetary fields. Aggregate: 282 matches, one existing TLKL generation refusal with AR reference, 1,119 awaiting references. WAKL first three match; two further WAKL batches processing. Fifteen extra groups are verified credits outside positive scope. All PDFs saved privately; no production code/deployment, email or billing/Sheet-date changes. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — Edge access restored; TLFO AR reference acquisition resumed
+
+Current Edge connection and authorized cashier login work. First TLFO AR Invoice PDF saved and all seven monetary fields matched. Current total: 171 matches, one existing TLKL tax-evidence refusal with AR reference, 1,230 awaiting references. Two additional scoped TLFO batches are processing, all destinations Preview to Print. Prior TSK/TLKL evidence retained. No production code, deployment, email or billing/Sheet date change. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+
+## 2026-10-22 — Owner resumed AR parity audit; TSK and TLKL references complete
+
+Browser access subsequently blocked with an explicit requirement to update the ChatGPT extension in Microsoft Edge. Owner asked to update/reconnect. All completed PDFs and comparisons saved. Next hotel is TLFO; no new TLFO report has been submitted in the resumed small-batch run. No production repair or deployment has been performed.
+
+Verified current AR monetary matches: TSK 76/76, TLKL 89/90 plus one safe web-generation refusal, KAT sample 5; total 170 matches and one refusal with an AR reference. Remaining 1,231 candidates await references. Thirteen extra printed groups are credits outside the positive scope. The refusal reproduces with existing internal Guest controls but the same model succeeds with actual AR controls; diagnosis only, no production fix. Smaller account batches replace the interrupted large-run acquisition. No email, ledger, billing/Sheet date or production-code change. See AR_INVOICE_PARITY_AUDIT_20261022.md and private evidence.
+
+## 2026-10-22 — Earlier pause to move computers (subsequently resumed)
+
+Do not resume until requested. Saved: 1,402 generation attempts, 1,401 PDFs checked across 1,915 pages; one TLKL tax-evidence refusal; five current AR Invoice monetary comparisons confirmed. Six submitted OPERA batch jobs have unknown continuing status because their tabs are no longer discoverable and browser control is unattached. Do not restart those jobs blindly. Private PDFs/checkpoints remain on this computer under the qualified worktree .tmp/invoice-parity-20261022. No assumption of cross-computer file transfer. See AR_INVOICE_PARITY_AUDIT_20261022.md.
+## 2026-10-22 — AR-only comparison and hotel batches (in progress)
+
+- All 1,402 current generation candidates attempted: 1,401 PDFs generated, one tax-evidence refusal. Eight initial transport failures passed bounded retries. Independent extraction/rendering checked 1,401 files / 1,915 pages without generation-check defects; this is not AR parity certification.
+- The exact downloaded six-page OPERA AR batch contains five Invoices; all seven monetary fields match. These five include the two earlier individual references. Guest Folio comparisons contribute zero passes. Confirmed separate TAX ID omission in the web header, with the matching value present in the fetched linked profile.
+- Hotel batches KAT/TSK/TLKL/WAKL/TLFO/TSAN are running, all destinations overridden to Preview, never email. Exact queue IDs and private evidence retained. No production code or billing/Sheet change. [Current audit scope and findings](AR_INVOICE_PARITY_AUDIT_20261022.md).
+
+## 2026-10-22 — Earlier checkpoint: current AR Invoice parity audit
+
+Owner requires AR Invoice references; Guest Folio comparisons are excluded. Fresh discovery covered 413 accounts without read failures: 1,969 nonzero rows and 1,402 generation candidates. Before interruption, 1,347 outcomes were recorded: 1,338 PDFs, eight transport failures and one tax refusal. Independent generation checks passed on 1,334 files / 1,843 pages; these are not AR parity passes. Two fresh AR Invoice references match all seven monetary fields. A user-authorized Create Statement + Print Invoices batch for five invoices was queued; its downloaded output is not yet confirmed. Computer Use required stopping because it could not determine the separate Windows reportviewer URL. Diagnostic processes stopped and nonce/session files removed. Production code, email, billing dates and Sheet dates unchanged. Private continuation evidence: qualified worktree .tmp/invoice-parity-20261022; inspect existing batch before repeating Process.
+## 2026-10-22 — Final shared tax-source rules (deployed)
+
+- All three final cases pass fresh actual Worker models and independently checked generated PDFs. Missing AR adjustments use a bounded current OPERA-calculator proof only for a complete all-VAT7 shape when native selection is ambiguous. Mixed NonVAT uses explicit code provenance plus posted-row, rule and effective-calculation rereads. No Invoice IDs/amounts are hardcoded. [Full evidence and limits](INVOICE_FINAL_TAX_RULES_20261022.md).
+- TSAN 6002 remains nonTaxable=false in OPERA and no setting was changed. Its named owner-confirmed Taxi policy also requires unchanged exact base-only calculator results and zero posted tax. Unknown codes and food-code counterexamples do not qualify merely because no generates appear.
+- Final 2,535 tests / 231 files, TypeScript/build and independent reviews pass. Five prior still-open cases pass fresh live regression; the sixth is now explicitly paid to zero and correctly rejects its stale positive selection. The 87 captured baseline outcomes are unchanged from the printed-balance release. Deployed/enabled source `b743e2e5865cc65419f923f60f5e8bf6246ce125`, Worker `a14f853c-9f0c-4ea4-bb80-e62fa54b9453`; health/database and six anonymous boundaries pass, all 42 bindings unchanged except COMMIT_SHA. Diagnostic process stopped and temporary nonce/session files removed.
+
+## 2026-10-22 — Current-rule adjustment investigation (not enabled)
+
+- Exact OPERA AR XML confirms account/Invoice/transaction identity and footer values. Scoped stored-folio and alternate-window reads still do not supply an automatic exact tax source.
+- A new bounded calculation replay combines original posted VAT with fresh OPERA charge simulations for two AR adjustments. Both rounded VAT totals match independent current AR PDFs; the WAKL rebate's unrounded net also matches its XML exactly. This supports a current-rule fallback candidate, not a claim of historical posted-tax retrieval. [Evidence and limitations](AR_ADJUSTMENT_CURRENT_RULE_PROBE_20261022.md).
+- Owner preference is pending: permit current-rule calculation only for fully verified all-VAT-7%/no-Non-VAT shapes, or require original recorded tax totals exclusively. No dependent runtime change or deployment in this investigation. Mixed Non-VAT remains outside the candidate. Production remains the printed-balance release below.
+
+## 2026-10-22 — Printed Invoice balance correction (deployed)
+
+- Owner clarified Invoice amount versus remaining Statement balance. Both requested current OPERA PDFs were read and rendered; confirmed a shared defect where the PDF footer used current AR balance even though separately applied payments were absent from the Invoice's lines.
+- Model now prints the fully reconciled Invoice posting net/amount, retaining actual selected Payment credits and all AR freshness checks. Statement/dashboard/ledger and tax calculations remain unchanged. [Evidence](INVOICE_PRINTED_BALANCE_20261022.md).
+- Two RED-to-GREEN cases, full 2,443 tests / 227 files, TypeScript/build and independent review pass. Actual qualified partial-payment and unpaid PDFs match OPERA footer evidence. Deployed/enabled source `b01c7f19746bea972c16e7414617cfc3a2e8bc72`, Worker `805beea3-17e8-4395-aa19-ada9af4fb139`; health/database and six anonymous boundaries pass, all 42 bindings unchanged except COMMIT_SHA. The three automatic tax-source cases remain unresolved; no per-invoice override.
+
+## 2026-10-22 — Remaining exact-source audit (goal incomplete)
+
+- Blocked audit threshold reached: the same missing exact automatic source remains across three consecutive goal turns. Current production health/database and six anonymous boundaries rechecked successfully; no live process is being awaited. Goal remains incomplete and requires an external supported API/field contract before the three remaining cases can be qualified. The unsent Oracle draft is ready for owner review; no external message or access/cost change was made.
+- Obtained the final independent current AR PDF for the remaining WAKL adjustment/payment case. It confirms invoice charge/VAT totals and separately confirms why printed outstanding must not replace the API's applied-payment balance. This adds reference evidence, not an automatic runtime source or a per-invoice override.
+- [Requirement-by-requirement audit](PDF_REPAIR_COMPLETION_AUDIT_20261022.md): six of nine original source cases resolved; three still need a callable exact current-AR source or historical posted tax/exemption evidence. UI/source preservation and deployment evidence remain separately qualified. The goal is not complete.
+- Updated the unsent Oracle follow-up to focus on existing Property APIs and identifier/tax-field contracts. No new plan/access/cost requested or enabled. Production remains `32f42163aa667340d456e0857f9256bdf5a50ddd`; this round has no runtime edits.
+
+## 2026-10-22 — Embedded posted VAT and native Non-VAT totals (deployed)
+
+- Implemented complete embedded posted-generate proof and authoritative native full-footer qualification for three further original cases. Current code flags are not treated as historical tax evidence. The native identity guard and API outstanding remain unchanged. [Evidence](INVOICE_EMBEDDED_AND_NATIVE_TOTALS_20261022.md).
+- Fresh live reader/models pass: one without a native print, two with exactly one native print each. Generated PDFs pass Folio/footer/bounds checks and every page was independently rendered and visually inspected. All 87 baseline packet outcomes are unchanged; this is not a fresh regeneration claim.
+- Final 2,442 tests / 227 files, TypeScript and production build pass. A review finding for optional child scope was reproduced, repaired and independently rechecked. Deployed/enabled source `32f42163aa667340d456e0857f9256bdf5a50ddd`, Worker `486b2e70-e49a-4266-8063-02878efe4446`; health/database and six anonymous protected routes pass, all 42 bindings unchanged except COMMIT_SHA. Three original source cases remain unresolved; no new service/access/cost, ledger, billing/Sheet date or email-history change.
+- Further bounded stored-folio diagnostics returned no report for two exact remaining TSAN histories; WAKL stopped at a changed payment-transaction identity. An additional current AR PDF was independently downloaded for comparison, but the UI's session-based report viewer is not a proven backend API integration. [Source investigation](OPERA_DIRECT_AR_TOTALS_20261022.md). No ambiguous selector was admitted.
+
+## 2026-10-22 — AR account-transfer qualification (deployed)
+
+- Added exact closed-transfer proof for two WAKL cases whose posted adjustments retain the source account number. Source/destination identities, all selected posting fingerprints and complete closed history must match; they are fetched and revalidated around native printing. No blanket account mismatch exception.
+- Both fresh live reader/models and actual generated PDFs match independent current AR tax controls. Applied-payment outstanding continues to use the current AR API balance. Final 2,324 tests / 223 files, TypeScript, build and independent review pass; a reported freshness gap was fixed and rechecked. [Evidence](INVOICE_TRANSFER_PROOF_20261022.md).
+- Deployed/enabled source `a84f0f21d1481f2c9b709fda1999c3358f69f854`, Worker `29b64799-e68d-4301-8268-620c3621ca25`. Health/database and six anonymous protected routes pass; all 42 bindings unchanged except COMMIT_SHA. Six original cases remain. The separate direct-tax classification experiment is excluded.
+- The production application was verified in Developer Portal: its existing subscriptions omit Data APIs, consistent with the fresh 403 response. The owner says to treat that channel as unavailable for current work; no new service/access is to be added. Investigation continues through usable Property APIs and current AR references. No subscription or permission was changed. [Unsent Oracle follow-up draft](OPERA_DATA_API_FOLLOWUP_20261022.md).
+
+## 2026-10-22 — Posted AR service/VAT components (deployed)
+
+- Implemented a generic closed parent/child posting graph, using actual posted service/VAT amounts once and preserving signed AR lines. Exact scope/lineage, stable rules, native parity, final source fences and no-retry-after-print remain mandatory.
+- Fresh TSK model and generated PDF match an independently downloaded current AR print, including all 16 lines and tax/footer totals. Clean release: 2,224 tests / 220 files, TypeScript, build and independent review pass. All 87 baseline captured packets retain identical old/new outcomes; this does not claim a fresh regeneration of all 87. [Evidence and limits](INVOICE_POSTED_GENERATES_20261022.md).
+- Deployed/enabled source `f1fbe53390825c27b0278a0c5aff958c2feb43e7`, Worker `3d1330f6-18f0-4139-8bbe-474efc33b0bf`. Health/database and six anonymous protected routes pass; all 42 bindings unchanged except COMMIT_SHA. This resolves one of the nine remaining source patterns; eight remain. Direct-tax classification and account-transfer work are excluded from this release.
+
 ## 2026-10-22 — PDF Workspace longer text and row insertion (deployed)
 
 - Fixed bounded single-line native growth and unnecessary footer overflow after row insertion. The native/source/resource fences remain; row compaction consumes only rendered and geometrically verified whitespace. Separate independent reviews found no concrete P0–P2 findings.
@@ -2326,3 +4495,18 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
   six anonymous protected routes reject access. All previous runtime bindings
   match except COMMIT_SHA, with no added or missing binding. Draft PR139 updated.
 ##
+# 2026-10-23 — Goal continuation: TAX ID regression qualification
+
+- Implemented locally: verified linked AR-profile tax number fallback when the
+  selected matching folio payee tax number is blank. Existing identity fences and
+  populated payee precedence remain; no additional profile request.
+- Tested: 1,402 captured-source replays: 1,362 unchanged, 39 TAX ID additions,
+  original TLKL refusal retained. Non-tax-ID model fields unchanged. Actual-template
+  output inspection confirms all 39 numbers and unchanged money. Native references
+  confirm 36 in TAX ID and three in address VAT lines; duplicate placement for those
+  three is pending review. 231 files / 2,545 tests and TypeScript build passed.
+- Audit: 1,268 matched, five needs review, 129 KAT references pending. TSAN and
+  WAKL recovery batches complete. No current print queues submitted this turn.
+- Not deployed/enabled: production unchanged. Five source/Non-VAT findings and
+  remaining native references still prevent claiming complete parity. OPERA browser
+  control attachment currently times out; local qualification continues.

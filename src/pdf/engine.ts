@@ -1,4 +1,5 @@
 import {nativeTextCandidate} from './native/candidate';
+import {runNativeWorker} from './native/worker-pool';
 import {sourceMaskFill} from './mask-background';
 import type {NativeResult} from './native/protocol';
 import {validateInvoiceAttachments} from './invoice-attachments';
@@ -15,11 +16,13 @@ import { extractSourceText, extractSourceImages } from './source-extraction';
 import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, sourceAppearanceUnchanged, measureLayerText, measureLayerInk, SourceFontError } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
+import {layerOnPage} from './page-bounds';
 type SourceScope={id:string;unsupportedPages:Set<string>;vouchers:VoucherBindings;sources:PdfSourceDocument[];cache:Map<string,Promise<NativeResult|undefined>>;closed:boolean;abort:AbortController;text:Map<string,Promise<DetectedText[]>>;backgrounds:Map<string,Promise<{canvas:HTMLCanvasElement;scale:number}>>};
 const sourceContexts=new WeakMap<PDFDocumentProxy,SourceScope>();
 export const voucherBindings=(documents:Map<string,PDFDocumentProxy>)=>new Map([...documents.values()].flatMap(doc=>[...(sourceContexts.get(doc)?.vouchers??new Map())]));
 function sourceScope(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){const doc=documents.get(page.sourceId);return doc?sourceContexts.get(doc):undefined;}
 async function candidateFor(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){
+ if(page.layers.some(layer=>!layer.deleted&&!layerOnPage(page,layer)))return undefined;
  const scope=sourceScope(page,documents),bytes=scope?.sources.find(s=>s.id===page.sourceId)?.bytes;
  if(!scope||scope.closed||!bytes)return undefined;
  const pageKey=`${page.sourceId}:${page.sourcePage}`;if(scope.unsupportedPages.has(pageKey))return undefined;
@@ -114,6 +117,7 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
  const issues:RenderIssue[]=[],valid:PdfLayer[]=[],masks=new Map<string,TextMask>();
  const runs=page.layers.some(l=>l.original||l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
  for(const layer of page.layers){try{
+  if(!layer.deleted&&!layerOnPage(page,layer))throw Error('This edit is outside the page. Move it inside the page before exporting.');
   const run=rebindSourceLayer(page,layer,runs);
   if(layer.sourceText||layer.deleted){
    if(!run)throw Error('Source text could not be restored.');
@@ -267,4 +271,43 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
     files.push({ name: filenames[index], bytes: await output.save() });
   }
   return files;
+}
+
+/** Immutable source-only artwork proof. Every removal must be native; raster
+ * masks cannot establish whether artwork exists behind an original glyph. */
+let stationeryProofBytes=0;
+export async function originalHeaderArtwork(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>,signal?:AbortSignal):Promise<import('./stationery-artwork').StationeryArtwork|undefined>{
+ let canvas:HTMLCanvasElement|undefined,reserved=0,retained=0;
+ try{
+  const scope=sourceScope(page,documents),bytes=scope?.sources.find(s=>s.id===page.sourceId)?.bytes,doc=documents.get(page.sourceId);
+  if(!scope||scope.closed||signal?.aborted||!bytes||!doc||!page.sourcePage)return;
+  const abort=signal?AbortSignal.any([signal,scope.abort.signal]):scope.abort.signal;
+  const pdfPage=await doc.getPage(page.sourcePage),viewport=pdfPage.getViewport({scale:1});
+  if(viewport.width!==page.width||viewport.height!==page.height||page.width>2000||page.height>3000)return;
+  const original:PdfProjectPage={id:page.id,sourceId:page.sourceId,sourcePage:page.sourcePage,width:viewport.width,height:viewport.height,layers:[]};
+  const runs=await extractSourceText(original,pdfPage,scope.id);
+  const title=runs.filter(r=>/^(?:COPY OF )?INVOICE$/i.test(r.text.trim())&&r.x>page.width*.55),tables=runs.filter(r=>r.text.trim()==='DATE'&&runs.some(s=>s.text.trim()==='DESCRIPTION'&&Math.abs(s.y-r.y)<3));
+  if(title.length!==1||tables.length!==1||tables[0].y<=title[0].y)return;
+  const height=tables[0].y-2,leftBoundary=Math.min(page.width*.5,title[0].x);
+  // Unrequested/unsupported glyphs remain visible in the proof and therefore
+  // occupied. Only wholly bounded, qualified left-column runs are removed.
+  const header=runs.filter(r=>r.x>=0&&r.x+r.width<=leftBoundary&&r.y>=0&&r.y+r.height<=height&&r.sourceText&&!r.unsupported&&sourceStyle(createReplacementLayer(r,'proof'))?.supported);
+  if(!header.length||header.length>100)return;
+  const scale=1.5,width=Math.ceil(page.width*scale),rows=Math.ceil(height*scale);
+  const {stationeryAllocation}=await import('./stationery-artwork');
+  reserved=stationeryAllocation(page.width,page.height,scale,height,bytes.byteLength);
+  if(stationeryProofBytes+reserved>64*1024*1024){reserved=0;return;}stationeryProofBytes+=reserved;
+  const layers=header.map((r,i)=>({...createReplacementLayer(r,`header-artwork-${i}`),text:'',deleted:true as const}));
+  const edits=layers.map(l=>{const style=sourceStyle(l)!;return {id:l.id,expectedText:l.original!.text,text:'',x:l.original!.x,baseline:original.height-l.original!.y-style.baseline,fontSize:style.fontSize,fontLabel:style.run.fontLabel??'',color:style.color,bold:l.bold,italic:l.italic,maxRight:l.original!.x+l.original!.width};});
+  // All edits remove native source glyphs; there are no overlay/mask z-order
+  // interactions in this private original-page transaction.
+  const candidate=await runNativeWorker(JSON.stringify([scope.id,page.sourceId,page.sourcePage,'header-artwork']),{bytes,page:page.sourcePage-1,edits},abort);
+  if(scope.closed||abort.aborted||!candidate||candidate.unsupportedPage||candidate.applied.length!==layers.length||layers.some(l=>!candidate.applied.includes(l.id)))return;
+  canvas=await sourceRaster(original,documents,scale,candidate);
+  const data=canvas.getContext('2d')!.getImageData(0,0,width,rows).data,pixels=new Uint8Array(width*rows);
+  for(let i=0;i<pixels.length;i++)pixels[i]=Math.min(data[i*4],data[i*4+1],data[i*4+2])<255?1:0;
+  if(scope.closed||abort.aborted)return;
+  retained=pixels.byteLength;let released=false;
+  return {release:()=>{if(!released){released=true;stationeryProofBytes-=pixels.byteLength;}},sourceId:page.sourceId,sourcePage:page.sourcePage,pageWidth:page.width,pageHeight:page.height,width,height:rows,scale,pixels};
+ }catch{return undefined;}finally{stationeryProofBytes-=reserved-retained;if(canvas)canvas.width=canvas.height=0;}
 }

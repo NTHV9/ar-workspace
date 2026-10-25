@@ -56,3 +56,10 @@ describe('safe source replacement backgrounds',()=>{
  it('preserves flat blue behind white INVOICE text',()=>{const data=new Uint8ClampedArray(12*12*4);for(let i=0;i<data.length;i+=4)data.set([12,60,130,255],i);expect(flatMaskBackground(data,12,12,{x:3,y:3,width:6,height:6})).toBe('rgb(12,60,130)');});
  it('refuses nonuniform artwork instead of painting a white rectangle',()=>{const data=new Uint8ClampedArray(12*12*4).fill(255);for(let y=0;y<12;y++)for(let x=0;x<6;x++)data.set([12,60,130,255],(y*12+x)*4);expect(()=>flatMaskBackground(data,12,12,{x:3,y:3,width:6,height:6})).toThrow(/background/i);});
 });
+it('does not authorize opaque artwork inside a translucent original glyph',()=>{
+ const width=20,height=20,data=new Uint8ClampedArray(width*height*4).fill(255),matte=new Uint8ClampedArray(width*height*4),rect={x:4,y:5,width:12,height:8};
+ for(let y=7;y<11;y++)for(let x=8;x<11;x++){const i=(y*width+x)*4;data.set([128,128,128,255],i);matte.set([0,0,0,255],i);}
+ expect(verifiedMaskBackground(data,matte,width,height,rect,1,'#000000',.5)).toBe('rgb(255,255,255)');
+ data.set([0,0,0,255],(8*width+9)*4);
+ expect(()=>verifiedMaskBackground(data,matte,width,height,rect,1,'#000000',.5)).toThrow(/artwork|content/i);
+});

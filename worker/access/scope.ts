@@ -1,4 +1,4 @@
-import {hotelRegion,isHotelId,type HotelId} from '../../src/domain/hotels';
+import {hotelRegion,isHotelId,isRegionId,type HotelId} from '../../src/domain/hotels';
 import {regionalHotelScope} from '../hotels';
 import {boundedBody} from '../email/shared';
 import {parseTrackerConflictQuery} from '../tracker-sync/conflict-query';
@@ -20,6 +20,7 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  if((p==='/api/account-settings/bulk'&&m==='GET'||['/api/account-settings/bulk/preview','/api/account-settings/bulk/apply'].includes(p)&&m==='POST')&&!q.size)return {kind:'global'};
  if(p==='/api/reports/sheets')return m==='GET'&&!q.size?{kind:'global'}:denied();
  if(p==='/api/reports/tracker-revisions')return m==='GET'&&!q.size?{kind:'global'}:denied();
+ if(p==='/api/refresh/activity'&&m==='POST'&&!q.size){const v=await body(request);return isRegionId(v.region)&&Object.keys(v).length===1?{kind:'region',region:v.region}:denied();}
  if(p==='/api/reports/tracker-conflicts'){
   if(m!=='GET')return denied();try{return {kind:'region',region:parseTrackerConflictQuery(u).region};}catch{return denied();}
  }

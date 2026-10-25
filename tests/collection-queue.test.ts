@@ -18,6 +18,13 @@ it('does not repeat Friendly or skip unsent follow-up stages',()=>{const sent={.
 it('shows Urgent immediately after Final even when rules are incomplete',()=>{expect(nextCollectionAction({...invoice,workflow:{...invoice.workflow!,credit_term:null,last_reminder_stage:'Final',last_reminder_date:'2026-09-10'}},'2026-09-10')).toMatchObject({stage:'Urgent',ready:true});});
 it('does not fabricate zero term or due date and keeps unverified balances visible',()=>{expect(nextCollectionAction({...invoice,workflow:null},'2026-09-10')).toMatchObject({stage:'Setup needed'});expect(nextCollectionAction({...invoice,verification_state:'unverified'},'2026-09-10')).toMatchObject({stage:'Needs review'});expect(nextCollectionAction({...invoice,open:0},'2026-09-10')).toBeNull();expect(nextCollectionAction({...invoice,collection_role:'child'},'2026-09-10')).toBeNull();});
 it('billing-required invoices remain in Billing until actual first billing',()=>{expect(nextCollectionAction({...invoice,workflow:{...invoice.workflow!,billing_required:true,due_date:null}},'2026-09-10')).toMatchObject({stage:'Billing',ready:true});});
+it('a verified reopened observation resumes the existing collection stage while independent guards remain',()=>{
+ const row={...invoice,workflow:{...invoice.workflow!,billing_required:true,first_billing_date:'2026-08-01',last_reminder_stage:'Follow 1',last_reminder_date:'2026-09-01'},exceptions:{held:false,needsReview:false,dispute:'',reopenedAt:'2026-09-09T12:00:00Z'}};
+ expect(nextCollectionAction(row,'2026-09-10')).toMatchObject({stage:'Follow 2',date:'2026-09-08',ready:true});
+ expect(row.workflow.first_billing_date).toBe('2026-08-01');
+ expect(nextCollectionAction({...row,exceptions:{...row.exceptions,held:true}},'2026-09-10')).toMatchObject({stage:'On hold'});
+ expect(nextCollectionAction({...row,verification_state:'missing'},'2026-09-10')).toMatchObject({stage:'Needs review',reason:'OPERA invoice verification required'});
+});
 it('uses full Follow-up labels without rewriting stored stage keys',()=>{expect(stageLabel('Follow 1')).toBe('Follow-up 1');expect(stageLabel('Follow 3')).toBe('Follow-up 3');expect(stageLabel('Friendly')).toBe('Friendly');});
 it.each([0,1,3,6])('skips Friendly for credit term %i without making follow-up ready before its due-date offset',credit_term=>{
  const row={...invoice,workflow:{...invoice.workflow!,credit_term}};

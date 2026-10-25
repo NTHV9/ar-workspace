@@ -8,5 +8,5 @@ it.each(['open','manual'])('%s current refresh releases capacity immediately aft
 });
 it('daily maintenance remains scheduled and its timeout cannot invalidate a successful publication',async()=>{
  const calls:string[]=[],step={do:async(name:string)=>{calls.push(name);if(name==='completed-file-retention')throw Error('synthetic maintenance timeout');return {};}} as unknown as WorkflowStep;
- await expect(postPublicationMaintenance({RETENTION_ENABLED:'true'},{...payload,refreshReason:'scheduled'},step)).resolves.toBeUndefined();expect(calls).toEqual(['period-summary-precompute','completed-file-retention']);
+ await expect(postPublicationMaintenance({RETENTION_ENABLED:'true'},{...payload,refreshReason:'scheduled'},step)).resolves.toBeUndefined();expect(calls).toEqual(['completed-file-retention']);
 });

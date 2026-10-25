@@ -1,20 +1,49 @@
 import {useEffect,useRef,useState} from 'react';
+import {useWorkspaceMember} from '../access/context';
 import type {RegionId} from '../domain/hotels';
 import {notifyRegisterChanged} from '../register/model';
 import {DRIVE_SCOPE,openDriveFilePicker,prepareDrivePicker,type DriveFilePickerConfig,type PickerRuntime} from '../drive/picker';
 import {trackerConflictCategories,trackerConflictCategoryLabels,trackerConflictFieldLabels,validConflictPage,type TrackerConflictPage,type TrackerConflictCategory} from '../domain/tracker-conflicts';
 interface Conflict {id:string;rowKey:string;field:string;reason:string;sheetValue:unknown;webValue:unknown;revision:number}
-interface Status {connected:boolean;enabled:boolean;available:boolean;heldWrites?:number;writebackAvailable?:boolean;writeAssurance?:'cas'|'best-effort'|'held';bootstrapConfirmed?:boolean;revision:number;lastCheckedAt:string|null;lastSuccessAt?:string|null;error?:string|null;pending:number;conflictCount:number;conflicts:Conflict[];sheetActivity?:{actualDate:string;field:string;invoices:number}[]}
+interface PausedDateRow {hotel:string;invoiceNo:string;field:'R'|'U'|'V'|'W';reason:'missing_sheet_row'|'sheet_account_mismatch'}
+interface RowAdd {hotel:string;invoiceNo:string;billingDate:string|null;state:'pending'|'writing'|'uncertain'|'hold'|'conflict';reason:string|null}
+interface Status {pendingRowAdds?:number;uncertainRowAdds?:number;heldRowAdds?:number;rowAddLastSuccessAt?:string|null;rowAddRows?:RowAdd[];connected:boolean;enabled:boolean;available:boolean;heldWrites?:number;quarantinedWrites?:number;quarantinedRows?:PausedDateRow[];quarantinedRowsTruncated?:boolean;writebackAvailable?:boolean;writeAssurance?:'cas'|'best-effort'|'held';bootstrapConfirmed?:boolean;revision:number;lastCheckedAt:string|null;lastSuccessAt?:string|null;error?:string|null;pending:number;conflictCount:number;conflicts:Conflict[];sheetActivity?:{actualDate:string;field:string;invoices:number}[]}
 interface Preview {previewId:string;snapshotHash:string;rowCount:number;matchedRows:number;heldRows:number;eligibleFields:number;reportedStatuses?:number;conflictingFields:number;details:{rowKey:string;field:string;sheetValue:unknown;webValue:unknown;decision:string}[]}
 const value=(v:unknown)=>v===null||v===undefined?'Blank':String(v).slice(0,300);
+const pausedStage:Record<string,string>={R:'First billing',U:'Follow 1',V:'Follow 2',W:'Follow 3'};
+const pausedReason=(reason:string)=>reason==='missing_sheet_row'?'Sheet row missing':reason==='sheet_account_mismatch'?'Sheet account does not match':'Source row needs review';
+const rowAddState:Record<RowAdd['state'],string>={pending:'Pending',writing:'Adding',uncertain:'Uncertain',hold:'Held',conflict:'Conflict'};
+const rowAddReason=(reason:string|null)=>reason==='source_or_sheet_changed'?'Source or Sheet changed — needs review':reason==='provider_row_requires_review'?'Sheet row needs review':reason?'Needs checking':'—';
+const rowAddCount=(count:number|undefined)=>typeof count==='number'&&Number.isSafeInteger(count)&&count>0?count:0;
 const canAccept=(c:Conflict)=>c.reason!=='invalid_source_field'&&!['S','T','AA'].includes(c.field)&&!(c.field==='Y'&&c.sheetValue!==null&&!['','Contacted','Awaiting reply','Promised payment','Remittance received','Disputed','Other'].includes(String(c.sheetValue)));
 export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}){
+ const member=useWorkspaceMember(),owner=JSON.stringify([token,region,member?.memberId,member?.email,member?.username,member?.administrator,member?.regions,member?.revision]);
+ // Changing identity or access unmounts all administrator state and in-flight reads.
+ return member?.administrator===true?<TrackerAdministratorStatus key={owner} token={token} region={region}/>:<TrackerMemberStatus key={owner} token={token} region={region}/>;
+}
+function TrackerMemberStatus({token,region}:{token:string;region:RegionId}){
+ const [result,setResult]=useState<{lastSuccessAt:string|null}|null>(null),[unavailable,setUnavailable]=useState(false);
+ useEffect(()=>{
+  const controller=new AbortController();
+  const read=async()=>{try{
+   const response=await fetch(`/api/reports/tracker?region=${region}`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal});
+   if(!response.ok)throw Error();const data:unknown=await response.json();
+   if(!data||typeof data!=='object'||Array.isArray(data)||!('lastSuccessAt' in data)||data.lastSuccessAt!==null&&(typeof data.lastSuccessAt!=='string'||!/^\d{4}-\d{2}-\d{2}T/.test(data.lastSuccessAt)||!Number.isFinite(Date.parse(data.lastSuccessAt))))throw Error();
+   // Store only the allowed projection even if a stale server returns full status.
+   if(!controller.signal.aborted){setResult({lastSuccessAt:data.lastSuccessAt});setUnavailable(false);}
+  }catch{if(!controller.signal.aborted)setUnavailable(true);}};
+  void read();const timer=setInterval(()=>void read(),60000);return()=>{controller.abort();clearInterval(timer);};
+ },[token,region]);
+ return <div className="report-tracker" aria-label={`${region} tracker synchronization`}><p>Last successful synchronization: {result?result.lastSuccessAt?new Date(result.lastSuccessAt).toLocaleString():'No successful synchronization recorded.':unavailable?'Unavailable.':'Checking…'}</p></div>;
+}
+function TrackerAdministratorStatus({token,region}:{token:string;region:RegionId}){
  const [result,setResult]=useState<{owner:string;status:Status}|null>(null),[error,setError]=useState(''),[readError,setReadError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[review,setReview]=useState(false);
  const owner=token+region,status=result?.owner===owner?result.status:null;
+ const sourceRevision=JSON.stringify([status?.lastSuccessAt,status?.conflictCount]);
  const actorRef=useRef(owner);actorRef.current=owner;const pickerOperation=useRef<AbortController|null>(null);
- const [navigation,setNavigation]=useState<{owner:string;reload:number;category:TrackerConflictCategory;cursors:(string|null)[]}>({owner,reload:0,category:'all',cursors:[null]});
- const category=navigation.owner===owner?navigation.category:'all',cursors=navigation.owner===owner&&navigation.reload===revision?navigation.cursors:[null],cursor=cursors.at(-1)??null;
- const pageKey=JSON.stringify([owner,revision,category,cursor]),[pageResult,setPageResult]=useState<{key:string;page:TrackerConflictPage}|null>(null),[pageError,setPageError]=useState<{key:string;message:string}|null>(null),[pageRetry,setPageRetry]=useState(0),page=pageResult?.key===pageKey?pageResult.page:null;
+ const [navigation,setNavigation]=useState<{owner:string;reload:number;sourceRevision:string;category:TrackerConflictCategory;cursors:(string|null)[]}>({owner,reload:0,sourceRevision,category:'all',cursors:[null]});
+ const category=navigation.owner===owner?navigation.category:'all',cursors=navigation.owner===owner&&navigation.reload===revision&&navigation.sourceRevision===sourceRevision?navigation.cursors:[null],cursor=cursors.at(-1)??null;
+ const pageKey=JSON.stringify([owner,revision,sourceRevision,category,cursor]),[pageResult,setPageResult]=useState<{key:string;page:TrackerConflictPage}|null>(null),[pageError,setPageError]=useState<{key:string;message:string}|null>(null),[pageRetry,setPageRetry]=useState(0),page=pageResult?.key===pageKey?pageResult.page:null;
  useEffect(()=>{setReview(false);setBusy(false);setError('');setReadError('');},[owner]);
  useEffect(()=>{
   if(!review)return;const controller=new AbortController();setPageError(null);setPageResult(null);
@@ -23,7 +52,7 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
  },[review,token,region,owner,category,cursor,pageKey,pageRetry]);
  const [authorizationOwner,setAuthorizationOwner]=useState<string|null>(null),[pickerState,setPickerState]=useState<{owner:string;config:DriveFilePickerConfig;runtime:PickerRuntime}|null>(null),[pickerError,setPickerError]=useState(''),[pickerAttempt,setPickerAttempt]=useState(0);
  const needsAuthorization=authorizationOwner===owner,picker=pickerState?.owner===owner?pickerState:null;
- useEffect(()=>()=>{pickerOperation.current?.abort();},[owner]);
+ useEffect(()=>{actorRef.current=owner;return()=>{actorRef.current='';pickerOperation.current?.abort();};},[owner]);
  useEffect(()=>{
   const controller=new AbortController();setPickerState(null);setPickerError('');
   if(needsAuthorization&&status?.available)void Promise.all([
@@ -74,6 +103,18 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
    {status.connected&&<p>Last successful synchronization: {status.lastSuccessAt?new Date(status.lastSuccessAt).toLocaleString():'No successful synchronization recorded.'}</p>}
    {status.connected&&status.writeAssurance==='best-effort'&&<p>Automatic date writeback uses best-effort updates. Concurrent edits may be overwritten. Uncertain writes are checked without another write attempt.</p>}
    {status.connected&&(status.writebackAvailable===false||!!status.heldWrites)&&<p>{status.writebackAvailable===false?'Writeback to this file is held until a safe update method is verified.':'Some date cells require source-field review before writeback.'} {status.heldWrites??0} confirmed Sent dates are retained for future writeback.</p>}
+   {rowAddCount(status.pendingRowAdds)+rowAddCount(status.uncertainRowAdds)+rowAddCount(status.heldRowAdds)>0&&<aside className="report-tracker-row-adds" aria-label="Sent rows waiting for Sheet">
+    <p><strong>Sent · waiting for Sheet</strong></p>
+    <p>{rowAddCount(status.pendingRowAdds)} pending · {rowAddCount(status.uncertainRowAdds)} uncertain — needs checking · {rowAddCount(status.heldRowAdds)} held — needs review</p>
+    <p>Email is already sent. These invoices are waiting for a new Sheet row; existing Sheet values are preserved.</p>
+    {status.rowAddLastSuccessAt&&Number.isFinite(Date.parse(status.rowAddLastSuccessAt))&&<p>Last row added: {new Date(status.rowAddLastSuccessAt).toLocaleString()}</p>}
+    {!!status.rowAddRows?.length&&<details><summary>View waiting rows</summary><div className="report-tracker-preview-scroll" tabIndex={0} role="region" aria-label="Waiting Sheet rows"><table aria-label="Sent rows waiting for Sheet"><thead><tr><th scope="col">Hotel</th><th scope="col">Invoice</th><th scope="col">Billing date</th><th scope="col">State</th><th scope="col">Reason</th></tr></thead><tbody>{status.rowAddRows.slice(0,20).map((row,index)=><tr key={index}><td>{row.hotel}</td><td>{row.invoiceNo}</td><td>{row.billingDate??'Not recorded'}</td><td>{rowAddState[row.state]??'Needs review'}</td><td>{rowAddReason(row.reason)}</td></tr>)}</tbody></table></div>{Math.max(status.rowAddRows.length,rowAddCount(status.pendingRowAdds)+rowAddCount(status.uncertainRowAdds)+rowAddCount(status.heldRowAdds))>20&&<p>Showing the first 20 waiting rows.</p>}</details>}
+   </aside>}
+   {Number.isSafeInteger(status.quarantinedWrites)&&(status.quarantinedWrites??0)>0&&<aside className="report-tracker-paused" aria-label="Paused date updates">
+    <p><strong>{status.quarantinedWrites} date updates paused — source rows need matching</strong></p>
+    <p>Automatic writes for these updates have stopped. Sheet values are preserved. Update the source rows from OPERA and the current account before reviewing these dates.</p>
+    {!!status.quarantinedRows?.length&&<details><summary>View source rows needing review</summary><div className="report-tracker-preview-scroll"><table aria-label="Paused date updates"><thead><tr><th scope="col">Hotel</th><th scope="col">Invoice</th><th scope="col">Stage</th><th scope="col">Reason</th></tr></thead><tbody>{status.quarantinedRows.slice(0,20).map((row,index)=><tr key={index}><td>{row.hotel}</td><td>{row.invoiceNo}</td><td>{pausedStage[row.field]??'Date update'}</td><td>{pausedReason(row.reason)}</td></tr>)}</tbody></table></div>{(status.quarantinedRowsTruncated||status.quarantinedRows.length>20)&&<p>Showing the first 20 paused updates. More source rows need review.</p>}</details>}
+   </aside>}
    {status.available&&<div className="report-tracker-actions">
     {!status.connected?<button disabled={busy} onClick={()=>void command({action:'connect',revision:status.revision})}>Connect tracker</button>:status.bootstrapConfirmed?<button disabled={busy} onClick={()=>void command({action:'sync'})}>{busy?'Checking…':'Check changes'}</button>:<button disabled={busy} onClick={()=>void command({action:'preview'})}>Preview tracker import</button>}
     {status.conflictCount>0&&<button aria-expanded={review} onClick={()=>setReview(v=>!v)}>Review differences ({status.conflictCount})</button>}
@@ -83,13 +124,13 @@ export function TrackerSheetStatus({token,region}:{token:string;region:RegionId}
     <div className="report-tracker-preview-scroll"><table><thead><tr><th>Invoice key</th><th>Field</th><th>Sheet</th><th>AR web</th><th>Decision</th></tr></thead><tbody>{preview.details.map((item,index)=><tr key={index}><td>{item.rowKey}</td><td>{item.field}</td><td>{value(item.sheetValue)}</td><td>{value(item.webValue)}</td><td>{item.decision}</td></tr>)}</tbody></table></div>
     <p>Showing up to 200 field differences. The confirmation covers the reviewed snapshot of {preview.rowCount} rows; a changed file requires a fresh preview.</p><div className="report-tracker-actions"><button disabled={busy} onClick={()=>void command({action:'confirm_preview',previewId:preview.previewId,snapshotHash:preview.snapshotHash})}>Confirm initial import</button><button disabled={busy} onClick={()=>setPreviewResult(null)}>Discard preview</button></div>
    </div>}
-   {review&&<div className="report-tracker-review"><p>Credit terms and formulas are reference values.</p>
-    <div className="report-tracker-conflict-controls"><label>Difference type <select value={category} disabled={busy} onChange={e=>setNavigation({owner,reload:revision,category:e.target.value as TrackerConflictCategory,cursors:[null]})}>{trackerConflictCategories.map(c=><option key={c} value={c}>{trackerConflictCategoryLabels[c]}{page?` (${page.counts[c]})`:''}</option>)}</select></label><span>{page?`${page.counts[category]} pending · Page ${cursors.length}`:'Loading differences…'}</span></div>
+   {review&&<div className="report-tracker-review"><p>Only current Sheet rows requiring review are shown. Removed rows and confirmed-zero invoices are retained in history. Credit terms follow the Sheet per invoice; due dates are calculated separately.</p>
+    <div className="report-tracker-conflict-controls"><label>Difference type <select value={category} disabled={busy} onChange={e=>setNavigation({owner,reload:revision,sourceRevision,category:e.target.value as TrackerConflictCategory,cursors:[null]})}>{trackerConflictCategories.map(c=><option key={c} value={c}>{trackerConflictCategoryLabels[c]}{page?` (${page.counts[c]})`:''}</option>)}</select></label><span>{page?`${page.counts[category]} pending · Page ${cursors.length}`:'Loading differences…'}</span></div>
     {pageError?.key===pageKey?<p role="alert">{pageError.message} <button onClick={()=>setPageRetry(n=>n+1)}>Retry differences</button></p>:!page?<p role="status">Loading differences…</p>:<>{page.rows.length===0&&<p>No pending differences in this category.</p>}
     {page.rows.map(c=><article key={c.id}><strong>{trackerConflictFieldLabels[c.field]??c.field}{/^[A-Z]{1,2}$/.test(c.field)&&<span className="report-tracker-field-code"> ({c.field})</span>} · {c.reason.replaceAll('_',' ')}</strong><p className="report-tracker-identity">{c.rowKey}</p><dl><div><dt>Sheet</dt><dd>{value(c.sheetValue)}</dd></div><div><dt>AR web</dt><dd>{value(c.webValue)}</dd></div></dl>
      {c.reason==='unmapped_tracking_status'&&<p>Sheet status needs mapping review before replacing AR status.</p>}
      {c.field!=='identity'&&<div className="report-tracker-actions"><button disabled={busy} onClick={()=>void command({action:'resolve',conflictId:c.id,revision:c.revision,choice:'keep_web'})}>Keep AR value</button>{canAccept(c)&&<button disabled={busy} onClick={()=>void command({action:'resolve',conflictId:c.id,revision:c.revision,choice:'accept_sheet'})}>Accept sheet value</button>}</div>}
-    </article>)}<div className="report-tracker-actions report-tracker-pagination"><button disabled={busy||cursors.length===1} onClick={()=>setNavigation({owner,reload:revision,category,cursors:cursors.slice(0,-1)})}>Back</button><span>Showing {page.rows.length} of {page.counts[category]} pending differences</span><button disabled={busy||!page.nextCursor} onClick={()=>page.nextCursor&&setNavigation({owner,reload:revision,category,cursors:[...cursors,page.nextCursor]})}>Next</button></div></>}
+    </article>)}<div className="report-tracker-actions report-tracker-pagination"><button disabled={busy||cursors.length===1} onClick={()=>setNavigation({owner,reload:revision,sourceRevision,category,cursors:cursors.slice(0,-1)})}>Back</button><span>Showing {page.rows.length} of {page.counts[category]} pending differences</span><button disabled={busy||!page.nextCursor} onClick={()=>page.nextCursor&&setNavigation({owner,reload:revision,sourceRevision,category,cursors:[...cursors,page.nextCursor]})}>Next</button></div></>}
    </div>}
    {!!status.sheetActivity?.length&&<details className="report-tracker-review"><summary>Activity recorded in the sheet</summary><p>Actual dates have day precision. Import time is separate; matching verified Gmail events are excluded. Sheet records do not establish message counts or historical amounts.</p><table><thead><tr><th>Actual date</th><th>Activity</th><th>Invoices</th></tr></thead><tbody>{status.sheetActivity.map(item=><tr key={item.actualDate+item.field}><td>{item.actualDate}</td><td>{item.field==='R'?'First billing':item.field==='U'?'Follow 1':item.field==='V'?'Follow 2':'Follow 3'}</td><td>{item.invoices}</td></tr>)}</tbody></table></details>}
   </>}

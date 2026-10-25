@@ -1,18 +1,87 @@
 import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 import {assertButtonVisibility} from './fixtures/button-visibility';
+test('staff message preparation avoids Gmail Draft instructions and saves with a clear preparation receipt',async({page})=>{
+ const calls=await setup(page);await page.goto('/tests/browser/audit-email/harness.html?role=staff');await expect(page.getByLabel('Email message')).toBeVisible();
+ await expect(page.getByText('Drafts do not count as sent.',{exact:true})).toHaveCount(0);await expect(page.getByText('Only sent emails update invoice history.',{exact:true})).toBeVisible();
+ await page.getByLabel('Email message').fill('Staff preparation copy check');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.locator('.email-feedback')).toHaveText('Message saved in this preparation.');expect(calls.some(call=>/\/(send|gmail-draft)$/.test(call))).toBe(false);
+});
+test('staff Gmail connection guidance describes sending',async({page})=>{
+ await setup(page);await page.route('**/api/gmail/status*',r=>r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:false,canRead:false}}));await page.goto('/tests/browser/audit-email/harness.html?role=staff');await expect(page.getByText('Authorize Gmail to enable sending.',{exact:true})).toBeVisible();await expect(page.getByText('Authorize Gmail to enable draft handoff.',{exact:true})).toHaveCount(0);
+});
+test('administrator retains Gmail Draft guidance and its provider link',async({page})=>{
+ await setup(page);await page.goto('/tests/browser/audit-email/harness.html');await expect(page.getByText('Drafts do not count as sent.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();await expect(page.getByRole('link',{name:'Open Gmail drafts →',exact:true})).toBeVisible();
+});
+for(const role of ['staff','unresolved'])test(`Gmail draft creation is absent for ${role} while ordinary reviewed send remains available`,async({page})=>{
+ const calls=await setup(page);await page.goto(`/tests/browser/audit-email/harness.html?role=${role}`);await expect(page.getByLabel('Email TO')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toHaveCount(0);
+ await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByLabel('Email message').fill('Staff reviewed message');await page.getByRole('button',{name:'Review & send now',exact:true}).click();
+ await expect(page.locator('.email-send-confirm')).toContainText('Staff reviewed message');await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();expect(calls.some(call=>call.endsWith('/gmail-draft'))).toBe(false);
+});
+test('staff can recover and check a pre-existing Gmail Draft without creating another draft',async({page})=>{
+ const calls=await setup(page),delivery={id:'synthetic-delivery',mode:'draft',state:'created',stage:null,recorded:false,gmailAccepted:false};
+ await page.route('**/api/email/open',r=>r.fulfill({json:{id:draftId,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:'example',account_name:'Synthetic account',invoice_ids:['1'],purpose:'billing',recipients:{to:['recipient@example.test'],cc:[],bcc:[]},subject:'Existing reviewed message',body:'Existing reviewed body',exports:[],attachments:[],revision:1,package_changed:false,gmail_handoff:'created',delivery}}));
+ await page.route('**/api/email/deliveries/synthetic-delivery/check',r=>r.fulfill({json:delivery}));
+ await page.goto('/tests/browser/audit-email/harness.html?role=staff');await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Gmail draft — not sent');await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toHaveCount(0);await expect(page.getByRole('link',{name:'Open Gmail drafts →',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Check sent status',exact:true}).click();await page.getByRole('button',{name:'Review & send now',exact:true}).click();await expect(page.locator('.email-send-confirm')).toContainText('Existing reviewed body');await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();expect(calls.some(call=>call.endsWith('/gmail-draft'))).toBe(false);
+});
 const jobId='00000000-0000-4000-8000-000000000001',draftId='00000000-0000-4000-8000-000000000002';
+for(const width of [1440,390])for(const accepted of [false,true])test(`restored ${accepted?'accepted':'unknown'} send is clear before scrolling at ${width}`,async({page})=>{
+ const calls=await setup(page);await page.setViewportSize({width,height:width===1440?900:844});
+ const delivery={id:'synthetic-delivery',state:accepted&&width===390?'created':'review_required',mode:accepted&&width===390?'draft':'send',recorded:false,gmailAccepted:accepted,reason:accepted?'workflow_changed':'attachment_content'};
+ await page.route('**/api/email/open',async r=>{await r.fulfill({json:{id:draftId,document_job_id:jobId,document_revision:4,hotel:'KAT',account_id:'example',account_name:'Synthetic account',invoice_ids:['1'],purpose:'billing',recipients:{to:['recipient@example.test'],cc:[],bcc:[]},subject:'Synthetic message',body:'Synthetic body',exports:[],attachments:[],revision:0,package_changed:false,gmail_handoff:delivery.state,delivery}});});
+ await page.route('**/api/email/deliveries/synthetic-delivery/check',r=>r.fulfill({json:delivery}));
+ await page.goto('/tests/browser/audit-email/harness.html');
+ const banner=page.getByRole('status',{name:'Email delivery status'});
+ await expect(banner).toContainText(accepted?'Sent — history needs attention':'Send result unknown — do not resend');
+ await expect(banner).toContainText(accepted?'Invoice or account':'contents');
+ await expect(banner).toBeInViewport();
+ await expect(page.getByRole('button',{name:'Review & send now',exact:true})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Check sent status',exact:true}).click();
+ await expect(banner).toContainText(accepted?'Sent — history needs attention':'Send result unknown — do not resend');
+ await page.locator('.email-columns').evaluate(e=>e.scrollTop=0);
+ await page.screenshot({path:`.tmp/email-status/${accepted?'accepted':'unknown'}-${width}.png`});
+ await page.reload();await expect(banner).toBeInViewport();
+ expect(calls.some(c=>/\/(send|gmail-draft)$/.test(c))).toBe(false);
+});
 test('Send is primary and an existing Gmail draft can be reviewed and sent once from the workspace',async({page})=>{
  const calls=await setup(page);await page.goto('/tests/browser/audit-email/harness.html');
  await page.getByLabel('Email TO').fill('recipient@example.test');
  const send=page.getByRole('button',{name:'Review & send now',exact:true}),create=page.getByRole('button',{name:'Create Gmail draft',exact:true});
  await expect(send).toHaveClass(/primary-button/);await expect(create).not.toHaveClass(/primary-button/);
- await create.click();await expect(page.getByText('Delivery: created',{exact:true})).toBeVisible();
+ await create.click();await expect(page.getByText('Gmail draft — not sent',{exact:true})).toBeVisible();
  await expect(create).toBeDisabled();await expect(send).toBeEnabled();await send.click();
  await expect(page.getByRole('button',{name:'Confirm send now',exact:true})).toBeDisabled();
  await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();
  await page.getByRole('button',{name:'Confirm send now',exact:true}).click();
- await expect(page.getByText('Delivery: sent',{exact:true})).toBeVisible();expect(calls.filter(c=>c.endsWith('/send'))).toHaveLength(1);
+ await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();expect(calls.filter(c=>c.endsWith('/send'))).toHaveLength(1);
+});
+for(const accepted of [false,true])test(`send response immediately distinguishes ${accepted?'accepted mail with history unavailable':'an unknown send result'}`,async({page})=>{
+ const calls=await setup(page);await page.goto('/tests/browser/audit-email/harness.html');
+ const delivery={id:'synthetic-send',state:'awaiting_evidence',mode:'send',recorded:false,gmailAccepted:accepted,reason:accepted?'history_recording_unavailable':null};
+ await page.route(`**/api/email/${draftId}/send`,r=>{calls.push(`POST /api/email/${draftId}/send`);return r.fulfill({json:delivery});});
+ await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByRole('button',{name:'Review & send now',exact:true}).click();
+ await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();
+ await page.getByRole('button',{name:'Confirm send now',exact:true}).evaluate((button:HTMLButtonElement)=>{button.click();button.click();});
+ await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText(accepted?'Sent — history needs attention':'Send result unknown — do not resend');
+ await expect(page.locator('.email-feedback')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Review & send now',exact:true})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();
+ expect(calls.filter(c=>c.endsWith('/send'))).toHaveLength(1);
+});
+for(const restored of [false,true])test(`a lost send response blocks repeat sends while ${restored?'recovering the saved delivery':'the status service is unavailable'}`,async({page})=>{
+ const calls=await setup(page);await page.goto('/tests/browser/audit-email/harness.html');
+ await page.route(`**/api/email/${draftId}/send`,r=>{calls.push(`POST /api/email/${draftId}/send`);return r.abort('failed');});
+ await page.route(`**/api/email/${draftId}`,r=>r.request().method()==='GET'?(restored?r.fulfill({json:{id:draftId,purpose:'billing',recipients:{to:['recipient@example.test'],cc:[],bcc:[]},subject:'Synthetic',body:'Synthetic',exports:[],attachments:[],revision:1,package_changed:false,gmail_handoff:'awaiting_evidence',delivery:{id:'synthetic-delivery',mode:'send',state:'awaiting_evidence',gmailAccepted:true,recorded:false,reason:'history_recording_unavailable'}}}):r.abort('failed')):r.fallback());
+ await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByRole('button',{name:'Review & send now',exact:true}).click();
+ await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();
+ const banner=page.getByRole('status',{name:'Email delivery status'});
+ await expect(banner).toContainText(restored?'Sent — history needs attention':'Send result unknown — do not resend');
+ await expect(page.getByRole('button',{name:'Confirm send now',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Review & send now',exact:true})).toBeDisabled();
+ if(!restored){await page.getByRole('button',{name:'Reload delivery status',exact:true}).click();await expect(banner).toContainText('Send result unknown');}
+ expect(calls.filter(c=>c.endsWith('/send'))).toHaveLength(1);
 });
 async function setup(page:Page,conflict=false){
  const user={id:'synthetic-email-user',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-09T00:00:00Z'};
@@ -40,7 +109,7 @@ async function setup(page:Page,conflict=false){
 }
 test('email actions remain readable without sending while checking hover and focus',async({page})=>{
  const calls=await setup(page);await page.goto('/tests/browser/audit-email/harness.html');await expect(page.getByLabel('Email TO')).toBeVisible();await assertButtonVisibility(page,page.locator('.email-workspace'));
- await page.getByLabel('Email TO').fill('recipient@example.test');await assertButtonVisibility(page,page.locator('.email-workspace'));await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Workspace draft saved');
+ await page.getByLabel('Email TO').fill('recipient@example.test');await assertButtonVisibility(page,page.locator('.email-workspace'));await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Message saved in this preparation');
  await page.getByRole('button',{name:'Review & send now',exact:true}).click();await assertButtonVisibility(page,page.locator('.email-send-confirm'));await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await assertButtonVisibility(page,page.locator('.email-send-confirm'));
  expect(calls.some(c=>/\/(send|gmail-draft)$/.test(c))).toBe(false);
 });
@@ -48,9 +117,9 @@ for(const width of [1440,1280])test(`email workspace ${width}: saved message and
  const calls=await setup(page);await page.setViewportSize({width,height:width===1440?900:800});await page.goto('/tests/browser/audit-email/harness.html');
  await expect(page.getByLabel('Email TO')).toHaveValue('');expect(calls.some(c=>c.endsWith('/gmail-draft'))).toBe(false);
  await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByLabel('Email message').fill('Synthetic reviewed billing message.');await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeEnabled();
- await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Workspace draft saved');
+ await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Message saved in this preparation');
  await page.screenshot({path:`evidence/email-composer-${width}.png`,fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();await expect(page.locator('.email-feedback')).toContainText('Gmail confirmed draft creation');await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();expect(calls.filter(c=>c.endsWith('/gmail-draft'))).toHaveLength(1);
+ await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Gmail draft — not sent');await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();expect(calls.filter(c=>c.endsWith('/gmail-draft'))).toHaveLength(1);
 });
 test('email revision conflict retains unsaved message',async({page})=>{await setup(page,true);await page.goto('/tests/browser/audit-email/harness.html');await page.getByLabel('Email message').fill('Keep my unsaved changes');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('alert')).toContainText('another session');await expect(page.getByLabel('Email message')).toHaveValue('Keep my unsaved changes');});
 
@@ -80,15 +149,15 @@ for(const expired of [true,false])test(`generated attachment download explains v
  expect(calls.some(call=>/\/(send|gmail-draft)$/.test(call)||call===`PUT /api/email/${draftId}`)).toBe(false);
 });
 
-test('email mobile controls remain reachable',async({page})=>{await setup(page);await page.setViewportSize({width:390,height:844});await page.goto('/tests/browser/audit-email/harness.html');await page.getByLabel('Email message').fill('Synthetic mobile message');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Workspace draft saved');await page.locator('.email-columns').evaluate(e=>e.scrollTop=0);await page.screenshot({path:'evidence/email-composer-390.png'});await page.getByRole('button',{name:'Create Gmail draft',exact:true}).scrollIntoViewIfNeeded();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:'evidence/email-composer-390-handoff.png'});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
+test('email mobile controls remain reachable',async({page})=>{await setup(page);await page.setViewportSize({width:390,height:844});await page.goto('/tests/browser/audit-email/harness.html');await page.getByLabel('Email message').fill('Synthetic mobile message');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Message saved in this preparation');await page.locator('.email-columns').evaluate(e=>e.scrollTop=0);await page.screenshot({path:'evidence/email-composer-390.png'});await page.getByRole('button',{name:'Create Gmail draft',exact:true}).scrollIntoViewIfNeeded();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:'evidence/email-composer-390-handoff.png'});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
 
-for(const width of [1440,1280,390])test(`Send Now ${width} requires an explicit reviewed confirmation`,async({page})=>{const calls=await setup(page);await page.setViewportSize({width,height:width===1440?900:width===1280?800:844});await page.goto('/tests/browser/audit-email/harness.html');await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Workspace draft saved');await page.getByRole('button',{name:'Review & send now',exact:true}).click();await expect(page.getByRole('button',{name:'Confirm send now',exact:true})).toBeDisabled();expect(calls.some(c=>c.endsWith('/send'))).toBe(false);await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.screenshot({path:`evidence/email-send-confirmation-${width}.png`});await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Gmail sent evidence verified. Billing / collection history recorded.',{exact:true})).toBeVisible();expect(calls.filter(c=>c.endsWith('/send'))).toHaveLength(1);});
+for(const width of [1440,1280,390])test(`Send Now ${width} requires an explicit reviewed confirmation`,async({page})=>{const calls=await setup(page);await page.setViewportSize({width,height:width===1440?900:width===1280?800:844});await page.goto('/tests/browser/audit-email/harness.html');await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Message saved in this preparation');await page.getByRole('button',{name:'Review & send now',exact:true}).click();await expect(page.getByRole('button',{name:'Confirm send now',exact:true})).toBeDisabled();expect(calls.some(c=>c.endsWith('/send'))).toBe(false);await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.screenshot({path:`evidence/email-send-confirmation-${width}.png`});await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();expect(calls.filter(c=>c.endsWith('/send'))).toHaveLength(1);});
 
  test('rich mode preserves formatting when selected again and across saved reload',async({page})=>{
  await setup(page);await page.goto('/tests/browser/audit-email/harness.html');await page.getByRole('button',{name:'Rich text',exact:true}).click();
  const editor=page.getByRole('textbox',{name:'Email message',exact:true});await editor.fill('Synthetic rich test');await editor.press('ControlOrMeta+A');await editor.press('ControlOrMeta+b');
  await expect(editor.locator('b,strong')).toContainText('Synthetic rich test');await page.getByRole('button',{name:'Rich text',exact:true}).click();await expect(editor.locator('b,strong')).toContainText('Synthetic rich test');
- await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Workspace draft saved');await page.reload();await expect(page.getByRole('textbox',{name:'Email message',exact:true}).locator('b,strong')).toContainText('Synthetic rich test');
+ await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByRole('status')).toContainText('Message saved in this preparation');await page.reload();await expect(page.getByRole('textbox',{name:'Email message',exact:true}).locator('b,strong')).toContainText('Synthetic rich test');
  await page.screenshot({path:'evidence/email-rich-composer-1440.png'});
  });
 
@@ -98,7 +167,7 @@ test('review saves current edits and filenames before explicit send confirmation
  const review=page.getByRole('button',{name:'Review & send now',exact:true});await expect(review).toBeEnabled();await review.click();
  await expect(page.locator('.email-send-confirm')).toContainText('Current-final.pdf');await expect(page.locator('.email-send-confirm')).toContainText('Current reviewed message');expect(calls.filter(c=>c===`PUT /api/email/${draftId}`)).toHaveLength(1);expect(calls.some(c=>/\/(send|gmail-draft)$/.test(c))).toBe(false);
  await page.route(`**/api/email/${draftId}/send`,r=>{expect(r.request().postDataJSON().revision).toBe(1);return r.fulfill({json:{id:'synthetic-send',state:'sent',mode:'send',recorded:true}});});
- await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Gmail sent evidence verified. Billing / collection history recorded.',{exact:true})).toBeVisible();
+ await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();
 });
 test('review save failure retains current input and prevents handoff',async({page})=>{
  const calls=await setup(page,true);await page.goto('/tests/browser/audit-email/harness.html');await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByLabel('Email message').fill('Keep current edits');await page.getByLabel('Generated PDF filename 1').fill('Retained.pdf');
@@ -109,7 +178,7 @@ for(const action of ['Review & send now','Create Gmail draft'])test(`current edi
  const calls=await setup(page);await page.goto('/tests/browser/audit-email/harness.html');await page.getByLabel('Email TO').fill('recipient@example.test');await page.getByLabel('Email message').fill('Latest unsaved message');
  await page.route(`**/api/email/${draftId}/gmail-draft`,r=>{calls.push(`POST /api/email/${draftId}/gmail-draft`);expect(r.request().postDataJSON().revision).toBe(1);return r.fulfill({json:{id:'synthetic-delivery',mode:'draft',state:'created',created:true}});});
  await page.getByRole('button',{name:action,exact:true}).evaluate((button:HTMLButtonElement)=>{button.click();button.click();});
- if(action==='Review & send now')await expect(page.locator('.email-send-confirm')).toContainText('Latest unsaved message');else await expect(page.locator('.email-feedback')).toContainText('Gmail confirmed draft creation');
+ if(action==='Review & send now')await expect(page.locator('.email-send-confirm')).toContainText('Latest unsaved message');else await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Gmail draft — not sent');
  expect(calls.filter(c=>c===`PUT /api/email/${draftId}`)).toHaveLength(1);expect(calls.filter(c=>c.endsWith('/gmail-draft'))).toHaveLength(action==='Create Gmail draft'?1:0);expect(calls.some(c=>c.endsWith('/send'))).toBe(false);
 });
 test('download saves changed filename and uses returned revision',async({page})=>{

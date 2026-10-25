@@ -5,6 +5,7 @@ import {parseEmailDraft,type EmailInput} from './validation';
 import {richHtml} from '../../src/email/rich-message';
 import type {ThreadChoice} from '../../src/email/threads';
 import {validateThreadChoice} from './threads';
+import {attachmentAsciiName} from './attachment-name';
 export interface MailFile {name:string;mime:string;bytes:Uint8Array}
 const lines=(s:string)=>s.match(/.{1,76}/g)?.join('\r\n')??'';
 export function encodedHeader(text:string){
@@ -31,7 +32,7 @@ export function buildMime(input:EmailInput,files:MailFile[],messageId:string,thr
   parts.push('--'+alternative+'--');
  }
  for(const f of files){if(!f.name||f.name.length>200||/[\r\n\x00-\x1f/\\]/.test(f.name)||!['application/pdf','image/png','image/jpeg'].includes(f.mime))throw Error('email_attachment_invalid');
-  parts.push('--'+boundary,`Content-Type: ${f.mime}`,`Content-Disposition: attachment; filename="${f.name.replace(/[^A-Za-z0-9._ -]/g,'_')}";`," filename*=UTF-8''"+encodeURIComponent(f.name).replace(/[!'()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()),'Content-Transfer-Encoding: base64','',lines(base64(f.bytes)));
+  parts.push('--'+boundary,`Content-Type: ${f.mime}`,`Content-Disposition: attachment; filename="${attachmentAsciiName(f.name)}";`," filename*=UTF-8''"+encodeURIComponent(f.name).replace(/[!'()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()),'Content-Transfer-Encoding: base64','',lines(base64(f.bytes)));
  }
  parts.push('--'+boundary+'--','');return new TextEncoder().encode(parts.join('\r\n'));
 }

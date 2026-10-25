@@ -2,7 +2,7 @@ import {rowGeometry} from './row-geometry';
 import {compactEmptyRowLines} from './row-compaction';
 import {insertRowUsingWhitespace} from './row-whitespace';
 import {deleteInsertedRow,insertedRowBands} from './inserted-rows';
-import {prepareRowDeletion,replacementForRun} from './source-edits';
+import {deleteTextLayer,prepareRowDeletion,replacementForRun} from './source-edits';
 import {applyFlowEdit,pageCanvasHeight,MAX_FLOW_HEIGHT} from './flow';
 import {useEffect,useId,useRef,useState,type PointerEvent} from 'react';
 import type {PDFDocumentProxy} from 'pdfjs-dist';
@@ -11,15 +11,19 @@ import {includeTouchedText,mapSourceRect,mapSourceTextRect} from './row-layout';
 import {createReplacementLayer,measureLayerText} from './source-text';
 import {tableTextFlows} from './text-scope';
 import {assertMoveDestinationClear,assertRasterDestinationClear,reflowStationery} from './layout-safety';
-import {renderPage} from './engine';
+import {renderPage,originalHeaderArtwork} from './engine';
+import type {StationeryArtwork} from './stationery-artwork';
 import type {DetectedText,PdfLayer,PdfProjectPage,PdfRowEdit} from './types';
 
 type Area={x:number;y:number;width:number;height:number};
+type GestureFrame={left:number;top:number;width:number;height:number;pageWidth:number;pageHeight:number};
+const areaGeometry=({x,y,width,height}:Area):Area=>({x,y,width,height});
 type Props={page?:PdfProjectPage;documents:Map<string,PDFDocumentProxy>;runs:DetectedText[];layer?:PdfLayer;tool:string;setTool:(tool:string)=>void;busy:boolean;setBusy:(busy:boolean)=>void;onChange:(page:PdfProjectPage)=>void;onError:(message:string)=>void};
 export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,setBusy,onChange,onError}:Props){
  const [lines,setLines]=useState<GraphicTarget[]>([]),[area,setArea]=useState<Area|null>(null);
  const [barriers,setBarriers]=useState<GraphicTarget[]>([]),[geometryReady,setGeometryReady]=useState(false);
  const [geometrySource,setGeometrySource]=useState<{id:string;documents:Map<string,PDFDocumentProxy>}|null>(null);const ready=geometryReady&&geometrySource?.id===page?.id&&geometrySource?.documents===documents;
+ const [artwork,setArtwork]=useState<StationeryArtwork|undefined>();
  const [moving,setMoving]=useState(false);
  const [notice,setNotice]=useState('');
  const areaButton=useRef<HTMLButtonElement>(null),lineButton=useRef<HTMLButtonElement|null>(null),focusArea=useRef(false);
@@ -29,9 +33,9 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
  useEffect(()=>{if(layer?.id)setNotice('');},[layer?.id]);
  const ownedEdits=useRef(page?.rowEdits);
  useEffect(()=>{if(page?.rowEdits!==ownedEdits.current)setArea(null);ownedEdits.current=page?.rowEdits;},[page?.rowEdits]);
- const gesture=useRef<{start:{x:number;y:number};before:Area;pick:boolean;current:Area}|null>(null),alive=useRef(true),currentPage=useRef(page?.id);currentPage.current=page?.id;
+ const gesture=useRef<{start:{x:number;y:number};before:Area;pick:boolean;current:Area;frame:GestureFrame}|null>(null),alive=useRef(true),currentPage=useRef(page?.id);currentPage.current=page?.id;
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
- useEffect(()=>{let current=true;setArea(null);gesture.current=null;setLines([]);setBarriers([]);setGeometryReady(false);if(page)Promise.all([detectLines(page,documents),detectRowBarriers(page,documents)]).then(([value,bounds])=>{if(current){setLines(value);setBarriers(bounds);setGeometrySource({id:page.id,documents});setGeometryReady(true);}}).catch(()=>{if(current)onError('The page boundaries could not be read. Reopen the document before adding or deleting rows.');});return()=>{current=false;};},[page?.id,documents]);
+ useEffect(()=>{let current=true,failed=false;const abort=new AbortController();let artworkProof:StationeryArtwork|undefined;setArea(null);gesture.current=null;setLines([]);setBarriers([]);setGeometryReady(false);setArtwork(undefined);if(page)Promise.all([detectLines(page,documents),detectRowBarriers(page,documents),originalHeaderArtwork(page,documents,abort.signal).then(proof=>{artworkProof=proof;if(!current||failed)proof?.release?.();return proof;})]).then(([value,bounds,proof])=>{if(!current){proof?.release?.();return;}if(current){setArtwork(proof);setLines(value);setBarriers(bounds);setGeometrySource({id:page.id,documents});setGeometryReady(true);}}).catch(()=>{failed=true;abort.abort();artworkProof?.release?.();if(current)onError('The page boundaries could not be read. Reopen the document before adding or deleting rows.');});return()=>{current=false;abort.abort();artworkProof?.release?.();};},[page?.id,documents]);
  const shown=runs.flatMap(run=>{if(page&&replacementForRun(page,run))return [];const rect=mapSourceTextRect(run,page?.rowEdits??[],run.fontSize*.72);return rect?[{run,rect}]:[];});
  const selectionTargets=[...shown.map(c=>c.rect),...page?.layers.filter(l=>!l.deleted)??[]];
  const anchor=layer&&!layer.deleted&&(layer.sourceText||layer.original||layer.tableRow)?layer:undefined;
@@ -70,7 +74,7 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
     // Stationery fields own only their source mask; never flow another column.
     const next={...anchor,text:anchor.text+'\n'};
     next.height=Math.max(anchor.height+anchor.fontSize*1.25,measureLayerText(next).height);
-    const flowed=reflowStationery(before,anchor,next,runs,barriers);
+    const flowed=reflowStationery(before,anchor,next,runs,barriers,artwork);
     return {...flowed,layers:flowed.layers.map(l=>l.id===anchor.id?next:l)};
    }
    const compacted=compactEmptyRowLines(before,anchor,runs,barriers),base=compacted.page;
@@ -113,17 +117,24 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
    if(okay){setArea(null);if(keptSpace)setNotice('Row removed. Space containing other content was kept.');}
    return;
   }
+  if(!tableTextFlows(page,anchor,runs)){
+   // Header/address fields own their source text, never a page-wide row band.
+   const okay=await changePage(before=>deleteTextLayer(before,anchor));
+   if(okay)setArea(null);
+   return;
+  }
   if(!row!.deletable){onError('This row overlaps nearby text or a border. Move the overlapping object before deleting the row.');return;}
   const edit:PdfRowEdit={id:crypto.randomUUID(),kind:'delete',y:rowTop,height:rowHeight};
   const okay=await changePage(before=>applyFlowEdit(prepareRowDeletion(before,edit,row!.members.map(l=>l.id)),edit));if(okay)setArea(null);
  }
- function point(event:PointerEvent<HTMLElement>){const paper=event.currentTarget.closest('.pdf-paper')!.getBoundingClientRect();return {x:Math.max(0,Math.min(page!.width,(event.clientX-paper.left)/paper.width*page!.width)),y:Math.max(0,Math.min(extent,(event.clientY-paper.top)/paper.height*extent))};}
+ function point(event:PointerEvent<HTMLElement>,frame:GestureFrame){return {x:Math.max(0,Math.min(frame.pageWidth,(event.clientX-frame.left)/frame.width*frame.pageWidth)),y:Math.max(0,Math.min(frame.pageHeight,(event.clientY-frame.top)/frame.height*frame.pageHeight))};}
  function begin(event:PointerEvent<HTMLElement>,rect?:Area){
   if(!page||busy)return;if(rect){const whole=includeTouchedText(rect,selectionTargets);if(whole.x!==rect.x||whole.y!==rect.y||whole.width!==rect.width||whole.height!==rect.height)setNotice('Nearby text is included so it moves intact.');rect=whole;}event.preventDefault();event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId);
-  const start=point(event),before=rect??{...start,width:0,height:0};gesture.current={start,before,pick:!rect,current:before};setArea(before);setMoving(true);onError('');
+  const paper=event.currentTarget.closest('.pdf-paper')!.getBoundingClientRect(),frame={left:paper.left,top:paper.top,width:paper.width,height:paper.height,pageWidth:page.width,pageHeight:extent};
+  const start=point(event,frame),before=rect?areaGeometry(rect):{...start,width:0,height:0};gesture.current={start,before,pick:!rect,current:before,frame};setArea(before);setMoving(true);onError('');
  }
  function move(event:PointerEvent<HTMLElement>){
-  const g=gesture.current;if(!g||!page)return;const now=point(event);
+  const g=gesture.current;if(!g||!page)return;const now=point(event,g.frame);
   const current=g.pick?{x:Math.min(g.start.x,now.x),y:Math.min(g.start.y,now.y),width:Math.abs(now.x-g.start.x),height:Math.abs(now.y-g.start.y)}:{...g.before,x:Math.max(0,Math.min(page.width-g.before.width,g.before.x+now.x-g.start.x)),y:Math.max(0,Math.min(extent-g.before.height,g.before.y+now.y-g.start.y))};
   g.current=current;setArea(current);
  }
@@ -131,27 +142,26 @@ export function useNativeEditing({page,documents,runs,layer,tool,setTool,busy,se
   const g=gesture.current;gesture.current=null;setMoving(false);if(!g||!page)return;
   if(g.pick){
    if(g.current.width<2||g.current.height<2){setArea(null);return;}
-   const whole=includeTouchedText(g.current,selectionTargets);setArea(whole);setTool('objects');return;
+   const whole=includeTouchedText(g.current,selectionTargets);setArea(areaGeometry(whole));return;
   }
   const dx=g.current.x-g.before.x,dy=g.current.y-g.before.y;
   if(Math.abs(dx)+Math.abs(dy)<.1)return;
-  const okay=await apply({id:crypto.randomUUID(),kind:'move',...g.before,dx,dy});if(!okay)setArea(g.before);
+  const okay=await apply({...areaGeometry(g.before),id:crypto.randomUUID(),kind:'move',dx,dy});if(!okay)setArea(g.before);
  }
  function cancel(){const g=gesture.current;gesture.current=null;setMoving(false);setArea(g?.pick?null:g?.before??null);}
- async function nudge(dx:number,dy:number){if(!area||!page||busy)return;const destination={...area,x:area.x+dx,y:area.y+dy};if(destination.x<0||destination.y<0||destination.x+area.width>page.width||destination.y+area.height>extent)return;if(await apply({id:crypto.randomUUID(),kind:'move',...area,dx,dy}))setArea(destination);}
- function selectArea(rect:Area){if(!page||busy)return;setArea(includeTouchedText(rect,selectionTargets));setTool('objects');focusArea.current=true;onError('');setBoundsError('');setNotice('Area selected. Use arrow keys to move, Shift for larger steps, or Escape to clear.');}
+ async function nudge(dx:number,dy:number){if(!area||!page||busy)return;const destination={...area,x:area.x+dx,y:area.y+dy};if(destination.x<0||destination.y<0||destination.x+area.width>page.width||destination.y+area.height>extent)return;if(await apply({...areaGeometry(area),id:crypto.randomUUID(),kind:'move',dx,dy}))setArea(destination);}
+ function selectArea(rect:Area){if(!page||busy)return;setArea(areaGeometry(includeTouchedText(rect,selectionTargets)));setTool('objects');focusArea.current=true;onError('');setBoundsError('');setNotice('Area selected. Use arrow keys to move, Shift for larger steps, or Escape to clear.');}
  function selectBounds(){if(!page)return;const rect=Object.fromEntries(Object.entries(bounds).map(([key,value])=>[key,value.trim()===''?NaN:Number(value)])) as Area;if(Object.values(rect).some(v=>!Number.isFinite(v))||rect.x<0||rect.y<0||rect.width<=0||rect.height<=0||rect.x+rect.width>page.width||rect.y+rect.height>extent){setBoundsError('Enter a positive width and height, with the entire area inside this page.');return;}selectArea(rect);}
  const position=(rect:Area)=>({left:`${rect.x/page!.width*100}%`,top:`${rect.y/extent*100}%`,width:`${rect.width/page!.width*100}%`,height:`${rect.height/extent*100}%`});
  const overlay=page&&<>
   {tool==='objects'&&lines.map(line=>{const rect=mapSourceRect(line,page.rowEdits??[]);return rect?<button key={line.id} className="pdf-native-line" aria-label={'Move line '+line.id} title="Drag this line or press Enter to select" style={position(rect)} onClick={event=>{if(event.detail===0){lineButton.current=event.currentTarget;selectArea(rect);}}} onPointerDown={event=>begin(event,rect)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>:null;})}
   {tool==='area'&&<div className="pdf-area-picker" aria-label="Select table or area" onPointerDown={event=>begin(event)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>}
-  {area&&(tool==='objects'||tool==='area')&&<button ref={areaButton} className={'pdf-native-area '+(moving?'moving':'')} aria-label="Move selected table or area" title="Drag the selected area, or use arrow keys" onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setArea(null);lineButton.current?.focus();return;}if(event.repeat)return;const step=event.shiftKey?10:1,delta=({ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]} as Record<string,number[]>)[event.key];if(delta){event.preventDefault();void nudge(delta[0],delta[1]);}}} style={position(area)} onPointerDown={event=>begin(event,area)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>}
+  {area&&(tool==='objects'||tool==='area')&&<button ref={areaButton} className={'pdf-native-area '+(moving?'moving':'')} aria-label="Move selected table or area" title="Drag the selected area, or use arrow keys" onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setArea(null);setNotice('');lineButton.current?.focus();return;}if(event.repeat)return;const step=event.shiftKey?10:1,delta=({ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]} as Record<string,number[]>)[event.key];if(delta){event.preventDefault();void nudge(delta[0],delta[1]);}}} style={position(area)} onPointerDown={event=>begin(event,area)} onPointerMove={move} onPointerUp={()=>void finish()} onPointerCancel={cancel}/>}
  </>;
  const controls=<>
-  {notice&&<p role="status">{notice}</p>}
-  {(tool==='objects'||tool==='area')&&<div className="pdf-object-help"><p>{tool==='area'?'Drag around the whole table or area, then drag it to a new position.':area?'Use arrow keys or drag the outlined area. Shift moves farther; Escape clears the selection.':'Drag a highlighted line, or use Move table / area for a group.'}</p>{area&&<button disabled={busy} onClick={()=>setArea(null)}>Clear area selection</button>}</div>}
+  {(tool==='objects'||tool==='area')?<><p className="pdf-native-notice" role="status">{notice}</p><div className="pdf-object-help"><p>{tool==='area'?'Drag to select a table or area, then move the outline with arrows or drag. Shift moves farther; Escape clears.':'Drag a highlighted line, or press Enter to select it. Use arrows to move, Shift for larger steps, Escape to clear.'}</p><button style={{visibility:area?'visible':'hidden'}} aria-hidden={!area} disabled={busy||!area} onClick={()=>{setArea(null);setNotice('');}}>Clear area selection</button></div></>:notice&&<p role="status">{notice}</p>}
   {tool==='area'&&page&&<fieldset className="pdf-area-bounds" disabled={busy||!ready}><legend>Area bounds · PDF points</legend>{(['x','y','width','height'] as const).map(key=><label key={key}>{key==='x'?'Left':key==='y'?'Top':key==='width'?'Width':'Height'}<input type="number" min={key==='x'||key==='y'?0:1} aria-invalid={!!boundsError} aria-describedby={boundsError?boundsErrorId:undefined} value={bounds[key]} onChange={event=>{setBounds({...bounds,[key]:event.target.value});setBoundsError('');}}/></label>)}<button type="button" onClick={selectBounds}>Select area</button>{boundsError&&<p role="alert" id={boundsErrorId}>{boundsError}</p>}</fieldset>}
  </>;
  const rowControls=<section className="pdf-row-controls"><h3>Row tools</h3><p>{anchor?`${anchor.tableRow?page?.layers.filter(l=>l.tableRow===anchor.tableRow).length:row?.template.length||1} fields on this row`:'Select text in the row you want to change.'}</p><div><button disabled={busy||!ready||!anchor} onClick={()=>void insertRow()}>Add row below</button><button disabled={busy||!ready||!anchor} onClick={()=>void deleteRow()}>Delete row</button>{anchor&&!anchor.tableRow&&<button disabled={busy||!ready} onClick={()=>void removeEmptyLines()}>Remove empty lines</button>}</div></section>;
- return {overlay,controls,rowControls,geometryReady:ready,barriers:ready?barriers:[]};
+ return {overlay,controls,rowControls,geometryReady:ready,artwork:ready?artwork:undefined,barriers:ready?barriers:[]};
 }
