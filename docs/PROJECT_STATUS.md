@@ -1,3 +1,31 @@
+## 2026-10-25 — Obsolete report rows removed after verified recovery
+
+**Report data cleanup completed.** An encrypted private export of all 16 approved
+report-only datasets was decrypted and checked row-by-row against source counts
+and SHA-256 fingerprints: 222,473 rows. A guarded exact-table transaction rechecked
+those snapshots and external dependencies, removed only these report rows, and
+verified unchanged current Accounts/Invoices, verified balances, actual Sent and
+Sheet R/U/V/W fingerprints. All 16 read back empty. Database size fell from
+451,046,547 to 222,219,411 bytes. Actual Phuket and Khao Lak current Dashboards load.
+No PDF/preparation bytes have been deleted at this checkpoint.
+
+Runtime 4f3eea2133b31444906c8ebe955ba4089c849684 passed same-head CI1056
+(40199390141): 4,720 unit, 142 migrations/36 SQL fixtures and actual Save/Exit
+concurrency, 533 browser, 3 performance and 15 publication checks. Worker
+78c7c06b-d1b9-445c-95df-03935bb00b6b is healthy; all 56 JS/CSS/WASM hashes match.
+Both history flags are explicitly false; ordinary retention and OPERA refresh stay
+true. A simultaneous local SQL benchmark timed out under browser/decryption load;
+the final isolated hosted-order replay passes without weakening its timeout.
+
+Real browser use exposed a maintenance-entry omission: fresh navigation deliberately
+clears tab auth and successful Google sign-in opens Aging. A collapsed Admin-only
+Storage link now uses existing internal navigation to the protected backup utility,
+keeping that auth policy intact. The actual-App entry regression fails before the
+link and all six backup browser cases pass after it, with typecheck/build and an
+independent review. The repository history-maintenance flag now also defaults false.
+The full follow-up CI and preparation backup/deletion receipts remain separate.
+
+
 ## 2026-10-25 — Report capture retirement and backed unused-preparation cleanup
 
 **Implemented and locally qualified; database guards enabled.** Daily AR and
