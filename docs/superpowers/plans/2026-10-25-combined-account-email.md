@@ -52,23 +52,23 @@ Access admission: creation/save advertises its same mailbox region through a val
 **Consumes:** existing owned jobs, app drafts, policy/hold/source checks and actor identity.
 **Produces:** exact RPCs/DTO above, four private tables, canonical sent_scope_facts, combined-aware ar_mail_get/record/confirm dispatch and single-send claim fences.
 
-- [ ] Add synthetic fixtures: arbitrary Agents and mixed member layouts; assert initial save/replay/revision and rejection of scope/duplicate/missing/unreviewed/held/provider-attempt targets.
-- [ ] Run fixture before migration; require missing-function/behavior RED.
-- [ ] Implement additive tables/RLS/ACL, immutable attempts, stable command digest, complete member/workflow claim snapshots and all-target atomic confirmation. Preserve successful Gmail proof independently, with no fake child deliveries or diagnostic mode for real sends.
-- [ ] Share the ordinary admission locks and fence ordinary Gmail/normal claims and referenced draft/document changes while a combined attempt is unresolved.
-- [ ] Cover one receipt/many scopes, mixed purposes/stages, late invalid member/all-or-none, exact replay, conflicting content, ordinary-vs-combined race contracts and prior separate cases.
-- [ ] Replay migrations and focused fixture, then report GREEN and exact helpers/fields. No hosted changes or broad test run while other scopes edit.
+- [x] Add synthetic fixtures: arbitrary Agents and mixed member layouts; assert initial save/replay/revision and rejection of scope/duplicate/missing/unreviewed/held/provider-attempt targets.
+- [x] Run fixture before migration; require missing-function/behavior RED.
+- [x] Implement additive tables/RLS/ACL, immutable attempts, stable command digest, complete member/workflow claim snapshots and all-target atomic confirmation. Preserve successful Gmail proof independently, with no fake child deliveries or diagnostic mode for real sends.
+- [x] Share the ordinary admission locks and fence ordinary Gmail/normal claims and referenced draft/document changes while a combined attempt is unresolved.
+- [x] Cover one receipt/many scopes, mixed purposes/stages, late invalid member/all-or-none, exact replay, conflicting content, ordinary-vs-combined race contracts and prior separate cases.
+- [x] Replay migrations and focused fixture, then report GREEN and exact helpers/fields. No hosted changes or broad test run while other scopes edit.
 
 ## Task 2: Worker boundaries — Worker implementer
 
 **Files:** src/email/combined.ts; worker/email/combined.ts; worker/email/combined-files.ts; worker/email/api.ts; delivery.ts; worker/access/scope.ts; necessary env fields; tests/combined-email-api.test.ts and combined-email-delivery.test.ts.
 **Consumes:** Task1 RPC/DTO. **Produces:** exact HTTP/MIME boundary and combined-safe receipt/reconciliation dispatch.
 
-- [ ] Write RED tests for route/body bounds and malformed/foreign/cross-mailbox members, common signature, duplicate names and complete package budgets.
-- [ ] Implement validated shared types and API handlers, read every file through its own draft/job receipt, freeze disambiguated names, one inline logo and one MIME/provider send. Preserve normal signature/body rules and effective human signature ownership.
-- [ ] Route normal all-member authorization via the contract; no client-supplied authority/path. Add explicit access-intent allowlist and keep request body limits/CSRF checks.
-- [ ] Reuse ordinary delivery/get/record/check behavior for combined roots, with independent accepted provider receipt and history-only recovery. No Gmail Draft/old-thread combination.
-- [ ] Cover double-click, unknown send, accepted-but-history-unavailable, member revision change and zero duplicate POSTs; run focused tests/typecheck. No real mail/hosted calls.
+- [x] Write RED tests for route/body bounds and malformed/foreign/cross-mailbox members, common signature, duplicate names and complete package budgets.
+- [x] Implement validated shared types and API handlers, read every file through its own draft/job receipt, freeze disambiguated names, one inline logo and one MIME/provider send. Preserve normal signature/body rules and effective human signature ownership.
+- [x] Route normal all-member authorization via the contract; no client-supplied authority/path. Add explicit access-intent allowlist and keep request body limits/CSRF checks.
+- [x] Reuse ordinary delivery/get/record/check behavior for combined roots, with independent accepted provider receipt and history-only recovery. No Gmail Draft/old-thread combination.
+- [x] Cover double-click, unknown send, accepted-but-history-unavailable, member revision change and zero duplicate POSTs; run focused tests/typecheck. No real mail/hosted calls.
 
 ## Task 3: Staff UI and independent layouts — frontend implementer
 
@@ -76,30 +76,30 @@ Access admission: creation/save advertises its same mailbox region through a val
 **Consumes:** shared DTO/HTTP; owned child drafts from existing open API.
 **Produces:** explicit separate/combined mode, one common message/review/status, preserved batch state and scoped layout metadata.
 
-- [ ] Add RED state/browser cases: missing stored recipients, arbitrary Agents, KAT3-invoice combined PDF plus TSK2 separate PDFs => one email/three attachments; verify common fields survive Account/mode switches and F5.
-- [ ] Add Email-phase mode choice with separate default, manual To/CC/BCC plus existing self-CC, reusable RichMessageEditor and one selected-Hotel staff signature. Show grouped files and early whole-package budget.
-- [ ] One human review/send, one delivery/checking display; no redundant per-Account Confirm. Keep Account tabs as document context in combined Email phase and preserve unsent separate/common edits.
-- [ ] Persist only scalar delivery-layout choices needed for F5, retaining existing reviewed bytes. Do not modify the PDF editing/rendering/tax engine or force global layout changes.
-- [ ] Test exact Exit/F5/shared attempt behavior, mode-change fences after attempt, selected scope and no recipient-setting writes. Run focused browser tests with unique/configured local ports sequentially; no baseline overwrites.
+- [x] Add RED state/browser cases: missing stored recipients, arbitrary Agents, KAT3-invoice combined PDF plus TSK2 separate PDFs => one email/three attachments; verify common fields survive Account/mode switches and F5.
+- [x] Add Email-phase mode choice with separate default, manual To/CC/BCC plus existing self-CC, reusable RichMessageEditor and one selected-Hotel staff signature. Show grouped files and early whole-package budget.
+- [x] One human review/send, one delivery/checking display; no redundant per-Account Confirm. Keep Account tabs as document context in combined Email phase and preserve unsent separate/common edits.
+- [x] Persist only scalar delivery-layout choices needed for F5, retaining existing reviewed bytes. Do not modify the PDF editing/rendering/tax engine or force global layout changes.
+- [x] Test exact Exit/F5/shared attempt behavior, mode-change fences after attempt, selected scope and no recipient-setting writes. Run focused browser tests with unique/configured local ports sequentially; no baseline overwrites.
 
 ## Task 4: Canonical consumer/lifecycle integration — parent
 
 **Files:** CLI-generated ar_combined_email_consumers migration; tests/sql/tracker-combined-email-consumers-rollback.sql; existing account history/thread Worker helpers; acceptance routing/fixtures as needed.
 **Consumes:** combined tables and sent_scope_facts from Task1. **Produces:** current history/Sheet/retention/permissions coverage.
 
-- [ ] Add RED fixtures for repeated Invoice IDs across Hotels, cleared Sheet authority, missing-row insertion, per-target collection stages, Account history and all-member grants.
-- [ ] Retarget tracker_outbox delivery FK to real mail_deliveries with exact confirmed-scope validation; widen uniqueness to delivery+hotel+account+invoice+field. Reuse latest tracker_sent_enqueue captured-intent/suppression semantics.
-- [ ] Update current fact consumers, billing floors, append admissions/source, collection projection, report_sent_invoices and Account email/history, avoiding duplicate membership counts and preserving NULL actual_date authority.
-- [ ] Integrate combined references into pending-mail/admission/closure/retention and unused-disposition guards, protecting all shared attempt bytes and closing all target transient jobs only after complete confirmation. Preserve legacy/Drive/month policies and retired capture no-ops.
-- [ ] Add all-member combined/delivery regional authorization while preserving current mailbox enablement/ACL/owner/security metadata. Keep single-draft history/thread behavior and return combined-safe account history links.
-- [ ] Run full SQL replay and concurrency after SQL scopes freeze; independently review combined changes and fix material findings with RED/GREEN.
+- [x] Add RED fixtures for repeated Invoice IDs across Hotels, cleared Sheet authority, missing-row insertion, per-target collection stages, Account history and all-member grants.
+- [x] Retarget tracker_outbox delivery FK to real mail_deliveries with exact confirmed-scope validation; widen uniqueness to delivery+hotel+account+invoice+field. Reuse latest tracker_sent_enqueue captured-intent/suppression semantics.
+- [x] Update current fact consumers, billing floors, append admissions/source, collection projection, report_sent_invoices and Account email/history, avoiding duplicate membership counts and preserving NULL actual_date authority.
+- [x] Integrate combined references into pending-mail/admission/closure/retention and unused-disposition guards, protecting all shared attempt bytes and closing all target transient jobs only after complete confirmation. Preserve legacy/Drive/month policies and retired capture no-ops.
+- [x] Add all-member combined/delivery regional authorization while preserving current mailbox enablement/ACL/owner/security metadata. Keep single-draft history/thread behavior and return combined-safe account history links.
+- [x] Run full SQL replay and concurrency after SQL scopes freeze; independently review combined changes and fix material findings with RED/GREEN.
 
 ## Task 5: Qualification and release — parent
 
-- [ ] Integrate every scope and run typecheck/unit/SQL/browser PDF+Sheet+combined flows, budget/security/negative tests and meaningful concurrency. Verify existing separate mode and current financial/Sheet behavior.
-- [ ] Use synthetic/disposable service acceptance for true combined delivery/history, with no real billing changes. Real mail only within the previously authorized ephemeral destination policy, never to actual customers as a test.
-- [ ] Create/attach draft PR against the actual current baseline, push only own changes, require same-source hosted checks. Apply reviewed additive migrations only after proof; verify old facts/dates and old runtime compatibility.
-- [ ] Deploy qualified latest Worker, verify health/assets and actual signed-in UI; no old branch rollback. Update PROJECT_STATUS with implemented/tested/deployed/enabled distinctions and remove exact disposable test artifacts after verification.
+- [x] Integrate every scope and run typecheck/unit/SQL/browser PDF+Sheet+combined flows, budget/security/negative tests and meaningful concurrency. Verify existing separate mode and current financial/Sheet behavior.
+- [x] Use synthetic/disposable service acceptance for true combined delivery/history, with no real billing changes. Real mail only within the previously authorized ephemeral destination policy, never to actual customers as a test.
+- [x] Create/attach draft PR against the actual current baseline, push only own changes, require same-source hosted checks. Apply reviewed additive migrations only after proof; verify old facts/dates and old runtime compatibility.
+- [x] Deploy qualified latest Worker, verify health/assets and actual signed-in UI; no old branch rollback. Update PROJECT_STATUS with implemented/tested/deployed/enabled distinctions and remove exact disposable test artifacts after verification.
 
 ## Execution ruling
 
