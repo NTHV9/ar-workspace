@@ -25,10 +25,10 @@ it('conceals provider errors and rejects rows outside the selected Bill Date ran
  expect((await dashboardInvoiceEntriesApi(new Request(url),env,actor)).status).toBe(503);
 });
 
-it('the application router authenticates the invoice-entry route and dispatches only its Portfolio reader',async()=>{
+it('the application router authenticates and retires the invoice-entry report before its Portfolio reader',async()=>{
  const endpoints:string[]=[],result={source:'portfolio',view:'invoice_entries',rows:[],total:0,summary:{invoiceCount:0,amount:'0.00'},coverage:{complete:true,from:'2026-09-12',to:'2026-09-13'}};
  vi.stubGlobal('fetch',async(target:string)=>{endpoints.push(target);if(target===env.SUPABASE_URL+'/auth/v1/user')return Response.json({id:actor,email:'ar@katathani.com',email_confirmed_at:'2026-01-01T00:00:00Z'});if(target===env.SUPABASE_URL+'/rest/v1/rpc/ar_dashboard_invoice_entries')return Response.json(result);throw Error('Unexpected request');});
  expect((await handleApi(new Request(url),env)).status).toBe(401);expect(endpoints).toEqual([]);
  const response=await handleApi(new Request(url,{headers:{Authorization:'Bearer synthetic-token'}}),{...env,SUPABASE_PUBLISHABLE_KEY:'synthetic-public'});
- expect(response.status).toBe(200);expect(await response.json()).toEqual(result);expect(endpoints).toEqual([env.SUPABASE_URL+'/auth/v1/user',env.SUPABASE_URL+'/rest/v1/rpc/ar_dashboard_invoice_entries']);
+ expect(response.status).toBe(410);expect(await response.json()).toEqual({error:'report_retired'});expect(endpoints).toEqual([env.SUPABASE_URL+'/auth/v1/user']);
 });

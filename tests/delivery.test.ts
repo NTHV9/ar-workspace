@@ -15,6 +15,7 @@ for(const lost of [false,true])it(`direct send verifies actual evidence after ${
   if(url.endsWith('/ar_mail_claim')){delivery={id:input.p_id,mode:input.p_mode,state:'pending',message_id:input.p_message_id,snapshot:{expected:input.p_expected}};return Response.json({...delivery,claimed:true});}
   if(url.endsWith('/messages/send')){posts++;if(lost)throw Error('lost response');return Response.json({id:'message1'});}
   if(url.endsWith('/ar_mail_record')){delivery.state=input.p_state;return Response.json(true);}
+  if(url.endsWith('/ar_mail_record_verified_sent'))return Response.json(true);
   if(url.includes('/messages?'))return Response.json({messages:[{id:'message1'}]});
   if(url.includes('/messages/message1?'))return Response.json({id:'message1',labelIds:['SENT'],internalDate:String(Date.now()),payload:{mimeType:'text/plain',headers:[{name:'Message-ID',value:delivery.message_id},{name:'From',value:'ar@katathani.com'},{name:'To',value:'recipient@example.test'},{name:'Subject',value:'Synthetic'}],body:{data:url64(new TextEncoder().encode('Synthetic message'))}}});
   if(url.endsWith('/ar_mail_confirm_sent')){confirmations++;delivery.state='sent';return Response.json({state:'sent',recorded:true});}

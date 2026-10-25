@@ -1,4 +1,5 @@
 import {spawnSync} from 'node:child_process';
+import {verifyDraftDiscardConcurrency} from './verify-draft-discard-concurrency.mjs';
 import {mkdirSync,readFileSync,readdirSync,writeFileSync,existsSync} from 'node:fs';
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -80,12 +81,14 @@ try{
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
  const tests=join(root,'tests/sql');
- for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||n==='invoice-exceptions-rollback.sql').sort()){
+ for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql'].includes(n)).sort()){
   const text=readFileSync(join(tests,name),'utf8'),ownTransaction=/^begin;/im.test(text)&&/rollback;\s*$/i.test(text);
   try{file(join(tests,name),!ownTransaction);report.fixtures.push(name);console.log('PASS '+name);}
   catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}
  }
  if(report.failures.length)throw Error(`${report.failures.length} synthetic tracker SQL fixtures failed; inspect report`);
+ report.documentExitConcurrency=await verifyDraftDiscardConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
+ console.log('PASS concurrent message Save / preparation Exit and deferred cleanup retry');
  report.passed=true;console.log(`PASS ${report.migrations.length} migrations; ${report.fixtures.length} tracker SQL rollback fixtures`);
 }finally{
  if(created){try{tool('dropdb',['--no-password',database]);}catch{report.cleanupError='Synthetic database drop failed';}}

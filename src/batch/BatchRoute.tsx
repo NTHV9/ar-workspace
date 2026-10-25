@@ -131,10 +131,10 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   if(busy.current||switching||sending||[...controls.current.values()].some(c=>c.busy())){setError('Wait for the current operation before leaving this batch.');return false;}
   const current=record.current;if(!current)return true;
   if(current.entries.some(e=>e.requested&&!e.jobId)){setError('A preparation result is unconfirmed. Retry its existing request before closing the batch.');return false;}
-  setSwitching(true);setError('');let protectedWork=false;
+  setSwitching(true);setError('');
   try{
-   for(const entry of current.entries){if(!entry.jobId)continue;const result=await abandonVerifiedEntry(current,entry,()=>batchRequest<DocumentJob>(`/api/documents/${entry.jobId}`,tokenRef.current),()=>batchRequest<{job:DocumentJob;outcome:string}>(`/api/documents/${entry.jobId}/abandon`,tokenRef.current,{method:'POST'}),()=>alive.current);if(!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');receiveJob(result.job);if(result.outcome!=='discarded'&&!result.job.closed_at)protectedWork=true;}
-   sessions.current.clear();mails.current.clear();if(!protectedWork)removeBatch(sessionStorage,owner,batchId);onDirtyChange(false);return true;
+   for(const entry of current.entries){if(!entry.jobId)continue;const result=await abandonVerifiedEntry(current,entry,()=>batchRequest<DocumentJob>(`/api/documents/${entry.jobId}`,tokenRef.current),()=>batchRequest<{job:DocumentJob;outcome:string}>(`/api/documents/${entry.jobId}/abandon`,tokenRef.current,{method:'POST'}),()=>alive.current);if(!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');receiveJob(result.job);}
+   sessions.current.clear();mails.current.clear();removeBatch(sessionStorage,owner,batchId);onDirtyChange(false);return true;
   }catch(e){setError(e instanceof Error?e.message:'The batch could not be closed.');return false;}
   finally{if(alive.current)setSwitching(false);}
  }

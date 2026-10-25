@@ -57,6 +57,16 @@ it('drains a failed group and skips already staged snapshots when that group res
 it('counts invalid snapshots so a batched refresh cannot publish partial coverage',async()=>{
  vi.useFakeTimers();const h=setup({invalid:'b'});const result=stageRefreshAccountBatches(env,'synthetic-run','KAT',['a','b','c'],'2026-10-25',h.step);await vi.runAllTimersAsync();expect(await result).toBe(1);expect(h.staged.sort()).toEqual(['a','c']);
 });
+it('retains a bounded validation reason in the durable batch without account data',async()=>{
+ vi.useFakeTimers();const h=setup({invalid:'b'});const result=stageRefreshAccountBatches(env,'synthetic-run','KAT',['a','b','c'],'2026-10-25',h.step);await vi.runAllTimersAsync();expect(await result).toBe(1);
+ expect(h.cache.get('account-batch-v2-0')).toEqual({invalidAccounts:1,failures:[{code:'invalid_response',stage:'normalize_invoices_missing',count:1}]});
+ expect(JSON.stringify([...h.cache.values()])).not.toContain('Synthetic account');
+});
+it('replays a pre-diagnostics batch result and keeps its publication failure',async()=>{
+ const h=setup();h.cache.set('account-batch-v2-0',{invalidAccounts:1});
+ expect(await stageRefreshAccountBatches(env,'synthetic-run','KAT',['a'],'2026-10-25',h.step)).toBe(1);
+ expect(h.sourceIds).toEqual([]);expect(h.staged).toEqual([]);
+});
 it.each([['unknown'],['a','a'],{},null])('rejects invalid staged-ID evidence %j',async stagedReply=>{
  const h=setup({stagedReply});await expect(stageRefreshAccountBatches(env,'synthetic-run','KAT',['a'],'2026-10-25',h.step)).rejects.toThrow();expect(h.sourceIds).toEqual([]);
 });

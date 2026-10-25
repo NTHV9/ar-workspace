@@ -4,7 +4,7 @@ import {zeroPosDisplayFixture,rebindZeroPosDisplayFixture} from './fixtures/invo
 import {sourceClaimsPosDisplayFixture} from './fixtures/invoice-source-claims-pos-display';
 import {invoiceModel} from '../worker/invoice/model';
 it('certifies only the eight original POS IDs in a complete per-code cancelling group',()=>{
- const f=zeroPosDisplayFixture(),before=JSON.stringify(f.packet),model=invoiceModel(f.packet),catalog=createPosDisplaySuppressionCatalog(f.packet,f.proof)!;expect(catalog.suppressed).toEqual([{representativeId:'60008',sourceIds:['60001','60002','60003','60004','60005','60006','60007','60008'],date:'2026-01-03'}]);expect(revalidatePosDisplaySuppressionCatalog(JSON.parse(JSON.stringify(catalog))).catalog).toEqual(catalog);expect(invoiceModel(f.packet)).toEqual(model);expect(JSON.stringify(f.packet)).toBe(before);
+ const now=new Date('2026-10-25T08:08:00Z'),f=zeroPosDisplayFixture(),before=JSON.stringify(f.packet),model=invoiceModel(f.packet,now),catalog=createPosDisplaySuppressionCatalog(f.packet,f.proof)!;expect(catalog.suppressed).toEqual([{representativeId:'60008',sourceIds:['60001','60002','60003','60004','60005','60006','60007','60008'],date:'2026-01-03'}]);expect(revalidatePosDisplaySuppressionCatalog(JSON.parse(JSON.stringify(catalog))).catalog).toEqual(catalog);expect(invoiceModel(f.packet,now)).toEqual(model);expect(JSON.stringify(f.packet)).toBe(before);
 });
 it('does not apply the current TSAN policy to another hotel or a nonzero signed group',()=>{
  const f=sourceClaimsPosDisplayFixture('zero-group');expect(createPosDisplaySuppressionCatalog(f.packet,f.proof)).toBeUndefined();const ordinary=sourceClaimsPosDisplayFixture('posted');expect(createPosDisplaySuppressionCatalog(ordinary.packet,ordinary.proof)).toBeUndefined();

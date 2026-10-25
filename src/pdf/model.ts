@@ -1,5 +1,6 @@
 import {validateInvoiceAttachments} from './invoice-attachments';
 import { pageCanvasHeight, MAX_FLOW_HEIGHT } from './flow';
+import {layerOnPage} from './page-bounds';
 import {pdfFilename,deliveryFilenames} from './filenames';
 import type { PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument } from './types';
 
@@ -107,7 +108,7 @@ export function restoreProject(input: unknown, original: PdfProject, sources?:Pd
       });
     }
     const page={ id, sourceId, sourcePage, width, height, layers, ...(rowEdits ? { rowEdits } : {}),...(flowHeight===undefined?{}:{flowHeight}) };
-    const canvasHeight=pageCanvasHeight(page);if(layers.some(l=>l.textFlow&&l.textFlow.at+l.textFlow.height>canvasHeight+.01))return fail();return page;
+    const canvasHeight=pageCanvasHeight(page);if(layers.some(l=>!l.deleted&&!layerOnPage(page,l)||l.textFlow&&l.textFlow.at+l.textFlow.height>canvasHeight+.01))return fail();return page;
   });
   const result:PdfProject={ version: 1, content: saved.content as PdfProject['content'], delivery: saved.delivery as PdfProject['delivery'], pages };
   if(saved.invoiceAttachments!==undefined){if(!Array.isArray(saved.invoiceAttachments)||!sources)return fail();result.invoiceAttachments=saved.invoiceAttachments as PdfProject['invoiceAttachments'];try{validateInvoiceAttachments(result,sources);result.invoiceAttachments=result.invoiceAttachments!.map(a=>({sourceId:a.sourceId,invoiceId:a.invoiceId}));}catch{return fail();}}

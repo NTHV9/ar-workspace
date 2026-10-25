@@ -6,6 +6,7 @@ import {FilenameField} from './FilenameField';
 import {defaultPdfFilename,deliveryFilenames} from './filenames';
 import {invoiceTargets,validateInvoiceAttachments,moveInvoiceAttachment,removeInvoiceAttachment,MAX_INVOICE_PDFS,MAX_ATTACHED_PAGES} from './invoice-attachments';
 import {inspectSupplemental} from '../../worker/email/supplemental-validation';
+import {fitLayerOnPage} from './page-bounds';
 import {linkedVoucher,syncVouchers} from './linked-vouchers';
 import {voucherBindings} from './engine';
 import {InlineTextEditor} from './InlineTextEditor';
@@ -185,6 +186,7 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
         if(!occupied){try{changed=applyFlowEdit(page,{id:uid(),kind:'delete',y:at,height:remove},[layer.id]);next.textFlow=layer.textFlow.height-remove>.1?{at:layer.textFlow.at,height:layer.textFlow.height-remove}:undefined;}catch{/* Keep occupied or unverified spacing rather than remove another object. */}}
       }
     }else if('x'in change||'y'in change||'height'in change)next.textFlow=undefined;
+    if(!textChange)next=fitLayerOnPage(changed,next);
     commit({...project,pages:project.pages.map(p=>p.id===page.id?{...changed,layers:changed.layers.map(l=>l.id===layer.id?next:l)}:p)});
   }
   function releaseTextSpace(before:PdfProjectPage,removed:PdfLayer):PdfProjectPage {
@@ -225,12 +227,12 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
       const formField=original.field&&original.sourceText?{type:original.field,runIndex:original.sourceText.runIndex}:undefined;
       const existing=page.layers.find(l=>formField&&l.formField?.type===formField.type&&l.formField.runIndex===formField.runIndex)||page.layers.find(l=>(l.maskOriginal!==false||original.field==='voucher-number'&&!l.tableRow)&&l.original&&l.original.text===original.text&&Math.abs(l.original.x-original.x)<.01&&Math.abs(l.original.y-original.y)<.01);
       if(existing){if(formField&&(!existing.formField||existing.deleted))commit({...project,pages:project.pages.map(p=>p.id===page.id?{...p,layers:p.layers.map(l=>l.id===existing.id?{...l,formField,deleted:undefined,...(l.deleted?{text:''}:{})}:l)}:p)});setSelected(existing.id);setTool('replace');focusText();return;}
-      const position=mapSourceTextRect(original,page.rowEdits??[],original.fontSize*.72);if(!position)return;const item=createReplacementLayer(original,uid());item.x=position.x;item.y=position.y;if(formField)item.formField=formField;commit({...project,pages:project.pages.map(p=>p.id===page.id?{...p,layers:[...p.layers,item]}:p)});setSelected(item.id);setTool('replace');focusText();return;
+      const position=mapSourceTextRect(original,page.rowEdits??[],original.fontSize*.72);if(!position)return;const item=createReplacementLayer(original,uid());item.x=position.x;item.y=position.y;if(formField)item.formField=formField;commit({...project,pages:project.pages.map(p=>p.id===page.id?{...p,layers:[...p.layers,fitLayerOnPage(p,item)]}:p)});setSelected(item.id);setTool('replace');focusText();return;
     }
     const item: PdfLayer = { id: uid(), kind, x: original?.x ?? 45, y: original?.y ?? 70, width: original ? Math.max(original.width + 8, 80) : 210, height: original ? Math.max(original.height + 5, 26) : 65, text: original?.text ?? (kind === 'stamp' ? 'REVIEWED' : kind === 'note' ? 'Note' : kind === 'text' ? 'Enter text' : ''), color: '#173a62', fill: kind === 'note' ? '#fff1b8' : '#ffffff', font: 'Arial', fontSize: Math.max(6,Math.min(144,original?.fontSize ?? 14)), bold: kind === 'stamp', italic: false, image, ...(original ? { original: { ...original } } : {}) };
     if(kind==='image'&&imageSize)Object.assign(item,fitImage(imageSize.width,imageSize.height,Math.min(210,page.width-item.x),Math.min(250,canvasHeight-item.y)));
     if(position){item.x=Math.max(0,Math.min(page.width-20,position.x));item.y=Math.max(0,Math.min(canvasHeight-20,position.y));item.width=Math.min(210,page.width-item.x);item.height=Math.min(65,canvasHeight-item.y);item.text='';}
-    commit({ ...project, pages: project.pages.map(p => p.id === page.id ? { ...p, layers: [...p.layers, item] } : p) }); setSelected(item.id); setTool(['image','shape','whiteout'].includes(kind)?'select':'replace');if(!['image','shape','whiteout'].includes(kind))focusText();
+    commit({ ...project, pages: project.pages.map(p => p.id === page.id ? { ...p, layers: [...p.layers, fitLayerOnPage(p,item)] } : p) }); setSelected(item.id); setTool(['image','shape','whiteout'].includes(kind)?'select':'replace');if(!['image','shape','whiteout'].includes(kind))focusText();
   }
   function navigateCell(backwards:boolean){
     if(!page||!layer?.tableRow)return false;
@@ -247,7 +249,7 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
     const dx = (event.clientX - d.x) / scale, dy = (event.clientY - d.y) / scale;
     const sizeChange=Math.abs(dx/d.layer.width)>=Math.abs(dy/d.layer.height)?{width:Math.max(15,d.layer.width+dx)}:{height:Math.max(15,d.layer.height+dy)};
     const next = d.resize ? d.layer.kind==='image'?resizeImage(d.layer,sizeChange,page.width-d.layer.x,canvasHeight-d.layer.y):{ width: Math.max(15, Math.min(page.width - d.layer.x, d.layer.width + dx)), height: Math.max(15, Math.min(canvasHeight - d.layer.y, d.layer.height + dy)) } : { x: Math.max(0, Math.min(page.width - d.layer.width, d.layer.x + dx)), y: Math.max(0, Math.min(canvasHeight - d.layer.height, d.layer.y + dy)) };
-    setProject({ ...project, pages: project.pages.map(p => p.id === page.id ? { ...p, layers: p.layers.map(l => l.id === d.id ? { ...l, ...next, textFlow:undefined } : l) } : p) });
+    setProject({ ...project, pages: project.pages.map(p => p.id === page.id ? { ...p, layers: p.layers.map(l => l.id === d.id ? fitLayerOnPage(p,{ ...l, ...next, textFlow:undefined }) : l) } : p) });
   }
   function endDrag() { if (drag.current) { const before = drag.current.before; setPast(p => [...p.slice(-49), before]); setFuture([]); invalidate(); drag.current = null; } }
   async function makePreview() {

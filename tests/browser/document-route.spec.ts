@@ -103,6 +103,15 @@ test('workspace-generated Invoice keeps an editable Voucher field when OPERA has
 const jobId = 'a0000000-0000-4000-8000-000000000001';
 const fileId = 'b0000000-0000-4000-8000-000000000001';
 const user = { id: 'synthetic-document-user', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
+test('Escape cannot hide an admitted document creation before its result',async({page})=>{
+ const c=await mockApplication(page,'combined','transient');let release=()=>{};const gate=new Promise<void>(r=>{release=r;});let requests=0;
+ await page.route('**/api/documents',async route=>{requests++;await gate;await route.fulfill({json:c.job});});
+ await openWorkspaceRoute(page,'/?account=synthetic-account&property=KAT');await page.getByLabel('Select INVOICE-A',{exact:true}).check();await page.getByRole('button',{name:'Prepare documents',exact:true}).click();
+ await page.getByRole('button',{name:'Create document job',exact:true}).click();await expect.poll(()=>requests).toBe(1);
+ await page.keyboard.press('Escape');await expect(page.locator('.document-dialog')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeDisabled();release();
+ await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();expect(requests).toBe(1);expect(c.abandons).toBe(0);expect(c.outboundRequests).toEqual([]);
+});
 test('explicit document exit awaits abandonment and keeps work visible on failure',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');let attempts=0;
  await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return attempts===1?r.fulfill({status:503,json:{error:'cleanup_unavailable'}}):r.fulfill({json:{job:controls.job,outcome:'discarded'}});});
@@ -143,6 +152,13 @@ test('sign out waits for abandonment and retries failures',async({page})=>{
 test('pending abandonment is read-only even when ready source bytes exist',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');await page.route(`**/api/documents/${jobId}`,r=>r.fulfill({json:{...controls.job,discard_requested_at:'2026-10-08T00:00:00Z'}}));
  await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect(page.getByRole('heading',{name:'Preparation cleanup pending',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toHaveCount(0);expect(controls.sourceReads).toBe(0);
+});
+
+test('F5 preserves the same active preparation without requesting abandonment',async({page})=>{
+ const c=await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,'/?documentJob='+jobId);
+ await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();const reads=c.documentReads;
+ await page.reload();await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();
+ await expect.poll(()=>c.documentReads).toBeGreaterThan(reads);expect(new URL(page.url()).searchParams.get('documentJob')).toBe(jobId);expect(c.abandons).toBe(0);expect(c.discards).toBe(0);expect(c.outboundRequests).toEqual([]);
 });
 test('email to document internal transition retains preparation and never abandons',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');controls.job.acknowledged=true;controls.job.exports=[{name:'Synthetic.pdf',storage_key:'synthetic/export.pdf',byte_count:100,sha256:'synthetic'}];let attempts=0;

@@ -5,7 +5,7 @@ test.beforeEach(async({page})=>{
  await page.clock.setFixedTime(new Date('2026-09-12T03:00:00Z'));
  await page.route('**/api/dashboard/aging-invoices**',r=>r.fulfill({json:agingFixtureInventory(currentAgingVisualAccounts,'2026-09-12T00:03:00Z')}));
 });
-const local='http://127.0.0.1:5191/tests/browser/current-aging-harness.html?visual=1';
+const local='/tests/browser/current-aging-harness.html?visual=1';
 for(const width of [1440,1280,390])test('all source ranges fit without horizontal scrolling at '+width,async({page})=>{
  await page.setViewportSize({width,height:width===1440?900:800});await page.goto(local);
  const table=page.getByRole('table',{name:'Current source aging comparison'});await expect(table).toContainText('151+');await expect(table).toContainText('96,500.00');

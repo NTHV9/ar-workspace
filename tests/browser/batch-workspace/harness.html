@@ -79,7 +79,7 @@ window.fetch=async(input,init={})=>{
    if(body.revision!==job.revision)return json({error:'document_revision_conflict'},409);
    job.revision++;job.exports=body.exports;job.acknowledged=true;if(db.lostPdfReview){db.lostPdfReview=false;return json({error:'simulated_lost_pdf_response'},503);}return json(job);
   }
-  if(doc[2]==='abandon'||doc[2]==='discard'){job.closed_at=new Date().toISOString();job.closed_reason='discarded';return json(doc[2]==='abandon'?{job,outcome:'discarded'}:job);}
+  if(doc[2]==='abandon'||doc[2]==='discard'){if(doc[2]==='abandon'&&window.batchCleanupOutcome){job.discard_requested_at=new Date().toISOString();return json({job,outcome:window.batchCleanupOutcome});}job.closed_at=new Date().toISOString();job.closed_reason='discarded';return json(doc[2]==='abandon'?{job,outcome:'discarded'}:job);}
   if(doc[2]?.startsWith('exports/')){const file=job.exports[Number(doc[2].split('/')[1])];return new Response(decode(db.bytes[file.storage_key]),{headers:{'Content-Type':'application/pdf'}});}
  }
  if(path==='/api/email/open'){

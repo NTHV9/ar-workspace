@@ -1,9 +1,8 @@
 import {postPublicationMaintenance,joinedScheduledMaintenance} from './post-publication';
-import {warmPeriodSummaries} from '../dashboard/precompute';
 import {acceptanceEnvironment} from '../acceptance/context';
 import {assertWritesEnabled} from '../operations/write-hold';
 import type {DriveEnv} from '../drive/shared';
-import {runFinancialHistory,type FinancialIngestionEnv} from '../financial/refresh';
+import type {FinancialIngestionEnv} from '../financial/refresh';
 import {runFinancialDiagnostic} from '../opera/financial-diagnostic';
 import {runMailReconcile} from '../email/reconcile';
 import type {ReconcileEnv} from '../email/reconcile';
@@ -31,7 +30,7 @@ export class ArRefreshWorkflow extends WorkflowEntrypoint<RefreshEnv & Reconcile
     // Retire diagnostic control windows without entering an unregistered financial run.
     if(payload.currentTickerStart!==undefined)return {status:'retired'};
     if(payload.scheduledMaintenance)return joinedScheduledMaintenance(runtime,payload,step);
-    if(payload.financialHistory){if(typeof payload.actorId!=='string'||!/^[0-9a-f-]{36}$/.test(payload.actorId))throw Error('invalid_workflow_parameters');const result=await runFinancialHistory(runtime,{actor:payload.actorId,runId},step);if(result.status==='succeeded'){try{await step.do('period-summary-precompute',{retries:{limit:0,delay:'5 seconds'},timeout:'10 minutes'},()=>warmPeriodSummaries(runtime));}catch{/* Published source data remains successful; maintenance retries this optional cache. */}}return result;}
+    if(payload.financialHistory)return {status:'retired'};
     if(payload.financialProbe)return step.do('financial-read-diagnostic',{retries:{limit:0,delay:'5 seconds'},timeout:'15 minutes'},()=>runFinancialDiagnostic(runtime,hotel));
     if(payload.documentJob)return runDocumentJob(runtime,runId,step);
     if(payload.historyAudit){

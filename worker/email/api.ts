@@ -1,4 +1,5 @@
 import {parseMailbox,hotelMailbox} from '../../src/domain/mailboxes';
+import {administratorEmail} from '../../src/access/model';
 import {documentJob} from '../documents/jobs';
 import {generatedNames} from '../../src/email/generated-names';
 import {sentCandidates,reviewSentMatch} from './sent-review';
@@ -53,6 +54,9 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
   }
   const handoff=/^\/api\/email\/([0-9a-f-]{36})\/gmail-draft$/.exec(path);
   if(handoff&&request.method==='POST'){
+   // Business ownership is shared with members; authorize the actual request grant.
+   // The verified administrator dispatcher uses the legacy path without a grant.
+   if(env.REQUEST_ACCESS&&(!env.REQUEST_ACCESS.administrator||env.REQUEST_ACCESS.email!==administratorEmail))throw Error('email_forbidden');
    const v=await jsonBody(request);if(!uuidPattern.test(handoff[1])||!Number.isSafeInteger(v.revision)||Number(v.revision)<0)return emailJson({error:'email_invalid'},400);
    if(!(v.stage===undefined||v.stage===null||typeof v.stage==='string'))return emailJson({error:'email_invalid'},400);
    if(v.policyVersion!==undefined&&(!Number.isSafeInteger(v.policyVersion)||Number(v.policyVersion)<1))return emailJson({error:'email_invalid'},400);

@@ -17,6 +17,7 @@ function setup(options:{changed?:boolean;missing?:boolean;lost?:boolean;incomple
   if(url.endsWith('/ar_mail_for_draft')||url.endsWith('/ar_mail_get'))return Response.json(delivery);
   if(url.endsWith('/ar_email_get'))return Response.json(draft);
   if(url.endsWith('/ar_email_business_preflight'))return Response.json({allowed:true});
+  if(url.endsWith('/ar_access_authorize')){expect(v.p_actor).toBe('staff');return Response.json({});}
   if(url.endsWith('/drafts/draft123?format=full'))return options.missing?new Response('',{status:404}):Response.json({id:'draft123',message:message()});
   if(url.endsWith('/ar_mail_claim_draft_send')){claims++;if(delivery.state!=='created')return Response.json({...delivery,claimed:false});delivery.state='awaiting_evidence';delivery.provider_receipt_id=null;return Response.json({...delivery,claimed:true});}
   if(url.endsWith('/drafts/send')){sends++;expect(v).toEqual({id:'draft123',message:{raw:'reviewed-bytes'}});if(options.lost)throw Error('lost');return Response.json({id:'after123'});}
@@ -30,6 +31,10 @@ function setup(options:{changed?:boolean;missing?:boolean;lost?:boolean;incomple
  return {delivery,counts:()=>({sends,claims})};
 }
 it('sends the original draft exactly once through drafts.send and verifies its new receipt',async()=>{const s=setup();expect(await deliverMessage(env,'actor','draft',1,'send',null)).toMatchObject({state:'sent'});await deliverMessage(env,'actor','draft',1,'send',null);expect(s.counts()).toEqual({sends:1,claims:1});});
+it('keeps an ordinary member able to send a previously created reviewed Gmail Draft once',async()=>{
+ const s=setup(),memberEnv={...env,REQUEST_ACTOR:'staff',REQUEST_ACCESS:{actorId:'staff',workspaceOwnerId:'actor',email:'staff@example.invalid',administrator:false,regions:['phuket' as const],scopeHotels:['KAT' as const],revision:1}};
+ expect(await deliverMessage(memberEnv,'actor','draft',1,'send',null)).toMatchObject({state:'sent',gmailAccepted:true});await deliverMessage(memberEnv,'actor','draft',1,'send',null);expect(s.counts()).toEqual({sends:1,claims:1});
+});
 it('two simultaneous send commands cannot submit the same draft twice',async()=>{const s=setup();await Promise.all([deliverMessage(env,'actor','draft',1,'send',null),deliverMessage(env,'actor','draft',1,'send',null)]);expect(s.counts().sends).toBe(1);});
 it('rejects a Gmail-edited recipient before acquiring a send claim',async()=>{const s=setup({changed:true});await expect(deliverMessage(env,'actor','draft',1,'send',null)).rejects.toThrow('email_draft_changed');expect(s.counts()).toEqual({sends:0,claims:0});});
 it('never recreates a missing Gmail draft',async()=>{const s=setup({missing:true});await deliverMessage(env,'actor','draft',1,'send',null);expect(s.counts()).toEqual({sends:0,claims:0});});

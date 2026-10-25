@@ -1,3 +1,44 @@
+## 2026-10-25 — Current work, direct staff sending and explicit preparation exit
+
+The owner approves the eight-item scope in
+[WORKSTREAM_SIMPLIFICATION_20261025](WORKSTREAM_SIMPLIFICATION_20261025.md),
+including the five preceding core findings. Keep current Dashboard balance,
+billing, aging/stage cards, filters and exact Invoice drills. Retire unused daily,
+historical and First billing/Rebilling report surfaces and report-only ingestion.
+Keep first actual billing date for due-date calculation, actual Sent evidence,
+OPERA invoice/tax source readers and Sheet-authoritative R/U/V/W dates including
+employee edits/deletions. Invoice Register remains an unused Admin surface.
+
+Staff use Review & send now; provider Create Gmail draft is Admin-only in UI and
+backend. Existing provider Draft and uncertain-send evidence remain recoverable.
+Persist verified external Sent identity/date before history confirmation, also
+for human-selected matches; a later failure must not imply that mail was unsent
+or authorize another send. External retries still verify the complete message.
+
+Documents & Gmail is not a resumable preparation backlog. Account Email history
+shows actual email attempts/evidence instead of never-attempted PDF/message work.
+Explicit Exit/Cancel requests exact-job discard, removes local batch resume state
+after accepted cleanup, and cleans never-attempted text and temporary bytes when
+admitted work permits. Cleanup skips an in-flight draft save and durably retries.
+Keep ownership/file receipts and every provider/business-history fact. New text
+cleanup requests are marked only on future explicit discarded closures, with no
+retrospective backfill/purge. Existing legacy/Drive/remittance policies remain.
+
+The owner explicitly confirms **F5/reload keeps the active preparation**. Do not
+abandon on unmount, visibility change or reload. Switching Accounts within one
+open batch and PDF-to-email handoff continue that work. Browser disappearance
+alone is not an acknowledged Exit/Cancel command.
+
+The owner replaces an off-page edit warning with prevention: normal drag/numeric
+position/size editing stops inside the page/allocated continuation extent while
+preserving text. Adding rows may allocate continuation pages; do not clip them to
+page 1. Restore/export retain safety checks against corrupted/outside geometry,
+and tolerant rendering must preserve original ink for an invalid replacement.
+Escape must not hide an admitted Create request before its result is visible.
+
+These are approved requirements, not a claim of deployment. Evidence and release
+state are recorded in the latest PROJECT_STATUS checkpoint.
+
 ## 2026-10-25 — Verified reopened debt resumes normal work
 
 The owner removes the automatic Needs review barrier caused solely by a verified

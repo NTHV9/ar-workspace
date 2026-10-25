@@ -1,3 +1,64 @@
+## 2026-10-25 — Current AR work and integrated PDF/mail/refresh repairs
+
+**Implemented, locally qualified; database changes enabled.** The owner-approved
+[eight-item scope](WORKSTREAM_SIMPLIFICATION_20261025.md) keeps current Dashboard
+balance/billing/aging/stage cards and exact Invoice drills, retires unused daily
+and historical/First billing reports and report-only jobs, and makes main-nav
+Reports open Google Sheets. Admin Register remains explicit; its Back context
+and dirty-work protection are preserved. Existing actual billing dates still
+drive due dates and Sheet R/U/V/W remains authoritative, including deletion.
+
+Staff use Review & send now; provider Draft creation/link/instructions are Admin-
+only in UI and backend. Actual old Draft recovery remains. Full verified external
+Sent evidence, including human-selected rewritten identities and review audit,
+is durable before the history transaction. Reopen/retry cannot imply unsent or
+resend; external retries still verify the full message after workflow review.
+
+Explicit Exit/Cancel abandons exact transient jobs and removes local batch resume
+state after accepted cleanup. Account Email history lists actual email attempts,
+not never-attempted preparation work. F5, same-batch Account switching and PDF→
+email continue work. Future-only discard requests clean never-attempted message
+text after the closure transaction, skip a locked save and durably retry; no old
+closed text is backfilled/purged. Provider Draft/uncertain work, original receipt
+ownership, business history and legacy/Drive/remittance rules remain protected.
+Escape cannot dismiss an admitted Create request before its result is visible.
+
+Normal PDF position/size/drag editing stays inside the allocated page extent
+without an off-page warning. Valid added rows still allocate continuation pages;
+strict restore/export rejects corrupt geometry and tolerant replacement retains
+original ink. No Invoice tax formula or OPERA accounting write is introduced.
+
+Current refresh now resolves retained-zero references once per account/page,
+preserving output/ownership/Drive/negative/pagination rules. A measured installed
+read completed in43ms after the former7.5s correlated path; this is query timing,
+not an end-to-end refresh guarantee. Bounded diagnostic counts/stages preserve
+the account-vs-summary money check; a transient provider inconsistency is not
+relaxed into publishing wrong balances.
+
+Qualification:4,674 unit tests/345files;528 distinct browser cases covered across
+the initial run and focused reruns after current UI/spec changes;137 migrations/
+31 SQL fixtures; actual concurrent Save/Exit RED40P01→GREEN plus locked-save retry
+and pre-migration text preservation;3 performance and15 publication/Aging cases;
+typecheck, build and90-asset connector build. Old test labels/default-tab setup,
+fixed local origins and a print-minute comparison were corrected without removing
+financial/identity/negative assertions or changing source formulas/baselines.
+81 generated synthetic captures were retained privately; tracked images restored.
+Astra review findings were repaired and re-reviewed. Security advisor:INFO only.
+
+Enabled migrations:`20261025091430_ar_refresh_retained_zero_scope`,
+`20261025091449_ar_preparation_email_records`,
+`20261025091458_ar_verified_external_sent_evidence`. Live readback confirms
+unchanged actual Sent events and Sheet dates, no retrospectively marked text
+cleanup and no backfilled Sent proofs. No real email is sent by qualification.
+
+**Cloudflare deployment/enablement evidence:** the release receipt in
+[PR142](https://github.com/NTHV9/ar-workspace/pull/142) and
+[live health](https://ar-workspace.ar-c82.workers.dev/api/health) identify the
+qualified commit, actual Worker version, same-head hosted checks and asset proof.
+This checkpoint's build result alone is not a claim that a Worker was deployed.
+The independent audit notes in this shared worktree remain outside this commit.
+
+
 ## 2026-10-25 — Verified reopened balances resume normal work
 
 **Implemented, tested and enabled in the database.** The owner removes automatic

@@ -16,11 +16,13 @@ import { extractSourceText, extractSourceImages } from './source-extraction';
 import { createReplacementLayer, drawSourceText, releaseSourceStyles, validateSourceText, sourceStyle, sourceAppearanceUnchanged, measureLayerText, measureLayerInk, SourceFontError } from './source-text';
 import { pageCanvasHeight, sourceFragments, paginateFlow, type FlowSheet, type SourceFragment } from './flow';
 import { replacementForRun, validateDeletedLayer } from './source-edits';
+import {layerOnPage} from './page-bounds';
 type SourceScope={id:string;unsupportedPages:Set<string>;vouchers:VoucherBindings;sources:PdfSourceDocument[];cache:Map<string,Promise<NativeResult|undefined>>;closed:boolean;abort:AbortController;text:Map<string,Promise<DetectedText[]>>;backgrounds:Map<string,Promise<{canvas:HTMLCanvasElement;scale:number}>>};
 const sourceContexts=new WeakMap<PDFDocumentProxy,SourceScope>();
 export const voucherBindings=(documents:Map<string,PDFDocumentProxy>)=>new Map([...documents.values()].flatMap(doc=>[...(sourceContexts.get(doc)?.vouchers??new Map())]));
 function sourceScope(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){const doc=documents.get(page.sourceId);return doc?sourceContexts.get(doc):undefined;}
 async function candidateFor(page:PdfProjectPage,documents:Map<string,PDFDocumentProxy>){
+ if(page.layers.some(layer=>!layer.deleted&&!layerOnPage(page,layer)))return undefined;
  const scope=sourceScope(page,documents),bytes=scope?.sources.find(s=>s.id===page.sourceId)?.bytes;
  if(!scope||scope.closed||!bytes)return undefined;
  const pageKey=`${page.sourceId}:${page.sourcePage}`;if(scope.unsupportedPages.has(pageKey))return undefined;
@@ -115,6 +117,7 @@ async function bindLayers(page:PdfProjectPage,documents:Map<string,PDFDocumentPr
  const issues:RenderIssue[]=[],valid:PdfLayer[]=[],masks=new Map<string,TextMask>();
  const runs=page.layers.some(l=>l.original||l.sourceText||l.deleted!==undefined||l.formField)?await detectText(page,documents):[];
  for(const layer of page.layers){try{
+  if(!layer.deleted&&!layerOnPage(page,layer))throw Error('This edit is outside the page. Move it inside the page before exporting.');
   const run=rebindSourceLayer(page,layer,runs);
   if(layer.sourceText||layer.deleted){
    if(!run)throw Error('Source text could not be restored.');

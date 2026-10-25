@@ -15,7 +15,7 @@ it('does not run maintenance until the joined publication succeeds',async()=>{
  vi.stubGlobal('fetch',async()=>Response.json({hotel:'KAT',account_id:null,status:++reads===1?'running':'succeeded'}));
  const step={do:async(name:string,...args:unknown[])=>{steps.push(name);return name.startsWith('await-publication')?(args.at(-1) as ()=>Promise<unknown>)():{};},sleep:async(name:string)=>{sleeps.push(name);}} as unknown as WorkflowStep;
  await joinedScheduledMaintenance({...env,FINANCIAL_HISTORY_ENABLED:'true',RETENTION_ENABLED:'true'},{runId:'synthetic-run',hotel:'KAT'},step);
- expect(sleeps).toHaveLength(1);expect(steps).toEqual(['await-publication-0','await-publication-1','period-summary-precompute','enqueue-financial-history','completed-file-retention']);
+ expect(sleeps).toHaveLength(1);expect(steps).toEqual(['await-publication-0','await-publication-1','completed-file-retention']);
 });
 it('does not treat a failed publication as current financial data',async()=>{
  vi.stubGlobal('fetch',async()=>Response.json({hotel:'KAT',account_id:null,status:'failed'}));const steps:string[]=[];

@@ -1,3 +1,4 @@
+import {retiredReportRequest} from './dashboard/current-only-policy';
 import {safeAuthenticationDiagnostic} from './opera/auth';
 import {trackerApi} from './tracker-sync/api';
 import {trackerWatchCallback,maintainTrackerWatches,type TrackerWatchEnv} from './tracker-sync/watch';
@@ -25,9 +26,7 @@ import {acceptanceEnvironment,acceptanceRows} from './acceptance/context';
 import {writesHeld} from './operations/write-hold';
 import {operationsApi} from './operations/api';
 import {readManagedStorage} from './operations/storage';
-import {observationsApi} from './reports/observations';
 import {externalBillingApi} from './billing/api';
-import {financialApi} from './financial/api';
 import type {FinancialIngestionEnv} from './financial/refresh';
 import {collectionPolicyApi} from './collection/policy-api';
 import {invoiceExceptionsApi} from './collection/api';
@@ -136,6 +135,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
       user={...user,id:grant.workspaceOwnerId};env={...env,REQUEST_ACCESS:grant};
     }
     const dispatch=async():Promise<Response>=>{
+    if(retiredReportRequest(requestUrl))return json({error:'report_retired'},410);
     if(acceptanceRequest&&path==='/api/acceptance/exit'&&user.id)return acceptanceApi(request,env,user.id);
     if(writesHeld(env)&&request.method!=='GET'&&!/^\/api\/email\/deliveries\/[0-9a-f-]{36}\/(check|reviewed-match)$/.test(path))return json({error:'operations_write_hold',message:'New work is paused for recovery review. Saved data remains readable.'},503);
     if(acceptanceRequest){if(!user.id)return json({error:'unauthorized'},401);return acceptanceApi(request,env,user.id);}
@@ -144,9 +144,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(path==='/api/mail-reconciliation'){if(request.method==='GET')return json({...await backendRpc<Record<string,unknown>>(env,'ar_mail_reconcile_status',{}),enabled:env.GMAIL_RECONCILE_ENABLED==='true',intervalMinutes:15});if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);return json(await requestMailReconcile(env,'manual'));}return json({error:'method_not_allowed'},405);}
     if(operationsRequest){if(!user.id)return json({error:'unauthorized'},401);return operationsApi(request,env,user.id);}
     if(driveRequest){if(!user.id)return json({error:'unauthorized'},401);return driveApi(request,env,user.id);}
-    if(observationsRequest){if(!user.id)return json({error:'unauthorized'},401);return observationsApi(request,env,user.id);}
     if(billingRequest){if(!user.id)return json({error:'unauthorized'},401);return externalBillingApi(request,env,user.id);}
-    if(financialRequest){if(!user.id)return json({error:'unauthorized'},401);return financialApi(request,env,user.id);}
     if(policyRequest){if(!user.id)return json({error:'unauthorized'},401);return collectionPolicyApi(request,env,user.id);}
     if(exceptionRequest){if(!user.id)return json({error:'unauthorized'},401);return invoiceExceptionsApi(request,env,user.id);}
     if(accountWorkspaceRequest){if(!user.id)return json({error:'unauthorized'},401);return accountWorkspaceApi(request,env,user.id);}
@@ -300,7 +298,7 @@ export default {
     if(!['0 0,12 * * *','*/5 * * * *',currentRefreshCron].includes(event.cron??'')||env.OPERA_REFRESH_ENABLED!=='true')return;
     const proactive=event.cron!=='0 0,12 * * *';
     // Five-minute current-data checks share the existing database freshness and
-    // hotel locks. Only the twice-daily schedule also imports financial history.
+    // hotel locks. The twice-daily schedule also maintains completed-file retention.
     const active=proactive?new Set(await activeRefreshHotels(env)):null;
     const hotels=configuredOperaHotels(env.OPERA_HOTEL_IDS).filter(hotel=>!active||active.has(hotel));
     const results=await Promise.allSettled(hotels.map(hotel=>requestRefresh(proactive?{...env,REFRESH_STALE_MINUTES:'5'}:env,hotel,null,proactive?'open':'scheduled')));

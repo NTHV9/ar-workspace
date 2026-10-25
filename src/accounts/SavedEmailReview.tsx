@@ -44,7 +44,7 @@ export function SavedEmailReview({hotel,accountId,draftId,token,onClose}:{hotel:
   finally{if(!controller.signal.aborted)setThreadLoading(false);}
  }
  return <section className="saved-email-review" aria-label="Saved email review">
-  <header><div><h2 ref={heading} tabIndex={-1}>Saved email review</h2><p>{hotel} · Read-only account evidence</p></div><button onClick={onClose}>Back to documents &amp; Gmail</button></header>
+  <header><div><h2 ref={heading} tabIndex={-1}>Saved email review</h2><p>{hotel} · Read-only account evidence</p></div><button onClick={onClose}>Back to email history</button></header>
   {loading&&<p role="status">Loading the saved message…</p>}{error&&<p role="alert" className="error-message">{error}</p>}
   {saved&&<>
    <div className="saved-email-heading"><h3>{saved.subject||'(No subject)'}</h3><button disabled={loading} onClick={()=>setReload(n=>n+1)}>Reload saved message</button></div>

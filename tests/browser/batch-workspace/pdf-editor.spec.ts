@@ -2,6 +2,12 @@ import {test,expect,type Page} from '@playwright/test';
 import {PDFDocument} from 'pdf-lib';
 import {choosePdfTool} from '../fixtures/pdf-tools';
 const serverKey='ar-batch-fixture-server-v1';
+for(const outcome of ['pending','protected'])test(`explicit batch exit clears resume state after accepted ${outcome} cleanup`,async({page})=>{
+ await begin(page);await page.evaluate(value=>{(window as any).batchCleanupOutcome=value;},outcome);await page.locator('#allow-confirm').evaluate((input:HTMLInputElement)=>{input.checked=true;});
+ await page.locator('.batch-heading').getByRole('button',{name:'Collections',exact:true}).click();await expect(page.locator('.batch-heading')).toHaveCount(0);
+ expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('ar-account-batch:')||key.startsWith('ar-account-batch-active:')))).toEqual([]);
+ const proof=await state(page);expect(proof.requests.some((request:string)=>request.endsWith('/abandon'))).toBe(true);expect(proof.sends).toEqual([]);
+});
 async function state(page:Page){return page.evaluate(key=>{const db=JSON.parse(sessionStorage.getItem(key)!);return {jobs:Object.values(db.jobs).map((j:any)=>({id:j.id,hotel:j.hotel,accountId:j.account_id,ids:j.invoice_ids,exports:j.exports,revision:j.revision,closed:j.closed_reason})),drafts:Object.values(db.drafts).map((d:any)=>({id:d.id,jobId:d.document_job_id,hotel:d.hotel,accountId:d.account_id,subject:d.subject,recipients:d.recipients,exports:d.exports,delivery:d.delivery})),sends:db.sends,requests:db.requests};},serverKey);}
 async function begin(page:Page,layout='combined',second='Bay Travel · Synthetic'){
  await page.goto('/tests/browser/batch-workspace/harness.html');await page.getByRole('button',{name:'Collections',exact:true}).click();

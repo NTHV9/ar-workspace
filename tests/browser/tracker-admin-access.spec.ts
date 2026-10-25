@@ -1,5 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
-const url='http://127.0.0.1:5191/tests/browser/tracker-access/harness.html';
+const url='/tests/browser/tracker-access/harness.html';
 const status={connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:'2026-10-25T03:00:00Z',lastSuccessAt:'2026-10-24T03:00:00Z',error:'private_internal_error',pending:7,conflictCount:1,conflicts:[],quarantinedWrites:2,pendingRowAdds:3};
 test('open administrator differences refresh when the current warning count changes',async({page})=>{
  await page.clock.install();await setup(page);let remaining=1;

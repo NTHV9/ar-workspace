@@ -11,7 +11,7 @@ it('requires authentication at the public boundary',async()=>{
 it('passes exact encoded account, hotel and pagination to the actor-checked RPC',async()=>{
  const f=vi.fn(async(_url:string,_init:RequestInit)=>Response.json({rows:[],total:0}));vi.stubGlobal('fetch',f);
  const r=await accountWorkspaceApi(new Request('https://app.test/api/account-workspace/TSK/A%2FB/documents?page=2'),env,actor);
- expect(r.status).toBe(200);expect(JSON.parse(String(f.mock.calls[0][1].body))).toEqual({p_actor:actor,p_hotel:'TSK',p_account:'A/B',p_section:'documents',p_offset:40,p_limit:20});
+ expect(r.status).toBe(200);expect(JSON.parse(String(f.mock.calls[0][1].body))).toEqual({p_actor:actor,p_hotel:'TSK',p_account:'A/B',p_section:'email_records',p_offset:40,p_limit:20});
 });
 for(const path of ['KAT/A/history?page=-1','OTHER/A/history','KAT/A/unknown','KAT/A/history?page=0.5'])it(`rejects malformed scope ${path}`,async()=>{
  const f=vi.fn();vi.stubGlobal('fetch',f);expect((await accountWorkspaceApi(new Request(`https://app.test/api/account-workspace/${path}`),env,actor)).status).toBe(400);expect(f).not.toHaveBeenCalled();

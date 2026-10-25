@@ -44,18 +44,18 @@ async function setup(page:Page,options:{legacy?:boolean;portal?:string;rejectHan
 
 for(const width of [1440,390])test(`billing setup ${width}: metadata, zero term and separate recipients survive reload`,async({page})=>{
  await page.setViewportSize({width,height:width===1440?900:844});const {writes}=await setup(page);
- await page.goto('/?account=synthetic-channel&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();
+ await page.goto('/?account=synthetic-channel&property=KAT');await page.getByRole('button',{name:'Account settings',exact:true}).click();
  await expect(page.getByRole('combobox',{name:'Billing type',exact:true})).toHaveValue('system');await expect(page.getByLabel('Billing portal URL',{exact:true})).toHaveValue('https://portal.example.test/billing');
  await page.getByLabel('Credit term (calendar days)').fill('0');await page.getByRole('textbox',{name:'Billing instructions',exact:true}).fill('Upload the reviewed invoice PDF.\nRecord the actual accepted date.');await page.getByRole('textbox',{name:'Collection instructions',exact:true}).fill('Use the separate collections mailbox.');
  await page.getByRole('button',{name:'Save account settings',exact:true}).click();await expect(page.getByText('Account settings saved.',{exact:false})).toBeVisible();
  expect(writes[0]).toMatchObject({revision:3,billingRequired:true,billingMethod:'system',billingPortal:'https://portal.example.test/billing',creditTerm:0,billingInstructions:'Upload the reviewed invoice PDF.\nRecord the actual accepted date.',collectionInstructions:'Use the separate collections mailbox.',billingRecipients:recipients.billing,collectionRecipients:recipients.collection});
- await page.reload();await page.getByRole('button',{name:'Overview',exact:true}).click();await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('0');await expect(page.getByRole('textbox',{name:'Billing instructions',exact:true})).toHaveValue('Upload the reviewed invoice PDF.\nRecord the actual accepted date.');
+ await page.reload();await page.getByRole('button',{name:'Account settings',exact:true}).click();await expect(page.getByLabel('Credit term (calendar days)')).toHaveValue('0');await expect(page.getByRole('textbox',{name:'Billing instructions',exact:true})).toHaveValue('Upload the reviewed invoice PDF.\nRecord the actual accepted date.');
  await page.locator('.account-config').scrollIntoViewIfNeeded();await page.screenshot({path:`evidence/billing-channel-settings-${width}.png`,fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.getByRole('button',{name:'Billing recipients',exact:true}).click();await expect(page.getByLabel('Billing To',{exact:true})).toHaveValue('billing@example.test');await page.getByRole('button',{name:'Collection recipients',exact:true}).click();await expect(page.getByLabel('Collection To',{exact:true})).toHaveValue('collections@example.test');
 });
 
 test('older required settings default to By Email and non-required clears the method',async({page})=>{
- const {writes}=await setup(page,{legacy:true});await page.goto('/?account=synthetic-channel&property=KAT');await page.getByRole('button',{name:'Overview',exact:true}).click();
+ const {writes}=await setup(page,{legacy:true});await page.goto('/?account=synthetic-channel&property=KAT');await page.getByRole('button',{name:'Account settings',exact:true}).click();
  await expect(page.getByRole('combobox',{name:'Billing type',exact:true})).toHaveValue('email');await page.getByLabel('Billing requirement').selectOption('not_required');await expect(page.getByRole('combobox',{name:'Billing type',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Save account settings',exact:true}).click();await expect(page.getByText('Account settings saved.',{exact:false})).toBeVisible();expect(writes[0]).toMatchObject({billingRequired:false,billingMethod:null,billingPortal:null,billingInstructions:'',collectionInstructions:''});
 });
@@ -68,8 +68,8 @@ for(const action of ['draft','send'] as const)test(`By System blocks billing but
  expect(calls.some(c=>c.endsWith('/gmail-draft')||c.endsWith('/send'))).toBe(false);
  if(action==='draft')await page.screenshot({path:'evidence/billing-channel-composer-1440.png'});
  await page.getByRole('button',{name:'collection',exact:true}).click();await expect(page.getByText('Include the portal reference in the collection message.',{exact:true})).toBeVisible();await page.getByLabel('Collection stage').selectOption('Friendly');
- await page.getByLabel('Email TO').fill('collections@example.test');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Workspace draft saved.',{exact:false})).toBeVisible();
- if(action==='draft'){await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();await expect(page.getByText('Gmail confirmed draft creation.',{exact:false})).toBeVisible();}
+ await page.getByLabel('Email TO').fill('collections@example.test');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Message saved in this preparation.',{exact:false})).toBeVisible();
+ if(action==='draft'){await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();await expect(page.getByRole('status',{name:'Email delivery status',exact:true})).toContainText('Gmail draft — not sent');await expect(page.getByRole('status',{name:'Email delivery status',exact:true})).toContainText('No billing / collection history is recorded.');}
  else{await page.getByRole('button',{name:'Review & send now',exact:true}).click();await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();}
  expect(calls.filter(c=>c.endsWith(action==='draft'?'/gmail-draft':'/send'))).toHaveLength(1);
 });

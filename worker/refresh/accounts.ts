@@ -48,13 +48,20 @@ export async function stageRefreshAccountBatches(env:RefreshEnv,runId:string,hot
     try{
      const previous=await previousInvoices(env,hotel,id);
      const snapshot=await readVerifiedAccount(reader,hotel,id,businessDate,previous);
-     await backendRpc(env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});return true;
+     await backendRpc(env,'ar_stage_account',{p_run_id:runId,p_snapshot:snapshot});return {ok:true as const};
     }catch(error){
-     if(error instanceof OperaError&&['invalid_response','pagination_changed','pagination_incomplete','duplicate_member'].includes(error.code))return false;
+     if(error instanceof OperaError&&['invalid_response','pagination_changed','pagination_incomplete','duplicate_member'].includes(error.code))return {ok:false as const,code:error.code,stage:error.stage&&/^[a-z_]{1,80}$/.test(error.stage)?error.stage:''};
      throw error;
     }
    });
-   return {invalidAccounts:outcomes.filter(ok=>!ok).length};
+   // Persist only static reason labels and counts. No source values or account IDs
+   // enter the checkpoint, and a validation failure still blocks the whole publish.
+   const failures:{code:string;stage:string;count:number}[]=[];
+   for(const outcome of outcomes)if(!outcome.ok){
+    const existing=failures.find(f=>f.code===outcome.code&&f.stage===outcome.stage);
+    if(existing)existing.count++;else failures.push({code:outcome.code,stage:outcome.stage,count:1});
+   }
+   return {invalidAccounts:outcomes.filter(outcome=>!outcome.ok).length,failures};
   });
   invalidAccounts+=result.invalidAccounts;
  }

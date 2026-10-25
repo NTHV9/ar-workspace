@@ -35,7 +35,7 @@ begin
  if draft?'error' then raise exception 'email open failed: %',draft->>'error';end if;
  extra_key:='jobs/'||jid||'/email/'||(draft->>'id')||'/'||gen_random_uuid();
  perform public.ar_document_begin_upload(actor,jid,extra_key,100,repeat('d',64));
- insert into ar_private.mail_deliveries(id,owner,draft_id,revision,mode,message_id,snapshot,state) values(mid,actor,(draft->>'id')::uuid,0,'draft','<'||mid||'@ar-workspace.ar-c82.workers.dev>',jsonb_build_object('draft',draft,'expected','{}'::jsonb,'manifest',jsonb_build_array(jsonb_build_object('open',100)),'workflow','[]'::jsonb),'created');
+ insert into ar_private.mail_deliveries(id,owner,draft_id,revision,mode,message_id,snapshot,state) values(mid,actor,(draft->>'id')::uuid,0,'draft','<'||mid||'@ar-workspace.ar-c82.workers.dev>',jsonb_build_object('draft',draft,'expected','{"mailbox":"phuket","sender":"ar@katathani.com"}'::jsonb,'manifest',jsonb_build_array(jsonb_build_object('open',100)),'workflow','[]'::jsonb),'created');
  begin perform public.ar_document_discard(actor,jid);raise exception 'Draft discarded';exception when others then if sqlerrm<>'document_mail_pending' then raise;end if;end;
  begin perform public.ar_document_review(actor,jid,1,e,true);raise exception 'Draft review changed';exception when others then if sqlerrm<>'document_mail_pending' then raise;end if;end;
  update ar_private.mail_deliveries set state='awaiting_evidence' where id=mid;

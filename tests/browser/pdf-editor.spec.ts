@@ -2,6 +2,20 @@ import {choosePdfTool} from './fixtures/pdf-tools';
 import {reviewPreviewPages} from './fixtures/pdf-preview';
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+test('out-of-page source replacement keeps original ink and cannot export silently',async({page})=>{
+ await page.goto('/tests/browser/pdf-editor-harness.html');await page.waitForFunction(()=>!!(window as any).pdfTest);
+ const proof=await page.evaluate(async()=>{
+  const f=(window as any).pdfTest,l=await f.loadSources(f.sources);
+  try{
+   const p=l.project.pages[0],source=document.createElement('canvas'),edited=document.createElement('canvas');await f.renderPage(p,l.documents,source,1);
+   const runs=await f.detectText(p,l.documents),run=runs.find((r:any)=>r.text==='CONFIDENTIAL ORIGINAL WORDING'),layer=f.createReplacementLayer(run,'invalid-outside');layer.x=1000;layer.text='REPLACEMENT';p.layers=[layer];
+   const result=await f.renderPage(p,l.documents,edited,1,{tolerant:true});const a=source.getContext('2d')!.getImageData(0,0,source.width,source.height).data,b=edited.getContext('2d')!.getImageData(0,0,edited.width,edited.height).data;
+   let changed=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])changed++;
+   let blocked=false;try{await f.exportProject(l.project,f.sources,l.documents);}catch{blocked=true;}
+   return{issues:result.issues.length,changed,blocked};
+  }finally{l.dispose();}
+ });expect(proof).toEqual({issues:1,changed:0,blocked:true});
+});
 
 test('editor and final preview render at device resolution when zoomed',async({browser,baseURL})=>{
  test.setTimeout(60000);const context=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:2});const page=await context.newPage();
@@ -16,11 +30,12 @@ test('editor and final preview render at device resolution when zoomed',async({b
   await page.locator('.pdf-final-sheet canvas').last().scrollIntoViewIfNeeded();await expect.poll(()=>sharp('.pdf-final-sheet canvas:last-child')).toBe(true);
  }finally{await context.close();}
 });
-test('oversized geometry cannot create an unreopenable saved draft',async({page})=>{
+test('numeric positions stop at the page edge without a blocking warning',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
- await choosePdfTool(page,'Note');await page.getByText('Position & size',{exact:true}).click();const before=await page.getByRole('spinbutton',{name:'Layer x',exact:true}).inputValue();
- await page.getByRole('spinbutton',{name:'Layer x',exact:true}).fill('999999');await expect(page.getByRole('alert')).toContainText('was not applied');await expect(page.getByRole('spinbutton',{name:'Layer x',exact:true})).toHaveValue(before);
- await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');expect(await page.evaluate(()=>(window as any).pdfTest.draft.pages[0].layers[0].x)).toBe(Number(before));
+ await choosePdfTool(page,'Note');await page.getByText('Position & size',{exact:true}).click();
+ await page.getByRole('spinbutton',{name:'Layer x',exact:true}).fill('999999');await page.getByRole('spinbutton',{name:'Layer y',exact:true}).fill('999999');await expect(page.getByRole('alert')).toHaveCount(0);
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');
+ const saved=await page.evaluate(()=>(window as any).pdfTest.draft.pages[0]);expect(saved.layers[0].x+saved.layers[0].width).toBeCloseTo(saved.width);expect(saved.layers[0].y+saved.layers[0].height).toBeCloseTo(saved.height);
 });
 test('source replacement removes original wording and preserves untouched multi-page invoices',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');
