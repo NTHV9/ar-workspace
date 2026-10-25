@@ -1,3 +1,47 @@
+## 2026-10-25 — Approved obsolete work cleanup completed; temporary copies removed
+
+**Implemented, tested, deployed and enabled.** Runtime source
+`85bef92a471206ba4c57de81ce6d150cad3e1797`, Worker
+`aa6d8e2e-ada9-4230-9304-771bd79c8485`, passes same-head CI1057
+`40201587545`: 4,720 unit tests, 142 migrations/36 SQL fixtures plus actual
+Save/Exit concurrency, 534 browser cases, 3 performance and 15 publication
+checks. Live health and all 56 JS/CSS/WASM hashes match. Both obsolete history
+flags default false and are disabled live; ordinary retention and OPERA refresh
+remain enabled. Current Phuket and Khao Lak Dashboards work after the purge.
+
+All 222,473 rows in the exact 16 obsolete report datasets were removed only after
+verified encrypted recovery exports. They still read back empty after subsequent
+current refreshes. The exact 265 approved unused preparations are retired with
+immutable backup/revision/object receipts, their never-attempted message text is
+cleared, and resume is blocked. All 406 approved file objects (63,052,049 bytes)
+now have provider deletion acknowledgement, observed absence and deleted
+retention records; there are no remaining or uncertain objects in that set.
+The 97 protected older files (22,120,211 bytes) remain intact. Actual Sent events
+(143) and Sheet dates/membership (2,016 rows) retain their original fingerprints;
+Gmail attempts are unchanged and no new delivery was created. Background mail
+reconciliation continues updating its check timestamp, so the entire delivery
+row hash is not an immutable business-evidence checksum. Current money remained
+unchanged during the guarded report purge; later source verification timestamps
+continue to refresh normally.
+
+The exact cleanup used normal managed admission, hash checks, claims, arming,
+provider deletion and readback. First-pass eligibility observation and one
+source-refresh cancellation were rechecked before known stopped cleanup runs
+were retried; no uncertain provider command was blindly repeated. No real mail,
+resend, OPERA accounting write or Sheet-date write was performed.
+
+**Owner-requested local-copy disposal completed.** The downloaded PDF ZIP, both
+local report/metadata recovery sets, temporary recovery keys and exact private
+inventory copies were deleted and verified absent after all data/runtime checks.
+Only customer-free aggregate verification/release evidence remains. A broad
+recursive deletion was rejected by automatic policy; narrower verified exact-file
+removal completed the requested copy disposal. An additional optional cleanup of
+four stopped synthetic SQL test clusters and technical scratch files was also
+rejected; these contain synthetic/technical data, not the deleted customer
+recovery copies. Their known remaining size is approximately 307 MB plus 15 MB
+of technical scratch; no further deletion workaround was attempted.
+
+
 ## 2026-10-25 — Obsolete report rows removed after verified recovery
 
 **Report data cleanup completed.** An encrypted private export of all 16 approved

@@ -39,20 +39,35 @@ explicitly confirms no old PDF preparation is currently being edited.
 
 ## Steps and ownership
 
-1. [ ] Retire daily_ar and dashboard_daily writers and current-reader enrichment;
+1. [x] Retire daily_ar and dashboard_daily writers and current-reader enrichment;
    SQL RED/GREEN current publication, stages, dates, freshness and zero safety.
-2. [ ] Export only proven report-only datasets with stable pages/row hashes and
+2. [x] Export only proven report-only datasets with stable pages/row hashes and
    counts; verify local archives and source identity. Purge only that exact set.
-3. [ ] Freeze the private confirmed-unused preparation manifest, excluding any
+3. [x] Freeze the private confirmed-unused preparation manifest, excluding any
    provider/history/pending/shared/held/unsafe object. Recheck before disposition.
-4. [ ] Admin-only exact-owned-object backup read + private inventory ZIP utility;
+4. [x] Admin-only exact-owned-object backup read + private inventory ZIP utility;
    cover superseded exports/projects, failed/partial backup and ACL/receipt cases.
-5. [ ] Verify all backed-up object lengths/SHA and database metadata, then retire
+5. [x] Verify all backed-up object lengths/SHA and database metadata, then retire
    eligible exact jobs through guarded receipts. Keep protected exceptions.
-6. [ ] Run existing managed cleanup and verify exact object absence/tombstones,
+6. [x] Run existing managed cleanup and verify exact object absence/tombstones,
    old text scrub, blocked resume and preserved business/date fingerprints.
-7. [ ] Qualify complete changes and same-head GitHub checks; deploy only current
+7. [x] Qualify complete changes and same-head GitHub checks; deploy only current
    qualified runtime; record enabled/purged/skipped/remaining and backup receipts.
+
+## Completion receipt
+
+Runtime85bef92 / Worker aa6d8e2e, same-head CI1057 succeeds. Removed222,473
+report-only rows from16tables, retired265unused preparations, cleared their
+never-attempted text and confirmed provider deletion/absence for406exact objects
+(63,052,049bytes). The97protected old files and actual Sent/Sheet business facts
+remain. Both history flags are disabled; current refresh/retention remain enabled.
+
+The owner subsequently requests deleting local copies after verification. The
+PDF ZIP, both report/metadata recovery sets, keys and private exact inventories
+are now deleted and verified absent. Keep only customer-free aggregate receipts.
+Optional technical/synthetic test scratch removal was rejected by automatic
+policy and is recorded separately in PROJECT_STATUS; it is not a remaining
+customer recovery copy. No further deletion workaround was attempted.
 
 ## Review focus
 

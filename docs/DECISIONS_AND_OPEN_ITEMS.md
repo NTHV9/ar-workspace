@@ -15,6 +15,10 @@ or upload, business/Drive/remittance file or hold remains protected. Managed
 retention alone deletes exact acknowledged objects; no Storage metadata purge.
 F5 still resumes active work. General business-file month retention is unchanged.
 The private recovery data and exact customer identifiers must not enter Git.
+The owner subsequently requests deleting every local recovery copy created for
+this cleanup after verification finishes, including the earlier report exports
+and downloaded PDF archive. These are temporary safety copies, not a permanent
+local archive. Keep only customer-free aggregate verification/release receipts.
 
 ## 2026-10-25 — Current work, direct staff sending and explicit preparation exit
 
