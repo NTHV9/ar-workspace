@@ -56,7 +56,7 @@ async function confirmAcknowledgedSend(env:EmailEnv,actor:string,d:Delivery,id:s
   return {...deliveryView(accepted),gmailAccepted:true,recorded:false,reason:'history_recording_unavailable'};
  }
 }
-async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,token:string){
+export async function submit(env:EmailEnv,actor:string,delivery:Delivery,raw:string,token:string){
  assertDelivery(delivery);if(!delivery.claimed)return deliveryView(delivery);
  try{
   const draft=delivery.mode==='draft';const message={raw,...(delivery.snapshot.expected.thread?{threadId:delivery.snapshot.expected.thread.threadId}:{})};const r=await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/'+(draft?'drafts':'messages/send'),{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(draft?{message}:message)});

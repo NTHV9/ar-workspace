@@ -1,3 +1,22 @@
+## 2026-10-26 — Optional combined email, independent Account PDF layouts
+
+The owner approves the design and mixed-layout clarification in
+[combined email design](superpowers/specs/2026-10-25-combined-account-email-design.md).
+Keep separate emails as the default. An optional common message may include any
+selected Agents/Accounts within the existing single regional sender boundary,
+with manually entered To/CC/BCC and one selected Hotel signature. Never union
+stored Account recipients or use OPERA email as a fallback.
+
+PDF Workspace retains per-Account tabs, edits and independent delivery layouts.
+One combined email keeps those reviewed packages as attachments; it does not
+force a common PDF layout or change Invoice/VAT rendering. One Gmail message
+must record all selected Hotel/Account/Invoice scopes with their own stages,
+preserving Sheet authority, employee date edits/deletions and no-resend recovery.
+F5 resumes the open batch. Explicit Exit discards never-attempted common text
+only after all referenced child preparations close; every provider attempt and
+its business history remain protected. Implementation, qualification and actual
+release are recorded separately in PROJECT_STATUS.
+
 ## 2026-10-25 — Approved obsolete report and unused preparation cleanup
 
 The owner separately approves stopping the remaining report-only daily captures

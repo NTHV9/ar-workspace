@@ -1,4 +1,7 @@
 import {parseMailbox,hotelMailbox} from '../../src/domain/mailboxes';
+import {getCombined,saveCombined,sendCombined,combinedId,combinedRevision,combinedPublic} from './combined';
+import type {CombinedEmail} from '../../src/email/combined';
+import {combinedMemberFiles} from './combined-files';
 import {administratorEmail} from '../../src/access/model';
 import {documentJob} from '../documents/jobs';
 import {generatedNames} from '../../src/email/generated-names';
@@ -20,6 +23,24 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
   const requestMailbox=()=>parseMailbox(url.searchParams.get('region')??'phuket');
   if(request.method!=='GET'&&request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin)return emailJson({error:'forbidden'},403);
   if(path==='/api/email/templates'||path.startsWith('/api/email/templates/'))return templateRequest(request,env,actor);
+  if(path==='/api/email/combined'){
+   if(request.method!=='POST'||url.searchParams.size)return emailJson({error:'email_invalid'},400);
+   const result=await saveCombined(env,actor,await jsonBody(request));
+   if(result&&typeof result==='object'&&'error' in result)throw Error(String(result.error));if(!result)throw Error('email_missing');return emailJson(combinedPublic(result as CombinedEmail));
+  }
+  const combined=/^\/api\/email\/combined\/([^/]+)(?:\/(send|files)(?:\/([^/]+)\/(\d+))?)?$/.exec(path);
+  if(combined){
+   const id=combinedId(combined[1]);
+   if(!combined[2]&&request.method==='GET'&&!url.searchParams.size)return emailJson(await getCombined(env,actor,id));
+   if(combined[2]==='send'&&!combined[3]&&request.method==='POST'&&!url.searchParams.size)return emailJson(await sendCombined(env,actor,id,await jsonBody(request)));
+   if(combined[2]==='files'&&combined[3]&&request.method==='GET'&&url.searchParams.size===1&&url.searchParams.getAll('revision').length===1&&/^\d+$/.test(url.searchParams.get('revision')??'')){
+    const p=await getCombined(env,actor,id);if(p.revision!==combinedRevision(Number(url.searchParams.get('revision'))))throw Error('email_revision_conflict');
+    const {draft,manifests,member}=await combinedMemberFiles(env,actor,p,combinedId(combined[3]));const ordinal=Number(combined[4]);if(!Number.isSafeInteger(ordinal)||!manifests[ordinal])throw Error('email_missing');
+    const file=await readMailFile(env,draft,manifests[ordinal]),name=member.files[ordinal].name;
+    return new Response(new Uint8Array(file.bytes).buffer,{headers:{'Content-Type':file.mime,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Disposition':`attachment; filename="${name.replace(/[^A-Za-z0-9._ -]/g,'_')}"; filename*=UTF-8''${encodeURIComponent(name).replace(/[!'()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase())}`}});
+   }
+   throw Error('email_invalid');
+  }
   const integerParam=(name:string,fallback?:number)=>{const s=url.searchParams.get(name);if(s===null&&fallback!==undefined)return fallback;if(s===null||!/^\d+$/.test(s)||!Number.isSafeInteger(Number(s)))throw Error('email_invalid');return Number(s);};
   if(path==='/api/email/test-conversations'&&request.method==='GET')return emailJson(await emailRpc(env,'ar_mail_test_conversations_region',{p_actor:actor,p_offset:integerParam('offset',0),p_mailbox:requestMailbox()}));
   const testPreview=/^\/api\/email\/test-conversations\/([0-9a-f-]{36})$/.exec(path);
@@ -95,7 +116,7 @@ export async function emailApi(request:Request,env:EmailEnv,actor:string):Promis
    }else return emailJson({error:'method_not_allowed'},405);
   }
   return await draftResponse(result,env,actor);
- }catch(e){if(e instanceof Error&&['document_closed','storage_file_expired'].includes(e.message))return emailJson({error:e.message},410);const code=e instanceof Error?e.message:'';const safe=[...Object.keys(operationMessages),'email_generated_names_invalid','email_draft_changed','email_signature_changed','email_region_disabled','email_policy_revision_conflict','email_invoice_on_hold','email_invoice_review_required','email_thread_invalid','email_thread_unrelated','email_thread_changed','email_thread_unavailable','email_thread_too_large','email_thread_recipients_required','email_thread_subject_locked','email_system_billing_required','email_request_too_large','attachment_invalid','attachment_name_invalid','attachment_unsupported','attachment_type_mismatch','attachment_active_pdf','attachment_invalid_pdf','attachment_pdf_complexity','attachment_invalid_image','attachment_image_too_large','attachment_animated_image','attachment_command_conflict','email_attachment_missing','email_missing','email_test_command_conflict','email_invalid','email_too_large','gmail_not_configured','gmail_not_connected','gmail_reconnect_required','gmail_read_permission_required','email_incomplete','email_stage_required','email_rules_missing','email_forbidden','email_source_changed','email_package_changed','email_revision_conflict','email_handoff_pending','email_attachment_changed','email_attachment_unavailable'].includes(code)?code:'email_unavailable';return emailJson({error:safe},safe.startsWith('attachment_')&&!safe.endsWith('_conflict')?400:/missing$/.test(safe)?404:(safe==='email_generated_names_invalid'||safe==='email_invalid'||safe==='email_thread_invalid')?400:(safe==='email_too_large'||safe==='email_request_too_large'||safe==='email_thread_too_large')?413:safe==='email_forbidden'?403:/balance_only|region_disabled|invoice_on_hold|invoice_review_required|changed|conflict|pending|incomplete|stage_required|rules_missing|system_billing_required|unrelated|recipients_required|subject_locked/.test(safe)?409:503);}
+ }catch(e){if(e instanceof Error&&['document_closed','storage_file_expired'].includes(e.message))return emailJson({error:e.message},410);const code=e instanceof Error?e.message:'';const safe=[...Object.keys(operationMessages),'email_generated_names_invalid','email_draft_changed','email_signature_changed','email_region_disabled','email_policy_revision_conflict','email_invoice_on_hold','email_invoice_review_required','email_thread_invalid','email_thread_unrelated','email_thread_changed','email_thread_unavailable','email_thread_too_large','email_thread_recipients_required','email_thread_subject_locked','email_system_billing_required','email_request_too_large','attachment_invalid','attachment_name_invalid','attachment_unsupported','attachment_type_mismatch','attachment_active_pdf','attachment_invalid_pdf','attachment_pdf_complexity','attachment_invalid_image','attachment_image_too_large','attachment_animated_image','attachment_command_conflict','email_attachment_missing','email_missing','email_test_command_conflict','email_invalid','email_too_large','gmail_not_configured','gmail_not_connected','gmail_reconnect_required','gmail_read_permission_required','email_incomplete','email_stage_required','email_rules_missing','email_forbidden','email_source_changed','email_package_changed','email_revision_conflict','email_handoff_pending','email_attachment_changed','email_attachment_unavailable'].includes(code)?code:'email_unavailable';return emailJson({error:safe},safe.startsWith('attachment_')&&!safe.endsWith('_conflict')?400:/missing$/.test(safe)?404:(safe==='email_generated_names_invalid'||safe==='email_invalid'||safe==='email_thread_invalid')?400:(safe==='email_package_too_large'||safe==='email_too_large'||safe==='email_request_too_large'||safe==='email_thread_too_large')?413:safe==='email_forbidden'?403:/email_duplicate_scope|email_mailbox_invalid|document_busy|balance_only|region_disabled|invoice_on_hold|invoice_review_required|changed|conflict|pending|incomplete|stage_required|rules_missing|system_billing_required|unrelated|recipients_required|subject_locked/.test(safe)?409:503);}
 }
 
 async function draftResponse(result:unknown,env:EmailEnv,actor:string){

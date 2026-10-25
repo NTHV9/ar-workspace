@@ -1,5 +1,6 @@
 import {spawnSync} from 'node:child_process';
 import {verifyDraftDiscardConcurrency} from './verify-draft-discard-concurrency.mjs';
+import {verifyCombinedEmailContract} from './verify-combined-email-contract.mjs';
 import {mkdirSync,readFileSync,readdirSync,writeFileSync,existsSync} from 'node:fs';
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -89,6 +90,8 @@ try{
  if(report.failures.length)throw Error(`${report.failures.length} synthetic tracker SQL fixtures failed; inspect report`);
  report.documentExitConcurrency=await verifyDraftDiscardConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
  console.log('PASS concurrent message Save / preparation Exit and deferred cleanup retry');
+ report.combinedEmailContract=await verifyCombinedEmailContract({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
+ console.log('PASS real Worker HTTP / PostgreSQL combined email contract (3 scenarios, one provider POST each)');
  report.passed=true;console.log(`PASS ${report.migrations.length} migrations; ${report.fixtures.length} tracker SQL rollback fixtures`);
 }finally{
  if(created){try{tool('dropdb',['--no-password',database]);}catch{report.cleanupError='Synthetic database drop failed';}}

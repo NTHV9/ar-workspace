@@ -1,5 +1,10 @@
 /** Public, sanitized explanations shared by API and UI. No provider details. */
 export const operationMessages:Record<string,string>={
+ document_busy:'Another operation is using this preparation. Your edits are retained; retry when it finishes.',
+ email_duplicate_scope:'An Invoice is selected in more than one work group. Review the selected Accounts.',
+ email_mailbox_invalid:'Choose Accounts that use the same sender mailbox and a signature Hotel from that selection.',
+ email_package_too_large:'The complete email package exceeds the attachment limit. Reduce the selection or combine PDFs for an Account.',
+ email_command_conflict:'This saved request has different details. Reload its existing result before making another change.',
  document_invoice_direct_zero_tax_unverified:'Tax details could not be verified for this exact invoice. Use the invoice printed from OPERA for this item.',
  account_balance_only:'DRF accounts show balances only and do not have billing or collection work.',
  acceptance_recipient_not_authorized:'This isolated test can use only its explicitly authorized test recipient, with no CC or BCC.',
