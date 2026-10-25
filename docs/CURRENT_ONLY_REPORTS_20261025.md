@@ -22,3 +22,20 @@ Limitations and release follow-up:
 - A Workflow already pinned to an older deployed version may continue its old implementation; the release owner should inspect exact old financial Workflow instances before claiming all production historical jobs have stopped.
 - The retained current management SQL RPC still computes its legacy cohort internally, although the UI no longer exposes it. Removing that internal read would require a separate forward migration; applied migrations were left intact.
 - Older browser scenarios that explicitly assert date controls, period cohorts/activity/payment panels, external report tabs or the old Closing-date labels describe retired behavior. Replace those assertions with current-only contracts during the integration smoke pass; keep their still-current billing/age/sorting/drill coverage.
+
+## Live validation follow-up
+
+The first qualified release exposed an existing filter-options defect: the
+options RPC combined current Accounts with immutable Sent labels and deduplicated
+whole metadata tuples. A renamed Hotel/Account therefore appeared twice, and
+the client correctly refused an incomplete/duplicate paged list. Forward
+migration `20261025095512_ar_current_dashboard_options` replaces only that
+projection with current `ar_accounts`, ordered by Hotel+ID. Historical metadata
+and every other report branch are preserved; client identity checks are retained.
+
+RED reproduced239tuples for238current ledgers. GREEN covers both regions,200-row
+boundaries, current names/types, same IDs in separate hotel ledgers, filters,
+actor/ACL/owner/search-path preservation and untouched legacy branches. Full
+local replay passes138migrations/32fixtures plus Save/Exit concurrency. Live
+Khao options now return238unique entries in200+38pages; actual Dashboard choices
+load without warning in both regions. Main-nav Reports opens Google Sheets.

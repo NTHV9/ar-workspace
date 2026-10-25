@@ -1,3 +1,32 @@
+## 2026-10-25 — Live release verified; current Account filter metadata aligned
+
+**Deployed and enabled:** source `02f8de9fac24711e25de6a50c63d5997c1e60f9a`,
+Worker `d517bf31-9d9a-47cd-b733-197979b8c8ea`. Same-head GitHub run1054
+`40180386297` passes4,674unit tests,137migrations/31SQL fixtures plus actual
+Save/Exit concurrency,528browser cases,3performance and15publication/Aging
+checks. Live health reports the exact commit and all55JS/CSS/WASM hashes match.
+Real Reports navigation opens Google Sheets, including return from an explicit
+Admin Register visit. Current OPERA publications are visible in both regions.
+
+Live validation found an existing Account-options defect: the historical Sent
+metadata UNION produced239tuples for238current Khao ledgers, correctly rejected
+by the client's completeness/identity guard. Enabled forward migration
+`20261025095512_ar_current_dashboard_options` changes only options to current
+Accounts, stable Hotel+ID ordering, current labels/types and filters. It retains
+actor validation, ACL, owner, search path, security definer and legacy branches.
+This is not name-based ledger merging or a rewrite of source/customer metadata.
+
+The regression reproduces the historical duplicate before the change and passes
+both-region200-row pagination, same IDs in distinct hotels, current metadata,
+filters and negative/security cases. Replay now passes138migrations/32fixtures
+and concurrency. Live Khao returns200+38unique choices; real Dashboard menus
+load without warning for Khao Lak and Phuket. The follow-up also corrects the
+retired external-billing loading caption to Reports. No financial formula, Sent
+record or Sheet date is changed. Follow-up same-head CI and Worker release
+receipts are recorded in [PR142](https://github.com/NTHV9/ar-workspace/pull/142)
+and [live health](https://ar-workspace.ar-c82.workers.dev/api/health).
+
+
 ## 2026-10-25 — Current AR work and integrated PDF/mail/refresh repairs
 
 **Implemented, locally qualified; database changes enabled.** The owner-approved
