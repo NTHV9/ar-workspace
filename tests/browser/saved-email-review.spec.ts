@@ -2,6 +2,7 @@ import {currentWorkspaceSession,openWorkspaceRoute} from './fixtures/workspace-r
 import {test,expect,type Page} from '@playwright/test';
 const user={id:'00000000-0000-4000-8000-000000000001',email:'ar@katathani.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-10T00:00:00Z'};
 const jobId='00000000-0000-4000-8000-000000000002',draftId='00000000-0000-4000-8000-000000000003';
+const combinedId='00000000-0000-4000-8000-000000000004';
 async function setup(page:Page){
  const requests:{path:string;method:string;query:URLSearchParams}[]=[];
  await page.addInitScript(u=>localStorage.setItem('sb-example-auth-token',JSON.stringify({access_token:'synthetic',refresh_token:'synthetic-refresh',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:u})),user);
@@ -18,6 +19,19 @@ async function setup(page:Page){
   return route.fulfill({status:501,json:{error:'unmocked_endpoint'}});
  });await currentWorkspaceSession(page,user);return requests;
 }
+
+for(const denied of [false,true])test(`combined account history opens one shared message without creating a draft, denied=${denied}`,async({page})=>{
+ const requests=await setup(page);let reads=0;
+ await page.route('**/api/account-workspace/TSK/A/documents*',route=>route.fulfill({json:{total:1,rows:[{id:jobId,created_at:'2026-09-10T12:00:00Z',content:'both',layout:'combined',purpose:'billing',state:'ready',revision:1,acknowledged:true,invoice_count:3,draft_id:draftId,subject:'Shared frozen subject',delivery_id:combinedId,combined_preparation_id:combinedId,delivery_state:'sent',closed_at:'2026-09-10T12:01:00Z',closed_reason:'sent',lifecycle:'transient'}]}}));
+ await page.route(`**/api/email/combined/${combinedId}`,route=>{reads++;if(denied)return route.fulfill({status:403,json:{error:'email_forbidden'}});return route.fulfill({json:{id:combinedId,revision:1,mailbox:'phuket',members:[{memberId:jobId,hotel:'TSK',accountId:'A',accountName:'Synthetic first',invoiceIds:['I1'],purpose:'billing',stage:null,files:[{fileId:jobId+':0',name:'TSK reviewed.pdf',byteCount:100,sha256:'a'.repeat(64)}]},{memberId:draftId,hotel:'KAT',accountId:'B',accountName:'Synthetic second',invoiceIds:['I2','I3'],purpose:'collection',stage:'Follow 1',files:[{fileId:draftId+':0',name:'KAT reviewed.pdf',byteCount:200,sha256:'b'.repeat(64)}]}],content:{recipients:{to:['common@example.test'],cc:['copy@example.test'],bcc:[]},subject:'Shared frozen subject',body:'Shared frozen body',richBody:null,signatureHotel:'KAT'},totals:{accounts:2,invoices:3,files:2,bytes:300},delivery:{id:combinedId,state:'sent',mode:'send',recorded:true,gmailAccepted:true,sentAt:'2026-09-10T12:01:00Z'}}});});
+ await openWorkspaceRoute(page,'/?account=A&property=TSK&accountSection=Documents+%26+Gmail');
+ await page.getByRole('button',{name:'Open combined email',exact:true}).click();
+ const review=page.getByRole('region',{name:'Combined email review'});
+ if(denied){await expect(review.getByRole('alert')).toBeVisible();await expect(review).not.toContainText('Shared frozen body');}
+ else{await expect(review).toContainText('Shared frozen body');await expect(review).toContainText('common@example.test');await expect(review).toContainText('Sent — history recorded');await expect(review).toContainText('TSK reviewed.pdf');await expect(review).toContainText('KAT reviewed.pdf');await expect(review.getByRole('button',{name:/Send|Create draft/i})).toHaveCount(0);}
+ expect(reads).toBe(1);expect(requests.some(r=>r.path==='/api/email/open'||r.path.startsWith('/api/documents/'))).toBe(false);
+ await review.getByRole('button',{name:'Back to email history',exact:true}).click();await expect(page.getByRole('heading',{name:'Email history',exact:true})).toBeVisible();
+});
 for(const width of [1440,390])test(`saved email stays on its original draft after document revision ${width}`,async({page})=>{
  await page.setViewportSize({width,height:width===390?844:900});const requests=await setup(page);await openWorkspaceRoute(page,'/?account=A&property=TSK&accountSection=Documents+%26+Gmail');
  await expect(page.getByRole('heading',{name:'Email history',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue preparation',exact:true})).toHaveCount(0);

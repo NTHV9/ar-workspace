@@ -1,0 +1,22 @@
+{
+  "applicationSource": "e16da21c8eb5c9e5e8ef75cfbbc7be50a9684a43",
+  "workerVersion": "734e0f64-dfcb-4f5f-bfc3-d4876f60ad6f",
+  "pullRequest": "https://github.com/NTHV9/ar-workspace/pull/144",
+  "qualifiedRun": "https://github.com/NTHV9/ar-workspace/actions/runs/40222321139",
+  "qualifiedRunConclusion": "success",
+  "tests": {"unitPassed": 4760, "sqlMigrations": 144, "sqlRollbackFixtures": 38, "workerRealSqlFakeProviderCases": 3, "browserPassed": 545, "performancePassed": 3, "publicationPassed": 15},
+  "deployment": {"health": "ok", "assetHashesMatched": 55, "unauthenticatedCombinedRoutesRejected": 4, "unauthenticatedExistingRoutesRejected": 6},
+  "migrations": [
+    {"version": "20261025190052", "name": "ar_combined_email_core", "sha256": "0ba2f03c80a611d3c390901bd11b10294befd2d4e5993d6224be07e70bdc52c1"},
+    {"version": "20261025190057", "name": "ar_combined_email_consumers", "sha256": "d33346d670f2bf0802bcd38a9d4f6f73721ddef9d8f9f7e86759719f3bf389fd"}
+  ],
+  "preservedBusinessFacts": [
+    {"fact": "actual_sent", "rows": 143, "beforeAndAfterDigest": "86972ba0edc92ae17f66e841d5b1cc66"},
+    {"fact": "sheet_dates", "rows": 20796, "beforeAndAfterDigest": "d02c655a383a82444747f17dc23f3718"},
+    {"fact": "workflow_dates", "rows": 14012, "beforeAndAfterDigest": "6a3e21debd0b7b3fe2220c16315e4dbc"}
+  ],
+  "liveSmoke": {"temporaryAccountPackages": 2, "mixedPdfLayouts": true, "commonComposerAndUnsentReview": true, "providerAttempts": 0, "combinedSentFacts": 0, "childrenDiscarded": 2, "commonAndCachedTextDiscarded": true, "workingObjectsDeletionAcknowledged": 4, "workingObjectsRemaining": 0},
+  "localCleanup": {"stoppedSqlFoldersRemoved": 13, "stoppedHttpContractFoldersRemoved": 1},
+  "independentReview": {"remainingP1P2": 0},
+  "qualificationScope": "Actual send/history recovery used a real isolated PostgreSQL database and fake Gmail/Storage. Production smoke reached unsent review only. No live billing dates, customer email or OPERA ledger were changed by the smoke test."
+}

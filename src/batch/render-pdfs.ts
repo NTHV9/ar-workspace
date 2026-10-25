@@ -14,7 +14,7 @@ export async function renderBatchPdfs(job:DocumentJob,session:DocumentBatchSessi
  const loaded=await loadSources(allSources);
  try{
   const project=session?.editor?restoreProject(session.editor.project,loaded.project,allSources):{
-   ...loaded.project,delivery:job.layout==='statement_bundle'?'split' as const:job.layout==='separate'?'separate' as const:'combined' as const
+   ...loaded.project,delivery:session?.delivery??(job.layout==='statement_bundle'?'split' as const:job.layout==='separate'?'separate' as const:'combined' as const)
   };
   await rebindProjectSources(project,loaded.documents);
   const files=await exportProject(project,allSources,loaded.documents);

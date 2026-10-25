@@ -1,3 +1,75 @@
+## 2026-10-26 — Optional combined Account email released
+
+**Implemented, tested, deployed and enabled.** Application source
+`e16da21c8eb5c9e5e8ef75cfbbc7be50a9684a43` is live as Worker version
+`734e0f64-dfcb-4f5f-bfc3-d4876f60ad6f`. Draft PR #144 targets the current
+predecessor branch, not an older application checkout. Separate emails remain
+the default; the Email phase offers One combined email with manual recipients,
+one common message/signature and one real provider delivery. Account tabs retain
+their independent PDF layouts and reviewed files. PDF rendering/tax logic is
+unchanged; its only editor change carries scalar delivery-layout metadata.
+
+Combined deliveries preserve each Hotel/Account/Invoice purpose and collection
+stage through canonical history, current billing and Sheet outbox consumers.
+Claim-time Sheet authority fences protect later employee edits and cleared dates.
+Accepted/unknown delivery recovery never resends. Explicit Exit scrubs common
+text and cached save results only after all never-attempted child jobs close;
+provider attempts and Sent evidence remain protected. F5 recovery is covered by
+synthetic browser tests, including lost responses and storage-quota failures.
+
+Qualification: 4,760 unit tests; 144 migrations/38 SQL rollback fixtures; real
+Save/Exit concurrency and three Worker HTTP -> isolated PostgreSQL -> fake Gmail
+contracts; 545 browser cases, three performance cases and 15 publication cases.
+Independent Astra review has no remaining P1/P2 finding. Same-source GitHub run
+1059 / 40222321139 passes every step. Production health is OK, all 55 shipped
+JS/CSS/WASM hashes match, and four combined plus six existing anonymous routes
+reject unauthenticated requests. Existing history-retirement flags remain off;
+retention, OPERA refresh and the 2 GiB database allowance remain enabled.
+
+Signed-in live smoke prepared two temporary real KAT/TSK Invoice packages with
+different layouts, opened the common composer and reached its unsent review.
+No Gmail provider attempt or business Sent fact was created. Exit discarded both
+children, common text and all cached command bodies; four exact working objects
+have deletion acknowledgement and verified absence. Actual Sent143, Sheet date
+rows20,796 and workflow date rows14,012 retain identical before/after digests.
+The local stopped synthetic clusters (13 SQL plus one HTTP contract folder) were
+removed after keeping customer-free aggregate receipts. Original design/source
+files and the independent project-audit work remain untouched.
+
+Supabase assigned migration versions20261025190052/20261025190057; local names
+were aligned afterward with byte-identical reviewed SQL. Security/performance
+advisors report INFO only. See the customer-free acceptance receipt in evidence.
+
+## 2026-10-25 — Combined Account email design prepared for approval
+
+The owner confirms arbitrary selected Accounts, including different Agents, may
+share one manually addressed email. The proposed design is saved in
+docs/superpowers/specs/2026-10-25-combined-account-email-design.md and passes an
+independent builder check. It preserves separate mode, one provider message,
+per-Invoice business history, Sheet authority and existing sender/access fences.
+Signature Hotel selection and the existing regional batch boundary are explicit
+engineering defaults for review. This is design only: no application/schema or
+hosted resource changed, and no mail was sent. Implementation awaits design
+approval under the applied brainstorming skill, then an implementation plan.
+
+## 2026-10-25 — Local comparison and stopped synthetic runs deleted by owner request
+
+The owner explicitly approves deleting the verified stopped recovery runs and
+the entire local invoice-parity-20261022 comparison directory, including its
+downloaded native AR comparison copies. Removed147 verified synthetic run folders
+and that comparison directory, approximately5.8GiB in total. Readback confirms
+all147 exact run paths and the comparison directory are absent. The one run
+without a complete result and runtime-17.11-3 remain intact. No related process
+was active; no source checkout, production data or provider resource was removed.
+
+The initial combined command was rejected by automatic policy. Deletion then
+completed through narrower literal named targets, each drawn from the verified
+inventory. No alternate shell, credential change or deletion outside that scope.
+Final free space on C was35.66GiB. Live health remains OK with database verified,
+OPERA connected and the same deployed source85bef92. No app code changed and no
+new mail/Sheet/financial operation occurred. Local native comparison copies are
+no longer available for replay; the customer-free acceptance reports remain.
+
 ## 2026-10-25 — Approved obsolete work cleanup completed; temporary copies removed
 
 **Implemented, tested, deployed and enabled.** Runtime source
@@ -216,6 +288,7 @@ review. No mail, OPERA ledger or Sheet write is part of this change. Same-head
 GitHub qualification remains authoritative at PR142 checks; final live/CI proof
 is attached there and in this task. Independent project-audit notes in this shared
 worktree are preserved and excluded from this policy commit.
+
 
 
 ## 2026-10-25 — GitHub notification audit and committed browser guards

@@ -2,7 +2,8 @@ import {hotelRegion,isHotelId,isRegionId,type HotelId} from '../../src/domain/ho
 import {regionalHotelScope} from '../hotels';
 import {boundedBody} from '../email/shared';
 import {parseTrackerConflictQuery} from '../tracker-sync/conflict-query';
-export type AccessKind='hotel'|'region'|'document'|'email'|'delivery'|'remittance'|'remittance_save'|'remittance_command'|'exception_command'|'billing'|'global';
+import {parseCombinedInput} from '../email/combined';
+export type AccessKind='hotel'|'region'|'document'|'email'|'combined'|'delivery'|'remittance'|'remittance_save'|'remittance_command'|'exception_command'|'billing'|'global';
 export interface AccessIntent {kind:AccessKind;hotel?:HotelId;region?:string;ref?:string;mail?:boolean}
 const denied=():never=>{throw Error('access_forbidden');};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -44,6 +45,9 @@ export async function requestAccessIntent(request:Request):Promise<AccessIntent>
  if(m==='POST'&&['/api/documents','/api/remittances','/api/financial/refresh','/api/collection/validate-selection'].includes(p))return hotel((await body(request)).hotel);
  if(m==='POST'&&['/api/external-billing/preview','/api/external-billing/confirm'].includes(p)){const v=(await body(request)).input;if(!v||typeof v!=='object')return denied();const input=v as Record<string,unknown>;const scope=hotel(input.hotel);return input.recordId===undefined?scope:{...resource('billing',String(input.recordId)),hotel:scope.hotel};}
  if(p==='/api/email/open'&&m==='POST')return resource('document',String((await body(request)).jobId),true);
+ if(p==='/api/email/combined'&&m==='POST'&&!q.size){try{const v=parseCombinedInput(await body(request));return {kind:'region',region:hotelRegion(v.content.signatureHotel),mail:true};}catch{return denied();}}
+ match=/^\/api\/email\/combined\/([0-9a-f-]{36})(?:\/(send|files)(?:\/([0-9a-f-]{36})\/(\d+))?)?$/.exec(p);
+ if(match){if(!match[2]&&m==='GET'&&!q.size||match[2]==='send'&&!match[3]&&m==='POST'&&!q.size||match[2]==='files'&&match[3]&&uuid.test(match[3])&&m==='GET'&&q.size===1&&q.getAll('revision').length===1&&/^\d+$/.test(q.get('revision')??''))return resource('combined',match[1],true);return denied();}
  match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(?:project|save|upload|files|exports|dispatch|review|discard|abandon)(?:\/[^/]+)?)?$/.exec(p);if(match)return resource('document',match[1]);
  match=/^\/api\/email\/deliveries\/([0-9a-f-]{36})\/(check|candidates|reviewed-match)$/.exec(p);if(match)return resource('delivery',match[1],true);
  match=/^\/api\/email\/([0-9a-f-]{36})(?:\/(send|gmail-draft|thread|threads|exports|attachments)(?:\/[^/]+)?)?$/.exec(p);if(match)return resource('email',match[1],true);

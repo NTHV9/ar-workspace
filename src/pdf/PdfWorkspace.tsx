@@ -31,7 +31,7 @@ import type { DetectedText, PdfExportFile, PdfLayer, PdfProject, PdfProjectPage,
 import './pdf-workspace.css';
 export type { PdfExportFile, PdfProject, PdfSourceDocument } from './types';
 
-type Props = { reviewOnly?:boolean;onReviewStateChange?:(dirty:boolean)=>void;embedded?:boolean;initialSession?:PdfEditorSession;onRegisterControl?:(control:PdfEditorControl|null)=>void; maxBytes?:number; onDirtyChange?:(dirty:boolean)=>void; transient?:boolean; onReview?:(files:PdfExportFile[],next:'email'|'download')=>Promise<void|(()=>void)>; documents: PdfSourceDocument[]; initialProject?: PdfProject; initialDelivery?: PdfProject['delivery']; initialReviewed?:boolean; onContinueToEmail?:()=>void; accountName: string; hotel: string; selectedCount: number; onClose: () => void|Promise<void>; onSave?: (files: PdfExportFile[], project: PdfProject) => Promise<void>; onSaveDraft?: (project: PdfProject) => Promise<void> };
+type Props = { onDeliveryChange?:(delivery:PdfProject['delivery'])=>void; reviewOnly?:boolean;onReviewStateChange?:(dirty:boolean)=>void;embedded?:boolean;initialSession?:PdfEditorSession;onRegisterControl?:(control:PdfEditorControl|null)=>void; maxBytes?:number; onDirtyChange?:(dirty:boolean)=>void; transient?:boolean; onReview?:(files:PdfExportFile[],next:'email'|'download')=>Promise<void|(()=>void)>; documents: PdfSourceDocument[]; initialProject?: PdfProject; initialDelivery?: PdfProject['delivery']; initialReviewed?:boolean; onContinueToEmail?:()=>void; accountName: string; hotel: string; selectedCount: number; onClose: () => void|Promise<void>; onSave?: (files: PdfExportFile[], project: PdfProject) => Promise<void>; onSaveDraft?: (project: PdfProject) => Promise<void> };
 const fonts = ['Arial', 'Georgia', 'Courier New', 'Tahoma', 'Plus Jakarta Sans'];
 const uid = () => crypto.randomUUID();
 
@@ -50,7 +50,7 @@ function PageCanvas({ page, documents, className = '', scale = 1.5 }: { page: Pd
   return <div className={`pdf-canvas ${className}`} data-render-state={rendered===page?'ready':'rendering'} aria-label="PDF page"><div className="pdf-canvas-art" ref={container}/>{error&&<span className="pdf-canvas-warning" title={error} aria-label={error}>!</span>}</div>;
 }
 
-export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=false,initialSession,onRegisterControl,maxBytes=67108864,onDirtyChange, transient=false, onReview, documents: sources, initialProject, initialDelivery='combined', initialReviewed=false,onContinueToEmail, accountName, hotel, selectedCount, onClose, onSave, onSaveDraft }: Props) {
+export function PdfWorkspace({ onDeliveryChange,reviewOnly=false,onReviewStateChange,embedded=false,initialSession,onRegisterControl,maxBytes=67108864,onDirtyChange, transient=false, onReview, documents: sources, initialProject, initialDelivery='combined', initialReviewed=false,onContinueToEmail, accountName, hotel, selectedCount, onClose, onSave, onSaveDraft }: Props) {
   const [companion,setCompanion]=useState(()=>matchMedia('(max-width:899px)').matches);
   useEffect(()=>{const media=matchMedia('(max-width:899px)'),change=()=>setCompanion(media.matches);media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
   const [attachedSources,setAttachedSources]=useState<PdfSourceDocument[]>([]);
@@ -58,6 +58,7 @@ export function PdfWorkspace({ reviewOnly=false,onReviewStateChange,embedded=fal
   const attachmentDisposers=useRef<(()=>void)[]>([]),attachmentLoading=useRef(false);
   const [loaded, setLoaded] = useState<Map<string, PDFDocumentProxy>>(new Map());
   const [project, setProject] = useState<PdfProject | null>(null);
+  useEffect(()=>{if(project)onDeliveryChange?.(project.delivery);},[project?.delivery,onDeliveryChange]);
   const [persistedProject, setPersistedProject] = useState<PdfProject | null>(null);
   const [draftSaved, setDraftSaved] = useState(false), [closeConfirm, setCloseConfirm] = useState(false);
   const [pendingNames,setPendingNames]=useState<Set<string>>(()=>new Set());

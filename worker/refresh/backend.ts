@@ -27,7 +27,7 @@ export async function backendRpc<T>(env:RefreshEnv,name:string,body:Record<strin
   const response=await fetch(`${url.origin}/rest/v1/rpc/${routed.name}`,{method:'POST',headers:{apikey:env.SUPABASE_SECRET_KEY,'Content-Type':'application/json',...(env.REQUEST_ACTOR?{'X-Ar-Actor':env.REQUEST_ACTOR}:{})},body:JSON.stringify(routed.args),redirect:'manual',signal:AbortSignal.timeout(20000)});
   if(!response.ok){
     let message:unknown;try{message=(JSON.parse(new TextDecoder().decode(await boundedBody(response,8192))) as {message?:unknown}).message;}catch{await response.body?.cancel().catch(()=>{});}
-    if(message==='budget_database_exceeded'||message==='retention_busy')throw Error(message);
+    if(message==='budget_database_exceeded'||message==='retention_busy'||message==='document_busy')throw Error(message);
     if(name.startsWith('ar_access_')&&typeof message==='string'&&/^(access_[a-z_]+|email_region_disabled)$/.test(message))throw Error(message);
     if(name.startsWith('ar_financial_')&&typeof message==='string'&&/^financial_[a-z_]{1,80}$/.test(message))throw Error(message);
     throw new OperaError('provider_unavailable',response.status,`database_${name}`);

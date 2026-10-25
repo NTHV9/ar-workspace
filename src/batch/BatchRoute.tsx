@@ -1,3 +1,4 @@
+import CombinedEmailComposer,{type CombinedControl} from './CombinedEmailComposer';
 import {createBatchPdfPreparation} from './prepare-pdfs';
 import {renderBatchPdfs} from './render-pdfs';
 import {retainPdfSession,type BatchPhase} from './phase';
@@ -13,12 +14,13 @@ import {useCollectionPolicy} from '../collection/PolicyContext';
 import {stageLabel} from '../domain/collection';
 import {sessionBytes} from '../pdf/editor-session';
 import {batchRequest} from './api';
-import {assertBatchJob,freezeMail,loadBatch,removeBatch,saveBatch,sendBatch,type BatchEntry,type BatchMailSnapshot,type BatchRecord} from './state';
+import {initialCombined,combinedDelivery,combinedLocked,assertBatchJob,freezeMail,loadBatch,removeBatch,saveBatch,sendBatch,type BatchEntry,type BatchMailSnapshot,type BatchRecord} from './state';
 import './batch.css';
 const MAX_PAUSED_BYTES=192*1024*1024;
 const canSend=(mail:BatchMailSnapshot|undefined)=>!!mail&&!mail.blocked&&(!mail.delivery||mail.delivery.mode==='draft'&&mail.delivery.state==='created');
 export default function BatchRoute({owner,workspaceOwner,region,batchId,token,maxBytes,onClose,onRegisterLeave,onDirtyChange}:{owner:string;workspaceOwner:string;region:RegionId;batchId:string;token:string;maxBytes:number;onClose:()=>void;onRegisterLeave:(leave:(()=>Promise<boolean>)|null)=>void;onDirtyChange:(dirty:boolean,kind?:'pdf'|'email')=>void}){
- const [batch,setBatch]=useState(()=>{const saved=loadBatch(sessionStorage,owner,batchId,region);return saved?{...saved,workspaceOwner}:null;}),record=useRef(batch);
+ const [batch,setBatch]=useState<BatchRecord|null>(()=>{const saved=loadBatch(sessionStorage,owner,batchId,region);return saved?{...saved,workspaceOwner}:null;}),record=useRef(batch);
+ const combinedControl=useRef<CombinedControl|null>(null);const [combinedBusy,setCombinedBusy]=useState(false);
  const [preparingPdf,setPreparingPdf]=useState('');
  const [active,setActive]=useState(0),[view,setView]=useState<'work'|'review'>('work'),[error,setError]=useState(''),[switching,setSwitching]=useState(false),[creating,setCreating]=useState(false),[sending,setSending]=useState(false),[,refresh]=useState(0),[sendIds,setSendIds]=useState<Set<string>>(new Set());
  const alive=useRef(true),tokenRef=useRef(token);tokenRef.current=token;
@@ -44,6 +46,8 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
  const pdfDirty=useRef(new Map<string,boolean>());
  const reportPdfDirty=useCallback((jobId:string,dirty:boolean)=>{if(pdfDirty.current.get(jobId)!==dirty){pdfDirty.current.set(jobId,dirty);refresh(n=>n+1);}},[]);
  const changed=()=>{if(alive.current)refresh(n=>n+1);};
+ function updateBatch(next:BatchRecord){saveBatch(sessionStorage,next);record.current=next;setBatch(next);}
+ async function changeEmailMode(mode:'separate'|'combined'){if(busy.current||switching||combinedBusy||!record.current||combinedLocked(record.current))return;setSwitching(true);try{await captureActive();const b=record.current!;updateBatch({...b,emailMode:mode,...mode==='combined'&&!b.combined?{combined:initialCombined(b)}:{}});setView('work');}catch(e){setError(e instanceof Error?e.message:'Finish the current email first.');}finally{setSwitching(false);}}
  function updateEntry(command:string,change:Partial<BatchEntry>){
   const current=record.current;if(!current||!alive.current)return;
   const next={...current,entries:current.entries.map(e=>e.commandKey===command?{...e,...change}:e)};
@@ -82,12 +86,12 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   };void read();const timer=setInterval(()=>void read(),4000);return()=>{cancelled=true;clearInterval(timer);};
  },[batch?.entries.map(e=>e.jobId??'').join(','),receiveJob]);
  async function captureActive(){
-  const current=record.current,entry=current?.entries[active];if(!current||!entry?.jobId||view!=='work')return;
+  const current=record.current,entry=current?.entries[active];if(!current||!entry?.jobId||view!=='work'||phase==='email'&&current.emailMode==='combined')return;
   const control=controls.current.get(entry.jobId);if(!control){if(jobs.current.get(entry.jobId)?.closed_at)return;throw Error('Wait for the current account to load before switching.');}
   const captured=await control.suspend();if(!alive.current)return;
   const other=[...sessions.current].filter(([id])=>id!==entry.jobId).reduce((n,[,s])=>n+sessionBytes(s.sources??[],s.editor??null),0);
   if(other+sessionBytes(captured.session.sources??[],captured.session.editor??null)>MAX_PAUSED_BYTES)throw Error('The batch editing memory limit is reached. Review the current PDFs and continue to email before opening more accounts.');
-  sessions.current.set(entry.jobId,retainPdfSession(sessions.current.get(entry.jobId),captured.session));
+  sessions.current.set(entry.jobId,retainPdfSession(sessions.current.get(entry.jobId),{...captured.session,delivery:entry.pdfDelivery??captured.session.editor?.project.delivery}));
   if(captured.mail){if(captured.mail.jobId!==entry.jobId||captured.mail.hotel!==entry.selection.hotel||captured.mail.accountId!==entry.selection.accountId)throw Error('Email identity does not match this account.');mails.current.set(entry.jobId,captured.mail);updateEntry(entry.commandKey,{stage:captured.mail.stage??entry.selection.stage,policyVersion:captured.mail.policyVersion,mailDraftId:captured.mail.draftId,mailRevision:captured.mail.mailRevision,delivery:captured.mail.delivery??undefined});}
  }
  async function switchAccount(index:number){
@@ -97,13 +101,14 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   finally{if(alive.current)setSwitching(false);}
  }
  async function reviewBatch(){
+  if(record.current?.emailMode==='combined'){await combinedControl.current?.review();return;}
   if(phase!=='email'||busy.current||switching||sending)return;setSwitching(true);setError('');
   try{await captureActive();if(alive.current){setSendIds(new Set([...mails.current.values()].filter(canSend).map(m=>m.jobId)));setView('review');}}
   catch(e){setError(e instanceof Error?e.message:'Finish the current account first.');}
   finally{if(alive.current)setSwitching(false);}
  }
  async function changePhase(next:BatchPhase){
-  if(busy.current||switching||sending)return;busy.current=true;setSwitching(true);setError('');
+  if(busy.current||switching||sending||combinedBusy||record.current&&combinedLocked(record.current))return;busy.current=true;setSwitching(true);setError('');
   try{
    const activeId=record.current?.entries[active]?.jobId,control=activeId?controls.current.get(activeId):undefined;
    const recovering=next==='email'&&activeId&&pdfPreparation.current?.pending(activeId)&&(!control||control.sourceConflict()||control.unavailable());
@@ -115,7 +120,7 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
      try{
       if(!item.jobId)throw Error('The source PDF request has not finished.');
       const latest=await batchRequest<DocumentJob>(`/api/documents/${item.jobId}`,tokenRef.current);assertBatchJob(current,item,latest);
-      const prepared=await pdfPreparation.current!(latest,sessions.current.get(item.jobId));
+      const prepared=await pdfPreparation.current!(latest,sessions.current.get(item.jobId)??(item.pdfDelivery?{revision:latest.revision,sources:null,compose:false,delivery:item.pdfDelivery}:undefined));
       if(!alive.current)return;
       if(prepared.session)sessions.current.set(item.jobId,prepared.session);
       pdfDirty.current.set(item.jobId,false);receiveJob(prepared.job);
@@ -128,7 +133,7 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
  }
 
  async function leave(){
-  if(busy.current||switching||sending||[...controls.current.values()].some(c=>c.busy())){setError('Wait for the current operation before leaving this batch.');return false;}
+  if(busy.current||switching||sending||combinedBusy||[...controls.current.values()].some(c=>c.busy())){setError('Wait for the current operation before leaving this batch.');return false;}
   const current=record.current;if(!current)return true;
   if(current.entries.some(e=>e.requested&&!e.jobId)){setError('A preparation result is unconfirmed. Retry its existing request before closing the batch.');return false;}
   setSwitching(true);setError('');
@@ -175,17 +180,18 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   finally{if(alive.current)setSwitching(false);}
  }
  if(!batch)return <main className="page"><h1>Batch unavailable in this tab</h1><button onClick={onClose}>Back to Collections</button></main>;
- const sentCount=batch.entries.filter(e=>e.delivery?.state==='sent').length,complete=sentCount===batch.entries.length;
+ const sharedDelivery=combinedDelivery(batch.combined),sentCount=sharedDelivery?.state==='sent'&&sharedDelivery.recorded?batch.entries.length:batch.entries.filter(e=>e.delivery?.state==='sent').length,complete=sentCount===batch.entries.length;
  const entry=batch.entries[active],selectedMails=[...mails.current.values()].filter(m=>sendIds.has(m.jobId));
  return <section className="batch-workspace" aria-label="Selected account preparations">
-  <header className="batch-heading"><button disabled={creating||sending||switching} onClick={()=>{if(batchHasEdits(childDirty.current,sessions.current.values())){if(!confirm('Leave this batch and discard tab-only PDF edits? Draft and uncertain email files remain protected.'))return;}void leave().then(ok=>{if(ok)onClose();});}}><ArrowLeft size={17}/>Collections</button><div><h1>{complete?'Batch results':view==='review'?'Review & send':phase==='pdf'?'PDF Workspace':'Email preparation'}</h1><span>{`${batch.entries.length} accounts · ${batch.entries.reduce((n,e)=>n+e.selection.ids.length,0)} invoices`}</span></div>{phase==='email'&&view==='work'&&<button disabled={creating||sending||switching} onClick={()=>void changePhase('pdf')}>Back to PDFs</button>}<button className="primary-button" disabled={creating||sending||switching} onClick={()=>void (view==='review'?switchAccount(active):phase==='pdf'?changePhase('email'):reviewBatch())}>{preparingPdf?'Preparing PDFs…':view==='review'?'Back to emails':phase==='pdf'?'Go to email':'Review & send'}</button></header>
+  <header className="batch-heading"><button disabled={creating||sending||switching||combinedBusy} onClick={()=>{if(batchHasEdits(childDirty.current,sessions.current.values())){if(!confirm('Leave this batch and discard tab-only PDF edits? Draft and uncertain email files remain protected.'))return;}void leave().then(ok=>{if(ok)onClose();});}}><ArrowLeft size={17}/>Collections</button><div><h1>{complete?'Batch results':view==='review'?'Review & send':phase==='pdf'?'PDF Workspace':'Email preparation'}</h1><span>{`${batch.entries.length} accounts · ${batch.entries.reduce((n,e)=>n+e.selection.ids.length,0)} invoices`}</span></div>{phase==='email'&&view==='work'&&!combinedLocked(batch)&&<button disabled={creating||sending||switching||combinedBusy} onClick={()=>void changePhase('pdf')}>Back to PDFs</button>}<button className="primary-button" disabled={creating||sending||switching||combinedBusy} onClick={()=>void (view==='review'?switchAccount(active):phase==='pdf'?changePhase('email'):reviewBatch())}>{preparingPdf?'Preparing PDFs…':view==='review'?'Back to emails':phase==='pdf'?'Go to email':'Review & send'}</button></header>
+  {phase==='email'&&<fieldset className="batch-email-mode" disabled={creating||sending||switching||combinedBusy||combinedLocked(batch)||batch.entries.some(e=>e.attempted||e.delivery)}><legend>Email delivery</legend>{(['separate','combined'] as const).map(mode=><label key={mode}><input type="radio" name="batch-email-mode" checked={(batch.emailMode??'separate')===mode} onChange={()=>void changeEmailMode(mode)}/>{mode==='separate'?'Separate emails':'One combined email'}</label>)}</fieldset>}
   {error&&<p className="error-message batch-error" role="alert">{error}</p>}
   <div className="batch-layout"><nav className="batch-account-tabs" aria-label="Accounts in this batch">{batch.entries.map((item,index)=>{
    const itemJob=item.jobId?jobs.current.get(item.jobId):undefined,mail=item.jobId?mails.current.get(item.jobId):undefined;
-   const status=item.delivery?.state==='sent'?'Sent':item.error?'Needs attention':phase==='email'?(mailReady(mail)?'Ready to send':mail?.blocked?'Email needed':'Check email'):itemJob?.state==='ready'?(item.jobId&&pdfDirty.current.get(item.jobId)?'Editing PDF':'PDF ready'):itemJob?.state??(item.requested?'Preparing…':'Waiting');
-   return <button key={item.commandKey} disabled={creating||switching||sending} aria-pressed={index===active} onClick={()=>void switchAccount(index)}><strong>{item.selection.accountName}</strong><span><b>{item.selection.hotel}</b><small>{stageLabel(item.stage??item.selection.stage,policy)} · {status}</small></span></button>;
+   const status=phase==='email'&&batch.emailMode==='combined'?(sharedDelivery?.recorded?'Sent':combinedLocked(batch)?'Shared delivery pending':'Included package'):item.delivery?.state==='sent'?'Sent':item.error?'Needs attention':phase==='email'?(mailReady(mail)?'Ready to send':mail?.blocked?'Email needed':'Check email'):itemJob?.state==='ready'?(item.jobId&&pdfDirty.current.get(item.jobId)?'Editing PDF':'PDF ready'):itemJob?.state??(item.requested?'Preparing…':'Waiting');
+   return <button key={item.commandKey} disabled={creating||switching||sending||combinedBusy} aria-pressed={index===active} onClick={()=>void switchAccount(index)}><strong>{item.selection.accountName}</strong><span><b>{item.selection.hotel}</b><small>{stageLabel(item.stage??item.selection.stage,policy)} · {status}</small></span></button>;
   })}</nav><div className="batch-content">
-   {preparingPdf?<section className="batch-wait" role="status"><FileText size={30}/><h2>Preparing PDFs for email</h2><p>{preparingPdf}</p></section>:view==='work'?(entry?.jobId?<DocumentRoute key={`${entry.jobId}:${phase}`} token={token} jobId={entry.jobId} maxBytes={maxBytes} backLabel="Back to accounts" onClose={()=>void (phase==='email'?reviewBatch():changePhase('email'))} onDirtyChange={reportDirty} batch={{scope:{batch,entry},phase,onPdfDirtyChange:dirty=>reportPdfDirty(entry.jobId!,dirty),initialSession:sessions.current.get(entry.jobId),stage:entry.stage??entry.selection.stage,onJob:receiveJob,onRegisterControl:control=>{if(control)controls.current.set(entry.jobId!,control);else controls.current.delete(entry.jobId!);},onPhaseChange:next=>void changePhase(next),onReview:()=>void reviewBatch()}}/>:<section className="batch-wait"><FileText size={30}/><h2>{entry?.selection.accountName}</h2><p>{creating?'Preparing account requests…':entry?.error??'The request has not been confirmed.'}</p>{!creating&&<button onClick={()=>void createEntries(true)}>Retry existing preparation requests</button>}</section>):<section className="batch-review"><h2>{complete?'All selected emails sent':'Separate emails for each account'}</h2><div className="batch-review-table"><table><thead><tr><th>Select</th><th>Account / Hotel</th><th>Recipients / Files</th><th>Status</th><th></th></tr></thead><tbody>{batch.entries.map((item,index)=>{
+   {preparingPdf?<section className="batch-wait" role="status"><FileText size={30}/><h2>Preparing PDFs for email</h2><p>{preparingPdf}</p></section>:phase==='email'&&batch.emailMode==='combined'&&batch.combined?<CombinedEmailComposer batch={batch} token={token} jobs={jobs.current} onBusy={setCombinedBusy} onRegister={control=>{combinedControl.current=control;}} onEntry={(command,draft)=>updateEntry(command,{mailDraftId:draft.id,mailRevision:draft.revision,policyVersion:policy?.version??null})} onChange={combined=>{if(record.current)updateBatch({...record.current,combined});}}/>:view==='work'?(entry?.jobId?<DocumentRoute key={`${entry.jobId}:${phase}`} token={token} jobId={entry.jobId} maxBytes={maxBytes} backLabel="Back to accounts" onClose={()=>void (phase==='email'?reviewBatch():changePhase('email'))} onDirtyChange={reportDirty} batch={{scope:{batch,entry},phase,onDeliveryChange:delivery=>{const latest=record.current?.entries.find(e=>e.commandKey===entry.commandKey);if(latest?.pdfDelivery!==delivery)try{updateEntry(entry.commandKey,{pdfDelivery:delivery});}catch(error){setError(error instanceof Error?error.message:'Tab resume storage is unavailable. Keep this tab open.');}},onPdfDirtyChange:dirty=>reportPdfDirty(entry.jobId!,dirty),initialSession:sessions.current.get(entry.jobId),stage:entry.stage??entry.selection.stage,onJob:receiveJob,onRegisterControl:control=>{if(control)controls.current.set(entry.jobId!,control);else controls.current.delete(entry.jobId!);},onPhaseChange:next=>void changePhase(next),onReview:()=>void reviewBatch()}}/>:<section className="batch-wait"><FileText size={30}/><h2>{entry?.selection.accountName}</h2><p>{creating?'Preparing account requests…':entry?.error??'The request has not been confirmed.'}</p>{!creating&&<button onClick={()=>void createEntries(true)}>Retry existing preparation requests</button>}</section>):<section className="batch-review"><h2>{complete?'All selected emails sent':'Separate emails for each account'}</h2><div className="batch-review-table"><table><thead><tr><th>Select</th><th>Account / Hotel</th><th>Recipients / Files</th><th>Status</th><th></th></tr></thead><tbody>{batch.entries.map((item,index)=>{
     const mail=item.jobId?mails.current.get(item.jobId):undefined,delivery=item.delivery??mail?.delivery,status=delivery?.state==='sent'?'Sent and verified':delivery?delivery.state.replaceAll('_',' '):item.error?'Check outcome':mailReady(mail)?'Ready to send':mail?.blocked??'Review PDFs and email';
     return <tr key={item.commandKey}><td><input type="checkbox" aria-label={`Send ${item.selection.accountName} ${item.selection.hotel} ${item.selection.stage}`} checked={!!item.jobId&&sendIds.has(item.jobId)} disabled={sending||switching||!mailReady(mail)} onChange={e=>setSendIds(old=>{const next=new Set(old);if(item.jobId)e.target.checked?next.add(item.jobId):next.delete(item.jobId);return next;})}/></td><td><strong>{item.selection.accountName}</strong><small>{item.selection.hotel} · {stageLabel(mail?.stage??item.selection.stage,policy)}</small></td><td>{mail?<details><summary>{mail.recipients.to.join(', ')||'Email needed'} · {mail.files.length} files</summary><p>From: {mail.sender}</p><p>CC: {mail.recipients.cc.join(', ')||'None'}<br/>BCC: {mail.recipients.bcc.join(', ')||'None'}</p><p>{mail.subject}</p><ul>{mail.files.map((f,n)=><li key={n}>{f}</li>)}</ul></details>:<span>Not reviewed yet</span>}</td><td><span className={delivery?.state==='sent'?'batch-sent':''}>{delivery?.state==='sent'&&<Check size={14}/>} {status}</span>{item.error&&<small>{item.error}</small>}</td><td><button disabled={sending||switching} onClick={()=>void switchAccount(index)}>Review</button>{item.mailDraftId&&(item.attempted||delivery)&&<button disabled={sending||switching||delivery?.state==='sent'} onClick={()=>void checkEntry(item)}><RefreshCw size={14}/>Check status</button>}</td></tr>;
    })}</tbody></table></div><footer><span>{complete?`${sentCount} emails sent`:`${sentCount?`${sentCount} sent · `:''}${selectedMails.filter(mailReady).length} emails ready`}</span><button className="primary-button" disabled={sending||switching||!complete&&(!selectedMails.length||selectedMails.some(m=>!mailReady(m)))} onClick={()=>{if(complete)void leave().then(ok=>{if(ok)onClose();});else void sendSelected();}}>{complete?<ArrowLeft size={16}/>:<Send size={16}/>}{complete?'Back to Collections':sending?'Sending and verifying…':`Send ${selectedMails.length} emails`}</button></footer></section>}
