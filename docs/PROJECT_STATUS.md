@@ -1,3 +1,35 @@
+## 2026-10-25 — Verified reopened balances resume normal work
+
+**Implemented, tested and enabled in the database.** The owner removes automatic
+Needs review solely because a verified balance changed from zero to nonzero.
+The generic source trigger retains the verified-balance/zero-since bookkeeping,
+reopened observation time and source_reopened audit, while normal collection work
+uses existing billing/reminder history. No new automatic review flag is created.
+
+An inaccessible internal helper clears only the exact former automatic reason
+when the current source is verified/cleared, records a policy_allow_reopened audit
+revision, and heals a remaining legacy flag on subsequent verified observations.
+Independent holds, other review reasons, notes/disputes, unknown-source checks,
+source identity and mail handoff guards are retained. This is not an Invoice-
+specific override. All six financial hotels are exercised; TSUN remains pre-opening.
+
+Qualification: 4,624 unit tests, typecheck, 134 migration replay and all 24 SQL
+fixtures pass. The existing invoice-exception fixture is now included in CI with
+the current mailbox contract and updated policy expectations; actor/hotel guards,
+command replay, manual holds, actual Sent facts and billing-method/thread gates
+remain asserted. Source0→positive failed RED before the rule change. Focused
+review found no production behavior, ACL or history blocker after fixture repairs.
+Hosted migration: `20261025054130_ar_reopened_balance_normal_work`.
+
+Live readback releases one existing automatic flag, leaving its balance, first
+billing date, credit term, due date and original reopening observation intact.
+The new history row identifies the policy change rather than claiming an operator
+review. No mail, OPERA ledger or Sheet write is part of this change. Same-head
+GitHub qualification remains authoritative at PR142 checks; final live/CI proof
+is attached there and in this task. Independent project-audit notes in this shared
+worktree are preserved and excluded from this policy commit.
+
+
 ## 2026-10-25 — GitHub notification audit and committed browser guards
 
 **Implemented and locally tested.** The nine pictured failures and newer7cb9381

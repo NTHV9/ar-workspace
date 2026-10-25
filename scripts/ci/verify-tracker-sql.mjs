@@ -80,7 +80,7 @@ try{
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
  const tests=join(root,'tests/sql');
- for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)).sort()){
+ for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||n==='invoice-exceptions-rollback.sql').sort()){
   const text=readFileSync(join(tests,name),'utf8'),ownTransaction=/^begin;/im.test(text)&&/rollback;\s*$/i.test(text);
   try{file(join(tests,name),!ownTransaction);report.fixtures.push(name);console.log('PASS '+name);}
   catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}

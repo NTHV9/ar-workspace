@@ -1,3 +1,20 @@
+## 2026-10-25 — Verified reopened debt resumes normal work
+
+The owner removes the automatic Needs review barrier caused solely by a verified
+zero-to-nonzero OPERA balance. Such an Invoice follows normal billing/collection
+rules using its existing billing and reminder dates; it is not reset to unbilled.
+Retain the durable verified balance, reopened observation time and source_reopened
+audit transition. Release only the old canonical automatic reason, with a distinct
+policy audit record, when the current source is verified/cleared. Subsequent
+verified refreshes also heal a remaining old automatic flag.
+
+Explicit holds, unrelated review reasons, incomplete/unverified source data and
+all identity/send guards remain authoritative. No automatic sending, financial
+amount or Sheet-date changes follow from this policy. All six financially enabled
+hotels use the generic rule; TSUN remains pre-opening under its existing schema.
+This supersedes the earlier requirement for explicit review solely after a
+verified-zero invoice returned to a nonzero balance.
+
 ## 2026-10-25 — Current warning work and archived warning history
 
 The owner approves repairing warnings for confirmed-zero invoices and rows no
