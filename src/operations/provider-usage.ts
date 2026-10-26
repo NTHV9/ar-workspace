@@ -23,7 +23,7 @@ function parseMetric(value:unknown,now:number):ProviderQuotaMetric|null {
  if(!instant(m.verifiedAt)||!instant(m.staleAfter)||Date.parse(m.staleAfter)<=Date.parse(m.verifiedAt)||!(m.observedAt===null||instant(m.observedAt)))return null;
  if(!((m.periodStart===null&&m.periodEnd===null)||(instant(m.periodStart)&&instant(m.periodEnd)&&Date.parse(m.periodStart)<Date.parse(m.periodEnd))))return null;
  if(m.periodBasis==='instantaneous'&&(m.periodStart!==null||m.periodEnd!==null))return null;
- const state=m.state==='unavailable'?'unavailable':m.state==='stale'||Date.parse(m.staleAfter)<=now||(typeof m.periodEnd==='string'&&Date.parse(m.periodEnd)<=now)?'stale':'available';
+ const state=m.state==='unavailable'?'unavailable':m.state==='stale'||Date.parse(m.staleAfter)<=now||(typeof m.periodEnd==='string'&&Date.parse(m.periodEnd)<=now)||(typeof m.periodStart==='string'&&typeof m.observedAt==='string'&&Date.parse(m.observedAt)<Date.parse(m.periodStart))?'stale':'available';
  return {id:m.id,label:m.label,product:m.product,unit:m.unit as UsageUnit,used:quantity(m.used),included:quantity(m.included),scope:m.scope as ProviderQuotaMetric['scope'],scopeLabel:m.scopeLabel,periodStart:m.periodStart as string|null,periodEnd:m.periodEnd as string|null,periodLabel:m.periodLabel,periodBasis:m.periodBasis as ProviderQuotaMetric['periodBasis'],observedAt:m.observedAt as string|null,verifiedAt:m.verifiedAt,staleAfter:m.staleAfter,source:m.source as ProviderQuotaMetric['source'],sourceLabel:m.source==='provider_snapshot'?'Last verified':'Provider API',precision:m.precision as ProviderQuotaMetric['precision'],state};
 }
 export function parseProviderUsage(value:unknown,now=Date.now()):ProviderUsageResponse {

@@ -103,10 +103,15 @@ begin
    if (m->>'observedAt')::timestamptz=(previous->>'observedAt')::timestamptz and (m->'used' is distinct from previous->'used' or m->'included' is distinct from previous->'included') then return jsonb_build_object('error','provider_observation_conflict');end if;
    cycle_changed:=m->>'periodBasis'='billing-cycle' and (m->>'periodLabel' is distinct from previous->>'periodLabel' or m->'periodStart' is distinct from previous->'periodStart' or m->'periodEnd' is distinct from previous->'periodEnd');
    if cycle_changed then
+    -- Re-verifying or relabeling the same old usage is not a new-cycle observation.
+    if m->'used'<>'null'::jsonb and (m->'observedAt'='null'::jsonb or (previous->'observedAt'<>'null'::jsonb and (m->>'observedAt')::timestamptz<=(previous->>'observedAt')::timestamptz)) then return jsonb_build_object('error','provider_cycle_conflict');end if;
+    if m->'used'<>'null'::jsonb and m->'periodStart'<>'null'::jsonb and (m->>'observedAt')::timestamptz<(m->>'periodStart')::timestamptz then return jsonb_build_object('error','provider_cycle_conflict');end if;
     if m->'periodStart'<>'null'::jsonb and previous->'periodEnd'<>'null'::jsonb then
      if (m->>'periodStart')::timestamptz<(previous->>'periodEnd')::timestamptz then return jsonb_build_object('error','provider_cycle_conflict');end if;
     else
      if p_cycle_evidence is null or jsonb_typeof(p_cycle_evidence)<>'object' or (p_cycle_evidence-array['previousPeriodLabel','periodLabel','previousEndDate','startDate'])<>'{}'::jsonb or p_cycle_evidence->>'previousPeriodLabel' is distinct from previous->>'periodLabel' or p_cycle_evidence->>'periodLabel' is distinct from m->>'periodLabel' or coalesce(p_cycle_evidence->>'previousEndDate','') !~ '^\d{4}-\d\d-\d\d$' or coalesce(p_cycle_evidence->>'startDate','') !~ '^\d{4}-\d\d-\d\d$' or (p_cycle_evidence->>'startDate')::date<(p_cycle_evidence->>'previousEndDate')::date then return jsonb_build_object('error','provider_cycle_conflict');end if;
+     -- Source-date-only evidence is checked as calendar dates, never fabricated UTC boundaries.
+     if m->'used'<>'null'::jsonb and left(m->>'observedAt',10)::date<(p_cycle_evidence->>'startDate')::date then return jsonb_build_object('error','provider_cycle_conflict');end if;
     end if;
    end if;
   end loop;
@@ -119,6 +124,3 @@ end$$;
 revoke all on function ar_private.provider_admin(uuid),ar_private.provider_snapshot_valid(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.ar_provider_usage_read(uuid),public.ar_provider_alert_save(uuid,text,integer,bigint,uuid),public.ar_provider_snapshot_write(uuid,text,bigint,jsonb,jsonb) from public,anon,authenticated;
 grant execute on function public.ar_provider_usage_read(uuid),public.ar_provider_alert_save(uuid,text,integer,bigint,uuid),public.ar_provider_snapshot_write(uuid,text,bigint,jsonb,jsonb) to service_role;
-
-
-
