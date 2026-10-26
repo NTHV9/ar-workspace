@@ -1,3 +1,4 @@
+import {afterConfirmedSent,usePreparationExit} from '../preparation/tab-exit';
 import {useCollectionPolicy} from '../collection/PolicyContext';
 import {useEffect,useRef,useState} from 'react';
 import type {CombinedEmail,CombinedMemberInput,CombinedContent} from '../email/combined';
@@ -28,6 +29,9 @@ export default function CombinedEmailComposer({batch,token,jobs,onChange,onEntry
  const update=(next:CombinedBatchState)=>{if(!live.current)return;const observedDelivery=combinedDelivery(stateRef.current),retained={...next,...observedDelivery?{observedDelivery}:{}};onChange(retained);stateRef.current=retained;};
  const edit=(change:Partial<CombinedContent>)=>{if(locked||lock.current)return;const content={...stateRef.current.content,...change};if(JSON.stringify(content)===JSON.stringify(stateRef.current.content))return;try{update({...stateRef.current,commandId:crypto.randomUUID(),content});}catch(error){setRichRecovery(value=>value+1);const recipients=stateRef.current.content.recipients;setRecipientText({to:recipients.to.join(', '),cc:recipients.cc.join(', '),bcc:recipients.bcc.join(', ')});setError(error instanceof Error?error.message:'Tab resume storage is unavailable. Keep this tab open and retry.');}};
  const operation=async(work:()=>Promise<void>)=>{if(lock.current)return;lock.current=true;setBusy(true);onBusy(true);setError('');try{await work();}catch(e){if(live.current)setError(e instanceof Error?e.message:'The shared email could not be confirmed.');}finally{lock.current=false;if(live.current){setBusy(false);onBusy(false);}}};
+ const exit=usePreparationExit(),cleanupToken=useRef(token);cleanupToken.current=token;
+ const sent=combinedDelivery(current);
+ useEffect(()=>{void afterConfirmedSent(batch.entries.filter(e=>{const job=e.jobId?jobs.get(e.jobId):null;if(!job)return false;try{assertBatchJob(batch,e,job);return true;}catch{return false;}}).map(e=>e.jobId!),sent,()=>cleanupToken.current,()=>live.current&&(!exit||exit.current()));},[sent?.id,sent?.state,sent?.recorded]);
  const packagesReady=batch.entries.every(e=>e.jobId&&jobs.has(e.jobId));
  useEffect(()=>{live.current=true;if(!packagesReady)return;let active=true;void operation(async()=>{
   const b=batchRef.current;

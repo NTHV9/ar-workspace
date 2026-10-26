@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'./tests/browser',testMatch:['preparation-tab-exit.spec.ts','document-route.spec.ts','email-navigation.spec.ts','combined-email.spec.ts','collections-workspace.spec.ts'],timeout:60000,workers:1,use:{baseURL:'http://127.0.0.1:5201',channel:'msedge',headless:true,viewport:{width:1440,height:900}},webServer:{command:'node scripts/browser-test-server.mjs .tmp/browser-site 5201',url:'http://127.0.0.1:5201',reuseExistingServer:false}});

@@ -98,12 +98,10 @@ test('failed result exit keeps its summary visible until cleanup succeeds',async
  expect(new URL(page.url()).searchParams.has('documentJob')).toBe(true);expect(abandon).toBe(1);
 });
 
-test('Browser Back protects unsaved email edits until leaving is confirmed',async({page})=>{
- const controls=await setup(page);await page.getByLabel('Email message').fill('Synthetic unsaved message');
- await dismissBack(page);await expect(page.getByLabel('Email message')).toHaveValue('Synthetic unsaved message');
- page.once('dialog',dialog=>dialog.accept());await page.evaluate(()=>history.back());
- await expect(page.getByLabel('Email message')).toHaveCount(0);
- expect(controls.calls.some(call=>/\/(send|gmail-draft)$/.test(call)||call===`PUT /api/email/${draftId}`)).toBe(false);
+test('intentional Browser Back discards ordinary preparation edits without extra confirmation',async({page})=>{
+ const controls=await setup(page);await page.getByLabel('Email message').fill('Synthetic unsaved message');const dialogs:string[]=[];page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});
+ await page.evaluate(()=>history.back());await expect(page.getByLabel('Email message')).toHaveCount(0);expect(dialogs).toEqual([]);
+ expect(controls.calls.filter(call=>call.endsWith('/abandon'))).toHaveLength(1);expect(controls.calls.some(call=>/\/(send|gmail-draft)$/.test(call)||call===`PUT /api/email/${draftId}`)).toBe(false);
 });
 
 test('saving the email clears its navigation guard',async({page})=>{
@@ -155,7 +153,7 @@ for(const view of ['templates','email'] as const)test(`saving an untouched start
  expect(controls.calls.filter(call=>call.startsWith('PUT /api/email/templates/'))).toHaveLength(1);expect(controls.calls.some(call=>/\/(send|gmail-draft)$/.test(call))).toBe(false);
 });
 
-test('saving a nested template preserves the guard for unsaved email recipients',async({page})=>{
+test('after saving a nested template ordinary unsaved preparation recipients need no extra exit confirmation',async({page})=>{
  const controls=await setup(page);
  await page.getByLabel('Email CC',{exact:true}).fill('copy@example.test, ar@katathani.com');
  await page.getByRole('button',{name:'Choose template',exact:true}).click();
@@ -163,8 +161,8 @@ test('saving a nested template preserves the guard for unsaved email recipients'
  const request=controls.templateSave!.request(),content=request.postDataJSON().content;
  await controls.templateSave!.fulfill({json:{...content,id:new URL(request.url()).pathname.split('/').at(-1),revision:1,updated_at:'2026-09-14T02:00:00Z'}});
  await expect(page.locator('.template-feedback')).toContainText('Template saved.');
- await dismissBack(page,'Template name');
- await expect(page.getByLabel('Email CC',{exact:true})).toHaveValue('copy@example.test, ar@katathani.com');
+ const dialogs:string[]=[];page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});await page.evaluate(()=>history.back());await expect(page.getByLabel('Template name',{exact:true})).toHaveCount(0);expect(dialogs).toEqual([]);
+ expect(controls.calls.filter(call=>call.endsWith('/abandon'))).toHaveLength(1);
  expect(controls.calls).not.toContain(`PUT /api/email/${draftId}`);
  expect(controls.calls.some(call=>/\/(send|gmail-draft)$/.test(call))).toBe(false);
 });

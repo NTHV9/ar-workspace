@@ -5,7 +5,7 @@ import {readManagedStorage,StorageWriteNotDispatched} from '../operations/storag
 import type {RefreshEnv} from '../refresh/backend';
 import {documentSource} from './source-policy';
 import {PDFDocument} from 'pdf-lib';
-import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput} from './jobs';
+import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput,type DocumentJob} from './jobs';
 import {isHotelId} from '../../src/domain/hotels';
 import {administratorEmail} from '../../src/access/model';
 import {boundedBody} from '../email/shared';
@@ -53,6 +53,22 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    const input=await bodyJson(request,1024*1024);if(typeof input.commandKey!=='string'||!uuidPattern.test(input.commandKey)||!isHotelId(input.hotel)||typeof input.accountId!=='string'||!input.accountId||input.accountId.length>200||!Array.isArray(input.ids)||input.ids.length<1||input.ids.length>4000||input.ids.some(id=>typeof id!=='string'||!id||id.length>200)||new Set(input.ids).size!==input.ids.length||!['statement','invoices','both'].includes(String(input.content))||!['combined','statement_bundle','separate'].includes(String(input.layout))||!['billing','collection'].includes(String(input.purpose)))return json({error:'document_request_invalid'},400);
    input.statementSource=documentSource({content:String(input.content),statementSource:input.statementSource,ids:input.ids});
    return json(await createDocumentJob(env,owner,input as unknown as DocumentCreateInput),202);
+  }
+  const command=/^\/api\/documents\/commands\/([0-9a-f-]{36})\/abandon$/.exec(url.pathname);
+  if(command){
+   if(request.method!=='POST')return json({error:'method_not_allowed'},405);
+   const input=await bodyJson(request,1024);
+   if(!uuidPattern.test(command[1])||!isHotelId(input.hotel)||typeof input.payloadDigest!=='string'||!/^[0-9a-f]{64}$/.test(input.payloadDigest)||Object.keys(input).some(k=>!['hotel','payloadDigest'].includes(k)))return json({error:'document_request_invalid'},400);
+   if(!env.REQUEST_ACTOR)return json({error:'document_forbidden'},403);
+   const resolved=await rpc(env,'ar_document_command_abandon',{p_actor:env.REQUEST_ACTOR,p_owner:owner,p_command_key:command[1],p_hotel:input.hotel,p_payload_digest:input.payloadDigest}) as {job_id?:string;commandKey:string;hotel:string;payloadDigest:string;outcome:string};
+   if(resolved.commandKey!==command[1]||resolved.hotel!==input.hotel||resolved.payloadDigest!==input.payloadDigest)throw Error('document_command_receipt_invalid');
+   if(!resolved.job_id)return json(resolved);
+   if(!uuidPattern.test(resolved.job_id))throw Error('document_command_receipt_invalid');
+   // Separate RPC transaction: release command lock before existing global/actor abandon locks.
+   const result=await rpc(env,'ar_document_abandon',{p_actor:owner,p_job_id:resolved.job_id}) as {job:DocumentJob;outcome:string};
+   if(result.job?.id!==resolved.job_id)throw Error('document_command_receipt_invalid');
+   if(result.outcome==='discarded'&&background)try{background.waitUntil(cleanupTransientDocument(env,owner,resolved.job_id).catch(()=>{}));}catch{}
+   return json({...result,commandKey:command[1],hotel:input.hotel,payloadDigest:input.payloadDigest});
   }
   const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch|review|discard|abandon)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
   if(!match||!uuidPattern.test(match[1]))return json({error:'not_found'},404);

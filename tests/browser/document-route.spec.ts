@@ -425,14 +425,11 @@ test('transient edits survive resize but cannot be saved as a project',async({pa
  await page.setViewportSize({width:1280,height:800});await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC TAB-ONLY EDIT');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
  await expect(page.getByRole('alertdialog',{name:'Unsaved PDF changes'})).toContainText('PDF edits only live in this tab');await page.getByRole('button',{name:'Discard changes and close',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation discarded',exact:true})).toBeVisible();
 });
-test('browser Back warns before discarding tab-only PDF edits',async({page})=>{
- await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,`/?documentJob=${jobId}`);
- // Give this isolated fixture the same same-document history shape as opening
- // an Account from Portfolio and replacing its URL with document preparation.
+test('intentional browser Back discards tab-only PDF edits without another confirmation',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,`/?documentJob=${jobId}`);
  await page.evaluate(()=>{const current=location.href;history.replaceState(null,'','/');history.pushState(null,'',current);});
- await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC KEEP ON BACK');
- const prompt=page.waitForEvent('dialog');await page.evaluate(()=>history.back());const dialog=await prompt;expect(dialog.message()).toContain('tab-only PDF edits');await dialog.dismiss();
- await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC KEEP ON BACK');await expect(page).toHaveURL(new RegExp('documentJob='+jobId));
+ await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC DISCARD ON EXIT');
+ const dialogs:string[]=[];page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});await page.evaluate(()=>history.back());await expect(page.getByRole('dialog',{name:'PDF Workspace',exact:true})).toHaveCount(0);expect(dialogs).toEqual([]);expect(controls.abandons).toBe(1);expect(controls.outboundRequests).toEqual([]);
 });
 
 test('a review in flight locks editing and keeps email closed until confirmed',async({page})=>{

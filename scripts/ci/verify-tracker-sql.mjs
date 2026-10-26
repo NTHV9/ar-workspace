@@ -1,3 +1,4 @@
+import {verifyCommandExitConcurrency} from './verify-command-exit-concurrency.mjs';
 import {spawn,spawnSync} from 'node:child_process';
 import {verifyDraftDiscardConcurrency} from './verify-draft-discard-concurrency.mjs';
 import {verifyCombinedEmailContract} from './verify-combined-email-contract.mjs';
@@ -90,7 +91,7 @@ try{
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
  const tests=join(root,'tests/sql');
- for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql','provider-quota-warnings-rollback.sql','provider-usage-rollback.sql'].includes(n)).sort()){
+ for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['document-command-exit-rollback.sql','invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql','provider-quota-warnings-rollback.sql','provider-usage-rollback.sql'].includes(n)).sort()){
   const text=readFileSync(join(tests,name),'utf8'),ownTransaction=/^begin;/im.test(text)&&/rollback;\s*$/i.test(text);
   try{file(join(tests,name),!ownTransaction);report.fixtures.push(name);console.log('PASS '+name);}
   catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}
@@ -114,6 +115,8 @@ try{
  if(command('select revision from ar_private.provider_alert_settings where provider=\'cloudflare\'')!=='1'||command('select count(*) from ar_private.provider_alert_commands')!=='2')throw Error('Provider race lost revision or receipts');
  report.providerSettingsConcurrency='two sessions: one revision-1 winner, one immutable revision-conflict receipt';
  console.log('PASS concurrent provider alert settings revision and receipts');
+ report.commandExitConcurrency=await verifyCommandExitConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
+ console.log('PASS real SQL command close/create both concurrent orders, lost response and exact replay');
  report.documentExitConcurrency=await verifyDraftDiscardConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
  console.log('PASS concurrent message Save / preparation Exit and deferred cleanup retry');
  report.combinedEmailContract=await verifyCombinedEmailContract({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
