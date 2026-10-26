@@ -84,7 +84,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    const closed=action==='discard'||marker!==null&&(result as {preparationRetirement?:{accepted:boolean}}).preparationRetirement?.accepted===true||(result as {outcome?:string}).outcome==='discarded';
    if(closed&&background){try{background.waitUntil(cleanupTransientDocument(env,owner,id).catch(()=>{}));}catch{/* Scheduled maintenance retains the durable retry. */}}
    // Original receipt is immutable; this separately named DTO is the verified current pre-read.
-   return action==='abandon'?json({...result as Record<string,unknown>,currentJob:job}):json(result);
+   return action==='abandon'&&marker!==null?json({...result as Record<string,unknown>,currentJob:job}):json(result);
   }
   if(job.preparation_retirement?.accepted)return json({error:'document_preparation_retired'},410);
   if(job.bytes_released)return json({error:'document_bytes_released'},410);if(job.closed_at)return json({error:'document_closed'},410);
