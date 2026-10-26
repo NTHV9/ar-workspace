@@ -54,13 +54,13 @@ test('Khao Lak review shows exact sender and scopes diagnostics without sending'
  await page.goto('/?documentJob='+depthJobId+'&compose=1');await expect(page.getByLabel('Email message',{exact:true})).toBeVisible();await expect(page.getByText('ar@thesandskhaolak.com',{exact:true})).toBeVisible();
  expect(c.queries[0].get('region')).toBe('khao-lak');expect(c.queries[0].get('jobId')).toBe(depthJobId);
  await page.getByRole('button',{name:'Connection test',exact:true}).click();await expect.poll(()=>lists.length).toBe(1);expect(lists[0].get('region')).toBe('khao-lak');
- await page.getByRole('button',{name:'Review & send now',exact:true}).click();const review=page.getByRole('region',{name:'Confirm email send'});await expect(review).toContainText('From: ar@thesandskhaolak.com');
+ await expect(page.getByRole('button',{name:'Send now',exact:true})).toBeEnabled();await expect(page.getByRole('region',{name:'Confirm email send'})).toHaveCount(0);
  expect(c.methods.some(v=>/\/(send|gmail-draft|test-send)$/.test(v))).toBe(false);await page.screenshot({path:'.tmp/khao-mail-review.png',fullPage:true});
 });
 test('a disconnected Khao Lak mailbox cannot use the connected Phuket mailbox',async({page})=>{
  const c=await regionalComposer(page);await mailboxStatuses(page,false);
  await page.goto('/?documentJob='+depthJobId+'&compose=1');await expect(page.getByLabel('Email message',{exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Review & send now',exact:true})).toBeDisabled();await expect(page.getByText('Connect Gmail to continue.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Send now',exact:true})).toBeDisabled();await expect(page.getByText('Connect Gmail to continue.',{exact:true})).toBeVisible();
  await expect(page.getByText('ar@thesandskhaolak.com',{exact:true})).toBeVisible();expect(c.methods.some(v=>/\/(send|gmail-draft|test-send)$/.test(v))).toBe(false);
 });
 test('recovery audit reads and links the chosen mailbox',async({page})=>{

@@ -5,7 +5,7 @@ import type {EmailDraft} from '../../worker/email/shared';
 
 const id='00000000-0000-4000-8000-000000000002',jobId='00000000-0000-4000-8000-000000000001';
 const expectedSelf=(hotel:HotelId)=>hotel==='KAT'||hotel==='TSK'?'ar@katathani.com':'ar@thesandskhaolak.com';
-const harness=(hotel:HotelId)=>`/tests/browser/default-self-cc/harness.html?hotel=${hotel}`;
+const harness=(hotel:HotelId,admin=true)=>`/tests/browser/default-self-cc/harness.html?hotel=${hotel}${admin?'&role=admin':''}`;
 async function setup(page:Page,hotel:HotelId,options:{draft?:Partial<EmailDraft>;conflict?:boolean}={}){
  const writes:{path:string;body:Record<string,unknown>}[]=[],unexpected:string[]=[],errors:string[]=[];
  let draft:EmailDraft={id,owner:'00000000-0000-4000-8000-000000000099',document_job_id:jobId,document_revision:1,hotel,account_id:'synthetic',account_name:'Synthetic Travel',invoice_ids:['SYN-1'],purpose:'billing',revision:0,package_changed:false,recipients:{to:['customer@example.test'],cc:['colleague@example.test'],bcc:['archive@example.test']},subject:'Synthetic reviewed message',body:'Synthetic content. No customer data.',exports:[],attachments:[],...options.draft};
@@ -42,25 +42,24 @@ for(const hotel of HOTEL_IDS)test(`new ${hotel} email shows the correct default 
 
 for(const hotel of ['KAT','TSAN'] as const){
  test(`${hotel} Gmail draft saves the visible default CC first using synthetic APIs only`,async({page})=>{
-  const c=await setup(page,hotel);await page.goto(harness(hotel));await expect(page.getByLabel('Email CC',{exact:true})).toHaveValue(`colleague@example.test, ${expectedSelf(hotel)}`);
+  const c=await setup(page,hotel);await page.goto(harness(hotel,true));await expect(page.getByLabel('Email CC',{exact:true})).toHaveValue(`colleague@example.test, ${expectedSelf(hotel)}`);
   await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();
   await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Gmail draft — not sent');
   expect(c.getDraft().recipients.cc).toEqual(['colleague@example.test',expectedSelf(hotel)]);
   expect(c.writes.map(w=>w.path)).toEqual(['/api/email/open',`/api/email/${id}`,`/api/email/${id}/gmail-draft`]);
   expect(c.writes.at(-1)?.body.revision).toBe(1);expect(c.errors).toEqual([]);expect(c.unexpected).toEqual([]);
  });
- test(`${hotel} Send Now reviews and saves the same visible CC and sends only after explicit confirmation (mocked)`,async({page})=>{
-  const c=await setup(page,hotel);await page.goto(harness(hotel));
-  await page.getByRole('button',{name:'Review & send now',exact:true}).click();
-  const review=page.getByRole('region',{name:'Confirm email send'});await expect(review).toContainText(`CC: colleague@example.test, ${expectedSelf(hotel)}`);
-  expect(deliveryWrites(c.writes)).toEqual([]);expect(c.getDraft().recipients.cc).toContain(expectedSelf(hotel));
-  await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();
-  await page.getByRole('button',{name:'Confirm send now',exact:true}).click();
-  await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Sent — history recorded');
+ test(`${hotel} Send Now saves the visible CC and sends once from one explicit click (mocked)`,async({page})=>{
+  const c=await setup(page,hotel);await page.goto(harness(hotel,false));
+  await page.getByRole('button',{name:'Send now',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
+  expect(c.getDraft().recipients.cc).toEqual(['colleague@example.test',expectedSelf(hotel)]);
+  await expect(page.getByRole('region',{name:'Confirm email send'})).toHaveCount(0);
+  await expect(page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'})).toHaveCount(0);
   expect(deliveryWrites(c.writes).map(w=>w.path)).toEqual([`/api/email/${id}/send`]);expect(c.errors).toEqual([]);expect(c.unexpected).toEqual([]);
  });
  test(`${hotel} required self CC remains when other CC recipients are removed, saved and reopened`,async({page})=>{
-  const c=await setup(page,hotel);await page.goto(harness(hotel));
+  const c=await setup(page,hotel);await page.goto(harness(hotel,true));
   const cc=page.getByLabel('Email CC',{exact:true});await expect(cc).toHaveValue(`colleague@example.test, ${expectedSelf(hotel)}`);
   await cc.fill('');await cc.blur();await expect(cc).toHaveValue(expectedSelf(hotel));await page.getByRole('button',{name:'Save message',exact:true}).click();
   await expect(page.getByRole('button',{name:'Save message',exact:true})).toBeDisabled();await page.reload();await expect(cc).toHaveValue(expectedSelf(hotel));
@@ -85,8 +84,8 @@ test('revision conflict retains edited CC and prevents a Gmail handoff',async({p
 
 test('an uncertain handoff retains its original recipient snapshot',async({page})=>{
  const c=await setup(page,'KAT',{draft:{gmail_handoff:'awaiting_evidence',delivery:{id:'synthetic-delivery',state:'awaiting_evidence',mode:'send',recorded:false},recipients:{to:['customer@example.test'],cc:[],bcc:[]}}});
- await page.goto(harness('KAT'));await expect(page.getByLabel('Email CC',{exact:true})).toHaveValue('');await expect(page.getByLabel('Email CC',{exact:true})).toBeDisabled();
- await expect(page.getByRole('button',{name:'Review & send now',exact:true})).toBeDisabled();expect(deliveryWrites(c.writes)).toEqual([]);
+ await page.goto(harness('KAT'));await expect(page.getByRole('heading',{name:'Sending not confirmed',exact:true})).toBeVisible();await expect(page.getByLabel('Email CC',{exact:true})).toHaveCount(0);
+ expect(c.getDraft().recipients.cc).toEqual([]);await expect(page.getByRole('button',{name:'Send now',exact:true})).toHaveCount(0);expect(deliveryWrites(c.writes)).toEqual([]);
 });
 
 for(const hotel of ['KAT','TSAN'] as const)for(const width of [1440,390])test(`${hotel} default CC layout remains readable at ${width}`,async({page})=>{
@@ -94,6 +93,6 @@ for(const hotel of ['KAT','TSAN'] as const)for(const width of [1440,390])test(`$
  const cc=page.getByLabel('Email CC',{exact:true});await expect(cc).toHaveValue(`colleague@example.test, ${expectedSelf(hotel)}`);await cc.scrollIntoViewIfNeeded();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:`.tmp/self-cc-evidence/${hotel}-${width}-compose.png`});
- await page.getByRole('button',{name:'Review & send now',exact:true}).click();await expect(page.getByRole('region',{name:'Confirm email send'})).toContainText(expectedSelf(hotel));
- await page.screenshot({path:`.tmp/self-cc-evidence/${hotel}-${width}-review.png`});expect(deliveryWrites(c.writes)).toEqual([]);expect(c.errors).toEqual([]);
+ await page.getByRole('button',{name:'Send now',exact:true}).click();await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();await page.locator('.email-send-result details summary').click();await expect(page.locator('.email-send-result')).toContainText(expectedSelf(hotel));
+ await page.screenshot({path:`.tmp/self-cc-evidence/${hotel}-${width}-sent.png`});expect(deliveryWrites(c.writes).map(write=>write.path)).toEqual([`/api/email/${id}/send`]);expect(c.errors).toEqual([]);
 });
