@@ -38,8 +38,8 @@ for(const scenario of ['reload-close','switch-close','cancelled-close','address-
    await page.reload();await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toBeVisible();expect(received).toEqual([]);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('test-events')??'[]'))).toContain('pageswap');
   }else if(scenario==='switch-close'){await alive.bringToFront();await page.bringToFront();expect(received).toEqual([]);}
   else if(scenario==='cancelled-close'){
-   await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('Synthetic unsaved close probe');
-   let dialog=false;page.once('dialog',async d=>{dialog=true;await d.dismiss();});await page.close({runBeforeUnload:true});await expect.poll(()=>dialog).toBe(true);expect(page.isClosed()).toBe(false);expect(received).toEqual([]);await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('Synthetic unsaved close probe');
+   const marker='CI42';await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');await choosePdfTool(page,'Note');const text=page.getByRole('textbox',{name:'Layer text',exact:true});await text.fill(marker);await expect(text).toHaveValue(marker);await expect(page.locator('.pdf-differences')).toContainText(marker);
+   let dialog=false;page.once('dialog',async d=>{dialog=true;await d.dismiss();});await page.close({runBeforeUnload:true});await expect.poll(()=>dialog).toBe(true);expect(page.isClosed()).toBe(false);expect(received).toEqual([]);await expect(text).toHaveValue(marker);await expect(page.locator('.pdf-differences')).toContainText(marker);
    page.once('dialog',d=>d.accept());
   }else if(scenario==='address-navigation'){await page.goto(url+'/other');expect(received).toEqual([]);}
   else if(scenario==='network-error-reload'){
