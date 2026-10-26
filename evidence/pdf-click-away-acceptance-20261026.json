@@ -1,0 +1,12 @@
+{
+  "applicationSource": "f866a7c46c75041933a13736ce889375cf6fa69f",
+  "workerVersion": "df64264b-efc4-4cbf-bd75-f64e9e481f84",
+  "pullRequest": "https://github.com/NTHV9/ar-workspace/pull/145",
+  "qualifiedRun": "https://github.com/NTHV9/ar-workspace/actions/runs/40276312166",
+  "qualifiedRunConclusion": "success",
+  "tests": {"originalRegressionFailures": 2, "newBrowserCasesPassed": 3, "relatedPdfBrowserCasesPassed": 54, "unitsPassed": 4760, "fullBrowserCasesPassed": 548, "sqlMigrations": 144, "sqlRollbackFixtures": 38, "realSqlMailContracts": 3, "performanceCasesPassed": 3, "publicationCasesPassed": 15},
+  "deployment": {"health": "ok", "assetHashesMatched": 55, "unauthenticatedRoutesRejected": 10},
+  "liveSmoke": {"temporaryRealInvoicePackages": 1, "selectedFrameBefore": 1, "selectedFramesAfterBlankClick": 0, "inlineEditorsAfterBlankClick": 0, "selectedFrameAfterReselect": 1, "editedTextRetained": true, "preparationDiscarded": true, "objectsDeletionAcknowledged": 1, "workingObjectsRemaining": 0, "mailAttempts": 0},
+  "scope": "PDF scroll-surface selection only; no engine, financial, backend or schema change.",
+  "independentReview": {"remainingP1P2": 0}
+}
