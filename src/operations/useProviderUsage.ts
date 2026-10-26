@@ -9,6 +9,31 @@ export const ProviderUsageContext=createContext<ProviderUsageReader|null>(null);
 const TTL=60000;
 interface Cache {identity:string;data:ProviderUsageResponse|null;checked:number}
 interface ReadState {identity:string;data:ProviderUsageResponse|null;loading:boolean;error:string|null}
+/** Empty/unavailable normalized telemetry is a source failure, not evidence that prior usage vanished. */
+function retainProviderEvidence(incoming:ProviderUsageResponse,previous:ProviderUsageResponse|null){
+ let incomplete=false;
+ const providers=incoming.providers.map(provider=>{
+  const known=previous?.providers.find(p=>p.provider===provider.provider);
+  if(!provider.metrics.length)incomplete=true;
+  let retained=false;
+  const metrics=provider.metrics.map(metric=>{
+   if(metric.state!=='unavailable'&&metric.used!==null&&metric.included!==null)return metric;
+   incomplete=true;
+   const old=known?.metrics.find(m=>m.id===metric.id);
+   if(!old)return metric;
+   retained=true;return {...old,state:old.state==='unavailable'?'unavailable' as const:'stale' as const};
+  });
+  for(const old of known?.metrics??[]){
+   if(provider.metrics.some(metric=>metric.id===old.id))continue;
+   incomplete=true;retained=true;
+   // Keep the normalized contract's bound when a changed provider metric set is partial.
+   if(metrics.length<64)metrics.push({...old,state:old.state==='unavailable'?'unavailable':'stale'});
+  }
+  return {...provider,metrics,planLabel:retained?provider.planLabel??known?.planLabel??null:provider.planLabel,
+   ...(known&&known.settingsRevision>provider.settingsRevision?{warningPercent:known.warningPercent,settingsRevision:known.settingsRevision}:{})};
+ });
+ return {data:{providers},incomplete};
+}
 /** Ownership survives credential renewal, and ends on sign-out or a different actor/workspace. */
 export function useProviderUsage(token:string,administrator:boolean,ownerIdentity=token):ProviderUsageReader {
  const identity=administrator?ownerIdentity:'';
@@ -35,11 +60,9 @@ export function useProviderUsage(token:string,administrator:boolean,ownerIdentit
     if(!response.ok)throw Error();
     const data=parseProviderUsage(await response.json());
     if(current.current!==identity||credential.current!==token||controller.signal.aborted)return;
-    if(cache.current.identity===identity)data.providers=data.providers.map(provider=>{
-     const known=cache.current.data?.providers.find(p=>p.provider===provider.provider);
-     return known&&known.settingsRevision>provider.settingsRevision?{...provider,warningPercent:known.warningPercent,settingsRevision:known.settingsRevision}:provider;
-    });
-    cache.current={identity,data,checked:Date.now()};setState({identity,data,loading:false,error:null});
+    const merged=retainProviderEvidence(data,cache.current.identity===identity?cache.current.data:null);
+    cache.current={identity,data:merged.data,checked:Date.now()};
+    setState({identity,data:merged.data,loading:false,error:merged.incomplete?'Provider usage could not be checked completely. Last-known evidence is retained where available; retry to check again.':null});
    }catch{
     if(current.current===identity&&credential.current===token&&!controller.signal.aborted){
      const data=cache.current.identity===identity&&cache.current.data?parseProviderUsage(cache.current.data):null;
