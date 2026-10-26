@@ -1,3 +1,4 @@
+import type {DocumentJob} from '../../worker/documents/jobs';
 export interface CreateExitReference {commandKey:string;hotel:string;payloadDigest:string}
 export interface VerifiedExitSnapshot {actorId:string;authSessionId:string;jobIds:string[];creates:CreateExitReference[]}
 export type ExitEntry={version:1|2;exitCommandId?:string;actorId:string;authSessionId:string;queuedAt:number;state:'pending'}&({jobId:string}|CreateExitReference);
@@ -46,4 +47,13 @@ export async function reconcileExitOutbox(storage:Storage,actorId:string,getAuth
   if('jobId'in entry)try{const auth=getAuth();if(!auth||auth.actorId!==actorId)continue;const response=await fetch(`/api/documents/${entry.jobId}`,{headers:{Authorization:`Bearer ${auth.token}`},redirect:'error'});if(!response.ok)continue;const job=await response.json() as {id:string;owner:string;lifecycle:string};const now=getAuth();if(!now||now.actorId!==auth.actorId||now.authSessionId!==auth.authSessionId||job.id!==entry.jobId||job.lifecycle!=='transient'||expectedOwner&&job.owner!==expectedOwner)continue;}catch{continue;}
   await deliverExitEntry(storage,entry,getAuth);
  }
+}
+
+type ExitJobIdentity=Pick<DocumentJob,'id'|'owner'|'hotel'|'account_id'|'invoice_ids'>;
+export interface DocumentExitReceipt {job:{id:string}&Partial<DocumentJob>;outcome:string;currentJob?:DocumentJob;preparationRetirement?:{accepted:boolean}}
+/** Prefer the separate verified current DTO; legacy id-only originals use the verified pre-read. */
+export function verifiedExitJob<T extends ExitJobIdentity>(before:T,result:{job:{id:string}&Partial<ExitJobIdentity>;outcome:string;currentJob?:T}):T{
+ const same=(job:Partial<ExitJobIdentity>)=>job.id===before.id&&job.owner===before.owner&&job.hotel===before.hotel&&job.account_id===before.account_id&&Array.isArray(job.invoice_ids)&&JSON.stringify([...job.invoice_ids].sort())===JSON.stringify([...before.invoice_ids].sort());
+ if(!result?.job||result.job.id!==before.id||!['discarded','pending','protected'].includes(result.outcome)||Object.keys(result.job).some(key=>key!=='id')&&!same(result.job)||result.currentJob!==undefined&&!same(result.currentJob))throw Error('Document identity does not match this preparation.');
+ return result.currentJob??(Object.keys(result.job).length===1?before:{...before,...result.job});
 }

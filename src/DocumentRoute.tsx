@@ -1,3 +1,4 @@
+import {verifiedExitJob,type DocumentExitReceipt} from './preparation/exit-outbox';
 import {usePreparationExit} from './preparation/tab-exit';
 import type {BatchPhase} from './batch/phase';
 import {assertBatchJob,type BatchRecord,type BatchEntry} from './batch/state';
@@ -39,7 +40,7 @@ export interface DocumentBatchSession {delivery?:PdfProject['delivery'];revision
 export interface DocumentBatchControl {sourceConflict:()=>boolean;unavailable:()=>boolean;suspend:()=>Promise<{session:DocumentBatchSession;mail?:BatchMailSnapshot}>;busy:()=>boolean}
 export interface DocumentBatchOptions {scope:{batch:BatchRecord;entry:BatchEntry};initialSession?:DocumentBatchSession;stage?:string;phase:BatchPhase;onDeliveryChange?:(delivery:PdfProject['delivery'])=>void;onPdfDirtyChange:(dirty:boolean)=>void;onRegisterControl:(control:DocumentBatchControl|null)=>void;onJob:(job:DocumentJob)=>void;onPhaseChange:(phase:BatchPhase)=>void;onReview:()=>void}
 export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollections,onJobIdentity,onDirtyChange,onReplaceJob,onRegisterLeave,onGuardDirtyChange,backLabel='Back to portfolio',maxBytes=64*1024*1024}:{token:string;jobId?:string;batch?:DocumentBatchOptions;onClose:()=>void;onBackToCollections?:()=>void;onReplaceJob?:(id:string)=>void;onRegisterLeave?:(leave:(()=>Promise<boolean>)|null)=>void;onGuardDirtyChange?:(dirty:boolean)=>void;onJobIdentity?:(identity:DocumentJobIdentity)=>void;onDirtyChange?:(dirty:boolean,kind?:'pdf'|'email')=>void;backLabel?:string;maxBytes?:number}){
- const exit=usePreparationExit();
+ const exit=usePreparationExit(),localExit=useRef(false);
  const [compact,setCompact]=useState(()=>matchMedia('(max-width:899px)').matches),[previewSource,setPreviewSource]=useState<string|null>(null);
  useEffect(()=>{const media=matchMedia('(max-width:899px)'),change=()=>setCompact(media.matches);media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
  const [job,setJobState]=useState<DocumentJob|null>(null),[loadRevision,setLoadRevision]=useState(0),[error,setError]=useState(''),[busy,setBusy]=useState(false),[sources,setSources]=useState<PdfSourceDocument[]|null>(null),[initialProject,setInitialProject]=useState<PdfProject|undefined>();
@@ -56,7 +57,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
  const identityCallback=useRef(onJobIdentity);identityCallback.current=onJobIdentity;
  const tokenRef=useRef(token);tokenRef.current=token;const generation=useRef(0),opening=useRef(0);
  const alive=useRef(true);useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
- const transient=job?.lifecycle==='transient',closed=!!job?.closed_at||job?.preparation_retirement?.accepted===true;
+ const transient=job?.lifecycle==='transient',closed=localExit.current||!!job?.closed_at||job?.preparation_retirement?.accepted===true;
  useEffect(()=>{if(job){batch?.onJob(job);if(job.closed_at){setSources(null);setCompose(false);setEditorSession(undefined);}}},[job]);
  useEffect(()=>{batch?.onRegisterControl({sourceConflict:()=>sessionConflict.current,unavailable:()=>!job,busy:()=>!closed&&(busy||!!sources&&(!pdfControl.current||pdfControl.current.busy())||showCompose&&(!mailControl.current||mailControl.current.busy())),suspend:async()=>{
   if(!job&&loadFailed.current)return {session:{revision:0,sources:null,compose:false}};
@@ -71,12 +72,12 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
  async function abandon(){
   if(leaveRequest.current)return leaveRequest.current;
   if(!job){if(loadFailed.current)return true;setError('Wait for this preparation to load, then retry leaving.');return false;}
-  if(!transient||closed||job.preparation_retirement?.accepted||exit?.isSettled(job.id))return true;
+  if(!transient||closed||localExit.current||job.preparation_retirement?.accepted||exit?.isSettled(job.id))return true;
   const current=job;
   leaveRequest.current=(async()=>{setBusy(true);setError('');try{
-   const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected';preparationRetirement?:{accepted:boolean}}>(`/api/documents/${current.id}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(current.id)});
-   if(result.job.id!==current.id||!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified. Retry leaving this preparation.');
-   if(exit&&!exit.settled(current.id,result))throw Error('Temporary cleanup receipt could not be acknowledged. Retry leaving.');if(alive.current)setJob({...result.job,...(result.preparationRetirement?.accepted?{preparation_retirement:{accepted:true}}:{})});return true;
+   const result=await requestJson<DocumentExitReceipt>(`/api/documents/${current.id}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(current.id)});
+   const currentJob=verifiedExitJob(current,result);
+   if(exit&&!exit.settled(current.id,result))throw Error('Temporary cleanup receipt could not be acknowledged. Retry leaving.');localExit.current=true;if(alive.current)setJob({...currentJob,...(result.preparationRetirement?.accepted?{preparation_retirement:{accepted:true}}:{})});return true;
   }catch(e){if(alive.current)setError(e instanceof Error?e.message:'Unable to remove temporary files. Retry leaving this preparation.');return false;}finally{if(alive.current)setBusy(false);leaveRequest.current=null;}})();
   return leaveRequest.current;
  }

@@ -5,6 +5,8 @@
 import React from 'react';import {createRoot} from 'react-dom/client';
 import {PDFDocument,StandardFonts} from 'pdf-lib';
 import {App} from '/src/App.tsx';
+import {combinedPublic} from '/worker/email/combined.ts';
+window.projectCombinedPublic=combinedPublic;
 import {loadSources,detectText} from '/src/pdf/engine.ts';
 import {tabAuthOptions} from '/src/access/tab-session.ts';
 import {policyFixture} from '../fixtures/collection-policy.ts';

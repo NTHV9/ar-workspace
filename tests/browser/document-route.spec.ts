@@ -504,3 +504,8 @@ for(const hotel of ['KAT','TSK'])test(hotel+' source text deletion and compact r
  expect(controls.outboundRequests).toEqual([]);expect(controls.emailOpens).toEqual([]);
  await page.screenshot({path:'evidence/pdf-source-deletion-'+hotel.toLowerCase()+'-application-preview.png',animations:'disabled'});
 });
+for(const kind of ['maintained','legacy'])test(`single consumes ${kind} id-only terminal receipt without replacing full document state`,async({page})=>{
+ const controls=await mockApplication(page,'combined','transient'),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));let attempts=0;
+ await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({json:{job:{id:jobId},outcome:'protected',...kind==='maintained'?{preparationRetirement:{accepted:true}}:{},currentJob:{...controls.job,...kind==='maintained'?{preparation_retirement:{accepted:true}}:{}}}});});
+ await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation closed',exact:true})).toBeVisible();await expect(page.locator('.document-jobs')).toContainText('KAT · Synthetic Document Account · 1 selected invoices');await page.locator('.document-jobs > .back-bottom').click();await expect.poll(()=>new URL(page.url()).searchParams.has('documentJob')).toBe(false);expect(attempts).toBe(1);expect(errors).toEqual([]);
+});
