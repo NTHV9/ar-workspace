@@ -1,3 +1,4 @@
+import {parseProviderUsage} from '../../src/operations/provider-usage';
 import {policyFixture} from './fixtures/collection-policy';
 import {test,expect,type Page} from '@playwright/test';
 import type {EmailDraft} from '../../worker/email/shared';
@@ -20,6 +21,7 @@ async function setup(page:Page,options:{selected?:boolean;handoff?:boolean;failu
   if(url.hostname==='example.supabase.co')return r.fulfill({json:{user}});
   if(!p.startsWith('/api/')){if(url.hostname==='127.0.0.1'||url.hostname==='localhost')return r.continue();unexpected.push(q.url());return r.abort();}
   calls.push({path:p+url.search,method:q.method(),body:q.postData()?q.postDataJSON():undefined,auth:q.headers().authorization});
+  if(p==='/api/operations/provider-usage'&&q.method()==='GET')return r.fulfill({json:parseProviderUsage(null)});
   if(p==='/api/collection-policy')return r.fulfill({json:policyFixture});
   if(p==='/api/reports/tracker-revisions')return r.fulfill({json:{rows:[]}});
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}});
