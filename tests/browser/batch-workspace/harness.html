@@ -39,6 +39,10 @@ const canvas=document.createElement('canvas');canvas.width=900;canvas.height=110
 document.getElementById('download-scan').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([scanBytes],{type:'application/pdf'}));a.download='Synthetic scan.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
 const accounts=[{id:'10',hotel:'KAT',name:'Azure Travel · Synthetic',type:'OTA',open:200,items:2,over90:0},{id:'10',hotel:'TSK',name:'Bay Travel · Synthetic',type:'OTA',open:100,items:1,over90:0},{id:'20',hotel:'KAT',name:'Coral Travel · Synthetic',type:'OTA',open:100,items:1,over90:0}];
 const rows=accounts.flatMap((a,index)=>Array.from({length:a.items},(_,i)=>({hotel:a.hotel,account_id:a.id,account_name:a.name,account_type:'OTA',id:String(index===0?101+i:index===1?101:201),guest:'Synthetic Guest '+(i+1),invoice_no:String(index===0?1001+i:index===1?2001:3001),folio_no:String(index===0?5001+i:index===1?6001:7001),open:100,transaction_date:'2026-09-01',collection_role:'standalone',collection_selectable:true,verification_state:'verified',workflow:{revision:1,billing_required:true,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:null}})));
+if(new URLSearchParams(location.search).has('stage-groups')){
+ const day=offset=>new Date(Date.now()+offset*86400000).toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'});
+ for(const [index,row] of rows.filter(r=>r.hotel==='KAT'&&r.account_id==='10').entries())Object.assign(row.workflow,{first_billing_date:day(index?-31:-27),due_date:day(index?-1:3),last_reminder_stage:index?'Friendly':null,last_reminder_date:index?day(-8):null});
+}
 const originalFetch=window.fetch.bind(window);
 window.fetch=async(input,init={})=>{
  const url=new URL(input instanceof Request?input.url:String(input),location.origin),path=url.pathname,method=init.method??(input instanceof Request?input.method:'GET');
