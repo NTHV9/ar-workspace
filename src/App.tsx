@@ -92,7 +92,7 @@ export function App() {
   const [client,setClient]=useState<SupabaseClient|null>(null), [session,setSession]=useState<Session|null>(null);
   const {access:workspaceAccess,error:accessError}=useWorkspaceAccess(session);
   const providerAdministrator=!review&&workspaceAccess?.administrator===true&&session?.user.email?.toLowerCase()==='ar@katathani.com';
-  const providerUsage=useProviderUsage(session?.access_token??'',providerAdministrator);
+  const providerUsage=useProviderUsage(session?.access_token??'',providerAdministrator,session?JSON.stringify([session.user.id,workspaceAccess?.workspaceOwnerId??session.user.id]):'');
   useTrackerRevision(client,!review&&workspaceAccess?session?.access_token:undefined,workspaceAccess?JSON.stringify([session?.user.id,workspaceAccess.regions,workspaceAccess.revision]):'');
   useEffect(()=>{if(!authReady||!session||!loginCallback.current)return;loginCallback.current=false;const next=initialWorkspaceParams(new URLSearchParams());paramsRef.current=next;history.replaceState(null,'','?'+next);setParams(next);},[authReady,session]);
   const [accounts,setAccounts]=useState<Account[]>([]), [invoices,setInvoices]=useState<Invoice[]>([]);
