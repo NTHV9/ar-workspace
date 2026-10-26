@@ -1,3 +1,38 @@
+## 2026-10-27 — Exit and completed-send file cleanup; Sheet dates remain authoritative
+
+The owner explicitly confirms that closing a preparation tab is Exit, while F5,
+reload, switching browser tabs and switching Accounts within the same batch keep
+the active work. Back to Collections or another intentional departure also exits.
+Do not add another saved-project feature or require employee cleanup confirmations.
+
+Exit or a trusted completed Gmail submission retires redundant temporary PDF
+copies; retain actual mail/billing/collection history and necessary frozen delivery
+evidence. A real send may finish employee work while history confirmation retries.
+Do not infer Sent from a client flag, Draft creation, Sheet dates or a cleanup
+request, and never resend because file cleanup or history recording is pending.
+Already-admitted operations and genuine shared/business-file dependencies must
+settle safely before their exact redundant bytes can be deleted. Managed deletion
+receipts distinguish accepted cleanup from confirmed physical absence.
+
+The owner separately approves discarding four specifically inventoried unused
+preparations and releasing temporary PDF bytes for sixteen specifically
+inventoried older Draft/uncertain preparations. Their exact IDs remain private;
+this is not an age-based or blanket retrospective purge. Keep frozen identity,
+attachment checksums and actual provider/history facts, without retaining local
+customer PDF backup copies. Do not delete Gmail drafts/messages, business files,
+Drive archives or remittances under this approval.
+
+Google Sheet remains authoritative for billing and Follow-up 1–3 dates, including
+employee edits/deletions. File cleanup does not set, clear or restore those dates.
+The read-only comparison of the sixteen preparations found thirty-two Phuket
+invoices with billing dates and one TSAN invoice in the collected archive marked
+Remittance; neither Sheet status nor archive membership proves Gmail Sent or a
+zero OPERA balance. Actual implementation/test/deployment and exact deletion
+outcomes are recorded separately in PROJECT_STATUS.
+
+This replaces the older no-tab-close-Exit and blanket Draft/uncertain-byte-retention
+rules only within the authorized fresh-intent and exact-old-cohort scopes above.
+
 ## 2026-10-27 — Full provider quotas, Admin warning percentages and no app suspension
 
 The owner requests Cloudflare and Supabase used/full included quotas separately,
