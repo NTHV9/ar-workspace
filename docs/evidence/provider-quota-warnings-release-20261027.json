@@ -1,0 +1,80 @@
+{
+  "applicationCommit": "95fd6b459faf195873cef819223f6a8bcfa5d9c2",
+  "applicationBytesBase": "95fd6b459faf195873cef819223f6a8bcfa5d9c2",
+  "predecessor": "dc21e31667145f36b31a770d470f3e9b61f1063a",
+  "pullRequest": "https://github.com/NTHV9/ar-workspace/pull/149",
+  "scope": "Admin-only full provider quotas, separate configurable alert percentages, no application quota suspension",
+  "sourceMode": "Private verified snapshots labelled Last verified; no automated provider billing adapters enabled",
+  "defaultAlertPercent": {
+    "cloudflare": 80,
+    "supabase": 50
+  },
+  "local": {
+    "unitPass": 4847,
+    "expectedSkips": 3,
+    "focusedBrowserPass": 29,
+    "focusedUnitPass": 81,
+    "migrations": 146,
+    "sqlFixtures": 42,
+    "settingsRace": "passed",
+    "sqlProviderScenarios": 3,
+    "integrationCompatibilityEmailPass": 8,
+    "integrationCompatibilityRepresentativePass": 9,
+    "independentReviews": "Task, scoped fixes, whole-branch and six-file CI integration repair approved; no open findings",
+    "testTimeoutsOrAssertionsWeakened": false,
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "publicAssetCount": 90,
+    "visualWidths": [
+      1440,
+      1280,
+      390
+    ]
+  },
+  "sqlHosted": {
+    "quotaPolicyApplied": true,
+    "privateProviderSchemaApplied": true,
+    "ledgerHistoryReset": false,
+    "concurrencyAndManualHoldsRetained": true,
+    "privateSnapshotsSeeded": 2,
+    "normalizedMetricsSeeded": 15,
+    "actualObservationsNotTracked": true
+  },
+  "ci": {
+    "run": 40363361403,
+    "runNumber": 1066,
+    "job": 121714394240,
+    "state": "success",
+    "unitPass": 4847,
+    "expectedSkips": 3,
+    "browserPass": 639,
+    "performancePass": 3,
+    "publicationPass": 15,
+    "migrations": 146,
+    "sqlFixtures": 42,
+    "realSqlProviderScenarios": 3
+  },
+  "production": {
+    "state": "deployed and verified",
+    "workerVersion": "fffdf196-e01f-4c63-a1f2-396a33a957aa",
+    "checkedAt": "2026-10-26T17:20:40.5509028Z",
+    "health": "ok",
+    "database": "database_verified",
+    "publicAssetsVerified": 8,
+    "anonymousQuotaRoutesRejected": 2,
+    "anonymousMailRoutesRejected": 6,
+    "signedInAdminUiVerified": true,
+    "actualAdminSettingsChanged": false,
+    "runtimeBindingsPreserved": true
+  },
+  "actualEmailSent": false,
+  "financialHistoryWritten": false,
+  "providerSpendCapsChanged": false,
+  "providerCredentialsAdded": false,
+  "closeTabLifecycle": {
+    "state": "separate pending implementation",
+    "closingTab": "discard requested by owner",
+    "switchingTabs": "keep work",
+    "reload": "resume active work"
+  }
+}

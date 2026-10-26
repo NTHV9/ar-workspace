@@ -1,3 +1,44 @@
+## 2026-10-27 — Actual provider quotas and administrator warning thresholds
+
+**Implemented, tested, deployed and enabled.** Application source
+`95fd6b459faf195873cef819223f6a8bcfa5d9c2`, Worker version
+`fffdf196-e01f-4c63-a1f2-396a33a957aa`, shows Cloudflare and Supabase separately
+with each provider's full included quota. Alert at % is a separate Admin setting,
+defaulting to Cloudflare80 and Supabase50. Only the actual active administrator
+`ar@katathani.com` can read provider telemetry or save these settings; staff in
+either region makes no provider-usage request and sees no notice. Collections
+uses a compact notice in its existing heading, preserving invoice working room.
+
+Provider records are private manually verified snapshots, explicitly labelled
+Last verified with observation/review times. Two snapshots with15 normalized
+metrics were seeded from actual provider dashboards; private amounts and raw
+identifiers are not tracked. No automatic billing feed or Live status is claimed.
+Missing, failed or expired reads stay unknown/stale and retain last-known evidence
+without resetting settings. Provider billing periods and units remain distinct
+from app-only storage, database and calendar-month transfer diagnostics.
+
+The app no longer suspends employee work because of quota estimates, stale
+telemetry or an exceeded allowance. Real authorization, size/MIME/SHA checks,
+concurrency, reservations, uncertain-upload recovery and manual holds remain.
+Provider plans, Spend Cap, credentials and the existing provider notification
+were unchanged; there is no new email alert. Unsaved alert input survives token
+renewal; Back/Forward checks preserve cancelled navigation, and uncertain saves
+retry the identical command without overwriting newer revisions.
+
+Same-source GitHub run1066 / 40363361403 passed the full
+unit, SQL, browser, performance and publication workflow. The local integration
+repair passed8 Collections cases and45 email-thread/provider cases plus5 Storage
+cases, with original8/5/8 visible-row minima and strict unexpected-request checks
+retained. All task, fix, whole-branch and integration reviews are approved.
+No timeout, assertion or visual baseline was weakened. Hosted forward migrations
+retain private service-only grants and existing business history.
+
+Live health/database checks, exact public-asset hashes and authentication-free
+quota/mail route rejection passed. No actual mail was sent or financial/Sheet
+history written for this work. Closing a browser tab versus reload remains a
+separate planned lifecycle change, not part of this release.
+[Release receipt](evidence/provider-quota-warnings-release-20261027.json).
+
 ## 2026-10-26 — Templates editing available to active workspace staff
 
 **Implemented, tested, deployed and enabled.** Application source
