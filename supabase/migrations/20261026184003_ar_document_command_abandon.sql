@@ -3,7 +3,7 @@ alter table ar_private.document_commands add column request_actor uuid,add colum
 create table ar_private.document_command_exits(
  owner uuid not null,command_key uuid not null,actor uuid not null,hotel text not null,
  payload_digest text not null check(payload_digest ~ '^[0-9a-f]{64}$'),
- requested_at timestamptz not null default clock_timestamp(),settled_at timestamptz,
+ requested_at timestamptz not null default clock_timestamp(),settled_at timestamptz,settled_outcome text check(settled_outcome in('discarded','pending','protected')),
  primary key(owner,command_key)
 );
 alter table ar_private.document_command_exits enable row level security;
@@ -62,6 +62,7 @@ begin
   digest:=ar_private.document_request_digest(c.payload->>'hotel',c.payload->>'account_id',array(select jsonb_array_elements_text(c.payload->'ids')),c.payload->>'content',c.payload->>'layout',c.payload->>'purpose',c.payload->>'statement_source');
   if c.payload->>'hotel' is distinct from p_hotel or digest<>p_payload_digest or coalesce(c.request_actor,p_owner)<>p_actor then raise exception 'document_command_conflict';end if;
  end if;
+ if t.settled_at is not null and t.settled_outcome is not null then return jsonb_build_object('commandKey',p_command_key,'hotel',p_hotel,'payloadDigest',p_payload_digest,'job_id',c.job_id,'job',jsonb_build_object('id',c.job_id),'outcome',t.settled_outcome);end if;
  insert into ar_private.document_command_exits(owner,command_key,actor,hotel,payload_digest) values(p_owner,p_command_key,p_actor,p_hotel,p_payload_digest) on conflict(owner,command_key) do nothing;
  return jsonb_build_object('commandKey',p_command_key,'hotel',p_hotel,'payloadDigest',p_payload_digest,'job_id',c.job_id,'outcome',case when c.job_id is null then 'cancelled' else 'resolved' end);
 end$$;
@@ -82,7 +83,7 @@ begin
  for r in select t.owner,t.command_key,c.job_id from ar_private.document_command_exits t join ar_private.document_commands c using(owner,command_key)
  where t.owner=p_actor and t.settled_at is null order by t.requested_at,t.command_key limit p_limit loop
   receipt:=public.ar_document_abandon(p_actor,r.job_id);result:=result||jsonb_build_array(receipt);
-  if receipt->>'outcome' in('discarded','pending','protected') then update ar_private.document_command_exits set settled_at=clock_timestamp() where owner=r.owner and command_key=r.command_key;end if;
+  if receipt->>'outcome' in('discarded','pending','protected') then update ar_private.document_command_exits set settled_at=coalesce(settled_at,clock_timestamp()),settled_outcome=coalesce(settled_outcome,receipt->>'outcome') where owner=r.owner and command_key=r.command_key;end if;
  end loop;
  return result||ar_private.document_finalize_before_command_exit(p_actor,p_limit);
 end$$;
@@ -98,7 +99,7 @@ declare receipt jsonb;
 begin
  receipt:=ar_private.document_abandon_before_command_exit(p_actor,p_job_id);
  if receipt->>'outcome' in('discarded','pending','protected') then
-  update ar_private.document_command_exits t set settled_at=coalesce(t.settled_at,clock_timestamp())
+  update ar_private.document_command_exits t set settled_at=coalesce(t.settled_at,clock_timestamp()),settled_outcome=coalesce(t.settled_outcome,receipt->>'outcome')
   from ar_private.document_commands c where t.owner=p_actor and c.owner=t.owner and c.command_key=t.command_key and c.job_id=p_job_id;
  end if;
  return receipt;

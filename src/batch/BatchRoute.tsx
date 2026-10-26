@@ -35,7 +35,7 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
  const sentReviewOpen=useRef(false);
  const canAct=()=>alive.current&&!exiting.current&&!sentReviewOpen.current&&!!record.current;
  const exiting=useRef(false),generation=useRef(0),checkLocks=useRef(new Set<string>());
- const [active,setActive]=useState(0),[view,setView]=useState<'work'|'review'|'result'>('work'),[error,setError]=useState(''),[switching,setSwitching]=useState(false),[creating,setCreating]=useState(false),[sending,setSending]=useState(false),[,refresh]=useState(0),[sendIds,setSendIds]=useState<Set<string>>(new Set());
+ const [active,setActive]=useState(0),[view,setView]=useState<'work'|'review'|'result'>('work'),[error,setError]=useState(''),[switching,setSwitching]=useState(false),[creating,setCreating]=useState(()=>!!batch?.entries.some(e=>e.requested&&!e.jobId)),[sending,setSending]=useState(false),[,refresh]=useState(0),[sendIds,setSendIds]=useState<Set<string>>(new Set());
  const alive=useRef(true),tokenRef=useRef(token);tokenRef.current=token;
  const jobs=useRef(new Map<string,DocumentJob>()),sessions=useRef(new Map<string,DocumentBatchSession>()),mails=useRef(new Map<string,BatchMailSnapshot>()),controls=useRef(new Map<string,DocumentBatchControl>());
  const sentCleanup=useRef(new Set<string>());
@@ -79,12 +79,11 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   if(!canAct()||busy.current||!record.current)return;busy.current=true;setCreating(true);setError('');
   try{
    for(const entry of record.current.entries){
-    if(!alive.current)break;if(entry.jobId||entry.requested&&!retry)continue;
-    updateEntry(entry.commandKey,{requested:true,error:undefined});
+    if(!alive.current)break;if(entry.jobId)continue;
     try{
      const current=record.current!,s=entry.selection;
      const payload={hotel:s.hotel,accountId:s.accountId,ids:s.ids,purpose:s.purpose??'collection',content:current.options.content,layout:current.options.layout,statementSource:current.options.content==='invoices'?'native':'workspace',commandKey:entry.commandKey};
-     await exit?.retainCreate(payload);if(!alive.current||exit&&!exit.current())break;
+     await exit?.retainCreate(payload,entry.requested===true&&!retry);if(!alive.current||exit&&!exit.current())break;if(entry.requested&&!retry)continue;updateEntry(entry.commandKey,{requested:true,error:undefined});
      const job=await batchRequest<DocumentJob>('/api/documents',tokenRef.current,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
      if(!alive.current||exit&&!exit.current())break;assertBatchJob(current,entry,job);exit?.created(entry.commandKey,job);updateEntry(entry.commandKey,{jobId:job.id,error:undefined});receiveJob(job);
     }catch(e){if(alive.current)updateEntry(entry.commandKey,{error:e instanceof Error?e.message:'Preparation could not be confirmed.'});}
@@ -156,7 +155,7 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   const current=record.current;if(!current)return true;
   const shared=combinedDelivery(current.combined),acceptedShared=confirmed(shared)||shared?.gmailAccepted===true;
   if(sentReviewOpen.current||exiting.current||busy.current||switching||sending||combinedSending||combinedBusy&&!acceptedShared||[...controls.current.values()].some(c=>c.busy())){setError('Wait for the current operation before leaving this batch.');return false;}
-  if(current.entries.some(e=>e.requested&&!e.jobId)&&(!exit||!await exit.abandonCreates())){setError('Temporary cleanup could not be confirmed. Retry leaving this batch.');return false;}
+  if(current.entries.some(e=>e.requested&&!e.jobId)&&(!exit||!await exit.abandonCreates(current.entries.filter(e=>e.requested&&!e.jobId).map(e=>e.commandKey)))){setError('Temporary cleanup could not be confirmed. Retry leaving this batch.');return false;}
   // Invalidate pending metadata reads before cleanup. A late check must never restore
   // a removed resume record, including the interval before React unmounts children.
   exiting.current=true;generation.current++;setExitBusy(true);setError('');

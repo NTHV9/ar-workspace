@@ -78,3 +78,19 @@ it('accepted command exit retires only its exact old create pointer so a new rou
  await deliverExitEntry(s,entry,()=>({actorId:actor,authSessionId:session,token:'current'}),async()=>Response.json({commandKey:command,hotel:'KAT',payloadDigest:'a'.repeat(64),outcome:'cancelled'}));
  expect(resume.getItem('ar-document-command:old')).toBeNull();expect(resume.getItem('ar-document-command:other')).toBe(job);
 });
+it('ordinary route clearing cannot forget an admitted single create before an abandon receipt',async()=>{
+ const s=storage(),auth={actorId:actor,authSessionId:session,token:'current'},exit=createPreparationExit(actor,session,actor,s,()=>auth);vi.stubGlobal('fetch',async()=>new Response('',{status:503}));
+ await exit.retainCreate({commandKey:command,hotel:'KAT',accountId:'Synthetic',ids:['A'],content:'statement',layout:'combined',purpose:'billing',statementSource:'workspace'});exit.clear();exit.exit();expect(readExitOutbox(s)).toHaveLength(1);expect(readExitOutbox(s)[0]).toMatchObject({commandKey:command});
+});
+it('an empty coordinator cannot acknowledge a requested unresolved batch command',async()=>{
+ const s=storage(),exit=createPreparationExit(actor,session,actor,s,()=>({actorId:actor,authSessionId:session,token:'current'})),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);expect(await exit.abandonCreates([command])).toBe(false);expect(fetcher).not.toHaveBeenCalled();
+});
+it('selective dialog Cancel acknowledges only that command, retaining another command and the active job',async()=>{
+ const s=storage(),exit=createPreparationExit(actor,session,actor,s,()=>({actorId:actor,authSessionId:session,token:'current'}));exit.retainJob({id:job,owner:actor,lifecycle:'transient'} as DocumentJob);
+ const input={hotel:'KAT',accountId:'Synthetic',ids:['A'],content:'statement',layout:'combined',purpose:'billing',statementSource:'workspace'};await exit.retainCreate({...input,commandKey:command});await exit.retainCreate({...input,commandKey:session},true);
+ vi.stubGlobal('fetch',async(path:string,init:RequestInit)=>{const body=JSON.parse(String(init.body));return Response.json({commandKey:path.split('/')[4],hotel:body.hotel,payloadDigest:body.payloadDigest,outcome:'cancelled'});});expect(await exit.abandonCreates([command])).toBe(true);expect(await exit.abandonCreates([command])).toBe(true);expect(()=>exit.created(command,{id:job,owner:actor,lifecycle:'transient'} as DocumentJob)).toThrow();
+ vi.stubGlobal('fetch',async()=>new Response('',{status:503}));exit.exit();expect(readExitOutbox(s)).toHaveLength(2);expect(readExitOutbox(s).some(e=>'jobId'in e&&e.jobId===job)).toBe(true);expect(readExitOutbox(s).some(e=>'commandKey'in e&&e.commandKey===session)).toBe(true);expect(readExitOutbox(s).some(e=>'commandKey'in e&&e.commandKey===command)).toBe(false);
+});
+it('failed selected command acknowledgment retains it through ordinary clear and later native close',async()=>{
+ const s=storage(),exit=createPreparationExit(actor,session,actor,s,()=>({actorId:actor,authSessionId:session,token:'current'}));await exit.retainCreate({commandKey:command,hotel:'KAT',accountId:'Synthetic',ids:['A'],content:'statement',layout:'combined',purpose:'billing'});vi.stubGlobal('fetch',async()=>new Response('',{status:503}));expect(await exit.abandonCreates([command])).toBe(false);exit.clear();exit.exit();expect(readExitOutbox(s)).toHaveLength(1);expect(readExitOutbox(s)[0]).toMatchObject({commandKey:command});
+});

@@ -62,6 +62,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    if(!env.REQUEST_ACTOR)return json({error:'document_forbidden'},403);
    const resolved=await rpc(env,'ar_document_command_abandon',{p_actor:env.REQUEST_ACTOR,p_owner:owner,p_command_key:command[1],p_hotel:input.hotel,p_payload_digest:input.payloadDigest}) as {job_id?:string;commandKey:string;hotel:string;payloadDigest:string;outcome:string};
    if(resolved.commandKey!==command[1]||resolved.hotel!==input.hotel||resolved.payloadDigest!==input.payloadDigest)throw Error('document_command_receipt_invalid');
+   if(['discarded','pending','protected'].includes(resolved.outcome)){if(!resolved.job_id||!uuidPattern.test(resolved.job_id))throw Error('document_command_receipt_invalid');if(resolved.outcome==='discarded'&&background)try{background.waitUntil(cleanupTransientDocument(env,owner,resolved.job_id).catch(()=>{}));}catch{}return json(resolved);}
    if(!resolved.job_id)return json(resolved);
    if(!uuidPattern.test(resolved.job_id))throw Error('document_command_receipt_invalid');
    // Separate RPC transaction: release command lock before existing global/actor abandon locks.

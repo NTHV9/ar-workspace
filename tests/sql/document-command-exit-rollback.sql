@@ -16,6 +16,7 @@ begin
  if not exists(select 1 from ar_private.document_command_exits where owner=test_actor and command_key=command and settled_at is not null) then raise exception 'protected receipt not durably settled';end if;
  -- Later provider resolution cannot resurrect this terminal close into auto-discard.
  update ar_private.mail_deliveries set state='sent' where id=mid;
+ r:=public.ar_document_command_abandon(test_actor,test_actor,command,'KAT',digest);if r->>'outcome'<>'protected' or r->'job'->>'id'<>jid::text then raise exception 'lost protected receipt was not replayed after provider settlement';end if;
  perform public.ar_document_finalize_abandoned(test_actor,25);
  if exists(select 1 from public.ar_document_jobs where id=jid and (closed_reason is distinct from 'sent' or discard_requested_at is not null)) then raise exception 'protected receipt became future automatic discard';end if;
 end$$;
