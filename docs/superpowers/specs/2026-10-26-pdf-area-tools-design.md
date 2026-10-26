@@ -1,6 +1,6 @@
 # PDF area selection and drawn whiteout
 
-Status: proposed implementation of the owner's approved feature request. No application change, test result, deployment or enablement is claimed by this document.
+Status: implemented, tested, deployed and enabled on 26 October 2026. Application source `b4921fcd359ac3db6a827f6d1e527c0de86206eb`; see `docs/evidence/pdf-area-tools-release-20261026.json` for qualification and the live Worker receipt.
 
 ## Intent and scope
 

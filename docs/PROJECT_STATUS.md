@@ -1,3 +1,37 @@
+## 2026-10-26 — PDF area selection and drawn whiteouts released
+
+**Implemented, tested, deployed and enabled.** Application source
+`b4921fcd359ac3db6a827f6d1e527c0de86206eb`, Worker version
+`05cd0fe7-a6ba-4704-b13d-e7682df2a29e`, adds generic Select marquees for
+original, edited and added text. Each enclosed box highlights live and stays
+highlighted after release, with a count and Delete selected text. Blank paper
+or gray surround clears every highlight without changing content. One batch
+deletion is one Undo step and preserves row spacing and neighboring coordinates.
+Actual linked Voucher fields retain individual editing with a touched-only
+explanation. Count/actions stay in the review sidebar to keep the drag frame stable.
+
+Whiteout now arms drawing directly on the paper, shows a translucent preview,
+then creates an ordinary movable/resizable white mask. Its minimum geometry is
+0.1 PDF unit. Pointer ownership and frozen frames protect zoom/scroll/page/source
+changes; unfinished gestures block Preview, saving, capture, Exit and email handoff.
+Consecutive independent deletions remain possible while duplicate dispatch commits
+once. Existing one-click email results and ordinary blank-click editing are retained.
+
+Same-source GitHub run1062 / 40302594283 passed4,788 units (3 existing skips),
+144 migrations/38 SQL fixtures, three real-SQL/fake-provider contract scenarios,
+603 browser cases, three performance and15 publication cases. Locally25 focused
+browser cases passed; the broader regression recorded75 passes plus one new
+test-driver startup race, fixed with an actual ready-canvas wait and a passing
+targeted rerun. No timeout/assertion/visual baseline was weakened. Synthetic PDF
+reopen/pixel proofs preserve neighbors, and1440/1280 screenshots were inspected.
+Task, scoped-fix and final Astra reviews have no remaining actionable findings.
+
+Live health/database checks pass; all six startup assets match the tested build,
+and six anonymous mail routes reject authentication-free requests. No real mail
+was sent and no financial, tracker-date or history data was written for this task.
+[Release receipt](evidence/pdf-area-tools-release-20261026.json) records the source,
+checks and deployment. The unrelated project-audit working changes remain unstaged.
+
 ## 2026-10-26 — English one-click send and dedicated results released
 
 **Implemented, tested, deployed and enabled.** Application source
