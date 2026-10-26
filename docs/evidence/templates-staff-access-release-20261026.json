@@ -1,0 +1,100 @@
+{
+  "applicationCommit": "dc21e31667145f36b31a770d470f3e9b61f1063a",
+  "predecessor": "b4921fcd359ac3db6a827f6d1e527c0de86206eb",
+  "pullRequest": "https://github.com/NTHV9/ar-workspace/pull/148",
+  "scope": "Active authorized staff in both regions can read, create, edit and archive the existing shared templates.",
+  "local": {
+    "focusedUnitPass": 53,
+    "browserPreferencesPass": 8,
+    "agingContractPass": 1,
+    "fullUnitPass": 4792,
+    "fullUnitExpectedSkips": 3,
+    "localMaxWorkers": 2,
+    "initialDefaultConcurrencyInvoiceTimeouts": 3,
+    "testTimeoutOrAssertionsRelaxed": false,
+    "build": "passed",
+    "publicAssetCount": 90,
+    "independentReview": "approved with no findings",
+    "staffScreenshotInspected": "Khao Lak 1440px"
+  },
+  "liveDatabaseReadOnly": {
+    "checksRealMembership": true,
+    "supportsSharedScope": true,
+    "auditsStaffMutations": true,
+    "directAuthenticatedSaveAllowed": false,
+    "anonymousSaveAllowed": false,
+    "serverSaveAllowed": true
+  },
+  "ci": {
+    "run": 40315899331,
+    "runNumber": 1063,
+    "state": "success",
+    "job": 121548299202,
+    "url": "https://github.com/NTHV9/ar-workspace/actions/runs/40315899331",
+    "unitPass": 4792,
+    "unitExpectedSkips": 3,
+    "browserPass": 605,
+    "migrations": 144,
+    "sqlRollbackFixtures": 38,
+    "sqlProviderContractScenarios": 3,
+    "performancePass": 3,
+    "publicationPass": 15
+  },
+  "production": {
+    "applicationCommit": "dc21e31667145f36b31a770d470f3e9b61f1063a",
+    "health": "ok",
+    "database": "database_verified",
+    "anonymousTemplateRoutesRejected": 2,
+    "checkedAt": "2026-10-26T11:57:51.507Z",
+    "actualTemplateMutation": false,
+    "actualEmailSent": false,
+    "state": "deployed_and_enabled",
+    "workerVersion": "fb22873e-c915-46b8-8f56-d256ddacf81e",
+    "verifiedPublicAssets": [
+      {
+        "path": "/assets/collection-policy-BoJpST4l.js",
+        "sha256": "7fffea792beed83467135c9d17f2a040c40701390304c58444aafa6dbe711836",
+        "bytes": 3435
+      },
+      {
+        "path": "/assets/createLucideIcon-4j-mWK0h.js",
+        "sha256": "c3384cab1a0875d530bb117343d8e2cc6c8a28b1ebb3a8ad1a6d7f0a1d5ed99b",
+        "bytes": 3100
+      },
+      {
+        "path": "/assets/hotels-CdREb_3J.js",
+        "sha256": "067b0084bb2e70e26f51de409dcb0ac7bb1988a968358a8ba7f7a75fbf4a9280",
+        "bytes": 962
+      },
+      {
+        "path": "/assets/index-BbPQ9L7U.css",
+        "sha256": "584c63a276fe3c99f376375a6ab304ca681d8ee02961de49b4518137b75903e7",
+        "bytes": 85783
+      },
+      {
+        "path": "/assets/index-DhFXBSVa.js",
+        "sha256": "aaa48393bcb2d65ef8749db8e5aa06cd2f530c340bd1e90aeeb946fd612dc1f8",
+        "bytes": 588847
+      },
+      {
+        "path": "/assets/jsx-runtime-B-hcVAMW.js",
+        "sha256": "6eab4df858048a4840a5d08754d84773f3f0de0ea0c4bb58e0e0abca99d1d973",
+        "bytes": 8557
+      },
+      {
+        "path": "/assets/TemplateLibrary-hfa4Mrqh.css",
+        "sha256": "406ef333f83ad55781cd5ebdcd9759c803cb1112577555d9ecf15ba6326b45ae",
+        "bytes": 8151
+      },
+      {
+        "path": "/assets/TemplateLibrary-UdQNqYEC.js",
+        "sha256": "c2f985de43857d0b407886ab66d929fccdf7de17e9cc2acf9103acb8eb604ae2",
+        "bytes": 22495
+      }
+    ],
+    "anonymousMailRoutesRejected": 6
+  },
+  "actualTemplateMutation": false,
+  "actualEmailSent": false,
+  "schemaOrRpcGrantChanges": false
+}

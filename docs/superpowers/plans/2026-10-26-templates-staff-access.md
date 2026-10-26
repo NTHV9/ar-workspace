@@ -21,17 +21,17 @@ administrator-only Templates rule and does not broaden other administration.
 
 ## One implementation and review boundary
 
-- [ ] Add failing access-intent and real-dispatcher tests for both regional staff,
+- [x] Add failing access-intent and real-dispatcher tests for both regional staff,
   canonical-owner forwarding, inactive/rejected membership and revision conflicts.
-- [ ] Add browser tests proving staff navigation/deep-link, creation, subject/body
+- [x] Add browser tests proving staff navigation/deep-link, creation, subject/body
   editing, save/reload, archive and conflict retention, without mail or admin access.
-- [ ] Admit only exact UUID template PUT requests with no query parameters; retain
+- [x] Admit only exact UUID template PUT requests with no query parameters; retain
   existing handler validation and deny other operations by default.
-- [ ] Expose Templates navigation/page and Save template to authorized staff.
+- [x] Expose Templates navigation/page and Save template to authorized staff.
   Reuse current template UI, library, revision and dirty-navigation protection.
-- [ ] Run focused RED/GREEN, full units/build, affected browser tests and independent
+- [x] Run focused RED/GREEN, full units/build, affected browser tests and independent
   review; fix actionable findings, then same-source GitHub qualification.
-- [ ] Publish current tested source to the existing Worker, verify health/assets,
+- [x] Publish current tested source to the existing Worker, verify health/assets,
   record PROJECT_STATUS and a customer-free receipt, and remove owned scratch files.
 
 ## Files

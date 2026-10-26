@@ -1,3 +1,13 @@
+## 2026-10-26 — Templates shared editing for approved staff
+
+The owner explicitly authorizes every active approved application user, in either
+region, to open Templates and create, edit, save or archive entries in the existing
+shared workspace library. Preserve canonical workspace ownership, real-actor audit,
+content validation, concurrency revisions and conflict retention. Template updates
+affect future application only and do not rewrite prepared/sent messages. This
+replaces the former administrator-only Templates UI/save restriction; other
+administrative permissions remain unchanged. No separate user grants are needed.
+
 ## 2026-10-26 — Optional combined email, independent Account PDF layouts
 
 The owner approves the design and mixed-layout clarification in

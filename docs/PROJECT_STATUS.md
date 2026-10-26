@@ -1,3 +1,35 @@
+## 2026-10-26 — Templates editing available to active workspace staff
+
+**Implemented, tested, deployed and enabled.** Application source
+`dc21e31667145f36b31a770d470f3e9b61f1063a`, Worker version
+`fb22873e-c915-46b8-8f56-d256ddacf81e`, exposes Templates navigation,
+its page and Save template to active authorized staff in both regions. They can
+create, edit and archive the existing shared library. The Worker admits only exact
+UUID template PUT requests with no query parameters, through existing real-actor
+membership authorization, canonical workspace ownership and mutation audit.
+
+Same-origin protection, content validation and atomic revision conflicts remain.
+Storage, user administration and collection-policy mutations remain restricted.
+Prepared/sent message snapshots are not rewritten by template edits. No schema,
+direct RPC grant, financial-data change, real template mutation or real email send
+was performed during this work. Read-only live function/grant checks confirmed
+membership, shared scope, audit and server-only template-save execution.
+
+Same-source GitHub run1063 / 40315899331 passed4,792 units (3 existing skips),
+144 migrations/38 SQL fixtures, three SQL/fake-provider contract scenarios,
+605 browser cases, three performance and15 publication cases. Locally53 focused
+units, eight email-preferences browser cases and one updated Aging contract pass.
+The default local unit run initially exceeded5s in three unchanged Invoice tests;
+the complete unchanged suite passed with two local workers. CI's default run also
+passed. No timeout/assertion/baseline was weakened. An independent review and the
+one-line obsolete Aging permission-test addendum are approved without findings.
+
+Live health/database checks pass; six startup and two TemplateLibrary assets match
+the tested build. Anonymous template read/write and six mail routes reject missing
+authentication. The latest PDF area-tools release remains the predecessor.
+[Release receipt](evidence/templates-staff-access-release-20261026.json) records
+qualification and deployment. Unrelated project-audit working changes are retained.
+
 ## 2026-10-26 — PDF area selection and drawn whiteouts released
 
 **Implemented, tested, deployed and enabled.** Application source
