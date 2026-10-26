@@ -26,11 +26,11 @@ test('template actions remain readable before hover and on keyboard focus',async
 for(const width of [1440,1280,390])test(`template library ${width}: versions, editable old copy and no sends`,async({page})=>{
  const {calls,versions}=await setup(page);await page.setViewportSize({width,height:width===1440?900:width===1280?800:844});await page.goto('/?templates=1');
  await expect(page.getByRole('heading',{name:'Email templates',exact:true})).toBeVisible();await expect(page.getByText('No saved templates yet.',{exact:false})).toBeVisible();
- await page.getByLabel('Template name',{exact:true}).fill('Synthetic billing template');await page.getByRole('button',{name:'Save template version',exact:true}).click();await expect(page.getByRole('status')).toContainText('Version 1 saved');
- await page.getByLabel('Template subject',{exact:true}).fill('Synthetic updated {{hotel}}');await page.getByRole('button',{name:'Save template version',exact:true}).click();await expect(page.getByRole('status')).toContainText('Version 2 saved');
+ await page.getByLabel('Template name',{exact:true}).fill('Synthetic billing template');await page.getByRole('button',{name:'Save template version',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Version 1 saved'})).toContainText('Version 1 saved');
+ await page.getByLabel('Template subject',{exact:true}).fill('Synthetic updated {{hotel}}');await page.getByRole('button',{name:'Save template version',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Version 2 saved'})).toContainText('Version 2 saved');
  await page.getByRole('button',{name:'View version history',exact:true}).click();await page.getByRole('button',{name:'Use this version as a new draft',exact:true}).filter({hasNot:page.locator('[disabled]')}).last().click();
  await expect(page.getByLabel('Template subject',{exact:true})).toHaveValue(starterTemplates[0].subject);expect(versions).toHaveLength(2);
- await page.getByRole('button',{name:'Save template version',exact:true}).click();await expect(page.getByRole('status')).toContainText('Version 3 saved');
+ await page.getByRole('button',{name:'Save template version',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Version 3 saved'})).toContainText('Version 3 saved');
  await expect(page.getByRole('textbox',{name:'Template message',exact:true})).toBeVisible();expect(calls.some(c=>/gmail|\/send/.test(c))).toBe(false);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:`evidence/email-templates-${width}.png`,fullPage:true});
 });
