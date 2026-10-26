@@ -5,11 +5,21 @@ import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import type {RetentionEnvironment} from './retention';
 import {operationBudgetLimits} from './budget';
 import {reconcileStorageUpload} from './storage';
+import {readProviderUsage,saveProviderAlert,validProviderAlertInput,ProviderUsageError} from './provider-usage';
+import {boundedBody} from '../email/shared';
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 export async function operationsApi(request:Request,env:RefreshEnv&EmailEnv&RetentionEnvironment,actor:string){
  const u=new URL(request.url);
+ if(env.REQUEST_ACCESS&&!env.REQUEST_ACCESS.administrator||env.REQUEST_ACTOR&&env.REQUEST_ACTOR!==actor)return json({error:'operations_forbidden'},403);
  if(request.method!=='GET'&&request.headers.get('Origin')&&request.headers.get('Origin')!==u.origin)return json({error:'forbidden'},403);
  try{
+  if(u.pathname==='/api/operations/provider-usage'&&request.method==='GET')return json(await readProviderUsage(env,actor));
+  if(u.pathname==='/api/operations/provider-alerts'&&request.method==='PUT'){
+   if(request.headers.get('Origin')!==u.origin)return json({error:'forbidden'},403);
+   let input:unknown;try{if(request.headers.get('Content-Type')?.split(';')[0].trim()!=='application/json')throw Error();input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await boundedBody(request,2048)));}catch{return json({error:'provider_invalid'},400);}
+   if(!validProviderAlertInput(input))return json({error:'provider_invalid'},400);
+   return json(await saveProviderAlert(env,actor,input));
+  }
   if(u.pathname==='/api/operations/queue'&&request.method==='GET'){
    const kind=u.searchParams.get('kind')??'all',page=Number(u.searchParams.get('page')??'0');if(!['all','document','email','archive','refresh','financial'].includes(kind)||!Number.isSafeInteger(page)||page<0)throw Error('operations_invalid');
    const value=await backendRpc<Record<string,unknown>>(env,'ar_operations_queue',{p_actor:actor,p_kind:kind,p_offset:page*50});if(value.error)throw Error(String(value.error));return json({...value,writeHold:writesHeld(env)});
@@ -31,5 +41,5 @@ export async function operationsApi(request:Request,env:RefreshEnv&EmailEnv&Rete
    return json(await reconcileStorageUpload(env,actor,match[1]));
   }
   return json({error:'not_found'},404);
- }catch(e){const code=e instanceof Error&&/^(budget|storage|retention|operations|recovery|gmail)_[a-z_]+$/.test(e.message)?e.message:'operations_unavailable';return json({error:code},code.endsWith('_forbidden')?403:503);}
+ }catch(e){if(e instanceof ProviderUsageError)return json({error:e.message,...(e.latest?{latest:e.latest}:{})},e.message==='provider_forbidden'?403:e.message==='provider_invalid'?400:e.message.endsWith('_conflict')?409:503);const code=e instanceof Error&&/^(budget|storage|retention|operations|recovery|gmail)_[a-z_]+$/.test(e.message)?e.message:'operations_unavailable';return json({error:code},code.endsWith('_forbidden')?403:503);}
 }
