@@ -117,5 +117,5 @@ declare actor uuid:=ar_private.access_owner();sess uuid:=gen_random_uuid();curre
  perform public.ar_document_finalize_abandoned(actor,25);perform public.ar_preparation_retirement_maintain(actor,25);
  if not ar_private.pdf_released((s->>'job')::uuid) or (select original_response->>'outcome' from ar_private.preparation_retirements where job_id=(s->>'job')::uuid)<>'protected' then raise exception 'original marked command authority did not transfer';end if;
  r:=public.ar_document_command_exit(actor,actor,cmd,'KAT',digest,marker,sess,current_sess);if r->>'outcome'<>'protected' or (select discard_requested_at from public.ar_document_jobs where id=(s->>'job')::uuid) is not null then raise exception 'settled marked command changed protected decision';end if;
-end$;
+end$$;
 rollback;
