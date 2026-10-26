@@ -8,7 +8,7 @@ document does not claim an independent production verification or a deployment.
 
 ## Approved outcome
 
-After human confirmation, replace the visible composer/review surface with a
+After the human clicks the send action, replace the visible composer/overview surface with a
 dedicated, prominent progress/result screen. Staff should immediately understand
 whether email was sent, whether history still needs attention, and what to do
 next. All new UI is English. The owner explicitly chooses **manual Back to
@@ -20,6 +20,31 @@ even while the app records/checks history. History completion is not a staff
 navigation gate. Existing server-side processing/reconciliation continues from
 durable receipts; this does not promise that every conflicted history entry
 will automatically finish. Do not add polling or provider calls to meet this UX.
+
+Latest owner approval also replaces repeated send confirmation with **one-click
+sending**. Standalone and combined composers show one clear **Send now** action.
+That explicit click saves current edits, validates recipients/policy/package,
+freezes the returned saved envelope and submits exactly one send request. Remove
+the acceptance checkbox and repeated send-confirmation dialog/panel. Do not
+replace them with another popup. Backend `confirmed: true` remains: this human
+click is the authorization, not a removed safety fence. No send on render,
+reload, state restoration or save alone. Show preparation/progress feedback while
+the click is processing; show success only after actual provider evidence.
+
+Separate batches retain useful Account selection/overview and its selection
+checkboxes, which are not send-acceptance checkboxes. **Send N emails** directly
+saves/validates/freezes the selected scope and sends without another dialog or
+acceptance step. Navigation that only opens overview says **Review emails** or
+**Email overview**, never a label implying it sends. Each surface has one clear
+send CTA; do not duplicate global-header and body Send now buttons.
+
+Keep synchronous admission locking across the entire save/preflight/send chain
+so double-clicks cannot create two submissions. Use the exact saved revision,
+recipients, message, filenames and applicable policy captured by this action;
+later input/state changes cannot alter an admitted envelope. Preserve known 4xx
+pre-admission correction and existing lost-save exact replay, command identities,
+receipt floors and all backend validation. A save failure cannot fall through to
+send; uncertain send cannot return to a fresh send action.
 
 Use the existing Luminous AR identity, Plus Jakarta Sans and established color
 tokens. A large status symbol, clear headline and short explanation precede
@@ -54,7 +79,7 @@ Provider `mode === 'draft' && state === 'created'` without accepted evidence is
 still **Gmail draft — not sent** in the existing preparation flow, not success.
 Admin-only Create Gmail draft behavior, Draft recovery and staff restrictions
 remain unchanged. Existing known validation rejections before a handoff return
-to the review/error UI; they are not announced as successful or uncertain sends.
+to the composer/overview error UI; they are not announced as successful or uncertain sends.
 
 ## Summary accuracy
 
@@ -81,8 +106,9 @@ under `src/email/`. Hosts remain responsible for transport, state, identity,
 recovery, navigation and lifecycle. Do not introduce a replacement send state
 machine or a new persistence record for the result page.
 
-Standalone EmailComposer needs a distinct sending flag (generic busy also covers
-save/upload/check), renders the result inside its existing modal boundary and
+Standalone EmailComposer needs a distinct send-action flag spanning its admitted
+save/validate/freeze/send chain (generic busy also covers unrelated save/upload/check),
+renders the result inside its existing modal boundary and
 keeps SentMatchReview usable. Retain the same dialog element/ref across the
 transition so `showModal()` and modal focus behavior are not lost. A restored
 delivery opens the appropriate result; Draft-only preparation does not.
@@ -124,7 +150,7 @@ or recreate cleared resume data.
 All UI is English. Navigation is manual. No PDF engine, VAT, backend, schema,
 send API, credential, retention or cloud-resource changes. No automatic email.
 No new paid service or dependency. Preserve reviewed bytes, immutable IDs,
-attempt markers, confirmation admission, receipt floors and provider evidence.
+attempt markers, explicit-human-click admission, backend `confirmed: true`, receipt floors and provider evidence.
 In particular retain `combinedDelivery()` monotonic recorded/accepted evidence,
 `assertCombinedBatch`, pending save replay and the exact original command retry
 admission. A result view must not mint IDs, clear receipts or authorize resend.
@@ -148,6 +174,12 @@ work groups per Account; combined additionally covers recorded/accepted receipt
 floors and original-request recovery after reload. Draft and Admin-only behavior
 must remain covered. Verify every touched recovery control still works when the
 composer fields are absent.
+Pin one click -> one send POST, rapid double-click -> one send POST, exact unsaved
+edits and filenames in the saved/sent revision, current policy and recipient
+validation, no acceptance checkbox/dialog/popup, save failure -> zero send POSTs,
+lost-save exact replay and no send on F5. Separate selection checkboxes remain
+and the overview-only label does not imply sending. Existing tests for removed
+confirmation UI must migrate to these behavioral assertions, not lose coverage.
 For standalone, separate and combined flows, hold a history check response open
 after Gmail acceptance and assert Back to Collections remains enabled and works
 through guarded Exit before the check resolves. Assert no resend, no required

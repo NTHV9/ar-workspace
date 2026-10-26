@@ -13,11 +13,12 @@
 ## Global Constraints
 
 - All UI is English. Navigation is manual.
+- One-click Send now saves/validates/freezes then sends. Remove acceptance checkboxes and repeated confirmation panels; preserve separate Account selection checkboxes and backend `confirmed: true`.
 - Gmail confirmation/acceptance completes the employee task. Back to Collections is immediately available during history recording/checking; history completion is not a staff navigation gate.
 - No PDF engine, VAT, backend, schema, send API, credential, retention or cloud-resource changes.
 - No automatic email. No new paid service or dependency.
 - No new automatic polling or provider calls. Reuse human check/reload/review/original-request controls.
-- Preserve reviewed bytes, immutable IDs, attempt markers, confirmation admission, receipt floors and provider evidence.
+- Preserve reviewed bytes, immutable IDs, attempt markers, explicit-human-click admission, receipt floors and provider evidence.
 - F5/reload resumes active work; it is not Exit.
 - Existing uncommitted PROJECT_STATUS and PROJECT_AUDIT work belongs to another task and must remain untouched by these implementation agents.
 - Owner method: Astra High planning/review and GPT-6.1 Sol Medium implementation. Owner-approved intent is already captured; do not repeat product questions.
@@ -146,6 +147,14 @@ harnesses may use their supplied onClose as the fallback.
   defer POST response, assert `Sending email…`, hidden Email message field,
   disabled Back to Collections; resolve sent+recorded, assert `Email sent`, exact
   recipients/counts and one POST. Verify no URL transition until return clicked.
+  `one Send now click saves current edits and submits once`: edit recipients,
+  subject/body and filenames, click once, assert saved revision/body exactly
+  matches send payload, `confirmed: true`, one POST and no acceptance control or
+  confirmation popup. `double click admits one operation`: delay save/send and
+  assert one save chain and one POST. `invalid recipients or changed policy do
+  not send`: validation keeps correction UI, zero send POSTs. `save failure does
+  not send`: retain edits, zero send POSTs. Existing lost-save replay and F5
+  tests retain the same command/revision without automatic submission.
   `accepted send retains recovery without resend`: accepted/history-pending then
   successful check; assert headline stays sent, pending clears and POST count=1.
   `accepted result can return while history check is pending`: hold check
@@ -161,9 +170,17 @@ harnesses may use their supplied onClose as the fallback.
 - [ ] **Step 2: Run**
   `pnpm test:browser:smoke tests/browser/email-composer.spec.ts tests/browser/email-navigation.spec.ts tests/browser/document-route.spec.ts`;
   expect new assertions to fail on the old visible composer/navigation.
-- [ ] **Step 3: Integrate** within EmailComposer's existing dialog. Add dedicated
-  send-in-flight state around only `sendNow`; retain all current admission and
-  4xx/unknown handling. Gate this standalone result branch to `!batch`; Task 3
+- [ ] **Step 3: Integrate** within EmailComposer's existing dialog. Replace
+  reviewSend -> confirming/ack -> sendNow with one `sendNow(): Promise<void>`
+  user action under the existing synchronous admission lock: save current edits,
+  validate current recipients/package/policy, freeze the returned saved draft and
+  policy version, then submit that exact revision with `confirmed: true`. Remove
+  acceptance checkbox and repeated confirmation panel; expose one Send now CTA.
+  Never use stale React draft state after persistCurrentEdits resolves. Keep
+  known pre-admission 4xx correction and unknown transport no-resend handling.
+  Hold a dedicated send-action flag across this chain, separate from unrelated
+  save/upload/check busy. A save/preflight failure must not submit a send request.
+  Gate this standalone result branch to `!batch`; Task 3
   owns the separate-batch result presentation. Derive summary from the saved reviewed draft and job.
   Replace the content branch, not the dialog ref; retain SentMatchReview outside
   the hidden editor branch and wire its callbacks unchanged. Exclude Draft-only
@@ -217,6 +234,16 @@ needed to hide header preparation controls; derive locked results from existing
   no spontaneous resend on check/reload, accepted/recorded floor preserved and
   no batch removal before accepted cleanup. Reuse current fixture sent/accepted
   evidence and existing lost-response controls rather than replacing contracts.
+  `combined one-click save and send freezes current inputs`: one Send now click
+  persists manual recipients/body/package and submits one exact saved revision
+  and command with `confirmed: true`; no acknowledgment checkbox or repeated
+  confirmation panel. `combined double click sends once`: delayed save/transport
+  still admits one request. `combined save or recipient/policy validation failure
+  never sends`: zero send POSTs, correctable inputs retained and prior uncertain
+  save uses the original exact replay. `separate overview label does not send`:
+  Review emails or Email overview opens selection with zero send calls; Send N
+  emails directly performs exactly N admitted requests. Keep selection checkboxes;
+  assert no send-acceptance checkbox/popup, no duplicated send CTA and no send on F5.
 - [ ] **Step 2: Run**
   `pnpm test:browser:smoke tests/browser/combined-email.spec.ts tests/browser/batch-workspace/pdf-editor.spec.ts`;
   expect new result assertions to fail initially.
@@ -224,6 +251,10 @@ needed to hide header preparation controls; derive locked results from existing
   transport as today, retain them in memory for this result and derive restored
   attempts from existing entries after F5. Render shared result plus per-entry
   evidence/recovery and remaining-work action. Keep two-worker send concurrency,
+  preserve the useful Account-selection overview, and label overview-only
+  navigation Review emails or Email overview. Send N emails validates/freezes
+  the selected saved envelopes and sends directly from that click with no new
+  acceptance step/dialog. Preserve the synchronous batch admission lock,
   and selecting an attempted Account tab on its result/recovery surface rather
   than reopening the disabled composer; unattempted tabs open preparation. Keep
   admission checks, current account controls and tab session data. Distinguish
@@ -237,7 +268,15 @@ needed to hide header preparation controls; derive locked results from existing
   request progress from generic operation busy. When locked, replace common
   editor/review UI with shared result while retaining current check(),
   retryAdmission and retryOriginal controls. Keep observed receipt floors,
-  assertCombinedBatch, pendingSave and immutable sendCommandId untouched. Hide
+  assertCombinedBatch, pendingSave and immutable sendCommandId untouched. Remove
+  acknowledgment/repeated confirmation UI. One Send now action holds the
+  synchronous lock across prepare/save/validation/freeze and the original send
+  request, using the exact returned CombinedEmail revision rather than stale
+  React state. Resolve earlier pendingSave by its exact replay before considering
+  current content; a failure must stop before send. Preserve `confirmed: true`,
+  preflight/command fences, proven pre-admission 4xx correction and unknown-send
+  locks. Remove duplicate global/body send CTA; overview-only labels cannot imply
+  send. Hide
   misleading prepare/send header actions; keep per-Account tabs and disabled
   navigation during actual sending/unsafe operations. Back to Collections calls
   the existing batch Exit path. Refine leave/switching/combinedBusy/control-busy
@@ -286,7 +325,9 @@ PROJECT_STATUS checkpoint, preserving the unrelated 17-line audit work.
 
 Coverage checked: all three flows, English, manual return, partial results,
 Admin Draft, accurate counts, recovery/receipt floors, F5/Exit, no API changes
-and visual evidence have explicit owners/tests. Shared names/types match across
+and visual evidence have explicit owners/tests. Latest one-click sending, exact
+save/freeze, double-click admission and removal of repeated acceptance UI have
+explicit tests; backend human authorization and receipt fences remain. Shared names/types match across
 tasks. Task 1 is the dependency; Tasks 2/3 own disjoint source files. Existing
 AGENTS security/lifecycle requirements remain active; newer owner intent permits
 this UI refinement but does not authorize provider sends or resource changes.
