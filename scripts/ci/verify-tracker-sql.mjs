@@ -78,13 +78,25 @@ try{
    report.aliasBaseline='record c has no field hotel reproduced before alias migration';
    console.log('PASS resolver alias baseline reproduced');
   }
+  if(name.endsWith('_ar_provider_quota_warn_only.sql')){
+   let reproduced=false;
+   try{file(join(root,'tests/sql/provider-quota-warnings-rollback.sql'));}
+   catch{const log=readFileSync(join(runDir,String(sequence).padStart(3,'0')+'-psql.log'),'utf8');reproduced=/warn-only baseline quota rejection:.*budget_usage_unverified/.test(log);}
+   if(!reproduced)throw Error('Quota suspension regression did not reproduce before warn-only migration');
+   report.quotaBaseline='budget_usage_unverified reproduced on null quota telemetry before warn-only migration';
+   console.log('PASS quota suspension baseline reproduced');
+  }
   file(join(migrationDir,name));report.migrations.push(name);
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
  const tests=join(root,'tests/sql');
- for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql'].includes(n)).sort()){
+ for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql','provider-quota-warnings-rollback.sql'].includes(n)).sort()){
   const text=readFileSync(join(tests,name),'utf8'),ownTransaction=/^begin;/im.test(text)&&/rollback;\s*$/i.test(text);
   try{file(join(tests,name),!ownTransaction);report.fixtures.push(name);console.log('PASS '+name);}
+  catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}
+ }
+ for(const name of ['operations-budget-rollback.sql','storage-budget-rollback.sql']){
+  try{file(join(root,'scripts/recovery',name));report.fixtures.push(name);console.log('PASS '+name);}
   catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}
  }
  if(report.failures.length)throw Error(`${report.failures.length} synthetic tracker SQL fixtures failed; inspect report`);
