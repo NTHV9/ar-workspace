@@ -34,7 +34,7 @@ test('numeric positions stop at the page edge without a blocking warning',async(
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await choosePdfTool(page,'Note');await page.getByText('Position & size',{exact:true}).click();
  await page.getByRole('spinbutton',{name:'Layer x',exact:true}).fill('999999');await page.getByRole('spinbutton',{name:'Layer y',exact:true}).fill('999999');await expect(page.getByRole('alert')).toHaveCount(0);
- await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved');
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Draft saved'})).toContainText('Draft saved');
  const saved=await page.evaluate(()=>(window as any).pdfTest.draft.pages[0]);expect(saved.layers[0].x+saved.layers[0].width).toBeCloseTo(saved.width);expect(saved.layers[0].y+saved.layers[0].height).toBeCloseTo(saved.height);
 });
 test('source replacement removes original wording and preserves untouched multi-page invoices',async({page})=>{
@@ -117,14 +117,14 @@ test('draft save needs no final preview and dirty close offers explicit choices'
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();
  await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text'}).fill('DRAFT ONLY');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
  await expect(page.getByRole('alertdialog',{name:'Unsaved PDF changes'})).toBeVisible();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBeUndefined();await page.getByRole('button',{name:'Keep editing',exact:true}).click();
- await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status')).toContainText('Draft saved. Final review is still required.');await expect(page.getByRole('dialog',{name:'Final PDF preview'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Draft saved. Final review is still required.'})).toContainText('Draft saved. Final review is still required.');await expect(page.getByRole('dialog',{name:'Final PDF preview'})).toHaveCount(0);
  expect(await page.evaluate(()=>({text:(window as any).pdfTest.draft.pages[0].layers[0].text,final:(window as any).pdfTest.saved}))).toEqual({text:'DRAFT ONLY',final:null});await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBe(true);
 });
 test('a pending draft preserves the current edit and keeps the workspace open',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await choosePdfTool(page,'Note');
  await page.evaluate(()=>{const api=(window as any).pdfTest;api.draftWait=new Promise(resolve=>api.releaseDraft=resolve);});await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.locator('.pdf-layout')).toHaveAttribute('inert','');await page.evaluate(()=>(window as any).pdfTest.releaseDraft());
- await expect(page.getByRole('status')).toContainText('Draft saved');await expect(page.getByRole('textbox',{name:'Layer text'})).toHaveValue('Note');expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBeUndefined();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBe(true);
+ await expect(page.getByRole('status').filter({hasText:'Draft saved'})).toContainText('Draft saved');await expect(page.getByRole('textbox',{name:'Layer text'})).toHaveValue('Note');expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBeUndefined();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();expect(await page.evaluate(()=>(window as any).pdfTest.closed)).toBe(true);
 });
 test('save draft and close waits for confirmed persistence',async({page})=>{
  await page.goto('/tests/browser/pdf-editor-harness.html');await expect(page.getByRole('button',{name:'Select page 4',exact:true})).toBeVisible();await choosePdfTool(page,'Note');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();

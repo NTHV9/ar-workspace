@@ -1,4 +1,4 @@
-import {spawnSync} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {verifyDraftDiscardConcurrency} from './verify-draft-discard-concurrency.mjs';
 import {verifyCombinedEmailContract} from './verify-combined-email-contract.mjs';
 import {mkdirSync,readFileSync,readdirSync,writeFileSync,existsSync} from 'node:fs';
@@ -78,16 +78,42 @@ try{
    report.aliasBaseline='record c has no field hotel reproduced before alias migration';
    console.log('PASS resolver alias baseline reproduced');
   }
+  if(name.endsWith('_ar_provider_quota_warn_only.sql')){
+   let reproduced=false;
+   try{file(join(root,'tests/sql/provider-quota-warnings-rollback.sql'));}
+   catch{const log=readFileSync(join(runDir,String(sequence).padStart(3,'0')+'-psql.log'),'utf8');reproduced=/warn-only baseline quota rejection:.*budget_usage_unverified/.test(log);}
+   if(!reproduced)throw Error('Quota suspension regression did not reproduce before warn-only migration');
+   report.quotaBaseline='budget_usage_unverified reproduced on null quota telemetry before warn-only migration';
+   console.log('PASS quota suspension baseline reproduced');
+  }
   file(join(migrationDir,name));report.migrations.push(name);
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
  const tests=join(root,'tests/sql');
- for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql'].includes(n)).sort()){
+ for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql','provider-quota-warnings-rollback.sql','provider-usage-rollback.sql'].includes(n)).sort()){
   const text=readFileSync(join(tests,name),'utf8'),ownTransaction=/^begin;/im.test(text)&&/rollback;\s*$/i.test(text);
   try{file(join(tests,name),!ownTransaction);report.fixtures.push(name);console.log('PASS '+name);}
   catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}
  }
+ for(const name of ['operations-budget-rollback.sql','storage-budget-rollback.sql']){
+  try{file(join(root,'scripts/recovery',name));report.fixtures.push(name);console.log('PASS '+name);}
+  catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}
+ }
  if(report.failures.length)throw Error(`${report.failures.length} synthetic tracker SQL fixtures failed; inspect report`);
+ // Two real database sessions contend on the same expected settings revision.
+ const providerActor=command("select id from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null");
+ if(!/^[0-9a-f-]{36}$/.test(providerActor))throw Error('Synthetic provider actor missing');
+ const providerCommands=[randomUUID(),randomUUID()];
+ const providerRace=await Promise.all(providerCommands.map((id,index)=>new Promise((resolve,reject)=>{
+  const sql=`begin; set local request.jwt.claims='{"role":"service_role"}'; set local request.headers='{"x-ar-actor":"${providerActor}"}'; select public.ar_provider_alert_save('${providerActor}','cloudflare',${81+index},0,'${id}'); commit;`;
+  const child=spawn(executable('psql'),['-X','--no-password','-d',database,'-v','ON_ERROR_STOP=1','-q','-t','-A','-c',sql],{cwd:root,env:cleanEnv,windowsHide:true});let output='',errors='';
+  const timer=setTimeout(()=>{child.kill();reject(Error('Provider settings race timeout'));},20000);
+  child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>errors+=chunk);child.on('error',reject);child.on('close',code=>{clearTimeout(timer);writeFileSync(join(runDir,`provider-settings-race-${index}.log`),output+'\n'+errors);if(code!==0)return reject(Error('Provider settings race failed'));try{resolve(JSON.parse(output.trim()));}catch(error){reject(error);}});
+ })));
+ if(providerRace.filter(result=>result.revision===1).length!==1||providerRace.filter(result=>result.error==='provider_revision_conflict'&&result.latest?.revision===1).length!==1)throw Error('Provider settings concurrency did not preserve one winner');
+ if(command('select revision from ar_private.provider_alert_settings where provider=\'cloudflare\'')!=='1'||command('select count(*) from ar_private.provider_alert_commands')!=='2')throw Error('Provider race lost revision or receipts');
+ report.providerSettingsConcurrency='two sessions: one revision-1 winner, one immutable revision-conflict receipt';
+ console.log('PASS concurrent provider alert settings revision and receipts');
  report.documentExitConcurrency=await verifyDraftDiscardConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
  console.log('PASS concurrent message Save / preparation Exit and deferred cleanup retry');
  report.combinedEmailContract=await verifyCombinedEmailContract({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});

@@ -48,20 +48,10 @@ export function assessOperationBudget(state:BudgetState,request:BudgetBytes,limi
  const requested=byteVector(request,false),charged=byteVector(state.charged,false),config=checkedLimits(limits);
  integer(state.activeReservations);if(typeof state.blocked!=='boolean'||!Number.isFinite(now))throw Error('budget_invalid');
  const deny=(reason:string):BudgetDecision=>({allowed:false,reason});
- if(state.blocked)return deny('budget_review_required');
- if(!state.measurement)return deny('budget_usage_unverified');
- const m=checkedMeasurement(state.measurement),relevant=dimensions.filter(key=>requested[key]>0);
- if(relevant.some(key=>m.used[key]===null||m.headroom[key]===null||m.observedAt[key]===null))return deny('budget_usage_unverified');
- if(now<Date.parse(m.periodStart)||now>=Date.parse(m.periodEnd))return deny('budget_period_closed');
- for(const key of relevant){const observed=Date.parse(m.observedAt[key]!);if(observed>now||key!=='egressBytes'&&now-observed>config.measurementMaxAgeSeconds*1000)return deny('budget_measurement_stale');}
+ // Quota measurements and legacy estimate-overrun flags are diagnostics only.
+ // Keep technical validation and safe ledger arithmetic independent of telemetry.
+ for(const key of dimensions){if(!Number.isSafeInteger(charged[key]+requested[key]))throw Error('budget_invalid');}
  if(state.activeReservations>=config.maxConcurrent)return deny('budget_concurrency_exceeded');
- const messages={storedBytes:'budget_storage_exceeded',egressBytes:'budget_egress_exceeded',databaseBytes:'budget_database_exceeded'};
- for(const key of relevant){
-  const used=m.used[key]!,headroom=m.headroom[key]!,remainingCharge=charged[key]+requested[key],projected=used+remainingCharge;
-  if(!Number.isSafeInteger(remainingCharge)||!Number.isSafeInteger(projected))throw Error('budget_invalid');
-  const safeLimit=Math.floor(config[key]*(100-config.safetyPercent)/100),safeHeadroom=Math.floor(headroom*(100-config.safetyPercent)/100);
-  if(projected>safeLimit)return deny(messages[key]);if(remainingCharge>safeHeadroom)return deny('budget_headroom_exceeded');
- }
  return {allowed:true};
 }
 function checkedReservation(value:unknown):BudgetReservation {

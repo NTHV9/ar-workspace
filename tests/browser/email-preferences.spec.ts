@@ -54,7 +54,7 @@ for(const width of [1440,390])test(`signature settings and hotel names at ${widt
  await preferences(context);await page.setViewportSize({width,height:1000});await googleReturn(page);
  await page.getByRole('button',{name:'My email signature',exact:true}).click();await expect(page.getByRole('heading',{name:'My email signature',exact:true})).toBeVisible();
  await page.getByLabel('Name',{exact:true}).fill('Synthetic Example');await page.getByLabel('Position',{exact:true}).fill('Supervisor');
- await page.getByRole('button',{name:'Save signature',exact:true}).click();await expect(page.getByRole('status')).toContainText('Email signature saved.');
+ await page.getByRole('button',{name:'Save signature',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Email signature saved.'})).toContainText('Email signature saved.');
  const preview=page.getByRole('region',{name:'Signature preview',exact:true});
  for(const hotel of HOTEL_IDS){await page.getByRole('combobox',{name:'Signature preview hotel'}).selectOption(hotel);await expect(preview).toContainText(signatureWorkplace(hotel));}
  await expect(preview.getByRole('img',{name:'Katathani Collection',exact:true})).toBeVisible();
@@ -98,10 +98,10 @@ for(const region of ['phuket','khao-lak'])test(`active ${region} staff can manag
  await page.getByRole('button',{name:'Templates',exact:true}).click();await expect(page.getByRole('heading',{name:'Email templates',exact:true})).toBeVisible();
  await page.locator('.template-choice').first().click();
  await page.getByLabel('Template subject',{exact:true}).fill('Shared staff subject {{hotel}}');await page.getByRole('textbox',{name:'Template message',exact:true}).fill('Shared staff message');
- await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status')).toContainText('Template saved.');expect(writes).toHaveLength(1);expect(writes[0]).toMatchObject({revision:1,content:{subject:'Shared staff subject {{hotel}}'}});
+ await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Template saved.'})).toContainText('Template saved.');expect(writes).toHaveLength(1);expect(writes[0]).toMatchObject({revision:1,content:{subject:'Shared staff subject {{hotel}}'}});
  await page.reload();await expect(page.getByRole('heading',{name:'Email templates',exact:true})).toBeVisible();await page.locator('.template-choice').first().click();await expect(page.getByLabel('Template subject',{exact:true})).toHaveValue('Shared staff subject {{hotel}}');await expect(page.getByRole('textbox',{name:'Template message',exact:true})).toContainText('Shared staff message');
- await page.getByRole('checkbox',{name:'Archive from future selection',exact:true}).check();await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status')).toContainText('Template saved.');expect(templates.get(templateId)?.archived).toBe(true);
- await page.getByRole('button',{name:'New template',exact:true}).click();await page.getByLabel('Template name',{exact:true}).fill('Synthetic staff template');await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status')).toContainText('Template saved.');expect(templates.size).toBe(2);
+ await page.getByRole('checkbox',{name:'Archive from future selection',exact:true}).check();await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Template saved.'})).toContainText('Template saved.');expect(templates.get(templateId)?.archived).toBe(true);
+ await page.getByRole('button',{name:'New template',exact:true}).click();await page.getByLabel('Template name',{exact:true}).fill('Synthetic staff template');await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Template saved.'})).toContainText('Template saved.');expect(templates.size).toBe(2);
  conflict=true;await page.getByLabel('Template subject',{exact:true}).fill('Keep my conflicting edits');await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('alert')).toContainText('changed in another session');await expect(page.getByLabel('Template subject',{exact:true})).toHaveValue('Keep my conflicting edits');expect(sends).toHaveLength(0);
  await page.screenshot({path:testInfo.outputPath('staff-template-library.png'),fullPage:true});
 });

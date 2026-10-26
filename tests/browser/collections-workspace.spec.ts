@@ -1,10 +1,11 @@
+import {parseProviderUsage,type ProviderUsageResponse} from '../../src/operations/provider-usage';
 import {test,expect,type Page} from '@playwright/test';
 import {policyFixture} from './fixtures/collection-policy';
 import {calendarAdd} from '../../src/domain/collection';
 const today='2026-09-26',stamp='2026-09-26T03:00:00Z';
 const user={id:'00000000-0000-4000-8000-000000000001',email:'staff@example.com',aud:'authenticated',role:'authenticated',app_metadata:{providers:['google']},user_metadata:{},created_at:stamp};
-async function setup(page:Page,region:string,administrator=false){
- const loginUser={...user,email:administrator?'ar@katathani.com':user.email};
+async function setup(page:Page,region:string,administrator=false,providerUsage:ProviderUsageResponse=parseProviderUsage(null)){
+ const loginUser={...user,email:administrator?'ar@katathani.com':user.email};const providerCalls:string[]=[];
  await page.clock.setFixedTime(new Date(stamp));const hotel=region==='phuket'?'KAT':'TLKL';const writes:Record<string,unknown>[]=[];
  const row=(account:string,name:string,n:number,stage:string|null=null,extra:Record<string,unknown>={})=>({hotel,account_id:account,account_name:name,account_type:'Travel Agent',id:n===1?'shared':'inv-'+n,invoice_no:account.toUpperCase()+'-'+(100+n),folio_no:'F-'+n,guest:n<=2?'First pair':'Guest '+n,open:n===1?100.25:n===2?200.25:250,transaction_date:calendarAdd(today,-30),collection_role:'standalone',collection_selectable:true,verification_state:'verified',workflow:{revision:1,billing_required:account==='harbor',credit_term:30,first_billing_date:null,last_reminder_stage:stage,last_reminder_date:stage?calendarAdd(today,-10):null,due_date:calendarAdd(today,-2)},...extra});
  const rows=[...Array.from({length:24},(_,i)=>row('harbor','Harbor Travel',i+1)),row('coral','Coral Holidays',1),row('palm','Palm Tours',1,'Final'),row('orchid','Orchid Agency',1,null,{workflow:{revision:1,billing_required:false,credit_term:30,first_billing_date:null,last_reminder_stage:null,last_reminder_date:null,due_date:calendarAdd(today,20)}}),row('review','Review Account',1,null,{verification_state:'unverified',collection_selectable:false}),row('hold','Held Account',1,null,{exceptions:{held:true,needsReview:false,dispute:'',reopenedAt:null}}),row('setup','Setup Account',1,null,{workflow:null})];
@@ -12,6 +13,7 @@ async function setup(page:Page,region:string,administrator=false){
  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_in:3600,token_type:'bearer',user:loginUser}}));
  await page.route('**/api/**',r=>{
   const p=new URL(r.request().url()).pathname;
+  if(p==='/api/operations/provider-usage'&&r.request().method()==='GET'){providerCalls.push(p);return r.fulfill({json:providerUsage});}
   if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}});
   if(p==='/api/access/me')return r.fulfill({json:{memberId:loginUser.id,email:loginUser.email,displayName:'Synthetic Staff',active:true,administrator,regions:administrator?['phuket','khao-lak']:[region],revision:1}});
   if(p==='/api/portfolio')return r.fulfill({json:{accounts,status:'connected',refresh:{running:false,hotels:[{hotel,status:'succeeded',last_success_at:stamp}]}}});
@@ -25,7 +27,7 @@ async function setup(page:Page,region:string,administrator=false){
  await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeEnabled();
  await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));const key=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(key+'-code-verifier',JSON.stringify('synthetic-code-verifier'));});
  await page.goto('/?code=synthetic-code');if(administrator&&region!=='phuket')await page.getByRole('combobox',{name:'Region',exact:true}).selectOption(region);await page.getByRole('button',{name:'Collections',exact:true}).click();await expect(page.getByRole('button',{name:/account Harbor Travel$/})).toBeVisible();
- return {writes,hotel,rows};
+ return {writes,hotel,rows,providerCalls};
 }
 for(const [region,width] of [['phuket',1440],['khao-lak',1280],['phuket',390]] as const)test(`${region} ${width}: account-first work, bulk selection and exact document scope`,async({page})=>{
  await page.setViewportSize({width,height:900});const {writes,hotel}=await setup(page,region);
@@ -159,8 +161,9 @@ for(const [region,width,height] of [['phuket',1440,1000],['khao-lak',1280,900],[
  if(width<=1100){await panel.getByRole('button',{name:'Close queue details'}).click();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'.tmp/collections-redesign/accounts-mobile.png',fullPage:true});}
 });
 
-for(const [region,width,height] of [['phuket',1590,835],['khao-lak',1280,720],['phuket',1440,900]] as const)test(`${region} ${width}x${height}: Collections fits the viewport with independent invoice scrolling`,async({page})=>{
- await page.setViewportSize({width,height});const {rows}=await setup(page,region,true);
+function warningUsage(){return parseProviderUsage({providers:(['cloudflare','supabase'] as const).map(provider=>({provider,warningPercent:provider==='cloudflare'?80:50,settingsRevision:0,planLabel:'Synthetic plan',metrics:[{id:'synthetic_usage',label:'Synthetic requests',product:'Synthetic product',unit:'count',used:provider==='cloudflare'?80:50,included:100,scope:provider==='cloudflare'?'account':'organization',scopeLabel:'Synthetic provider scope',periodStart:'2026-09-01T00:00:00Z',periodEnd:'2026-10-01T00:00:00Z',periodLabel:'Synthetic September cycle',periodBasis:'billing-cycle',observedAt:stamp,verifiedAt:stamp,staleAfter:'2026-09-27T00:00:00Z',source:'provider_snapshot',precision:'exact',state:'available'}]}))},Date.parse(stamp));}
+for(const providerState of ['unavailable','warning'] as const)for(const [region,width,height] of [['phuket',1590,835],['khao-lak',1280,720],['phuket',1440,900]] as const)test(`${region} ${width}x${height}: Collections fits the viewport with independent invoice scrolling · ${providerState}`,async({page})=>{
+ await page.setViewportSize({width,height});const {rows}=await setup(page,region,true,providerState==='warning'?warningUsage():parseProviderUsage(null));
  rows.push(...Array.from({length:35},(_,i)=>({...rows[0],account_id:'volume-'+i,account_name:'Volume Account '+i,id:'volume-invoice-'+i})));
  await page.getByRole('button',{name:'Reload queue',exact:true}).click();await page.getByRole('button',{name:/account Harbor Travel$/}).click();
  const list=page.getByRole('group',{name:'Invoices in selected work'}),accounts=page.getByRole('region',{name:'Prioritized collection work'}),footer=page.locator('.queue-selection-footer');
@@ -168,6 +171,7 @@ for(const [region,width,height] of [['phuket',1590,835],['khao-lak',1280,720],['
  expect(await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBeLessThanOrEqual(1);
  const metrics=await list.evaluate(e=>{const bounds=e.getBoundingClientRect(),header=e.querySelector('thead')!.getBoundingClientRect(),rows=[...e.querySelectorAll('tbody tr')].map(r=>r.getBoundingClientRect());return {height:bounds.height,rowHeight:rows[0].height,fullyVisible:rows.filter(r=>r.top>=header.bottom-1&&r.bottom<=bounds.bottom+1).length};});
  expect(metrics.rowHeight).toBeLessThanOrEqual(49);expect(metrics.fullyVisible).toBeGreaterThanOrEqual(width===1590?8:width===1440?8:5);
+ const notice=page.locator('.queue-heading-actions').getByRole('status',{name:'Provider usage notices',exact:true});await expect(notice).toBeVisible();await expect(notice).toContainText(providerState==='warning'?'warning':'unverified');await expect(notice.getByRole('button',{name:'View provider usage',exact:true})).toBeVisible();await expect(page.locator('.app-shell > .provider-quota-notice')).toHaveCount(0);
  const accountHeight=await accounts.locator('li').first().evaluate(e=>e.getBoundingClientRect().height);expect(accountHeight).toBeLessThanOrEqual(78);
  const before=await accounts.evaluate(e=>e.scrollTop),footerBefore=await footer.boundingBox();const box=await list.boundingBox();
  await page.mouse.move(box!.x+box!.width/2,box!.y+80);await page.mouse.wheel(0,500);await expect.poll(()=>list.evaluate(e=>e.scrollTop)).toBeGreaterThan(0);
@@ -175,7 +179,7 @@ for(const [region,width,height] of [['phuket',1590,835],['khao-lak',1280,720],['
  await page.mouse.wheel(0,10000);await expect.poll(()=>list.evaluate(e=>Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop))).toBeLessThanOrEqual(1);await page.mouse.wheel(0,500);await page.waitForTimeout(100);expect(await page.evaluate(()=>scrollY)).toBe(0);
  await page.getByRole('button',{name:'Collection filters',exact:true}).click();await expect(page.getByLabel('Queue timing',{exact:true})).toBeInViewport({ratio:1});await page.getByLabel('Queue timing',{exact:true}).press('Escape');
  if(region==='phuket'){await page.locator('.queue-sync summary').click();await expect(page.getByRole('button',{name:'Check sent status now',exact:true})).toBeInViewport({ratio:1});expect((await list.boundingBox())!.height).toBe(metrics.height);await page.locator('.queue-sync summary').click();}
- await list.evaluate(e=>{e.scrollTop=0;});await page.screenshot({path:`.tmp/collections-viewport/${region}-${width}-${height}.png`,fullPage:false});
+ await list.evaluate(e=>{e.scrollTop=0;});await page.screenshot({path:`.superpowers/sdd/2026-10-26-provider-quota-warnings/task3/ci-repair-${providerState}-${region}-${width}-${height}.png`,fullPage:false});
 });
 
 test('work timing filters retain hidden selections and create the exact selected document scope',async({page})=>{
@@ -227,3 +231,5 @@ for(const region of ['phuket','khao-lak'])test('invoice headers sort without cha
  await panel.getByRole('searchbox',{name:'Search selected account invoices'}).fill('HARBOR-102');await expect(table.locator('tbody tr')).toHaveCount(1);await expect(panel.locator('.queue-selection-footer')).toContainText('1 invoices selected');
  await page.screenshot({path:'evidence/collections-invoice-sort-'+region+'.png'});
 });
+
+for(const region of ['phuket','khao-lak'])test(`Collections staff ${region} never fetches or renders provider notices`,async({page})=>{const {providerCalls}=await setup(page,region,false,warningUsage());await expect(page.getByRole('status',{name:'Provider usage notices'})).toHaveCount(0);await expect(page.getByRole('button',{name:'View provider usage',exact:true})).toHaveCount(0);expect(providerCalls).toEqual([]);});

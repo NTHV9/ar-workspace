@@ -1,3 +1,19 @@
+## 2026-10-27 — Full provider quotas, Admin warning percentages and no app suspension
+
+The owner requests Cloudflare and Supabase used/full included quotas separately,
+with a distinct Admin-editable Alert at % (initial Cloudflare80/Supabase50). Only
+active Admin ar@katathani.com can read quota details/warnings or change thresholds.
+Thresholds and overages warn without blocking employee operations. Preserve real
+identity, file-integrity, concurrency, exact-upload and manual recovery safeguards.
+Provider plans, Spend Cap and credentials are unchanged; no new email alerts.
+
+Initial billing telemetry consists of private verified snapshots labelled Last
+verified, with source scope, units, period and stale/unknown state. This is not an
+automatic billing feed or Live meter. Keep app-only diagnostics separate. Settings
+retain unsaved values across same-actor token renewal and cancelled navigation;
+immutable command retries and revisions protect concurrent edits. Actual deployed
+qualification is recorded in PROJECT_STATUS and its release receipt.
+
 ## 2026-10-26 — Templates shared editing for approved staff
 
 The owner explicitly authorizes every active approved application user, in either

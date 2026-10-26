@@ -22,10 +22,9 @@ begin
  if public.ar_storage_write_begin(gen_random_uuid(),gen_random_uuid(),key,4,repeat('a',64),'application/pdf',limits)->>'error'<>'budget_forbidden' then raise exception 'actor gate';end if;
  if has_function_privilege('anon','public.ar_storage_read_budget(uuid,uuid,text,bigint,jsonb)','execute') then raise exception 'anonymous budget access';end if;
  update ar_private.operations_budget b set limits=jsonb_set(b.limits,'{databaseBytes}','1') where singleton;
- begin
-  insert into public.ar_accounts(hotel,id,name,type,open,over90,items) values('KAT','SYNTHETIC-OVER-BUDGET','Synthetic','SYNTHETIC',0,0,0);
-  raise exception 'database growth admitted over allowance';
- exception when others then if sqlerrm<>'budget_database_exceeded' then raise;end if;end;
+ insert into public.ar_accounts(hotel,id,name,type,open,over90,items) values('KAT','SYNTHETIC-OVER-BUDGET','Synthetic','SYNTHETIC',0,0,0);
+ update public.ar_accounts set name='Synthetic updated' where hotel='KAT' and id='SYNTHETIC-OVER-BUDGET';
+ if not exists(select 1 from public.ar_accounts where hotel='KAT' and id='SYNTHETIC-OVER-BUDGET' and name='Synthetic updated') then raise exception 'business insert/update failed';end if;
  if exists(select 1 from pg_trigger where tgrelid='ar_private.mail_deliveries'::regclass and tgname='operations_database_guard') then raise exception 'guard prevents settlement of in-flight provider work';end if;
 end$$;
 rollback;

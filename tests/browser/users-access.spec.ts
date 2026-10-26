@@ -57,7 +57,7 @@ test('approved users can start password enrollment explicitly without automatic 
  await page.route('https://example.supabase.co/auth/v1/signup*',route=>{signups.push(route.request().postDataJSON());return route.fulfill({json:{user:{id:'00000000-0000-4000-8000-000000000066',email:'synthetic.new@example.invalid',identities:[]},session:null}});});
  await page.goto('/');await page.getByRole('button',{name:'Create web app password',exact:true}).click();expect(signups).toHaveLength(0);
  await page.getByLabel('Email',{exact:true}).fill('synthetic.new@example.invalid');await page.getByLabel('Password',{exact:true}).fill('Synthetic-only-password-17');
- await page.getByRole('button',{name:'Create web app password',exact:true}).click();await expect(page.getByRole('status')).toContainText('Check your email to confirm');expect(signups).toHaveLength(1);expect(signups[0].email).toBe('synthetic.new@example.invalid');
+ await page.getByRole('button',{name:'Create web app password',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Check your email to confirm'})).toContainText('Check your email to confirm');expect(signups).toHaveLength(1);expect(signups[0].email).toBe('synthetic.new@example.invalid');
 });
 test('administrator can suspend an existing user without losing the selected region',async({page})=>{
  const c=await adminSetup(page);await page.goto('/?usersAccess=1');await page.getByRole('button',{name:'Edit access for synthetic.phuket@example.invalid'}).click();

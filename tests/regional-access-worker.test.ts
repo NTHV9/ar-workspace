@@ -27,7 +27,7 @@ it('rejects metadata escalation and authenticates the real actor on every reques
  expect(calls[0]).toMatchObject({name:'ar_access_authorize',body:{p_actor:actor,p_region:'khao-lak'}});expect(calls[1]).toMatchObject({name:'ar_portfolio_region_accounts',body:{p_actor:owner,p_region:'khao-lak'}});
  active=false;expect((await handleApi(request('/api/portfolio?region=khao-lak'),env)).status).toBe(403);expect(calls.filter(c=>c.name==='ar_portfolio_region_accounts')).toHaveLength(1);
 });
-it.each(['/api/access/users','/api/operations/storage','/api/drive/status','/api/email/test-send','/api/gmail/connect'])('keeps administration out of ordinary sessions: %s',async path=>{
+it.each(['/api/access/users','/api/operations/storage','/api/operations/provider-usage','/api/drive/status','/api/email/test-send','/api/gmail/connect'])('keeps administration out of ordinary sessions: %s',async path=>{
  const calls=transport(()=>Response.json(grant));const response=await handleApi(request(path,path.includes('test-send')||path.includes('connect')?'POST':'GET',{}),env);expect(response.status).toBe(403);expect(calls).toHaveLength(0);
 });
 it('resolves opaque record hotel in the database and stops before reading disallowed file bytes',async()=>{

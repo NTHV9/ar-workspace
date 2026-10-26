@@ -19,7 +19,7 @@ for(const optional of [{},{pendingRowAdds:0,uncertainRowAdds:0,heldRowAdds:0,row
  await auditWorkspace(page);const commands:unknown[]=[];
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
  await page.route('**/api/reports/tracker?region=phuket',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:2,conflictCount:0,conflicts:[],...optional}});});
- await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('status')).toContainText('2 pending writes');await expect(page.getByRole('complementary',{name:'Sent rows waiting for Sheet'})).toHaveCount(0);expect(commands).toEqual([]);
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('status').filter({hasText:'2 pending writes'})).toContainText('2 pending writes');await expect(page.getByRole('complementary',{name:'Sent rows waiting for Sheet'})).toHaveCount(0);expect(commands).toEqual([]);
 });
 
 test('healthy periodic status reads preserve an unconfirmed tracker command alert',async({page})=>{
@@ -31,8 +31,8 @@ test('healthy periodic status reads preserve an unconfirmed tracker command aler
  });
  await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await page.getByRole('button',{name:'Check changes',exact:true}).click();
  const alert=page.getByRole('alert');await expect(alert).toContainText('Tracker update could not be confirmed');
- pending=1;await page.clock.fastForward(61000);await expect(page.getByRole('status')).toContainText('1 pending writes');await expect(alert).toContainText('Tracker update could not be confirmed');
- pending=2;await alert.getByRole('button',{name:'Retry status'}).click();await expect(page.getByRole('status')).toContainText('2 pending writes');await expect(alert).toContainText('Tracker update could not be confirmed');expect(commands).toEqual([{action:'sync'}]);
+ pending=1;await page.clock.fastForward(61000);await expect(page.getByRole('status').filter({hasText:'1 pending writes'})).toContainText('1 pending writes');await expect(alert).toContainText('Tracker update could not be confirmed');
+ pending=2;await alert.getByRole('button',{name:'Retry status'}).click();await expect(page.getByRole('status').filter({hasText:'2 pending writes'})).toContainText('2 pending writes');await expect(alert).toContainText('Tracker update could not be confirmed');expect(commands).toEqual([{action:'sync'}]);
 });
 
 test('stored scheduled failure shows last success and polling clears stored and request errors',async({page})=>{
@@ -71,7 +71,7 @@ for(const width of [1280,390])test(`tracker status and reviewed differences ${wi
   await r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:'2026-09-30T00:00:00Z',pending:2,conflictCount:1,conflicts:[{id:'00000000-0000-4000-8000-000000000001',rowKey:'KAT · Synthetic account · 00001',field:'R',reason:'concurrent_or_unmapped_edit',sheetValue:'2026-09-01',webValue:'2026-09-02',revision:3}]}});
  });
  await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');
- await expect(page.getByRole('status')).toContainText('2 pending writes');expect(commands).toHaveLength(0);
+ await expect(page.getByRole('status').filter({hasText:'2 pending writes'})).toContainText('2 pending writes');expect(commands).toHaveLength(0);
  await page.getByRole('button',{name:'Review differences (1)'}).click();await expect(page.getByText('2026-09-01',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Keep AR value'}).click();expect(commands).toEqual([{action:'resolve',conflictId:'00000000-0000-4000-8000-000000000001',revision:3,choice:'keep_web'}]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -174,7 +174,7 @@ for(const optional of [{},{quarantinedWrites:0,quarantinedRows:[],quarantinedRow
  await auditWorkspace(page);const commands:unknown[]=[];
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
  await page.route('**/api/reports/tracker?region=phuket',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:2,conflictCount:0,conflicts:[],...optional}});});
- await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('status')).toContainText('2 pending writes');await expect(page.getByText(/date updates paused/)).toHaveCount(0);await expect(page.getByRole('button',{name:'Check changes',exact:true})).toBeVisible();expect(commands).toEqual([]);
+ await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await expect(page.getByRole('status').filter({hasText:'2 pending writes'})).toContainText('2 pending writes');await expect(page.getByText(/date updates paused/)).toHaveCount(0);await expect(page.getByRole('button',{name:'Check changes',exact:true})).toBeVisible();expect(commands).toEqual([]);
 });
 
 test('paused date details cap rows and explain truncation without exposing unknown reasons',async({page})=>{
@@ -182,5 +182,5 @@ test('paused date details cap rows and explain truncation without exposing unkno
  await page.route('**/api/reports/sheets',r=>r.fulfill({json:{rows:[{region:'phuket',url:'https://docs.google.com/spreadsheets/d/synthetic_phuket_sheet_12345/edit'}]}}));
  await page.route('**/api/reports/tracker?region=phuket',r=>{if(r.request().method()==='POST')commands.push(r.request().postDataJSON());return r.fulfill({json:{connected:true,enabled:true,available:true,bootstrapConfirmed:true,revision:1,lastCheckedAt:null,pending:4,conflictCount:0,conflicts:[],quarantinedWrites:21,quarantinedRows:Array.from({length:21},(_,i)=>({hotel:'KAT',invoiceNo:`SYNTH-${i+1}`,field:'V',reason:i===0?'synthetic_private_internal_reason':'missing_sheet_row'})),quarantinedRowsTruncated:true}});});
  await auditLogin(page);await auditRoute(page,'reports=1&reportsTab=sheets');await page.getByText('View source rows needing review',{exact:true}).click();const table=page.getByRole('table',{name:'Paused date updates'});
- await expect(table.getByRole('row')).toHaveCount(21);await expect(table.getByRole('row').nth(1).getByRole('cell')).toHaveText(['KAT','SYNTH-1','Follow 2','Source row needs review']);await expect(page.getByText('synthetic_private_internal_reason',{exact:false})).toHaveCount(0);await expect(page.getByText('Showing the first 20 paused updates.',{exact:false})).toBeVisible();await expect(page.getByRole('status')).toContainText('4 pending writes');expect(commands).toEqual([]);
+ await expect(table.getByRole('row')).toHaveCount(21);await expect(table.getByRole('row').nth(1).getByRole('cell')).toHaveText(['KAT','SYNTH-1','Follow 2','Source row needs review']);await expect(page.getByText('synthetic_private_internal_reason',{exact:false})).toHaveCount(0);await expect(page.getByText('Showing the first 20 paused updates.',{exact:false})).toBeVisible();await expect(page.getByRole('status').filter({hasText:'4 pending writes'})).toContainText('4 pending writes');expect(commands).toEqual([]);
 });

@@ -323,7 +323,7 @@ test('dirty PDF survives same-user token refresh and portfolio reload; draft use
   await expect(page.getByRole('button', { name: 'Reload saved data', exact: true })).toBeEnabled();
   await page.getByRole('button',{name:'Close OPERA data status',exact:true}).evaluate((button:HTMLButtonElement)=>button.click());
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Draft saved. Final review is still required.');
+  await expect(page.getByRole('status').filter({hasText:'Draft saved. Final review is still required.'})).toContainText('Draft saved. Final review is still required.');
   expect(controls.uploadRequests.at(-1)?.token).toBe('Bearer synthetic-token-new');
   expect(controls.uploadRequests.at(-1)?.project.pages[0].layers[0].text).toBe('UNSAVED NOTE SURVIVES SESSION REFRESH');
   expect(controls.saveRequests.at(-1)).toMatchObject({ token: 'Bearer synthetic-token-new', body: { exports: [], acknowledged: false } });

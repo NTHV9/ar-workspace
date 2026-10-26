@@ -142,7 +142,7 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     if(path==='/api/refresh/activity'){if(acceptanceCookie(request))return json({error:'acceptance_action_unavailable'},409);return refreshActivityApi(request,env,env.REQUEST_ACTOR!);}
     const acceptanceId=acceptanceCookie(request);if(acceptanceId){if(!user.id)return json({error:'unauthorized'},401);env=await acceptanceEnvironment(env,user.id,acceptanceId);if(operaProbe||path==='/api/gmail/connect'||path==='/api/drive/connect'||path==='/api/operations/recovery-sent')return json({error:'acceptance_action_unavailable'},409);}
     if(path==='/api/mail-reconciliation'){if(request.method==='GET')return json({...await backendRpc<Record<string,unknown>>(env,'ar_mail_reconcile_status',{}),enabled:env.GMAIL_RECONCILE_ENABLED==='true',intervalMinutes:15});if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'forbidden'},403);return json(await requestMailReconcile(env,'manual'));}return json({error:'method_not_allowed'},405);}
-    if(operationsRequest){if(!user.id)return json({error:'unauthorized'},401);return operationsApi(request,env,user.id);}
+    if(operationsRequest){if(!user.id)return json({error:'unauthorized'},401);return operationsApi(request,env,env.REQUEST_ACTOR!);}
     if(driveRequest){if(!user.id)return json({error:'unauthorized'},401);return driveApi(request,env,user.id);}
     if(billingRequest){if(!user.id)return json({error:'unauthorized'},401);return externalBillingApi(request,env,user.id);}
     if(policyRequest){if(!user.id)return json({error:'unauthorized'},401);return collectionPolicyApi(request,env,user.id);}
