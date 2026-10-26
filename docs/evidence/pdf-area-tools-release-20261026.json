@@ -1,0 +1,91 @@
+{
+  "feature": "PDF area selection and drawn whiteouts",
+  "applicationCommit": "b4921fcd359ac3db6a827f6d1e527c0de86206eb",
+  "predecessor": "a13d1b55d15cdac56319177549b3c6d0d164cc1c",
+  "pullRequest": "https://github.com/NTHV9/ar-workspace/pull/147",
+  "local": {
+    "unitTestsPassed": 4788,
+    "unitTestsSkipped": 3,
+    "focusedBrowserPassed": 25,
+    "legacyFirstPass": 75,
+    "legacyStartupDriverFailures": 1,
+    "legacyTargetedRetestPassed": 1,
+    "productionBuild": "passed",
+    "publicAssetsPrepared": 90,
+    "independentReviews": "task, scoped fix and final aggregate approved",
+    "correctnessFindingsFixed": 2,
+    "exportOutsideDeletedRegionPixelDifference": 0,
+    "reopenedDeletedReferenceInk": 0,
+    "visualSizes": [
+      "1440x900",
+      "1280x800"
+    ]
+  },
+  "cloudChecks": {
+    "runId": 40302594283,
+    "runNumber": 1062,
+    "jobId": 121503836267,
+    "state": "success",
+    "unitTestsPassed": 4788,
+    "unitTestsSkipped": 3,
+    "browserPassed": 603,
+    "migrations": 144,
+    "sqlRollbackFixtures": 38,
+    "sqlProviderContractScenarios": 3,
+    "performanceCases": 3,
+    "publicationCases": 15,
+    "url": "https://github.com/NTHV9/ar-workspace/actions/runs/40302594283"
+  },
+  "production": {
+    "state": "deployed_and_enabled",
+    "workerVersion": "05cd0fe7-a6ba-4704-b13d-e7682df2a29e",
+    "applicationCommit": "b4921fcd359ac3db6a827f6d1e527c0de86206eb",
+    "health": "ok",
+    "database": "database_verified",
+    "startupAssets": [
+      {
+        "path": "/assets/collection-policy-BoJpST4l.js",
+        "bytes": 3435,
+        "sha256": "7fffea792beed83467135c9d17f2a040c40701390304c58444aafa6dbe711836"
+      },
+      {
+        "path": "/assets/createLucideIcon-4j-mWK0h.js",
+        "bytes": 3100,
+        "sha256": "c3384cab1a0875d530bb117343d8e2cc6c8a28b1ebb3a8ad1a6d7f0a1d5ed99b"
+      },
+      {
+        "path": "/assets/hotels-CdREb_3J.js",
+        "bytes": 962,
+        "sha256": "067b0084bb2e70e26f51de409dcb0ac7bb1988a968358a8ba7f7a75fbf4a9280"
+      },
+      {
+        "path": "/assets/index-BbPQ9L7U.css",
+        "bytes": 85783,
+        "sha256": "584c63a276fe3c99f376375a6ab304ca681d8ee02961de49b4518137b75903e7"
+      },
+      {
+        "path": "/assets/index-BgfSPbfW.js",
+        "bytes": 588882,
+        "sha256": "aaec386010cf91f3165d744bcfdcd8dee8d21d77f05814731e1726ea19efd93c"
+      },
+      {
+        "path": "/assets/jsx-runtime-B-hcVAMW.js",
+        "bytes": 8557,
+        "sha256": "6eab4df858048a4840a5d08754d84773f3f0de0ea0c4bb58e0e0abca99d1d973"
+      }
+    ],
+    "checkedAt": "2026-10-26T10:13:56.477Z",
+    "actualEmailSent": false,
+    "financialDataWritten": false,
+    "anonymousMailRoutesRejected": 6
+  },
+  "actualEmailSent": false,
+  "financialDataWritten": false,
+  "rules": [
+    "Only fully enclosed visible text boxes are selected, with 0.01 logical-unit numerical tolerance.",
+    "Bulk text deletion preserves row spacing and neighboring coordinates.",
+    "Bound Voucher fields retain individual linked editing and show a touched-only explanation.",
+    "Selection count and actions stay in the sidebar to keep the paper frame stable.",
+    "Publish only the tested current-source application to the existing qualified Worker."
+  ]
+}
