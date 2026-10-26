@@ -101,3 +101,9 @@
 .pdf-document-tools .pdf-object-help{display:flex;align-items:center;gap:10px}
 .pdf-document-tools .pdf-object-help p{flex:1;min-width:0}
 .pdf-document-tools .pdf-object-help button{flex-shrink:0}
+.pdf-area-text-highlight,.pdf-area-marquee{position:absolute;pointer-events:none;z-index:25;box-sizing:border-box;border:1px solid #087f9d;background:rgba(8,145,178,.14)}
+.pdf-area-text-highlight{outline:1px solid rgba(255,255,255,.8);background:rgba(8,145,178,.25)}
+.pdf-area-marquee{border-style:dashed;z-index:26}
+.pdf-whiteout-preview{background:rgba(255,255,255,.7);border:1px solid #087f9d}
+.pdf-whiteout-draw-surface{position:absolute;inset:0;z-index:24;cursor:crosshair;touch-action:none}
+.pdf-paper:has(.pdf-area-marquee){touch-action:none}
