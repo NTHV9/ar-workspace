@@ -19,6 +19,18 @@ export function enqueueExactAbandon(storage:Storage,snapshot:VerifiedExitSnapsho
  // Exact-entry keys avoid another tab overwriting unresolved work or receipts.
  for(const entry of fresh)storage.setItem(entryKey(entry),JSON.stringify(entry));return additions.map(e=>entries.find(saved=>identity(e)===identity(saved))??e);
 }
+export function acknowledgeExitEntry(storage:Storage,entry:ExitEntry,receipt:{job?:{id:string};outcome?:string;commandKey?:string;hotel?:string;payloadDigest?:string},auth:{actorId:string;authSessionId:string},getAuth:()=>{actorId:string;authSessionId:string}|null):boolean{
+ try{if(auth.actorId!==entry.actorId)return false;
+  if('jobId'in entry){if(receipt.job?.id!==entry.jobId||!['discarded','pending','protected'].includes(receipt.outcome??''))return false;}
+  else if(receipt.commandKey!==entry.commandKey||receipt.hotel!==entry.hotel||receipt.payloadDigest!==entry.payloadDigest||!['discarded','pending','protected','cancelled'].includes(receipt.outcome??'')||receipt.outcome!=='cancelled'&&!uuid.test(receipt.job?.id??''))return false;
+  const now=getAuth();if(!now||now.actorId!==auth.actorId||now.authSessionId!==auth.authSessionId)return false;
+  const saved=storage.getItem(entryKey(entry));if(saved!==null&&saved!==JSON.stringify(entry))return false;
+  if('commandKey'in entry&&typeof sessionStorage!=='undefined'){
+   const exactKeys:string[]=[];for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key?.startsWith('ar-document-command:')&&sessionStorage.getItem(key)===entry.commandKey)exactKeys.push(key);}for(const key of exactKeys)sessionStorage.removeItem(key);
+  }
+  storage.removeItem(entryKey(entry));return true;
+ }catch{return false;}
+}
 /** Only current authorization transports fixed-path idempotent abandon. No unload signal. */
 export async function deliverExitEntry(storage:Storage,entry:ExitEntry,getAuth:()=>{actorId:string;authSessionId:string;token:string}|null,transport:typeof fetch=fetch):Promise<boolean>{
  const auth=getAuth();if(!auth||auth.actorId!==entry.actorId||!auth.token)return false;
@@ -26,13 +38,7 @@ export async function deliverExitEntry(storage:Storage,entry:ExitEntry,getAuth:(
  try{
   const response=await transport(path,{method:'POST',headers:{...(entry.version===2?{'X-AR-Exit-Command':entry.exitCommandId!,'X-AR-Exit-Origin-Session':entry.authSessionId}:{}),Authorization:`Bearer ${auth.token}`,...'jobId'in entry?{}:{'Content-Type':'application/json'}},...'jobId'in entry?{}:{body:JSON.stringify({hotel:entry.hotel,payloadDigest:entry.payloadDigest})},keepalive:true,redirect:'error'});
   if(!response.ok)return false;const receipt=await response.json() as {job?:{id:string};outcome?:string;commandKey?:string;hotel?:string;payloadDigest?:string};
-  if('jobId'in entry){if(receipt.job?.id!==entry.jobId||!['discarded','pending','protected'].includes(receipt.outcome??''))return false;}
-  else if(receipt.commandKey!==entry.commandKey||receipt.hotel!==entry.hotel||receipt.payloadDigest!==entry.payloadDigest||!['discarded','pending','protected','cancelled'].includes(receipt.outcome??'')||receipt.outcome!=='cancelled'&&!uuid.test(receipt.job?.id??''))return false;
-  const now=getAuth();if(!now||now.actorId!==auth.actorId||now.authSessionId!==auth.authSessionId)return false;
-  if('commandKey'in entry&&typeof sessionStorage!=='undefined'){
-   const exactKeys:string[]=[];for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key?.startsWith('ar-document-command:')&&sessionStorage.getItem(key)===entry.commandKey)exactKeys.push(key);}for(const key of exactKeys)sessionStorage.removeItem(key);
-  }
-  storage.removeItem(entryKey(entry));return true;
+  return acknowledgeExitEntry(storage,entry,receipt,auth,getAuth);
  }catch{return false;}
 }
 export async function reconcileExitOutbox(storage:Storage,actorId:string,getAuth:()=>{actorId:string;authSessionId:string;token:string}|null,expectedOwner?:string){

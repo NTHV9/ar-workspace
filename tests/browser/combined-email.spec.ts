@@ -2,10 +2,10 @@ import {test,expect,type Page} from '@playwright/test';
 
 async function pauseFirstAdmission(page:Page){await page.evaluate(()=>{const write=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(this===sessionStorage&&key.startsWith('ar-account-batch:')&&JSON.parse(value).combined?.attempted){Storage.prototype.setItem=write;throw new DOMException('Synthetic admission pause','QuotaExceededError');}return write.call(this,key,value);};});}
 
-async function readyCombined(page:Page){
- await page.goto('/tests/browser/batch-workspace/harness.html');await page.getByRole('button',{name:'Collections',exact:true}).click();
+async function readyCombined(page:Page,exitProof=false,separate=false){
+ await page.goto('/tests/browser/batch-workspace/harness.html'+(exitProof?'?exit-proof=1':''));await page.getByRole('button',{name:'Collections',exact:true}).click();
  for(const [name,id] of [['Azure Travel','1001'],['Coral Travel','3001']]){await page.getByRole('button',{name:`Open KAT account ${name} · Synthetic`,exact:true}).click();await page.getByRole('checkbox',{name:`Queue select ${id}`,exact:true}).check();}
- await page.getByRole('button',{name:'Prepare documents',exact:true}).click();await page.getByRole('button',{name:'Prepare accounts',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();await combinedServer(page);await page.getByRole('radio',{name:'One combined email',exact:true}).click();
+ await page.getByRole('button',{name:'Prepare documents',exact:true}).click();await page.getByRole('button',{name:'Prepare accounts',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();if(separate)return;await combinedServer(page);await page.getByRole('radio',{name:'One combined email',exact:true}).click();
  await page.getByLabel('Common To',{exact:true}).fill('manual@example.invalid');await page.getByLabel('Common subject',{exact:true}).fill('One click reviewed message');await page.getByLabel('Common message',{exact:true}).fill('Reviewed common content');
 }
 
@@ -160,4 +160,26 @@ test('confirmed combined Sent starts cleanup for every exact closed child and ke
  await expect.poll(()=>page.evaluate(()=>JSON.parse(sessionStorage.getItem('ar-batch-fixture-server-v1')!).requests.filter((p:string)=>p.endsWith('/abandon')).length)).toBe(2);
  const proof=await page.evaluate(()=>({db:JSON.parse(sessionStorage.getItem('ar-batch-fixture-server-v1')!),common:JSON.parse(sessionStorage.getItem('combined-proof')!)}));
  expect(proof.db.requests.filter((p:string)=>p.endsWith('/abandon')).sort()).toEqual(proof.common.saved.members.map((m:{documentJobId:string})=>`POST /api/documents/${m.documentJobId}/abandon`).sort());expect(proof.common.sends).toBe(1);expect(Object.keys(proof.db.drafts)).toHaveLength(2);
+});
+for(const mode of ['separate','combined'] as const)test(`${mode} same-state retirement retry survives late completion and Back without new Exit`,async({page,context})=>{
+ await readyCombined(page,true,mode==='separate');
+ if(mode==='separate'){await page.getByRole('navigation',{name:'Accounts in this batch'}).getByRole('button',{name:/Coral Travel/}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();await page.getByLabel('Email TO',{exact:true}).fill('synthetic@example.test');await page.locator('.batch-heading').getByRole('button',{name:'Review emails',exact:true}).click();await page.getByRole('checkbox',{name:/^Send Coral Travel/}).check();}
+ await page.evaluate(mode=>{const previous=window.fetch.bind(window),counts:Record<string,number>={};(window as any).round1Sends=0;window.fetch=async(input,init={})=>{
+ const u=new URL(input instanceof Request?input.url:String(input),location.href),p=u.pathname;
+ if(p.endsWith('/abandon'))localStorage.setItem('round1-batch-exits',JSON.stringify([...JSON.parse(localStorage.getItem('round1-batch-exits')??'[]'),p]));
+ if(p.includes('/deliveries/')&&p.endsWith('/check')){const id=p.split('/').at(-2)!;counts[id]=(counts[id]??0)+1;let d:any;if(mode==='combined'){const state=JSON.parse(sessionStorage.getItem('combined-proof')!);d=state.saved.delivery;}else{const db=JSON.parse(sessionStorage.getItem('ar-batch-fixture-server-v1')!);d=Object.values(db.drafts as Record<string,any>).find((draft:any)=>draft.delivery?.id===id)?.delivery;}
+ const {preparationRetirement:_,...base}=d;const result={...base,state:'awaiting_evidence',recorded:false,gmailAccepted:true,...counts[id]===1?{preparationRetirement:{accepted:true}}:{}};
+ if(counts[id]===2)await new Promise<void>(resolve=>(window as any).releaseRetirementLate=resolve);
+ if(mode==='combined'){const state=JSON.parse(sessionStorage.getItem('combined-proof')!);state.saved.delivery=result;sessionStorage.setItem('combined-proof',JSON.stringify(state));}return Response.json(result);
+ }
+ if(p.endsWith('/send'))(window as any).round1Sends++;
+ const response=await previous(input,init);if(mode==='separate'&&(p.endsWith('/send')||/^\/api\/email\/[0-9a-f-]{36}$/.test(p))){const value:any=await response.json(),d=p.endsWith('/send')?value:value.delivery;const pending=d?{...d,state:'awaiting_evidence',recorded:false,gmailAccepted:true}:d;return Response.json(p.endsWith('/send')?pending:{...value,delivery:pending,gmail_handoff:pending?'awaiting_evidence':value.gmail_handoff},{status:response.status});}return response;
+ };(document.querySelector('#allow-confirm') as HTMLInputElement).checked=true;},mode);
+ await page.getByRole('button',{name:mode==='combined'?'Send now':'Send 2 emails',exact:true}).click();
+ if(mode==='combined'){await expect(page.getByRole('heading',{name:'Sending not confirmed',exact:true})).toBeVisible();await page.getByRole('button',{name:'Check shared status',exact:true}).click();await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();}
+ else{await expect(page.getByRole('heading',{name:'Emails sent',exact:true})).toBeVisible();const checks=page.getByRole('button',{name:'Check status',exact:true});await checks.nth(0).click();await checks.nth(1).click();}
+ await expect.poll(()=>page.evaluate(mode=>{const batch=Object.keys(sessionStorage).filter(k=>k.startsWith('ar-account-batch:')).map(k=>JSON.parse(sessionStorage.getItem(k)!))[0];return mode==='combined'?batch?.combined?.observedDelivery?.preparationRetirement?.accepted||batch?.combined?.saved?.delivery?.preparationRetirement?.accepted:batch?.entries.every((e:any)=>e.delivery?.preparationRetirement?.accepted);},mode)).toBe(true);
+ await page.getByRole('button',{name:mode==='combined'?'Check shared status':'Check status',exact:true}).first().click();await expect.poll(()=>page.evaluate(()=>typeof (window as any).releaseRetirementLate)).toBe('function');await page.getByRole('button',{name:'Back to Collections',exact:true}).click();await expect.poll(()=>page.evaluate(()=>Object.keys(sessionStorage).filter(k=>k.startsWith('ar-account-batch:')).length)).toBe(0);await page.evaluate(()=>(window as any).releaseRetirementLate());
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('round1-batch-exits')??'[]'))).toEqual([]);expect(await page.evaluate(()=>(window as any).round1Sends)).toBe(mode==='combined'?1:2);
+ const alive=await context.newPage();await alive.goto('/tests/browser/audit-email/harness.html');try{await page.close({runBeforeUnload:true});expect(await alive.evaluate(()=>JSON.parse(localStorage.getItem('round1-batch-exits')??'[]'))).toEqual([]);expect(await alive.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('ar-preparation-exit-v1:')))).toEqual([]);}finally{await alive.close();}
 });

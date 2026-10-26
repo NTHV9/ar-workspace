@@ -76,7 +76,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
   leaveRequest.current=(async()=>{setBusy(true);setError('');try{
    const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected';preparationRetirement?:{accepted:boolean}}>(`/api/documents/${current.id}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(current.id)});
    if(result.job.id!==current.id||!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified. Retry leaving this preparation.');
-   exit?.settled(current.id);if(alive.current)setJob({...result.job,...(result.preparationRetirement?.accepted?{preparation_retirement:{accepted:true}}:{})});return true;
+   if(exit&&!exit.settled(current.id,result))throw Error('Temporary cleanup receipt could not be acknowledged. Retry leaving.');if(alive.current)setJob({...result.job,...(result.preparationRetirement?.accepted?{preparation_retirement:{accepted:true}}:{})});return true;
   }catch(e){if(alive.current)setError(e instanceof Error?e.message:'Unable to remove temporary files. Retry leaving this preparation.');return false;}finally{if(alive.current)setBusy(false);leaveRequest.current=null;}})();
   return leaveRequest.current;
  }
@@ -84,7 +84,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
   if(busy||job&&!closed&&(sources&&(!pdfControl.current||pdfControl.current.busy())||showCompose&&(!mailControl.current||mailControl.current.busy()))){setError('Wait for the current operation before leaving this preparation.');return false;}
   if(!await abandon())return false;
   if(!replacementId)return true;
-  try{const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected'}>(`/api/documents/${replacementId}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(replacementId)});if(result.job.id!==replacementId||!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');exit?.settled(replacementId);setReplacementId(null);return true;}
+  try{const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected'}>(`/api/documents/${replacementId}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(replacementId)});if(result.job.id!==replacementId||!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');if(exit&&!exit.settled(replacementId,result))throw Error('Temporary cleanup receipt could not be acknowledged. Retry leaving.');setReplacementId(null);return true;}
   catch(e){setError(e instanceof Error?e.message:'Unable to remove the new preparation. Retry leaving.');return false;}
  }
  useEffect(()=>{onRegisterLeave?.(leavePreparation);return()=>onRegisterLeave?.(null);});

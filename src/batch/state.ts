@@ -1,3 +1,4 @@
+import {retainRetirementProjection} from '../email/delivery-status';
 import type {CombinedContent,CombinedEmail,CombinedMemberInput} from '../email/combined';
 import {defaultSelfCc} from '../email/default-recipients';
 import type {HotelId} from '../domain/hotels';
@@ -43,7 +44,7 @@ export const MAX_BATCH_RESUME_BYTES=8*1024*1024;
 export class BatchResumeError extends Error {}
 export function combinedDelivery(c:CombinedBatchState|undefined):EmailDeliveryView|undefined{
  const previous=c?.observedDelivery,next=c?.saved?.delivery??undefined;
- return previous&&(!next||previous.recorded&&!next.recorded||!next.recorded&&previous.gmailAccepted&&!next.gmailAccepted)?previous:next??previous;
+ const selected=previous&&(!next||previous.recorded&&!next.recorded||!next.recorded&&previous.gmailAccepted&&!next.gmailAccepted)?previous:next??previous;return selected?retainRetirementProjection(selected,previous,next):selected;
 }
 export function saveBatch(storage:StorageLike,batch:BatchRecord){
  const c=batch.combined;

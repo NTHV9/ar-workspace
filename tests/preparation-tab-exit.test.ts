@@ -98,3 +98,19 @@ it('accepted completion retires the active pointer and ignores a late retained j
  const s=storage(),auth={actorId:actor,authSessionId:session,token:'current'},exit=createPreparationExit(actor,session,actor,s,()=>auth),sameJob={id:job,owner:actor,lifecycle:'transient'} as DocumentJob;
  exit.retainJob(sameJob);exit.settled(job);exit.retainJob(sameJob);expect(exit.isSettled(job)).toBe(true);await expect(exit.beforeResume(job)).rejects.toThrow('cleanup was requested');expect(readExitOutbox(s)).toEqual([]);exit.exit();expect(readExitOutbox(s)).toEqual([]);
 });
+it('acknowledges more than119 validated direct successes without accumulating durable entries',()=>{
+ const s=storage(),exit=createPreparationExit(actor,session,actor,s,()=>({actorId:actor,authSessionId:session,token:'current'}));
+ for(let n=0;n<160;n++){const id=`40000000-0000-4000-8000-${String(n).padStart(12,'0')}`;exit.retainJob({id,owner:actor,lifecycle:'transient'} as DocumentJob);exit.exitHeaders(id);(exit.settled as (...args:any[])=>unknown)(id,{job:{id},outcome:'protected'});expect(readExitOutbox(s)).toHaveLength(0);}
+});
+it('direct acknowledgment preserves lost responses, changed identity and other durable work',()=>{
+ const s=storage();let auth={actorId:actor,authSessionId:session,token:'current'};const exit=createPreparationExit(actor,session,actor,s,()=>auth);
+ const headers=exit.exitHeaders(job),[entry]=readExitOutbox(s);enqueueExactAbandon(s,{actorId:actor,authSessionId:command,jobIds:[job],creates:[]});enqueueExactAbandon(s,{actorId:command,authSessionId:session,jobIds:[job],creates:[]});
+ expect(exit.exitHeaders(job)).toEqual(headers);expect(readExitOutbox(s)).toHaveLength(3);
+ (exit.settled as (...args:any[])=>unknown)(job,{job:{id:command},outcome:'protected'});expect(readExitOutbox(s)).toHaveLength(3);
+ auth={...auth,authSessionId:command};(exit.settled as (...args:any[])=>unknown)(job,{job:{id:job},outcome:'protected'});expect(readExitOutbox(s)).toHaveLength(3);
+ auth={...auth,authSessionId:session};(exit.settled as (...args:any[])=>unknown)(job,{job:{id:job},outcome:'protected'});expect(readExitOutbox(s)).toHaveLength(2);expect(readExitOutbox(s).some(e=>e.exitCommandId===entry.exitCommandId)).toBe(false);
+});
+it('loading accepted history-pending work never registers a fresh close intent; active reload still does',()=>{
+ const s=storage(),auth={actorId:actor,authSessionId:session,token:'current'},exit=createPreparationExit(actor,session,actor,s,()=>auth);vi.stubGlobal('fetch',async()=>new Response('',{status:503}));
+ exit.retainJob({id:job,owner:actor,lifecycle:'transient',closed_at:null,preparation_retirement:{accepted:true}} as DocumentJob);expect(exit.isSettled(job)).toBe(true);exit.retainJob({id:command,owner:actor,lifecycle:'transient'} as DocumentJob);exit.exit();expect(readExitOutbox(s).map(e=>'jobId'in e?e.jobId:'')).toEqual([command]);
+});

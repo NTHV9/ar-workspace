@@ -11,12 +11,13 @@ create table ar_private.preparation_retirement_progress(
  blocker text,released_at timestamptz,checked_at timestamptz not null default clock_timestamp());
 create table ar_private.preparation_retirement_objects(
  object_id uuid primary key,retirement_id uuid not null references ar_private.preparation_retirements(id),storage_key text not null unique,target jsonb not null,reference_fingerprint text not null);
+create table ar_private.preparation_exit_bindings(exit_command uuid primary key,owner uuid not null,actor uuid not null,session_id uuid not null,target jsonb not null);
 create table ar_private.preparation_exit_receipts(exit_command uuid primary key,owner uuid not null,actor uuid not null,session_id uuid not null,job_id uuid not null,response jsonb not null);
 create table ar_private.preparation_exit_commands(
  exit_command uuid primary key,owner uuid not null,actor uuid not null,session_id uuid not null,authorized boolean not null,command_key uuid not null,hotel text not null,payload_digest text not null,
  unique(owner,command_key));
 do $$declare t text;begin
- foreach t in array array['preparation_retirements','preparation_retirement_progress','preparation_retirement_objects','preparation_exit_commands','preparation_exit_receipts'] loop
+ foreach t in array array['preparation_retirements','preparation_retirement_progress','preparation_retirement_objects','preparation_exit_commands','preparation_exit_receipts','preparation_exit_bindings'] loop
   execute format('alter table ar_private.%I enable row level security',t);execute format('revoke all on ar_private.%I from public,anon,authenticated,service_role',t);
   if t<>'preparation_retirement_progress' then execute format('create trigger preparation_immutable before update or delete on ar_private.%I for each row execute function ar_private.pdf_release_immutable()',t);end if;
  end loop;
@@ -115,6 +116,29 @@ create function ar_private.preparation_finalize(p_owner uuid,p_id uuid) returns 
  end if;
  return ar_private.preparation_projection(i.job_id);
  end$$;
+-- One immutable UUID identity serializes first use across route/receipt classes.
+-- It takes no advisory domain lock: command61705 and global/actor transactions
+-- remain separate; neither route takes the other's advisory lock while waiting.
+create function ar_private.preparation_exit_target_matches(p_owner uuid,p_left jsonb,p_right jsonb) returns boolean language sql stable set search_path='' as $$
+ select p_left=p_right or ((p_left->>'kind') is distinct from (p_right->>'kind') and exists(
+ select 1 from ar_private.document_commands c where c.owner=p_owner
+ and c.job_id::text=case when p_left->>'kind'='job' then p_left->>'jobId' else p_right->>'jobId' end
+ and c.command_key::text=case when p_left->>'kind'='command' then p_left->>'commandKey' else p_right->>'commandKey' end
+ and c.payload->>'hotel'=case when p_left->>'kind'='command' then p_left->>'hotel' else p_right->>'hotel' end
+ and ar_private.document_request_digest(c.payload->>'hotel',c.payload->>'account_id',array(select jsonb_array_elements_text(c.payload->'ids')),c.payload->>'content',c.payload->>'layout',c.payload->>'purpose',c.payload->>'statement_source')=case when p_left->>'kind'='command' then p_left->>'payloadDigest' else p_right->>'payloadDigest' end));
+$$;
+create function ar_private.preparation_bind_exit(p_owner uuid,p_actor uuid,p_origin uuid,p_marker uuid,p_target jsonb) returns void language plpgsql set search_path='' as $$
+ declare r record;b ar_private.preparation_exit_bindings;begin
+ -- Include unauthorized/no-upgrade responses. They bind identity, never authority.
+ for r in select owner,actor,session_id,jsonb_build_object('kind','command','commandKey',command_key,'hotel',hotel,'payloadDigest',payload_digest) target from ar_private.preparation_exit_commands where exit_command=p_marker
+ union all select owner,actor,session_id,jsonb_build_object('kind','job','jobId',job_id) from ar_private.preparation_exit_receipts where exit_command=p_marker
+ union all select owner,actor,session_id,jsonb_build_object('kind','job','jobId',job_id) from ar_private.preparation_retirements where exit_command=p_marker loop
+ if r.owner<>p_owner or r.actor<>p_actor or r.session_id<>p_origin or not ar_private.preparation_exit_target_matches(p_owner,r.target,p_target) then raise exception 'document_exit_conflict';end if;
+ end loop;
+ insert into ar_private.preparation_exit_bindings values(p_marker,p_owner,p_actor,p_origin,p_target) on conflict(exit_command) do nothing;
+ select * into b from ar_private.preparation_exit_bindings where exit_command=p_marker;
+ if b.owner<>p_owner or b.actor<>p_actor or b.session_id<>p_origin or not ar_private.preparation_exit_target_matches(p_owner,b.target,p_target) then raise exception 'document_exit_conflict';end if;
+ end$$;
 -- Original response and authority never change; replay never calls abandon again.
 create function public.ar_document_exit(p_actor uuid,p_owner uuid,p_job_id uuid,p_exit_command uuid,p_session uuid,p_current_session uuid default null) returns jsonb language plpgsql security definer set search_path='' as $$
  declare i ar_private.preparation_retirements;c ar_private.preparation_exit_commands;r jsonb;rid uuid;j public.ar_document_jobs;saved ar_private.preparation_exit_receipts;
@@ -124,6 +148,7 @@ create function public.ar_document_exit(p_actor uuid,p_owner uuid,p_job_id uuid,
  select * into j from public.ar_document_jobs where id=p_job_id and owner=p_owner for update;
  if not found or j.lifecycle<>'transient' then raise exception 'document_forbidden';end if;
  perform public.ar_access_authorize(p_actor,'hotel',j.hotel);
+ perform ar_private.preparation_bind_exit(p_owner,p_actor,p_session,p_exit_command,jsonb_build_object('kind','job','jobId',p_job_id));
  select * into saved from ar_private.preparation_exit_receipts where exit_command=p_exit_command;
  if found then if saved.actor<>p_actor or saved.owner<>p_owner or saved.job_id<>p_job_id or saved.session_id<>p_session then raise exception 'document_exit_conflict';end if;return saved.response;end if;
  select * into i from ar_private.preparation_retirements where job_id=p_job_id or exit_command=p_exit_command;
@@ -131,7 +156,7 @@ create function public.ar_document_exit(p_actor uuid,p_owner uuid,p_job_id uuid,
   if i.job_id<>p_job_id or i.owner<>p_owner or (i.exit_command=p_exit_command and (i.actor<>p_actor or i.session_id<>p_session)) then raise exception 'document_exit_conflict';end if;
   insert into ar_private.preparation_exit_receipts values(p_exit_command,p_owner,p_actor,p_session,p_job_id,i.original_response);return i.original_response;
  end if;
- select * into c from ar_private.preparation_exit_commands where exit_command=p_exit_command and authorized;
+ select * into c from ar_private.preparation_exit_commands where exit_command=p_exit_command;
  if found and (c.actor<>p_actor or c.owner<>p_owner or c.session_id<>p_session or not exists(select 1 from ar_private.document_commands dc where dc.owner=c.owner and dc.command_key=c.command_key and dc.job_id=p_job_id)) then raise exception 'document_exit_conflict';end if;
  if exists(select 1 from ar_private.document_commands dc join ar_private.document_command_exits t using(owner,command_key) where dc.job_id=p_job_id and dc.owner=p_owner and not exists(select 1 from ar_private.preparation_exit_commands ec where ec.owner=t.owner and ec.command_key=t.command_key and ec.exit_command=p_exit_command and ec.authorized)) then
   -- An old/unmarked tombstone cannot be upgraded by presenting a new marker.
@@ -142,9 +167,12 @@ create function public.ar_document_exit(p_actor uuid,p_owner uuid,p_job_id uuid,
  perform ar_private.preparation_finalize(p_owner,rid);select original_response into r from ar_private.preparation_retirements where id=rid;insert into ar_private.preparation_exit_receipts values(p_exit_command,p_owner,p_actor,p_session,p_job_id,r);return r;
  end$$;
 create function public.ar_document_command_exit(p_actor uuid,p_owner uuid,p_command_key uuid,p_hotel text,p_payload_digest text,p_exit_command uuid,p_session uuid,p_current_session uuid default null) returns jsonb language plpgsql security definer set search_path='' as $$
- declare r jsonb;c ar_private.preparation_exit_commands;fresh boolean;begin
+ declare r jsonb;c ar_private.preparation_exit_commands;saved ar_private.preparation_exit_receipts;fresh boolean;begin
  if p_exit_command is null or p_session is null or not public.ar_access_session_valid(p_actor,coalesce(p_current_session,p_session)) then raise exception 'document_forbidden';end if;
  perform pg_advisory_xact_lock(hashtextextended(p_owner::text||':'||p_command_key::text,61705));
+ perform ar_private.preparation_bind_exit(p_owner,p_actor,p_session,p_exit_command,jsonb_build_object('kind','command','commandKey',p_command_key,'hotel',p_hotel,'payloadDigest',p_payload_digest));
+ select * into saved from ar_private.preparation_exit_receipts where exit_command=p_exit_command;
+ if found then return jsonb_build_object('commandKey',p_command_key,'hotel',p_hotel,'payloadDigest',p_payload_digest,'job_id',saved.job_id,'job',jsonb_build_object('id',saved.job_id),'outcome',saved.response->>'outcome');end if;
  select * into c from ar_private.preparation_exit_commands where exit_command=p_exit_command or (owner=p_owner and command_key=p_command_key);
  if found and (c.exit_command<>p_exit_command or c.owner<>p_owner or c.actor<>p_actor or c.session_id<>p_session or c.command_key<>p_command_key or c.hotel<>p_hotel or c.payload_digest<>p_payload_digest) then raise exception 'document_exit_conflict';end if;
  if exists(select 1 from ar_private.preparation_retirements i where i.exit_command=p_exit_command and not exists(select 1 from ar_private.document_commands dc where dc.owner=p_owner and dc.command_key=p_command_key and dc.job_id=i.job_id)) then raise exception 'document_exit_conflict';end if;

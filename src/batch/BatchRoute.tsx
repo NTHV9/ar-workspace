@@ -1,3 +1,4 @@
+import {retainRetirementProjection} from '../email/delivery-status';
 import {usePreparationExit,afterConfirmedSent} from '../preparation/tab-exit';
 import SentMatchReview from '../email/SentMatchReview';
 import EmailSendResult from '../email/EmailSendResult';
@@ -19,12 +20,12 @@ import {useCollectionPolicy} from '../collection/PolicyContext';
 import {stageLabel} from '../domain/collection';
 import {sessionBytes} from '../pdf/editor-session';
 import {batchRequest} from './api';
-import {initialCombined,combinedDelivery,combinedLocked,assertBatchJob,freezeMail,loadBatch,removeBatch,saveBatch,sendBatch,type BatchEntry,type BatchMailSnapshot,type BatchRecord} from './state';
+import {initialCombined,combinedDelivery,combinedLocked,assertBatchJob,assertCombinedBatch,freezeMail,loadBatch,removeBatch,saveBatch,sendBatch,type BatchEntry,type BatchMailSnapshot,type BatchRecord} from './state';
 import './batch.css';
 const MAX_PAUSED_BYTES=192*1024*1024;
 const attempted=(entry:BatchEntry)=>!!entry.attempted||!!entry.delivery&&!(entry.delivery.mode==='draft'&&entry.delivery.state==='created');
 const confirmed=(delivery:EmailDeliveryView|null|undefined)=>delivery?.state==='sent'&&delivery.recorded===true;
-const deliveryFloor=(previous:EmailDeliveryView|undefined,next:EmailDeliveryView|undefined)=>previous&&(confirmed(previous)&&!confirmed(next)||previous.gmailAccepted&&!next?.gmailAccepted&&!confirmed(next))?previous:next;
+const deliveryFloor=(previous:EmailDeliveryView|undefined,next:EmailDeliveryView|undefined)=>{const selected=previous&&(confirmed(previous)&&!confirmed(next)||previous.gmailAccepted&&!next?.gmailAccepted&&!confirmed(next))?previous:next??(previous?.preparationRetirement?.accepted?previous:undefined);return selected?retainRetirementProjection(selected,previous,next):selected;};
 const canSend=(mail:BatchMailSnapshot|undefined)=>!!mail&&!mail.blocked&&(!mail.delivery||mail.delivery.mode==='draft'&&mail.delivery.state==='created');
 export default function BatchRoute({owner,workspaceOwner,region,batchId,token,maxBytes,onClose,onRegisterLeave,onDirtyChange,onGuardDirtyChange}:{owner:string;workspaceOwner:string;region:RegionId;batchId:string;token:string;maxBytes:number;onClose:()=>void;onRegisterLeave:(leave:(()=>Promise<boolean>)|null)=>void;onGuardDirtyChange?:(dirty:boolean)=>void;onDirtyChange:(dirty:boolean,kind?:'pdf'|'email')=>void}){
  const exit=usePreparationExit();
@@ -35,11 +36,16 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
  const sentReviewOpen=useRef(false);
  const canAct=()=>alive.current&&!exiting.current&&!sentReviewOpen.current&&!!record.current;
  const exiting=useRef(false),generation=useRef(0),checkLocks=useRef(new Set<string>());
- const [active,setActive]=useState(0),[view,setView]=useState<'work'|'review'|'result'>('work'),[error,setError]=useState(''),[switching,setSwitching]=useState(false),[creating,setCreating]=useState(()=>!!batch?.entries.some(e=>e.requested&&!e.jobId)),[sending,setSending]=useState(false),[,refresh]=useState(0),[sendIds,setSendIds]=useState<Set<string>>(new Set());
+ const [active,setActive]=useState(0),[view,setView]=useState<'work'|'review'|'result'>('work'),[error,setError]=useState(''),[switching,setSwitching]=useState(false),[creating,setCreating]=useState(()=>!!batch?.entries.some(e=>e.requested&&!e.jobId)),[sending,setSending]=useState(false),[jobVersion,refresh]=useState(0),[sendIds,setSendIds]=useState<Set<string>>(new Set());
  const alive=useRef(true),tokenRef=useRef(token);tokenRef.current=token;
  const jobs=useRef(new Map<string,DocumentJob>()),sessions=useRef(new Map<string,DocumentBatchSession>()),mails=useRef(new Map<string,BatchMailSnapshot>()),controls=useRef(new Map<string,DocumentBatchControl>());
- const sentCleanup=useRef(new Set<string>());
- useEffect(()=>{for(const entry of batch?.entries??[])if(entry.jobId&&confirmed(entry.delivery)&&!sentCleanup.current.has(entry.delivery!.id)){sentCleanup.current.add(entry.delivery!.id);void afterConfirmedSent([entry.jobId],entry.delivery,()=>tokenRef.current,()=>alive.current&&(!exit||exit.current()));}},[batch?.entries.map(e=>[e.jobId,e.delivery?.id,e.delivery?.state,e.delivery?.recorded].join(':')).join(',')]);
+ const sentCleanup=useRef(new Set<string>()),sharedRetirement=combinedDelivery(batch?.combined);
+ useEffect(()=>{for(const entry of batch?.entries??[]){if(!entry.jobId)continue;const job=jobs.current.get(entry.jobId);if(!job)continue;try{assertBatchJob(batch!,entry,job);}catch{continue;}
+  if(entry.delivery?.preparationRetirement?.accepted&&entry.delivery.mode!=='test'&&alive.current&&exit?.current()){exit.settled(entry.jobId);sessions.current.delete(entry.jobId);}
+  if(confirmed(entry.delivery)&&!sentCleanup.current.has(entry.delivery!.id)){sentCleanup.current.add(entry.delivery!.id);void afterConfirmedSent([entry.jobId],entry.delivery,()=>tokenRef.current,()=>alive.current&&(!exit||exit.current()));}
+ }
+ if(batch?.combined?.saved&&sharedRetirement?.preparationRetirement?.accepted&&sharedRetirement.mode!=='test'&&alive.current&&exit?.current()){try{assertCombinedBatch(batch,batch.combined.saved);for(const entry of batch.entries){const job=entry.jobId?jobs.current.get(entry.jobId):null;if(!job)continue;assertBatchJob(batch,entry,job);exit.settled(job.id);sessions.current.delete(job.id);}}catch{/* Wait for the exact validated members. */}}
+ },[exit,jobVersion,sharedRetirement?.id,sharedRetirement?.preparationRetirement?.accepted,batch?.entries.map(e=>[e.jobId,e.delivery?.id,e.delivery?.state,e.delivery?.recorded,e.delivery?.preparationRetirement?.accepted].join(':')).join(',')]);
  const sendingScope=useRef(new Set<string>());
  const childGuard=useRef(false);const reportGuardDirty=(dirty:boolean)=>{childGuard.current=dirty;onGuardDirtyChange?.(dirty||sentReviewDirty||sending||combinedSending);};
  useEffect(()=>{onGuardDirtyChange?.(childGuard.current||sentReviewDirty||creating||sending||switching||combinedSending);return()=>onGuardDirtyChange?.(false);},[sentReviewDirty,creating,sending,switching,combinedSending,onGuardDirtyChange]);
@@ -73,7 +79,7 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
  }
  const receiveJob=useCallback((job:DocumentJob)=>{
   const current=record.current,entry=current?.entries.find(e=>e.jobId===job.id);if(!current||!entry||!alive.current||exiting.current)return;
-  try{assertBatchJob(current,entry,job);exit?.retainJob(job);if(JSON.stringify(jobs.current.get(job.id))!==JSON.stringify(job)){if(jobs.current.get(job.id)?.revision!==job.revision){mails.current.delete(job.id);setSendIds(old=>{const next=new Set(old);next.delete(job.id);return next;});}jobs.current.set(job.id,job);if(job.closed_at)sessions.current.delete(job.id);refresh(n=>n+1);}}catch(e){setError(e instanceof Error?e.message:'Document scope could not be verified.');}
+  try{assertBatchJob(current,entry,job);exit?.retainJob(job);if(JSON.stringify(jobs.current.get(job.id))!==JSON.stringify(job)){if(jobs.current.get(job.id)?.revision!==job.revision){mails.current.delete(job.id);setSendIds(old=>{const next=new Set(old);next.delete(job.id);return next;});}jobs.current.set(job.id,job);if(job.closed_at||job.preparation_retirement?.accepted)sessions.current.delete(job.id);refresh(n=>n+1);}}catch(e){setError(e instanceof Error?e.message:'Document scope could not be verified.');}
  },[]);
  async function createEntries(retry=false){
   if(!canAct()||busy.current||!record.current)return;busy.current=true;setCreating(true);setError('');
@@ -160,7 +166,7 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   // a removed resume record, including the interval before React unmounts children.
   exiting.current=true;generation.current++;setExitBusy(true);setError('');
   try{
-   for(const entry of current.entries){if(!entry.jobId)continue;const result=await abandonVerifiedEntry(current,entry,()=>batchRequest<DocumentJob>(`/api/documents/${entry.jobId}`,tokenRef.current),()=>batchRequest<{job:DocumentJob;outcome:string}>(`/api/documents/${entry.jobId}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(entry.jobId!)}),()=>alive.current&&exiting.current);if(!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');exit?.settled(entry.jobId);}
+   for(const entry of current.entries){if(!entry.jobId||exit?.isSettled(entry.jobId))continue;const result=await abandonVerifiedEntry(current,entry,()=>batchRequest<DocumentJob>(`/api/documents/${entry.jobId}`,tokenRef.current),()=>batchRequest<{job:DocumentJob;outcome:string}>(`/api/documents/${entry.jobId}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(entry.jobId!)}),()=>alive.current&&exiting.current);if(!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');if(exit&&!exit.settled(entry.jobId,result))throw Error('Temporary cleanup receipt could not be acknowledged. Retry leaving.');}
    if(!alive.current)return false;
    sessions.current.clear();mails.current.clear();removeBatch(sessionStorage,owner,batchId);record.current=null;onDirtyChange(false);return true;
   }catch(e){if(alive.current){exiting.current=false;setError(e instanceof Error?e.message:'The batch could not be closed.');}return false;}

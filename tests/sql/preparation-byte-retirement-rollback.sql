@@ -20,9 +20,12 @@ declare actor uuid:=ar_private.access_owner();jid uuid:=gen_random_uuid();did uu
  insert into storage.objects(id,bucket_id,name,metadata) values(oid,'ar-working-files',key,jsonb_build_object('size',p_bytes));
  return jsonb_build_object('actor',actor,'job',jid,'draft',did,'mail',mid,'object',oid,'key',key,'command',cmd,'scope',scope);
 end$$;
+create function pg_temp.preparation_command(p_seed jsonb) returns text language plpgsql as $$declare digest text;begin
+ digest:=ar_private.document_request_digest('KAT',p_seed->>'scope',array['A'],'invoices','combined','billing','workspace');
+ insert into ar_private.document_commands(owner,command_key,payload,job_id,request_actor,request_digest) values((p_seed->>'actor')::uuid,(p_seed->>'command')::uuid,jsonb_build_object('hotel','KAT','account_id',p_seed->>'scope','ids',jsonb_build_array('A'),'content','invoices','layout','combined','purpose','billing','statement_source','workspace'),(p_seed->>'job')::uuid,(p_seed->>'actor')::uuid,digest);return digest;end$$;
 do $$
 #variable_conflict use_variable
-declare actor uuid:=ar_private.access_owner();sess uuid:=gen_random_uuid();current_sess uuid:=gen_random_uuid();marker uuid:=gen_random_uuid();s jsonb;s2 jsonb;root jsonb;root_id uuid;root_mail uuid;root_expected jsonb;r jsonb;original jsonb;rid uuid;item uuid;claim uuid:=gen_random_uuid();scenario text;fid uuid;uploadkey text;before_count bigint;digest text;cmd uuid;begin
+declare actor uuid:=ar_private.access_owner();sess uuid:=gen_random_uuid();current_sess uuid:=gen_random_uuid();marker uuid:=gen_random_uuid();s jsonb;s2 jsonb;root jsonb;root_id uuid;root_mail uuid;root_expected jsonb;r jsonb;original jsonb;rid uuid;item uuid;claim uuid:=gen_random_uuid();scenario text;fid uuid;uploadkey text;before_count bigint;digest text;digest2 text;cmd uuid;other_actor uuid;other_session uuid:=gen_random_uuid();begin
  insert into auth.sessions(id,user_id,created_at) values(sess,actor,clock_timestamp()),(current_sess,actor,clock_timestamp());
  if has_function_privilege('authenticated','public.ar_document_exit(uuid,uuid,uuid,uuid,uuid,uuid)','execute') or has_function_privilege('anon','public.ar_preparation_complete(uuid,uuid)','execute') then raise exception 'C RPC ACL leak';end if;
  s:=pg_temp.preparation_seed();
@@ -117,5 +120,33 @@ declare actor uuid:=ar_private.access_owner();sess uuid:=gen_random_uuid();curre
  perform public.ar_document_finalize_abandoned(actor,25);perform public.ar_preparation_retirement_maintain(actor,25);
  if not ar_private.pdf_released((s->>'job')::uuid) or (select original_response->>'outcome' from ar_private.preparation_retirements where job_id=(s->>'job')::uuid)<>'protected' then raise exception 'original marked command authority did not transfer';end if;
  r:=public.ar_document_command_exit(actor,actor,cmd,'KAT',digest,marker,sess,current_sess);if r->>'outcome'<>'protected' or (select discard_requested_at from public.ar_document_jobs where id=(s->>'job')::uuid) is not null then raise exception 'settled marked command changed protected decision';end if;
+
+ -- Legacy command→known and known→command receipts bind the same immutable UUID
+ -- even when they explicitly do NOT authorize retirement.
+ s:=pg_temp.preparation_seed();digest:=pg_temp.preparation_command(s);cmd:=(s->>'command')::uuid;marker:=gen_random_uuid();
+ perform public.ar_document_command_abandon(actor,actor,cmd,'KAT',digest);perform public.ar_document_abandon(actor,(s->>'job')::uuid);
+ perform public.ar_document_command_exit(actor,actor,cmd,'KAT',digest,marker,sess,current_sess);
+ s2:=pg_temp.preparation_seed();digest2:=pg_temp.preparation_command(s2);
+ begin perform public.ar_document_exit(actor,actor,(s2->>'job')::uuid,marker,sess,current_sess);raise exception 'legacy command marker reused for different known job';exception when others then if sqlerrm<>'document_exit_conflict' then raise;end if;end;
+ begin perform public.ar_document_command_exit(actor,actor,cmd,'KAT',digest,marker,current_sess,current_sess);raise exception 'marker origin was rebound';exception when others then if sqlerrm<>'document_exit_conflict' then raise;end if;end;
+ select id into other_actor from auth.users where lower(email)='unapproved@example.test';insert into auth.sessions(id,user_id,created_at) values(other_session,other_actor,clock_timestamp());
+ begin perform public.ar_document_command_exit(other_actor,actor,cmd,'KAT',digest,marker,sess,other_session);raise exception 'marker actor was rebound';exception when others then if sqlerrm<>'document_exit_conflict' then raise;end if;end;
+ r:=public.ar_document_exit(actor,actor,(s->>'job')::uuid,marker,sess,current_sess);if r->>'outcome'<>'protected' or ar_private.preparation_retired((s->>'job')::uuid) then raise exception 'valid legacy cross-route replay acquired authority';end if;
+ -- A new UUID observed first only by the no-upgrade known-job route must also
+ -- conflict on an unrelated command, with no tombstone or authority for it.
+ s:=pg_temp.preparation_seed();digest:=pg_temp.preparation_command(s);cmd:=(s->>'command')::uuid;perform public.ar_document_command_abandon(actor,actor,cmd,'KAT',digest);perform public.ar_document_abandon(actor,(s->>'job')::uuid);
+ marker:=gen_random_uuid();original:=public.ar_document_exit(actor,actor,(s->>'job')::uuid,marker,sess,current_sess);
+ begin perform public.ar_document_command_exit(actor,actor,(s2->>'command')::uuid,'KAT',digest2,marker,sess,current_sess);raise exception 'known legacy marker reused for different command';exception when others then if sqlerrm<>'document_exit_conflict' then raise;end if;end;
+ begin perform public.ar_document_exit(actor,actor,(s->>'job')::uuid,marker,current_sess,current_sess);raise exception 'known receipt origin was rebound';exception when others then if sqlerrm<>'document_exit_conflict' then raise;end if;end;
+ r:=public.ar_document_command_exit(actor,actor,cmd,'KAT',digest,marker,sess,current_sess);if r->>'outcome'<>'protected' or ar_private.preparation_retired((s->>'job')::uuid) or ar_private.preparation_retired((s2->>'job')::uuid) then raise exception 'reverse replay upgraded legacy authority';end if;
+ if original<>public.ar_document_exit(actor,actor,(s->>'job')::uuid,marker,sess,current_sess) then raise exception 'legacy original response changed';end if;
+
+ -- A known-job original receipt replayed through its matching create command is
+ -- terminal too: it must not create an unsettled tombstone for a second abandon.
+ s:=pg_temp.preparation_seed();digest:=pg_temp.preparation_command(s);cmd:=(s->>'command')::uuid;marker:=gen_random_uuid();
+ original:=public.ar_document_exit(actor,actor,(s->>'job')::uuid,marker,sess,current_sess);
+ r:=public.ar_document_command_exit(actor,actor,cmd,'KAT',digest,marker,sess,current_sess);
+ if r->>'outcome'<>'protected' or exists(select 1 from ar_private.document_command_exits where owner=actor and command_key=cmd) or (select count(*) from ar_private.preparation_retirements where exit_command=marker)<>1 then raise exception 'matching cross-route replay restarted abandon';end if;
+ if original<>public.ar_document_exit(actor,actor,(s->>'job')::uuid,marker,sess,current_sess) then raise exception 'cross-route replay changed known original';end if;
 end$$;
 rollback;

@@ -6,7 +6,7 @@ export async function verifyPreparationRetirementConcurrency({root,runDir,execut
  const sql=q=>{const r=spawnSync(executable('psql'),[...args,'-c',q],{cwd:root,env,windowsHide:true,encoding:'utf8',timeout:20000});if(r.status!==0)throw Error('Preparation SQL: '+r.stderr);return r.stdout.trim();};
  if(sql("select current_database()||'|'||host(inet_server_addr())")!==database+'|'+expectedAddress)throw Error('Preparation SQL identity mismatch');
  const fixture=readFileSync(join(root,'tests/sql/preparation-byte-retirement-rollback.sql'),'utf8').replaceAll('\r\n','\n');
- const seedDefinition=fixture.slice(fixture.indexOf('create function pg_temp.preparation_seed'),fixture.indexOf('do $$')).replace('pg_temp.preparation_seed','ar_private.c_synthetic_seed');
+ const seedDefinition=fixture.slice(fixture.indexOf('create function pg_temp.preparation_seed'),fixture.indexOf('do $$')).replace('pg_temp.preparation_seed','ar_private.c_synthetic_seed').replace('pg_temp.preparation_command','ar_private.c_synthetic_command');
  sql(seedDefinition+`create function ar_private.c_synthetic_rpc(q text) returns jsonb language plpgsql as $$declare r jsonb;begin execute 'select to_jsonb('||q||')' into r;return r;exception when others then return jsonb_build_object('error',sqlerrm);end$$;`);
  const owner=sql('select public.ar_financial_service_actor()'),sid=randomUUID();sql(`insert into auth.sessions(id,user_id,created_at) values('${sid}','${owner}',clock_timestamp())`);
  const sessions=[],evidence=[];const literal=v=>"'"+String(v).replaceAll("'","''")+"'";
@@ -40,6 +40,25 @@ export async function verifyPreparationRetirementConcurrency({root,runDir,execut
    if(sql(`select ar_private.pdf_released('${seed.job}')`)!=='t')throw Error('Claim-first redundant bytes not released '+kind);
   }
   if(/deadlock/i.test(first.err+second.err))throw Error('Preparation race deadlock');evidence.push({kind,exitFirst,actualLockWait:true,admissionPreserved:true,noDeadlock:true});
+  for(const session of [first,second])session.child.stdin.end();await Promise.all([first,second].map(session=>new Promise(r=>{if(session.ended)return r();session.child.once('close',r);setTimeout(()=>{session.child.kill();r();},2000).unref();})));
+ }
+
+ // Cross-route first use contends on the same UUID even though each route owns
+ // a different advisory domain. The losing target gains no receipt authority.
+ for(const commandFirst of [false,true]){
+  const known=JSON.parse(sql("select ar_private.c_synthetic_seed('send','pending')")),command=JSON.parse(sql("select ar_private.c_synthetic_seed('send','pending')"));
+  const digest=sql('select ar_private.c_synthetic_command('+literal(JSON.stringify(command))+'::jsonb)'),marker=randomUUID();
+  const knownCall=`public.ar_document_exit('${owner}','${owner}','${known.job}','${marker}','${sid}')`;
+  const commandCall=`public.ar_document_command_exit('${owner}','${owner}','${command.command}','KAT','${digest}','${marker}','${sid}')`;
+  const label='c-marker-'+randomUUID(),first=session(label+'-first'),second=session(label+'-second'),safe=expr=>'ar_private.c_synthetic_rpc('+literal(expr)+')';
+  first.send(`begin;set local lock_timeout='15s';select 'FIRST:'||${safe(commandFirst?commandCall:knownCall)}::text;select 'READY';`);await first.wait('READY');
+  second.send(`begin;set local lock_timeout='15s';select 'SECOND:'||${safe(commandFirst?knownCall:commandCall)}::text;commit;select 'DONE';`);
+  let waited=false;const deadline=Date.now()+10000;while(Date.now()<deadline){if(sql(`select count(*) from pg_stat_activity where application_name='${label}-second' and wait_event_type='Lock'`)==='1'){waited=true;break;}await new Promise(r=>setTimeout(r,20));}if(!waited)throw Error('Cross-route UUID first-use contender did not wait');
+  first.send("commit;select 'DONE';");await Promise.all([first.wait('DONE'),second.wait('DONE')]);const rejected=JSON.parse(second.out.split('\n').find(l=>l.startsWith('SECOND:')).slice(7));if(rejected.error!=='document_exit_conflict')throw Error('Cross-route marker admitted second target '+JSON.stringify(rejected));
+  if(commandFirst)sql(`select public.ar_document_exit('${owner}','${owner}','${command.job}','${marker}','${sid}')`);
+  const winner=commandFirst?command:known,loser=commandFirst?known:command;
+  if(sql(`select count(*) from ar_private.preparation_retirements where exit_command='${marker}' and job_id='${winner.job}'`)!=='1'||sql(`select ar_private.preparation_retired('${loser.job}')`)!=='f'||sql(`select count(*) from ar_private.preparation_exit_bindings where exit_command='${marker}'`)!=='1')throw Error('Cross-route first-use authority was duplicated');
+  if(/deadlock/i.test(first.err+second.err))throw Error('Cross-route marker lock inversion');evidence.push({crossRoute:true,commandFirst,actualLockWait:true,loser:'document_exit_conflict',retirementAuthorities:1,noDeadlock:true});
   for(const session of [first,second])session.child.stdin.end();await Promise.all([first,second].map(session=>new Promise(r=>{if(session.ended)return r();session.child.once('close',r);setTimeout(()=>{session.child.kill();r();},2000).unref();})));
  }
  writeFileSync(join(runDir,'preparation-retirement-concurrency.json'),JSON.stringify(evidence,null,2));
