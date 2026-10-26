@@ -74,6 +74,37 @@ test('template library only offers the current template, with no version control
  await expect(page.getByRole('heading',{name:'Email templates',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'View version history'})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Save template',exact:true})).toBeVisible();await expect(page.getByText(/Version \d/)).toHaveCount(0);
 });
+
+for(const region of ['phuket','khao-lak'])test(`active ${region} staff can manage shared templates and retain conflicting edits`,async({context,page},testInfo)=>{
+ await preferences(context);
+ await context.route('**/api/access/me',route=>route.fulfill({json:{email:'synthetic.staff@example.invalid',administrator:false,regions:[region],revision:1,displayName:'Synthetic Staff'}}));
+ const templates=new Map([[templateId,{...starterTemplates[0],id:templateId,revision:1,updated_at:'2026-10-26T00:00:00Z'}]]),writes:Record<string,any>[]=[],sends:string[]=[];
+ let conflict=false;
+ context.on('request',request=>{if(/\/api\/email\/.*\/send(?:\?|$)|\/api\/email\/test-send/.test(request.url()))sends.push(request.url());});
+ await context.route(/\/api\/email\/templates(?:\/[0-9a-f-]+)?(?:\?.*)?$/,async route=>{
+  const request=route.request(),path=new URL(request.url()).pathname,id=path.split('/').at(-1)!;
+  if(request.method()==='PUT'){
+   const input=request.postDataJSON(),prior=templates.get(id);writes.push(input);
+   if(conflict||input.revision!==(prior?.revision??0))return route.fulfill({status:409,json:{error:'template_revision_conflict'}});
+   const saved={...input.content,id,revision:input.revision+1,updated_at:'2026-10-26T00:00:00Z'};templates.set(id,saved);return route.fulfill({json:saved});
+  }
+  return route.fulfill({json:{items:id==='templates'?[...templates.values()]:templates.has(id)?[templates.get(id)]:[],nextOffset:null}});
+ });
+ await page.goto('/');await expect(page.getByRole('button',{name:'Sign in with Google'})).toBeEnabled();
+ await page.evaluate(()=>{sessionStorage.setItem('ar-google-tab-v1-oauth',String(Date.now()));sessionStorage.setItem(sessionStorage.getItem('ar-google-tab-v1')!+'-code-verifier',JSON.stringify('synthetic-code'));});
+ await page.goto('/?code=synthetic');
+ await expect(page.getByRole('button',{name:'Templates',exact:true})).toBeVisible({timeout:2000});
+ await expect(page.getByRole('button',{name:'Storage',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Templates',exact:true}).click();await expect(page.getByRole('heading',{name:'Email templates',exact:true})).toBeVisible();
+ await page.locator('.template-choice').first().click();
+ await page.getByLabel('Template subject',{exact:true}).fill('Shared staff subject {{hotel}}');await page.getByRole('textbox',{name:'Template message',exact:true}).fill('Shared staff message');
+ await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status')).toContainText('Template saved.');expect(writes).toHaveLength(1);expect(writes[0]).toMatchObject({revision:1,content:{subject:'Shared staff subject {{hotel}}'}});
+ await page.reload();await expect(page.getByRole('heading',{name:'Email templates',exact:true})).toBeVisible();await page.locator('.template-choice').first().click();await expect(page.getByLabel('Template subject',{exact:true})).toHaveValue('Shared staff subject {{hotel}}');await expect(page.getByRole('textbox',{name:'Template message',exact:true})).toContainText('Shared staff message');
+ await page.getByRole('checkbox',{name:'Archive from future selection',exact:true}).check();await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status')).toContainText('Template saved.');expect(templates.get(templateId)?.archived).toBe(true);
+ await page.getByRole('button',{name:'New template',exact:true}).click();await page.getByLabel('Template name',{exact:true}).fill('Synthetic staff template');await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('status')).toContainText('Template saved.');expect(templates.size).toBe(2);
+ conflict=true;await page.getByLabel('Template subject',{exact:true}).fill('Keep my conflicting edits');await page.getByRole('button',{name:'Save template',exact:true}).click();await expect(page.getByRole('alert')).toContainText('changed in another session');await expect(page.getByLabel('Template subject',{exact:true})).toHaveValue('Keep my conflicting edits');expect(sends).toHaveLength(0);
+ await page.screenshot({path:testInfo.outputPath('staff-template-library.png'),fullPage:true});
+});
 test('composer previews and saves one signature for the document hotel, and reload does not duplicate it',async({context,page})=>{
  const c=await preferences(context);await googleReturn(page);await page.evaluate(id=>history.replaceState(null,'',`/?documentJob=${id}&compose=1`),jobId);await page.reload();
  const dialog=page.getByRole('dialog',{name:'Email workspace'});await expect(dialog.getByLabel('Email signature')).toContainText('The Shore at Katathani');await expect(dialog.getByLabel('Email signature')).toContainText('Synthetic Staff');

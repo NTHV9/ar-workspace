@@ -28,10 +28,11 @@ it('resolves opaque document/file/draft/delivery IDs in SQL rather than trusting
  for(const [path,kind]of [[`/api/documents/${id}/exports/0?hotel=KAT`,'document'],[`/api/email/${id}/attachments/${id}?hotel=KAT`,'email'],[`/api/email/deliveries/${id}/check`,'delivery'],[`/api/remittances/${id}/files/${id}`,'remittance']])expect(await requestAccessIntent(request(path))).toMatchObject({kind,ref:id});
  expect(await requestAccessIntent(request('/api/email/open','POST',{jobId:id,hotel:'KAT'}))).toEqual({kind:'document',ref:id,mail:true});
 });
-it('denies policy/template mutations while allowing the current wording to be used',async()=>{
+it('allows exact template writes for staff while retaining administrator-only policy mutations',async()=>{
  expect(await requestAccessIntent(request('/api/collection-policy'))).toEqual({kind:'global'});
  await expect(requestAccessIntent(request('/api/collection-policy','PUT',{}))).rejects.toThrow();
- await expect(requestAccessIntent(request('/api/email/templates/'+id,'PUT',{}))).rejects.toThrow();
+ expect(await requestAccessIntent(request('/api/email/templates/'+id,'PUT',{}))).toEqual({kind:'global'});
+ for(const [path,method]of [['/api/email/templates','PUT'],['/api/email/templates/'+id,'POST'],['/api/email/templates/'+id,'DELETE'],['/api/email/templates/'+id+'?hotel=KAT','PUT'],['/api/email/templates/'+'-'.repeat(36),'PUT'],['/api/email/templates/'+id+'/versions/1','PUT']])await expect(requestAccessIntent(request(path,method,{}))).rejects.toThrow('access_forbidden');
 });
 it('contains nested foreign hotel objects and hotel arrays without rejecting ordinary fields',()=>{
  expect(containsOutsideHotel({rows:[{hotel:'TLKL'}]},['KAT','TSK'])).toBe(true);
