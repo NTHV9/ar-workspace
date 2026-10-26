@@ -1,4 +1,5 @@
 import {verifyCommandExitConcurrency} from './verify-command-exit-concurrency.mjs';
+import {verifyPdfReleaseConcurrency} from './verify-pdf-release-concurrency.mjs';
 import {spawn,spawnSync} from 'node:child_process';
 import {verifyDraftDiscardConcurrency} from './verify-draft-discard-concurrency.mjs';
 import {verifyCombinedEmailContract} from './verify-combined-email-contract.mjs';
@@ -91,7 +92,7 @@ try{
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
  const tests=join(root,'tests/sql');
- for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['document-command-exit-rollback.sql','invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql','provider-quota-warnings-rollback.sql','provider-usage-rollback.sql'].includes(n)).sort()){
+ for(const name of readdirSync(tests).filter(n=>/^tracker-.*-rollback\.sql$/.test(n)||['pdf-byte-release-rollback.sql','document-command-exit-rollback.sql','invoice-exceptions-rollback.sql','document-abandon-rollback.sql','transient-documents-rollback.sql','mail-verified-sent-rollback.sql','refresh-retained-zero-scope-rollback.sql','retained-zero-rollback.sql','account-workspace-rollback.sql','provider-quota-warnings-rollback.sql','provider-usage-rollback.sql'].includes(n)).sort()){
   const text=readFileSync(join(tests,name),'utf8'),ownTransaction=/^begin;/im.test(text)&&/rollback;\s*$/i.test(text);
   try{file(join(tests,name),!ownTransaction);report.fixtures.push(name);console.log('PASS '+name);}
   catch(error){report.failures.push({name,error:String(error)});console.log('FAIL '+name);}
@@ -121,6 +122,8 @@ try{
  console.log('PASS concurrent message Save / preparation Exit and deferred cleanup retry');
  report.combinedEmailContract=await verifyCombinedEmailContract({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
  console.log('PASS real Worker HTTP / PostgreSQL combined email contract (3 scenarios, one provider POST each)');
+ report.pdfReleaseConcurrency=await verifyPdfReleaseConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
+ console.log('PASS real SQL provider-claim-first / byte-release-first admission ordering');
  report.passed=true;console.log(`PASS ${report.migrations.length} migrations; ${report.fixtures.length} tracker SQL rollback fixtures`);
 }finally{
  if(created){try{tool('dropdb',['--no-password',database]);}catch{report.cleanupError='Synthetic database drop failed';}}

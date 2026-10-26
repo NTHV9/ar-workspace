@@ -14,6 +14,7 @@ interface Attempt {id:string;state:string;claimed?:boolean;gmail_draft_id?:strin
 export function draftBudget(env:EmailEnv){const n=Number(env.GMAIL_DRAFT_MAX_BYTES??10485760);return Number.isSafeInteger(n)&&n>0&&n<=12582912?n:10485760;}
 interface MailFileManifest {name:string;storage_key:string;byte_count:number;sha256:string;mime?:string}
 function validateMailFile(env:EmailEnv,draft:EmailDraft,file:MailFileManifest){
+ if(draft.bytes_released)throw Error('document_bytes_released');
  if(draft.document_closed_at)throw Error('document_closed');
  if(!file.storage_key.startsWith(`jobs/${draft.document_job_id}/`)||!/^jobs\/[0-9a-f-]{36}\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(file.storage_key)||/(^|\/)\.\.?($|\/)/.test(file.storage_key)||!Number.isSafeInteger(file.byte_count)||file.byte_count<1||file.byte_count>draftBudget(env))throw Error('email_attachment_invalid');
  if(!file.name||file.name.length>200||/[\r\n\x00-\x1f/\\]/.test(file.name)||!['application/pdf','image/png','image/jpeg'].includes(file.mime??'application/pdf'))throw Error('email_attachment_invalid');
@@ -53,12 +54,13 @@ export async function createGmailDraft(env:EmailEnv,owner:string,id:string,revis
 }
 
 export async function prepareMail(env:EmailEnv,owner:string,draft:EmailDraft,messageId:string){
+ if(draft.bytes_released)throw Error('document_bytes_released');
  if(draft.purpose==='billing'&&draft.billing_method==='system')throw Error('email_system_billing_required');
  await requireRegionalDelivery(env,draft);
  await assertAcceptanceRecipient(env,draft.recipients);
  const logo=draft.rich_body?.signature?signatureLogoFile():null;
  const files=[...draft.exports,...draft.attachments];if(!files.length||files.length>50||files.reduce((n,f)=>n+f.byte_count,logo?.bytes.length??0)>draftBudget(env))throw Error('email_too_large');
- const job=await documentJob(env,draft.document_job_id);if(job?.closed_at)throw Error('document_closed');if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
+ const job=await documentJob(env,draft.document_job_id);if(job?.bytes_released)throw Error('document_bytes_released');if(job?.closed_at)throw Error('document_closed');if(!job||job.owner!==owner||job.revision!==draft.document_revision||!job.acknowledged)throw Error('email_package_changed');
  // Validate the whole package before reads; its existing total-byte budget bounds memory.
  for(const file of files)validateMailFile(env,draft,file);
  const loaded:MailFile[]=[];

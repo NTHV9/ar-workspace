@@ -81,7 +81,7 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    if(closed&&background){try{background.waitUntil(cleanupTransientDocument(env,owner,id).catch(()=>{}));}catch{/* Scheduled maintenance retains the durable retry. */}}
    return json(result);
   }
-  if(job.closed_at)return json({error:'document_closed'},410);
+  if(job.bytes_released)return json({error:'document_bytes_released'},410);if(job.closed_at)return json({error:'document_closed'},410);
   if(job.discard_requested_at)return json({error:'document_discard_pending'},409);
   if(job.lifecycle==='transient'&&(['project','save'].includes(action)||action==='upload'&&url.searchParams.get('kind')==='project'))return json({error:'document_project_retired'},409);
   if(action==='review'&&request.method==='POST'){
