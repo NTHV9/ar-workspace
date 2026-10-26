@@ -1,3 +1,33 @@
+## 2026-10-26 — PDF editing frame dismisses on blank-space click
+
+**Implemented, tested, deployed and enabled.** Source
+`f866a7c46c75041933a13736ce889375cf6fa69f`, Worker version
+`df64264b-efc4-4cbf-bd75-f64e9e481f84`, adds only a PDF scroll-surface pointer
+handler. Clicking editable text retains its selected frame; clicking blank paper
+or surrounding gray space hides the frame without changing document values.
+Pending refocus is cancelled, while inline typing, formatting controls, source
+switching and dragging retain their existing interactions. No rendering, tax,
+backend or schema logic changed. This is based on the verified latest application
+source, preserving the combined Account email release.
+
+Two browser assertions reproduced the old persistent frame before the fix.
+Three new browser cases now pass, including reselecting edited text and saving
+its PDF project; before/after synthetic captures were inspected. All54 related
+PDF cases,4,760 units and build pass. Initial CPU contention from parallel heavy
+local checks caused three5000ms unit timeouts; the unchanged unit suite passes
+when run sequentially. No timeout or test gate was relaxed. Independent review
+has no P1/P2 finding. Same-source GitHub run1060 / 40276312166 passes548 browser
+cases,144 migrations/38 SQL fixtures, the existing concurrency and three real-SQL
+mail contracts, three performance cases and15 publication cases.
+
+Production health and55 JS/CSS/WASM asset hashes match the qualified source.
+A signed-in real temporary Invoice smoke verified selected frame1 -> blank-click
+frame0/editor0 -> reselected frame1 with the edited text intact. Explicit discard
+closed the exact preparation; its one working object has deletion acknowledgement
+and verified absence. No mail attempt, real billing or reminder-date write was
+performed. Customer data and temporary provider identifiers stay outside Git.
+Receipt: evidence/pdf-click-away-acceptance-20261026.json.
+
 ## 2026-10-26 — Optional combined Account email released
 
 **Implemented, tested, deployed and enabled.** Application source
