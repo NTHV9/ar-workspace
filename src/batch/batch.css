@@ -2,6 +2,13 @@
 .batch-create ul{list-style:none;padding:0;max-height:230px;overflow:auto}.batch-create li{padding:9px 0;border-bottom:1px solid #dce5ef}.batch-create li span{display:block;font-size:12px;color:#526982;margin-top:4px}
 .batch-workspace{position:fixed;inset:12px;z-index:65;display:flex;flex-direction:column;background:#f7fafc;border:1px solid #dce5ef;border-radius:16px;overflow:hidden;color:#10253f;box-shadow:0 15px 50px #10253f22;font-family:'Plus Jakarta Sans',Arial,sans-serif}
 .batch-workspace *{box-sizing:border-box}
+.batch-content>.email-send-result{margin:24px;max-width:1000px}
+.batch-result-entries{list-style:none;padding:0;margin:16px 0;display:grid;gap:12px}
+.batch-result-entries li{padding:16px;border:1px solid var(--ar-border,#dce5ef);border-radius:10px;overflow-wrap:anywhere}
+.batch-result-entries strong,.batch-result-entries span{display:block;margin-bottom:8px}
+.batch-result-entries span{color:var(--ar-text-muted,#526982);font-size:13px}
+.batch-result-entries button,.email-send-result__children>button{padding:10px 14px;border:1px solid var(--ar-border,#dce5ef);border-radius:8px;background:white;font:inherit;cursor:pointer}
+@media(max-width:650px){.batch-content>.email-send-result{margin:12px}.batch-result-entries li{padding:12px}}
 .batch-heading{display:flex;align-items:center;gap:18px;padding:12px 20px;background:white;border-bottom:1px solid #dce5ef;flex-shrink:0}
 .batch-heading>div{flex:1;min-width:0}.batch-heading h1{font-size:20px;margin:0 0 4px;letter-spacing:-.5px}.batch-heading span{font-size:12px;color:#526982}
 .batch-heading button,.batch-review button,.batch-wait button{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:auto;flex:none;border:1px solid #dce5ef;border-radius:8px;background:white;color:#10253f;padding:9px 12px;font:inherit;font-size:12px;cursor:pointer}

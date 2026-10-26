@@ -165,6 +165,15 @@ test('email to document internal transition retains preparation and never abando
  await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({status:500,json:{error:'unexpected_abandon'}});});
  await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId+'&compose=1');await expect(page.getByRole('heading',{name:'Email preparation',exact:true})).toBeVisible();await page.getByRole('button',{name:'Back to document preparation',exact:true}).click();await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();expect(attempts).toBe(0);expect(controls.outboundRequests).toEqual([]);
 });
+
+test('closed Sent preparation reload retains a manual Collections receipt without reopening deleted files',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient');
+ await page.route(`**/api/documents/${jobId}`,r=>r.fulfill({json:{...controls.job,closed_at:'2026-10-26T00:00:00Z',closed_reason:'sent',exports:[],files:[]}}));
+ await openWorkspaceRoute(page,`/?documentJob=${jobId}&compose=1`);
+ await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();await expect(page.getByLabel('Email message')).toHaveCount(0);
+ await page.reload();await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();expect(controls.sourceReads).toBe(0);expect(controls.outboundRequests).toEqual([]);
+ await page.getByRole('button',{name:'Back to Collections',exact:true}).click();await expect(page).toHaveURL(/collections=1/);expect(controls.abandons).toBe(0);
+});
 test('failed identity read permits leaving without claiming cleanup',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');await page.route(`**/api/documents/${jobId}`,r=>r.fulfill({status:403,json:{error:'document_forbidden'}}));
  await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect(page.getByRole('alert')).toContainText('document forbidden');await page.locator('.document-jobs > .back-bottom').click();await expect.poll(()=>new URL(page.url()).searchParams.has('documentJob')).toBe(false);expect(controls.abandons).toBe(0);

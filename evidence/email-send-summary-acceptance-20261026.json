@@ -1,0 +1,15 @@
+{
+  "applicationSource": "a13d1b55d15cdac56319177549b3c6d0d164cc1c",
+  "workerVersion": "cc1cd663-9862-437b-b59d-e334e4f3a16f",
+  "pullRequest": "https://github.com/NTHV9/ar-workspace/pull/146",
+  "qualifiedRun": "https://github.com/NTHV9/ar-workspace/actions/runs/40291349205",
+  "qualifiedRunConclusion": "success",
+  "flowCoverage": ["standalone", "separate-account-emails", "one-combined-email"],
+  "behavior": {"englishUi": true, "oneClickExplicitSend": true, "sendAcceptanceCheckboxRemoved": true, "manualCollectionsReturn": true, "acceptedHistoryCheckDoesNotBlockReturn": true, "unknownDoesNotEnableResend": true, "lateChecksCannotRestoreExitedBatch": true, "plainDraftNotClassifiedAsSent": true},
+  "tests": {"unitsPassed": 4774, "sqlMigrations": 144, "sqlRollbackFixtures": 38, "realSqlFakeProviderCases": 3, "browserPassed": 578, "performancePassed": 3, "publicationPassed": 15, "finalLocalFixtureLayoutPassed": 37, "responsiveStoriesPassed": 9},
+  "deployment": {"health": "ok", "assetHashesMatched": 55, "unauthenticatedMailRoutesRejected": 10},
+  "independentReview": {"remainingP1P2": 0},
+  "liveCommands": {"newSmtpSends": 0, "billingReminderDateTestCommands": 0},
+  "unchangedScopes": ["backend", "schema", "pdf-engine", "vat", "provider-send-api", "credentials", "retention-policy"],
+  "verificationScope": "Browser controllers, responsive presentation and isolated real SQL with fake provider responses; production public health/assets and unauthenticated boundaries. No claim of a new live-provider send."
+}

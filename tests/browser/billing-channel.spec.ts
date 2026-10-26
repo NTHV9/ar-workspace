@@ -62,7 +62,7 @@ test('older required settings default to By Email and non-required clears the me
 
 for(const action of ['draft','send'] as const)test(`By System blocks billing but permits explicit collection ${action}`,async({page})=>{
  const {calls}=await setup(page);await page.goto(`/?documentJob=${jobId}&compose=1`);
- await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Review & send now',exact:true})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Send now',exact:true})).toBeDisabled();
  await expect(page.getByText('By System',{exact:true})).toBeVisible();await expect(page.getByText('Upload the reviewed PDF, then record the accepted billing date.',{exact:true})).toBeVisible();
  const portal=page.getByRole('link',{name:'Open account billing portal',exact:true});await expect(portal).toHaveAttribute('href','https://portal.example.test/billing');await expect(portal).toHaveAttribute('rel',/noopener/);
  expect(calls.some(c=>c.endsWith('/gmail-draft')||c.endsWith('/send'))).toBe(false);
@@ -70,7 +70,7 @@ for(const action of ['draft','send'] as const)test(`By System blocks billing but
  await page.getByRole('button',{name:'collection',exact:true}).click();await expect(page.getByText('Include the portal reference in the collection message.',{exact:true})).toBeVisible();await page.getByLabel('Collection stage').selectOption('Friendly');
  await page.getByLabel('Email TO').fill('collections@example.test');await page.getByRole('button',{name:'Save message',exact:true}).click();await expect(page.getByText('Message saved in this preparation.',{exact:false})).toBeVisible();
  if(action==='draft'){await page.getByRole('button',{name:'Create Gmail draft',exact:true}).click();await expect(page.getByRole('status',{name:'Email delivery status',exact:true})).toContainText('Gmail draft — not sent');await expect(page.getByRole('status',{name:'Email delivery status',exact:true})).toContainText('No billing / collection history is recorded.');}
- else{await page.getByRole('button',{name:'Review & send now',exact:true}).click();await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect(page.getByText('Sent — history recorded',{exact:true})).toBeVisible();}
+ else{await page.getByRole('button',{name:'Send now',exact:true}).click();await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();await expect(page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'})).toHaveCount(0);}
  expect(calls.filter(c=>c.endsWith(action==='draft'?'/gmail-draft':'/send'))).toHaveLength(1);
 });
 

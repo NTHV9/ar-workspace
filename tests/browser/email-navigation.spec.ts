@@ -38,15 +38,65 @@ async function setup(page:Page,{withDelivery=false,view='email'}:{withDelivery?:
   return r.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});
  });
  await currentWorkspaceSession(page,user);
- await openWorkspaceRoute(page,view==='templates'?'/?templates=1':`/?documentJob=${jobId}&compose=1`);await expect(page.getByLabel(view==='templates'?'Template name':'Email message',{exact:true})).toBeVisible();
+ await openWorkspaceRoute(page,view==='templates'?'/?templates=1':`/?documentJob=${jobId}&compose=1`);await expect(withDelivery?page.getByRole('heading',{name:'Sending not confirmed',exact:true}):page.getByLabel(view==='templates'?'Template name':'Email message',{exact:true})).toBeVisible();
  return controls;
 }
 async function dismissBack(page:Page,label='Email message'){
+ const visible=label==='Sending email…'?page.getByRole('heading',{name:label,exact:true}):page.getByLabel(label,{exact:true});
  const messages:string[]=[];page.once('dialog',async dialog=>{messages.push(dialog.message());await dialog.dismiss();});
  await page.evaluate(()=>history.back());await expect.poll(()=>messages).toHaveLength(1);
  expect(messages[0]).toContain('without saving or resolving');expect(messages[0]).not.toContain('PDF edits');
- await expect(page.getByLabel(label,{exact:true})).toBeVisible();
+ await expect(visible).toBeVisible();
 }
+
+test('one click sends once and replaces preparation until manual Collections return',async({page})=>{
+ const controls=await setup(page),original=page.url();
+ const send=page.getByRole('button',{name:'Send now',exact:true});
+ await send.evaluate((button:HTMLButtonElement)=>{button.click();button.click();});
+ await expect.poll(()=>!!controls.send).toBe(true);
+ expect(controls.send!.request().postDataJSON()).toMatchObject({confirmed:true,revision:0});
+ await expect(page.getByRole('heading',{name:'Sending email…',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Email message',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Back to Collections',exact:true})).toBeDisabled();
+ await expect(page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'})).toHaveCount(0);
+ await controls.send!.fulfill({json:{id:'synthetic-send',state:'sent',mode:'send',recorded:true}});
+ await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Reviewed email scope'})).toContainText('Messages1Accounts1Invoices1Files1');
+ await expect(page.getByRole('region',{name:'Email recipients'})).toContainText('recipient@example.test');
+ expect(page.url()).toBe(original);
+ await page.getByRole('button',{name:'Back to Collections',exact:true}).click();
+ await expect(page).toHaveURL(/collections=1/);expect(new URL(page.url()).searchParams.has('documentJob')).toBe(false);
+ expect(controls.calls.filter(call=>call.endsWith('/send'))).toHaveLength(1);
+ expect(controls.calls.filter(call=>call.endsWith('/abandon'))).toHaveLength(1);
+});
+
+test('accepted result returns while its history check is pending with protected cleanup',async({page})=>{
+ const controls=await setup(page);let check:Route|undefined;
+ await page.route('**/api/email/deliveries/synthetic-send/check',r=>{check=r;});
+ await page.getByRole('button',{name:'Send now',exact:true}).click();await expect.poll(()=>!!controls.send).toBe(true);
+ await controls.send!.fulfill({json:{id:'synthetic-send',state:'awaiting_evidence',mode:'send',recorded:false,gmailAccepted:true}});
+ await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
+ await expect(page.getByText('History update pending',{exact:true}).first()).toBeVisible();
+ await page.getByRole('button',{name:'Check sent status',exact:true}).click();await expect.poll(()=>!!check).toBe(true);
+ await expect(page.getByRole('button',{name:'Back to Collections',exact:true})).toBeEnabled();
+ const dialogs:string[]=[];page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});
+ await page.getByRole('button',{name:'Back to Collections',exact:true}).click();await expect(page).toHaveURL(/collections=1/);
+ expect(controls.calls.filter(call=>call.endsWith('/abandon'))).toHaveLength(1);expect(dialogs).toEqual([]);
+ await check!.fulfill({json:{id:'synthetic-send',state:'sent',mode:'send',recorded:true}});
+ expect(controls.calls.filter(call=>call.endsWith('/send'))).toHaveLength(1);
+ await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toHaveCount(0);
+});
+
+test('failed result exit keeps its summary visible until cleanup succeeds',async({page})=>{
+ const controls=await setup(page);let abandon=0;
+ await page.route(`**/api/documents/${jobId}/abandon`,r=>{abandon++;return r.fulfill({status:503,json:{error:'cleanup_unavailable'}});});
+ await page.getByRole('button',{name:'Send now',exact:true}).click();await expect.poll(()=>!!controls.send).toBe(true);
+ await controls.send!.fulfill({json:{id:'synthetic-send',state:'sent',mode:'send',recorded:true}});
+ await page.getByRole('button',{name:'Back to Collections',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
+ await expect(page.getByRole('alert')).toContainText('cleanup unavailable');
+ expect(new URL(page.url()).searchParams.has('documentJob')).toBe(true);expect(abandon).toBe(1);
+});
 
 test('Browser Back protects unsaved email edits until leaving is confirmed',async({page})=>{
  const controls=await setup(page);await page.getByLabel('Email message').fill('Synthetic unsaved message');
@@ -75,12 +125,11 @@ test('pending and failed supplemental uploads keep the navigation guard until re
 });
 
 test('a send in progress keeps the navigation guard until its result is retained',async({page})=>{
- const controls=await setup(page);await page.getByRole('button',{name:'Review & send now',exact:true}).click();
- await page.getByRole('checkbox',{name:'I reviewed the recipients, message and final PDF files.'}).check();
- await page.getByRole('button',{name:'Confirm send now',exact:true}).click();await expect.poll(()=>!!controls.send).toBe(true);
- await dismissBack(page);await expect(page.getByRole('button',{name:'Sending and verifying…',exact:true})).toBeDisabled();
+ const controls=await setup(page);await page.getByRole('button',{name:'Send now',exact:true}).click();
+ await expect.poll(()=>!!controls.send).toBe(true);
+ await dismissBack(page,'Sending email…');await expect(page.getByRole('button',{name:'Back to Collections',exact:true})).toBeDisabled();
  await controls.send!.fulfill({json:{id:'synthetic-send',state:'awaiting_evidence',mode:'send',recorded:false}});
- await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Send result unknown — do not resend');
+ await expect(page.getByRole('heading',{name:'Sending not confirmed',exact:true})).toBeVisible();
  const dialogs:string[]=[];page.on('dialog',async dialog=>{dialogs.push(dialog.message());await dialog.dismiss();});
  await page.evaluate(()=>history.back());await expect(page.getByLabel('Email message')).toHaveCount(0);expect(dialogs).toEqual([]);
  expect(controls.calls.filter(call=>call.endsWith('/send'))).toHaveLength(1);
@@ -129,7 +178,7 @@ async function openSentReview(page:Page){
 }
 
 test('an unsaved Sent review note protects Browser Back, Close and Escape',async({page})=>{
- const controls=await setup(page,{withDelivery:true}),review=await openSentReview(page);await dismissBack(page);
+ const controls=await setup(page,{withDelivery:true}),review=await openSentReview(page);await dismissBack(page,'Sent match review note');
  const messages:string[]=[];const cancel=async(dialog:import('@playwright/test').Dialog)=>{messages.push(dialog.message());await dialog.dismiss();};page.on('dialog',cancel);
  await page.getByRole('button',{name:'Close sent review',exact:true}).click();await expect.poll(()=>messages.length).toBe(1);await expect(review).toBeVisible();
  await page.keyboard.press('Escape');await expect.poll(()=>messages.length).toBe(2);await expect(review).toBeVisible();
@@ -153,15 +202,15 @@ for(const outcome of ['sent','failed'] as const)test(`a pending Sent match prote
  const controls=await setup(page,{withDelivery:true}),review=await openSentReview(page);
  await page.getByRole('checkbox',{name:'I confirmed in Gmail that this is the message sent for this reviewed package.'}).check();
  await page.getByRole('button',{name:'Link verified sent message',exact:true}).click();await expect.poll(()=>!!controls.match).toBe(true);
- await dismissBack(page);await expect(page.getByRole('button',{name:'Close sent review',exact:true})).toBeDisabled();
+ await dismissBack(page,'Sent match review note');await expect(page.getByRole('button',{name:'Close sent review',exact:true})).toBeDisabled();
  await page.keyboard.press('Escape');await expect(review).toBeVisible();
  await controls.match!.fulfill(outcome==='sent'?{json:{state:'sent'}}:{status:409,json:{error:'email_review_changed'}});
  if(outcome==='sent'){
-  await expect(review).toHaveCount(0);await expect(page.getByRole('status',{name:'Email delivery status'})).toContainText('Sent — history recorded');
+  await expect(review).toHaveCount(0);await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
   const dialogs:string[]=[];page.on('dialog',async dialog=>{dialogs.push(dialog.message());await dialog.dismiss();});await page.evaluate(()=>history.back());await expect(page.getByLabel('Email message')).toHaveCount(0);expect(dialogs).toEqual([]);
   expect(controls.calls.filter(call=>call.endsWith('/check'))).toHaveLength(1);
  }else{
-  await expect(review.getByRole('alert')).toContainText('do not resend');await dismissBack(page);await expect(page.getByLabel('Sent match review note')).toHaveValue('Synthetic note that must be retained');
+  await expect(review.getByRole('alert')).toContainText('do not resend');await dismissBack(page,'Sent match review note');await expect(page.getByLabel('Sent match review note')).toHaveValue('Synthetic note that must be retained');
   expect(controls.calls.some(call=>call.endsWith('/check'))).toBe(false);
  }
  expect(controls.calls.filter(call=>call.endsWith('/reviewed-match'))).toHaveLength(1);expect(controls.calls.some(call=>/\/(send|gmail-draft)$/.test(call))).toBe(false);

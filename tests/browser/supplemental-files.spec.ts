@@ -22,6 +22,7 @@ async function setup(page:Page,mode:'normal'|'rejected'|'lost'='normal'){
   if(path==='/api/gmail/status')return r.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com',maxAttachmentBytes:10485760}});
   if(path==='/api/email/test-send'){testBodies.push(req.postDataJSON());return r.fulfill({json:{id:'synthetic-test',mode:'test',state:'sent',recorded:false}});}
   if(path==='/api/email/open')return r.fulfill({json:draft});
+  if(path===`/api/email/${draftId}/send`){if(req.postDataJSON().revision!==draft.revision)return r.fulfill({status:409,json:{error:'email_revision_conflict'}});return r.fulfill({json:{id:'synthetic-supplemental-send',state:'sent',mode:'send',recorded:true}});}
   if(path===`/api/email/${draftId}`){draft={...draft,...req.postDataJSON(),revision:draft.revision+1};return r.fulfill({json:draft});}
   const match=new RegExp(`^/api/email/${draftId}/attachments/([a-f0-9-]+)$`).exec(path);
   if(match){const id=match[1];if(req.method()==='POST'){
@@ -31,13 +32,22 @@ async function setup(page:Page,mode:'normal'|'rejected'|'lost'='normal'){
   }if(req.method()==='GET')return r.fulfill({contentType:draft.attachments.find((a:any)=>a.id===id).mime,body:bodies.get(id)!});
   if(req.method()==='DELETE'){draft={...draft,revision:draft.revision+1,attachments:draft.attachments.filter((a:any)=>a.id!==id)};return r.fulfill({json:draft});}}
   return r.fulfill({status:501,json:{error:'blocked_unmocked_test_api'}});
- });await currentWorkspaceSession(page,user);return {pdfBytes,uploadIds,requests,testBodies,revision:()=>draft.revision};
+ });await currentWorkspaceSession(page,user);return {pdfBytes,uploadIds,requests,testBodies,revision:()=>draft.revision,attachments:()=>draft.attachments as {name:string}[]};
 }
 for(const width of [1440,1280,390])test(`supplemental ${width}: add, preview all pages, review membership and remove`,async({page})=>{
  const fixture=await setup(page);await page.setViewportSize({width,height:width===1440?900:width===1280?800:844});await openWorkspaceRoute(page,`/?documentJob=${jobId}&compose=1`);
  await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Supporting-document.pdf',mimeType:'application/pdf',buffer:fixture.pdfBytes});
  await expect(page.getByRole('button',{name:'Supporting-document.pdf',exact:true})).toBeVisible();await page.getByRole('button',{name:'Supporting-document.pdf',exact:true}).click();await expect(page.locator('.email-attachment-preview').getByRole('status')).toContainText('Page 1 of 2');await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.locator('.email-attachment-preview').getByRole('status')).toContainText('Page 2 of 2');await page.screenshot({path:`evidence/supplemental-preview-${width}.png`});await page.getByRole('button',{name:'Close attachment preview',exact:true}).click();await page.screenshot({path:`evidence/supplemental-composer-${width}.png`});
- await page.getByRole('button',{name:'Review & send now',exact:true}).click();await expect(page.locator('.email-send-confirm')).toContainText('Supporting-document.pdf · Supplemental file');await page.getByRole('button',{name:'Back to editing',exact:true}).click();await page.getByRole('button',{name:'Remove Supporting-document.pdf',exact:true}).click();await expect(page.getByRole('button',{name:'Supporting-document.pdf',exact:true})).toHaveCount(0);expect(fixture.requests.some(s=>s.endsWith('/send')||s.endsWith('/gmail-draft'))).toBe(false);
+ expect(fixture.attachments().map(file=>file.name)).toEqual(['Supporting-document.pdf']);await expect(page.locator('.email-send-confirm')).toHaveCount(0);await page.getByRole('button',{name:'Remove Supporting-document.pdf',exact:true}).click();await expect(page.getByRole('button',{name:'Supporting-document.pdf',exact:true})).toHaveCount(0);expect(fixture.attachments()).toEqual([]);expect(fixture.requests.some(s=>s.endsWith('/send')||s.endsWith('/gmail-draft'))).toBe(false);
+});
+
+test('one-click send includes the supplemental file in the result scope',async({page})=>{
+ const fixture=await setup(page);await openWorkspaceRoute(page,`/?documentJob=${jobId}&compose=1`);
+ await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Supporting-document.pdf',mimeType:'application/pdf',buffer:fixture.pdfBytes});
+ await expect(page.getByRole('button',{name:'Supporting-document.pdf',exact:true})).toBeVisible();await page.getByLabel('Email TO').fill('billing@example.test');
+ await page.getByRole('button',{name:'Send now',exact:true}).click();await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
+ await expect(page.locator('.email-send-result__counts').getByText('Files',{exact:true}).locator('..')).toHaveText(/Files\s*2/);
+ expect(fixture.attachments().map(file=>file.name)).toEqual(['Supporting-document.pdf']);expect(fixture.requests.filter(value=>value.endsWith('/send'))).toHaveLength(1);await expect(page.getByLabel('Email message',{exact:true})).toHaveCount(0);
 });
 test('a rejected supplemental file blocks handoff until explicitly removed',async({page})=>{const fixture=await setup(page,'rejected');await openWorkspaceRoute(page,`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Interactive.pdf',mimeType:'application/pdf',buffer:fixture.pdfBytes});await expect(page.getByRole('alert')).toContainText('scripts, forms or embedded files');await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Remove failed selection',exact:true}).click();await expect(page.getByRole('button',{name:'Create Gmail draft',exact:true})).toBeEnabled();});
 test('lost upload response retries the same command and never adds twice',async({page})=>{const fixture=await setup(page,'lost');await openWorkspaceRoute(page,`/?documentJob=${jobId}&compose=1`);await page.getByLabel('Select supplemental file',{exact:true}).setInputFiles({name:'Receipt.png',mimeType:'image/png',buffer:png});await expect(page.getByRole('button',{name:'Retry this upload',exact:true})).toBeEnabled();await page.getByRole('button',{name:'Retry this upload',exact:true}).click();await expect(page.getByRole('button',{name:'Receipt.png',exact:true})).toHaveCount(1);expect(fixture.uploadIds).toHaveLength(2);expect(fixture.uploadIds[0]).toBe(fixture.uploadIds[1]);});
