@@ -25,7 +25,7 @@ test('Khao Lak-only staff land on Current Aging within their grant',async({page}
  const c=await setupRegional(page);await seedTabSession(page,{id:'00000000-0000-4000-8000-000000000045',email:'synthetic.home@example.invalid',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-09-17T00:00:00Z'});
  await page.route('**/api/access/me',route=>route.fulfill({json:{email:'synthetic.home@example.invalid',administrator:false,regions:['khao-lak'],revision:1}}));
  await page.goto('/');await expect(page.getByRole('heading',{name:'Aging',exact:true})).toBeVisible();await expect(page.getByLabel('Region',{exact:true})).toHaveValue('khao-lak');
- await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Templates',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Storage',exact:true})).toHaveCount(0);expect(c.regionalCalls.filter(c=>c.path==='/api/portfolio').every(c=>c.query.get('region')==='khao-lak')).toBe(true);expect(c.errors).toEqual([]);
+ await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Templates',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Storage',exact:true})).toHaveCount(0);expect(c.regionalCalls.filter(c=>c.path==='/api/portfolio').every(c=>c.query.get('region')==='khao-lak')).toBe(true);expect(c.errors).toEqual([]);
 });
 test('Google callback reaches Aging and its one-time code never returns in navigation',async({page})=>{
  const c=await setupRegional(page),exchanges:Record<string,unknown>[]=[];

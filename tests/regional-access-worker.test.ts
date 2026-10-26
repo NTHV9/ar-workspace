@@ -1,5 +1,6 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {handleApi} from '../worker/index';
+import {starterTemplates} from '../src/email/templates';
 const actor='00000000-0000-4000-8000-000000000031',owner='00000000-0000-4000-8000-000000000032',id='00000000-0000-4000-8000-000000000033';
 const env={SUPABASE_URL:'https://db.synthetic.invalid',SUPABASE_SECRET_KEY:'synthetic-server',SUPABASE_PUBLISHABLE_KEY:'synthetic-public'};
 const grant={email:'staff@example.invalid',administrator:false,regions:['khao-lak'],revision:1,workspaceOwnerId:owner,scopeHotels:['TLKL','WAKL','TLFO','TSAN']};
@@ -54,4 +55,23 @@ it('returns a missing idempotency receipt without a second resource lookup',asyn
 it('does not let a delegated session inherit an administrator acceptance cookie',async()=>{
  const calls=transport(()=>Response.json(grant));const r=request('/api/portfolio?region=khao-lak');r.headers.set('Cookie','__Host-ar-acceptance='+id);
  expect((await handleApi(r,env)).status).toBe(403);expect(calls).toHaveLength(0);
+});
+
+it.each([['phuket',['KAT','TSK']],['khao-lak',['TLKL','WAKL','TLFO','TSAN']]])('lets active %s staff save a shared template through the normal dispatcher',async(region,hotels)=>{
+ const saved={...starterTemplates[0],id,revision:3};
+ const calls=transport(body=>{expect(body).toMatchObject({p_actor:actor,p_kind:'global',p_method:'PUT',p_path:'/api/email/templates/'+id,p_mail:false});return Response.json({...grant,regions:[region],scopeHotels:hotels});},saved);
+ const response=await handleApi(request('/api/email/templates/'+id,'PUT',{revision:2,content:starterTemplates[0]}),env);
+ expect(response.status).toBe(200);expect(await response.json()).toMatchObject({id,revision:3});
+ expect(calls.map(c=>c.name)).toEqual(['ar_access_authorize','ar_template_save']);expect(calls[1].body).toMatchObject({p_actor:owner,p_id:id,p_revision:2,p_content:starterTemplates[0]});
+});
+it('checks active membership before shared template mutation and never trusts administrator metadata',async()=>{
+ const calls=transport(()=>Response.json({message:'access_forbidden'},{status:400}));
+ expect((await handleApi(request('/api/email/templates/'+id,'PUT',{revision:0,content:starterTemplates[0]}),env)).status).toBe(403);
+ expect(calls.map(c=>c.name)).toEqual(['ar_access_authorize']);
+});
+it('preserves shared-template conflicts and rejects cross-origin staff writes before authorization',async()=>{
+ const calls=transport(()=>Response.json(grant),{error:'template_revision_conflict'});
+ expect((await handleApi(request('/api/email/templates/'+id,'PUT',{revision:2,content:starterTemplates[0]}),env)).status).toBe(409);
+ const count=calls.length,foreign=request('/api/email/templates/'+id,'PUT',{revision:2,content:starterTemplates[0]});foreign.headers.set('Origin','https://other.synthetic.invalid');
+ expect((await handleApi(foreign,env)).status).toBe(403);expect(calls).toHaveLength(count);
 });
