@@ -13,7 +13,7 @@ export async function combinedMemberFiles(env:EmailEnv,actor:string,p:CombinedEm
  const draft=await emailRpc<EmailDraft|null>(env,'ar_email_get',{p_actor:actor,p_id:member.draftId});
  if(!draft||draft.owner!==actor||draft.id!==member.draftId||draft.document_job_id!==member.documentJobId||draft.document_revision!==member.documentRevision||draft.revision!==member.draftRevision||draft.hotel!==member.hotel||draft.account_id!==member.accountId||draft.purpose!==member.purpose||hotelMailbox(draft.hotel)!==p.mailbox)throw Error('email_package_changed');
  if(draft.package_changed)throw Error('email_package_changed');await requireRegionalDelivery(env,draft);
- const job=await documentJob(env,member.documentJobId);if(job?.bytes_released||draft.bytes_released)throw Error('document_bytes_released');if(job?.closed_at||draft.document_closed_at)throw Error('document_closed');
+ const job=await documentJob(env,member.documentJobId);if(job?.preparation_retirement?.accepted||draft.preparation_retirement?.accepted)throw Error('document_preparation_retired');if(job?.bytes_released||draft.bytes_released)throw Error('document_bytes_released');if(job?.closed_at||draft.document_closed_at)throw Error('document_closed');
  if(!job||job.owner!==actor||job.revision!==member.documentRevision||!job.acknowledged||job.hotel!==member.hotel||job.account_id!==member.accountId||job.layout!==member.layout||JSON.stringify(job.invoice_ids)!==JSON.stringify(member.invoiceIds))throw Error('email_package_changed');
  const manifests=[...draft.exports,...draft.attachments];
  if(manifests.length!==member.files.length||!manifests.length)throw Error('email_package_changed');

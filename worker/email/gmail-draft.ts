@@ -14,6 +14,7 @@ interface Attempt {id:string;state:string;claimed?:boolean;gmail_draft_id?:strin
 export function draftBudget(env:EmailEnv){const n=Number(env.GMAIL_DRAFT_MAX_BYTES??10485760);return Number.isSafeInteger(n)&&n>0&&n<=12582912?n:10485760;}
 interface MailFileManifest {name:string;storage_key:string;byte_count:number;sha256:string;mime?:string}
 function validateMailFile(env:EmailEnv,draft:EmailDraft,file:MailFileManifest){
+ if(draft.preparation_retirement?.accepted)throw Error('document_preparation_retired');
  if(draft.bytes_released)throw Error('document_bytes_released');
  if(draft.document_closed_at)throw Error('document_closed');
  if(!file.storage_key.startsWith(`jobs/${draft.document_job_id}/`)||!/^jobs\/[0-9a-f-]{36}\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(file.storage_key)||/(^|\/)\.\.?($|\/)/.test(file.storage_key)||!Number.isSafeInteger(file.byte_count)||file.byte_count<1||file.byte_count>draftBudget(env))throw Error('email_attachment_invalid');

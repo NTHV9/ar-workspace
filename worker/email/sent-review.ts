@@ -1,3 +1,4 @@
+import {retireCompletedPreparation} from '../documents/completion-retirement';
 import {frozenMailIdentity} from '../../src/domain/mailboxes';
 import {emailRpc,googleJson,boundedBody,type EmailEnv} from './shared';
 import {gmailCanRead,gmailToken} from './oauth';
@@ -28,5 +29,6 @@ export async function reviewSentMatch(env:EmailEnv,actor:string,id:string,input:
  // Keep the verified rewritten identity and the human review audit independently
  // of the following history transaction, so an unavailable commit is recoverable.
  if(!await emailRpc<boolean>(env,'ar_mail_record_verified_review',{p_actor:actor,p_id:id,p_gmail_id:input.gmailId,p_sent_at:fresh.sentAt,p_expected:d.snapshot.expected,p_proof:input.proof,p_reason:input.reason.trim()}))throw Error('email_sent_match_changed');
- return emailRpc(env,'ar_mail_reviewed_sent',{p_actor:actor,p_id:id,p_gmail_id:input.gmailId,p_sent_at:fresh.sentAt,p_proof:input.proof,p_reason:input.reason.trim()});
+ const preparationRetirement=await retireCompletedPreparation(env,actor,id);
+ const result=await emailRpc<Record<string,unknown>>(env,'ar_mail_reviewed_sent',{p_actor:actor,p_id:id,p_gmail_id:input.gmailId,p_sent_at:fresh.sentAt,p_proof:input.proof,p_reason:input.reason.trim()});return {...result,...(preparationRetirement?{preparationRetirement}:{})};
 }

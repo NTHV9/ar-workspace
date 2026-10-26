@@ -1,0 +1,36 @@
+import {afterEach,it,expect,vi} from 'vitest';import {readFileSync} from 'node:fs';import {spawnSync} from 'node:child_process';import {randomUUID,createHash} from 'node:crypto';import {isIP} from 'node:net';
+import {deliverMessage} from '../worker/email/delivery';import {sendCombined} from '../worker/email/combined';import {documentApi} from '../worker/documents/api';import {url64} from '../worker/email/crypto';
+vi.mock('../worker/email/oauth',()=>({gmailToken:async()=>'synthetic-token',gmailCanRead:async()=>true}));afterEach(()=>vi.unstubAllGlobals());
+const connection=process.env.AR_SYNTHETIC_SQL_CONNECTION_FILE,literal=(v:unknown)=>v===null?'null':"'"+(typeof v==='object'?JSON.stringify(v):String(v)).replaceAll("'","''")+"'";
+it.skipIf(!connection).each(['ordinary','draft','combined'])('real Worker/SQL %s stalled admission → marked Exit after reauth → accepted/history-pending with Storage denied',async kind=>{
+ const c=JSON.parse(readFileSync(connection!,'utf8'));if(!/^ar_ci_[a-z0-9_]+$/.test(c.database)||c.env.PGHOST!=='127.0.0.1'||String(c.env.PGPORT)!==String(c.port)||!isIP(c.expectedAddress)||c.env.PGSERVICE||c.env.PGSERVICEFILE||!c.nonce)throw Error('Exact private synthetic connection required');
+ const sql=(q:string)=>{const r=spawnSync(c.psql,['-X','--no-password','-qAt','-d',c.database,'-v','ON_ERROR_STOP=1','-c',q],{env:c.env,windowsHide:true,encoding:'utf8',timeout:15000});if(r.status!==0)throw Error(r.stderr);return r.stdout.trim()?JSON.parse(r.stdout.trim()):null;};
+ expect(sql("select jsonb_build_array(current_database(),host(inet_server_addr()))")).toEqual([c.database,c.expectedAddress]);
+ const bytes=new TextEncoder().encode('%PDF synthetic C SQL continuation'),sha=createHash('sha256').update(bytes).digest('hex');
+ const seed=sql(`select ar_private.c_synthetic_seed('${kind==='draft'?'draft':'none'}','created','${sha}',${bytes.length})`),actor=seed.actor,origin=randomUUID(),current=randomUUID();
+ sql(`insert into auth.sessions(id,user_id,created_at,not_after) values('${origin}','${actor}',clock_timestamp(),now()-interval '1 minute'),('${current}','${actor}',clock_timestamp(),null);select to_jsonb(true)`);
+ const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic',REQUEST_ACTOR:actor,REQUEST_SESSION:current};
+ let sibling:any=null,preparation:any=null;
+ if(kind==='combined'){
+ sibling=sql(`select ar_private.c_synthetic_seed('none','created','${sha}',${bytes.length})`);const members=[seed,sibling].map(s=>({memberId:randomUUID(),documentJobId:s.job,documentRevision:0,draftId:s.draft,draftRevision:0,stage:null,policyVersion:null}));
+ preparation=sql(`select public.ar_combined_email_save('${actor}','${randomUUID()}',0,'${randomUUID()}',${literal(members)}::jsonb,'{"recipients":{"to":["synthetic@example.test"],"cc":[],"bcc":[]},"subject":"Combined","body":"Combined body","richBody":null,"signatureHotel":"KAT"}')`);expect(preparation.error).toBeUndefined();
+ }
+ const names=['ar_mail_for_draft','ar_mail_get','ar_email_get','ar_email_business_preflight','ar_document_get','ar_mail_claim','ar_mail_claim_draft_send','ar_combined_email_get','ar_combined_mail_claim','ar_mail_record','ar_preparation_complete','ar_document_exit'];
+ const signatures=sql(`select jsonb_object_agg(proname,args) from(select p.proname,jsonb_object_agg(p.proargnames[s.i],format_type(p.proargtypes[s.i-1],null)) args from pg_proc p join pg_namespace n on n.oid=p.pronamespace cross join lateral generate_series(1,p.pronargs)s(i) where n.nspname='public' and p.proname in(${names.map(literal).join(',')}) group by p.oid,p.proname)x`);
+ let denied=false,reads=0,postReads=0,posts=0,release:()=>void=()=>{},arrive:()=>void=()=>{};const gate=new Promise<void>(r=>release=r),arrival=new Promise<void>(r=>arrive=r);
+ const rpc=async(name:string,args:Record<string,unknown>)=>{if(!signatures[name])throw Error('Unexpected SQL '+name);const params=Object.entries(args).map(([k,v])=>{const type=signatures[name][k];if(!type||!/^[a-z0-9_ ]+(\[\])?$/.test(type))throw Error('Unexpected typed argument');return k+'=>'+literal(v)+'::'+type;});const result=sql('select to_jsonb(public.'+name+'('+params.join(',')+'))');if(['ar_mail_claim','ar_mail_claim_draft_send','ar_combined_mail_claim'].includes(name)&&result.claimed)denied=true;return Response.json(result);};
+ vi.stubGlobal('fetch',async(input:RequestInfo|URL,init:RequestInit={})=>{const url=String(input),u=new URL(url),body=init.body?JSON.parse(String(init.body)):{};
+ if(u.origin==='https://synthetic.supabase.co'&&u.pathname.startsWith('/rest/v1/rpc/')){const name=u.pathname.split('/').at(-1)!;if(name==='ar_mail_confirm_sent')return Response.json({error:'synthetic_history_unavailable'},{status:503});return rpc(name,body);}
+ if(url.includes('/storage/v1/object/authenticated/')){if(denied){postReads++;throw Error('All local Storage reads denied after claim');}reads++;return new Response(bytes);}
+ if(url.includes('/drafts/syntheticDraft?format=full')){return Response.json({id:'syntheticDraft',message:{id:'syntheticDraftMessage',labelIds:['DRAFT'],internalDate:String(Date.now()),payload:{mimeType:'multipart/mixed',headers:[{name:'From',value:'ar@katathani.com'},{name:'To',value:'synthetic@example.test'},{name:'Subject',value:'Synthetic'}],parts:[{mimeType:'text/plain',body:{data:url64(new TextEncoder().encode('Body'))}},{mimeType:'application/pdf',filename:'Synthetic.pdf',body:{size:bytes.length,data:url64(bytes)}}]}}});}
+ if(url.endsWith('/messages/send')||url.endsWith('/drafts/send')){posts++;expect(denied).toBe(true);expect(typeof(body.raw??body.message?.raw)).toBe('string');arrive();await gate;return Response.json({id:'syntheticCAccepted'});}
+ throw Error('Unexpected synthetic boundary '+url);
+ });
+ const run=()=>kind==='combined'?sendCombined(env,actor,preparation.id,{revision:1,commandId:randomUUID(),confirmed:true}):deliverMessage(env,actor,seed.draft,0,'send',null);
+ const pending=run();await Promise.race([arrival,pending.then(()=>{throw Error('Provider admission not reached');})]);
+ const exitCommand=randomUUID(),request=(job:string,marker:string)=>new Request(`https://app.test/api/documents/${job}/abandon`,{method:'POST',headers:{'X-AR-Exit-Command':marker,'X-AR-Exit-Origin-Session':origin}});
+ const response=await documentApi(request(seed.job,exitCommand),env,actor,{}),original=await response.json();expect(response.status).toBe(200);expect(original).toMatchObject({outcome:'protected',preparationRetirement:{accepted:true}});
+ if(sibling){expect(sql(`select to_jsonb(ar_private.preparation_retired('${sibling.job}'))`)).toBe(false);expect((await documentApi(request(sibling.job,randomUUID()),env,actor,{})).status).toBe(200);sql(`select public.ar_preparation_retirement_maintain('${actor}',25)`);}
+ release();expect(await pending).toMatchObject({gmailAccepted:true,recorded:false,preparationRetirement:{accepted:true}});await run();expect(posts).toBe(1);expect(postReads).toBe(0);expect(reads).toBe(kind==='combined'?2:1);
+ const replay=await documentApi(request(seed.job,exitCommand),env,actor,{});expect(await replay.json()).toEqual(original);expect(sql(`select public.ar_document_get('${seed.job}')`)).toMatchObject({bytes_released:true,preparation_retirement:{accepted:true}});
+},30000);

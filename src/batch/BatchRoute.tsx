@@ -160,7 +160,7 @@ export default function BatchRoute({owner,workspaceOwner,region,batchId,token,ma
   // a removed resume record, including the interval before React unmounts children.
   exiting.current=true;generation.current++;setExitBusy(true);setError('');
   try{
-   for(const entry of current.entries){if(!entry.jobId)continue;const result=await abandonVerifiedEntry(current,entry,()=>batchRequest<DocumentJob>(`/api/documents/${entry.jobId}`,tokenRef.current),()=>batchRequest<{job:DocumentJob;outcome:string}>(`/api/documents/${entry.jobId}/abandon`,tokenRef.current,{method:'POST'}),()=>alive.current&&exiting.current);if(!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');exit?.settled(entry.jobId);}
+   for(const entry of current.entries){if(!entry.jobId)continue;const result=await abandonVerifiedEntry(current,entry,()=>batchRequest<DocumentJob>(`/api/documents/${entry.jobId}`,tokenRef.current),()=>batchRequest<{job:DocumentJob;outcome:string}>(`/api/documents/${entry.jobId}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(entry.jobId!)}),()=>alive.current&&exiting.current);if(!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');exit?.settled(entry.jobId);}
    if(!alive.current)return false;
    sessions.current.clear();mails.current.clear();removeBatch(sessionStorage,owner,batchId);record.current=null;onDirtyChange(false);return true;
   }catch(e){if(alive.current){exiting.current=false;setError(e instanceof Error?e.message:'The batch could not be closed.');}return false;}

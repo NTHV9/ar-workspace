@@ -16,7 +16,7 @@ it('drains each accepted exact-cohort object once in one bounded maintenance pas
  expect(new Set(mocks.enroll.mock.calls.map(call=>call[3])).size).toBe(63);
 });
 it('bounds candidate processing and reuses exact retention claims',async()=>{
- mocks.rpc.mockImplementation(async(_e:unknown,name:string,args:unknown)=>{if(name==='ar_financial_service_actor')return 'synthetic-owner';if(name==='ar_document_pending_uploads'||name==='ar_pdf_byte_release_candidates')return [];expect(args).toEqual({p_actor:'synthetic-owner',p_limit:10});return [{objectId:'exact-object',itemId:null}];});
+ mocks.rpc.mockImplementation(async(_e:unknown,name:string,args:unknown)=>{if(name==='ar_financial_service_actor')return 'synthetic-owner';if(name==='ar_document_pending_uploads'||name==='ar_pdf_byte_release_candidates'||name==='ar_preparation_retirement_candidates')return [];expect(args).toEqual({p_actor:'synthetic-owner',p_limit:10});return [{objectId:'exact-object',itemId:null}];});
  mocks.enroll.mockResolvedValue({id:'item',state:'waiting',dueAt:'2026-01-01T00:00:00Z'});mocks.run.mockResolvedValue({state:'deleted'});
  expect(await sweepTransientDocuments(env)).toMatchObject({checked:1,deleted:1});expect(mocks.enroll).toHaveBeenCalledWith(env,'synthetic-owner','supabase','exact-object');expect(mocks.run).toHaveBeenCalledTimes(1);
 });

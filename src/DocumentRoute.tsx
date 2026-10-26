@@ -56,7 +56,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
  const identityCallback=useRef(onJobIdentity);identityCallback.current=onJobIdentity;
  const tokenRef=useRef(token);tokenRef.current=token;const generation=useRef(0),opening=useRef(0);
  const alive=useRef(true);useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
- const transient=job?.lifecycle==='transient',closed=!!job?.closed_at;
+ const transient=job?.lifecycle==='transient',closed=!!job?.closed_at||job?.preparation_retirement?.accepted===true;
  useEffect(()=>{if(job){batch?.onJob(job);if(job.closed_at){setSources(null);setCompose(false);setEditorSession(undefined);}}},[job]);
  useEffect(()=>{batch?.onRegisterControl({sourceConflict:()=>sessionConflict.current,unavailable:()=>!job,busy:()=>!closed&&(busy||!!sources&&(!pdfControl.current||pdfControl.current.busy())||showCompose&&(!mailControl.current||mailControl.current.busy())),suspend:async()=>{
   if(!job&&loadFailed.current)return {session:{revision:0,sources:null,compose:false}};
@@ -71,12 +71,12 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
  async function abandon(){
   if(leaveRequest.current)return leaveRequest.current;
   if(!job){if(loadFailed.current)return true;setError('Wait for this preparation to load, then retry leaving.');return false;}
-  if(!transient||closed)return true;
+  if(!transient||closed||job.preparation_retirement?.accepted||exit?.isSettled(job.id))return true;
   const current=job;
   leaveRequest.current=(async()=>{setBusy(true);setError('');try{
-   const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected'}>(`/api/documents/${current.id}/abandon`,tokenRef.current,{method:'POST'});
+   const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected';preparationRetirement?:{accepted:boolean}}>(`/api/documents/${current.id}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(current.id)});
    if(result.job.id!==current.id||!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified. Retry leaving this preparation.');
-   exit?.settled(current.id);if(alive.current)setJob(result.job);return true;
+   exit?.settled(current.id);if(alive.current)setJob({...result.job,...(result.preparationRetirement?.accepted?{preparation_retirement:{accepted:true}}:{})});return true;
   }catch(e){if(alive.current)setError(e instanceof Error?e.message:'Unable to remove temporary files. Retry leaving this preparation.');return false;}finally{if(alive.current)setBusy(false);leaveRequest.current=null;}})();
   return leaveRequest.current;
  }
@@ -84,7 +84,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
   if(busy||job&&!closed&&(sources&&(!pdfControl.current||pdfControl.current.busy())||showCompose&&(!mailControl.current||mailControl.current.busy()))){setError('Wait for the current operation before leaving this preparation.');return false;}
   if(!await abandon())return false;
   if(!replacementId)return true;
-  try{const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected'}>(`/api/documents/${replacementId}/abandon`,tokenRef.current,{method:'POST'});if(result.job.id!==replacementId||!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');exit?.settled(replacementId);setReplacementId(null);return true;}
+  try{const result=await requestJson<{job:DocumentJob;outcome:'discarded'|'pending'|'protected'}>(`/api/documents/${replacementId}/abandon`,tokenRef.current,{method:'POST',headers:exit?.exitHeaders(replacementId)});if(result.job.id!==replacementId||!['discarded','pending','protected'].includes(result.outcome))throw Error('Temporary file cleanup could not be verified.');exit?.settled(replacementId);setReplacementId(null);return true;}
   catch(e){setError(e instanceof Error?e.message:'Unable to remove the new preparation. Retry leaving.');return false;}
  }
  useEffect(()=>{onRegisterLeave?.(leavePreparation);return()=>onRegisterLeave?.(null);});
@@ -128,7 +128,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onBackToCollect
   {replacementId&&<button disabled={busy} onClick={()=>void replacePreparation(replacementId)}>Retry opening new preparation</button>}
   {!jobId?<p>Select invoices in an account or Collections to prepare a new package.</p>:!job?<p>{error?'Document preparation unavailable.':'Loading document preparation…'}</p>:<>
    <p>{job.hotel} · {job.account_name} · {job.invoice_ids.length} selected invoices · {closed?'Closed':job.state}</p>
-   {closed?<section className="panel document-manifest"><h2>{job.closed_reason==='sent'?'Email sent':'Preparation discarded'}</h2><p>Temporary files are scheduled for deletion. Billing and email history remain available.</p><button disabled={busy} onClick={job.closed_reason==='sent'?(onBackToCollections??onClose):onClose}>{job.closed_reason==='sent'?'Back to Collections':backLabel}</button></section>:<>
+   {closed?<section className="panel document-manifest"><h2>{job.closed_reason==='sent'?'Email sent':job.closed_reason==='discarded'?'Preparation discarded':'Preparation closed'}</h2><p>Temporary files are scheduled for deletion. Billing and email history remain available.</p><button disabled={busy} onClick={job.closed_reason==='sent'?(onBackToCollections??onClose):onClose}>{job.closed_reason==='sent'?'Back to Collections':backLabel}</button></section>:<>
 
     {job.state==='queued'&&<p className="information-note" role="status">Waiting for processing. Progress updates automatically.</p>}
     {job.files.some(f=>f.state==='generating')&&<p role="status">Preparing requested PDFs · {job.files.filter(f=>f.state==='ready').length} of {job.files.length} ready.</p>}

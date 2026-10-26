@@ -94,3 +94,7 @@ it('selective dialog Cancel acknowledges only that command, retaining another co
 it('failed selected command acknowledgment retains it through ordinary clear and later native close',async()=>{
  const s=storage(),exit=createPreparationExit(actor,session,actor,s,()=>({actorId:actor,authSessionId:session,token:'current'}));await exit.retainCreate({commandKey:command,hotel:'KAT',accountId:'Synthetic',ids:['A'],content:'statement',layout:'combined',purpose:'billing'});vi.stubGlobal('fetch',async()=>new Response('',{status:503}));expect(await exit.abandonCreates([command])).toBe(false);exit.clear();exit.exit();expect(readExitOutbox(s)).toHaveLength(1);expect(readExitOutbox(s)[0]).toMatchObject({commandKey:command});
 });
+it('accepted completion retires the active pointer and ignores a late retained job without minting Exit authority',async()=>{
+ const s=storage(),auth={actorId:actor,authSessionId:session,token:'current'},exit=createPreparationExit(actor,session,actor,s,()=>auth),sameJob={id:job,owner:actor,lifecycle:'transient'} as DocumentJob;
+ exit.retainJob(sameJob);exit.settled(job);exit.retainJob(sameJob);expect(exit.isSettled(job)).toBe(true);await expect(exit.beforeResume(job)).rejects.toThrow('cleanup was requested');expect(readExitOutbox(s)).toEqual([]);exit.exit();expect(readExitOutbox(s)).toEqual([]);
+});
