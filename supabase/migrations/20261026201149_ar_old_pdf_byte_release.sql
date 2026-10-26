@@ -358,7 +358,7 @@ do $$declare d text:=pg_get_functiondef('public.ar_document_backup_target(uuid,u
 end$$;
 do $$declare d text:=pg_get_functiondef('public.ar_storage_write_begin(uuid,uuid,text,bigint,text,text,jsonb)'::regprocedure);begin
  if strpos(d,E'begin\n if not ar_private.storage_key_valid')=0 then raise exception 'pdf_release_storage_write_drift';end if;
- execute replace(d,E'begin\n if not ar_private.storage_key_valid',E'begin\n if p_key~''^jobs/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/'' and ar_private.pdf_released(split_part(p_key,''/'',2)::uuid) then return jsonb_build_object(''error'',''storage_file_expired'');end if;\n if not ar_private.storage_key_valid');
+ execute replace(d,E'begin\n if not ar_private.storage_key_valid',E'begin\n perform pg_advisory_xact_lock_shared(61704,1439);\n if p_key~''^jobs/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/'' and ar_private.pdf_released(split_part(p_key,''/'',2)::uuid) then return jsonb_build_object(''error'',''storage_file_expired'');end if;\n if not ar_private.storage_key_valid');
 end$$;
 do $$declare f regprocedure;begin
  for f in select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid=p.pronamespace where
