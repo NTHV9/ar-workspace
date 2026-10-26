@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {drawPdfWhiteout} from '../fixtures/pdf-tools';
 for(const cell of ['F001','F002'])test('Statement insertion keeps wrapped text and Balance Due intact: '+cell,async({page})=>{
  await page.goto('/tests/browser/statement-rows/harness.html');await page.getByRole('button',{name:'Edit original text: '+cell,exact:true}).click();await page.getByRole('button',{name:'Add row below',exact:true}).click();await page.getByRole('button',{name:'Save draft',exact:true}).click();
  const edit=await page.evaluate(()=>(window as any).fixture.project.pages[0].rowEdits[0]);
@@ -42,7 +43,7 @@ test('header newline leaves opposite header fixed and Whiteout is directly avail
  await expect(page.getByRole('button',{name:'Whiteout',exact:true})).toBeVisible();
  await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
  await page.screenshot({path:'evidence/pdf-independent-header-lines-1440.png',animations:'disabled'});
- await page.getByRole('button',{name:'Whiteout',exact:true}).click();
+ await drawPdfWhiteout(page);
  await expect(page.getByRole('button',{name:'Move whiteout layer',exact:true})).toBeVisible();
 });
 
@@ -59,7 +60,7 @@ test('newline in a Statement item still expands the whole row',async({page})=>{
 
 test('standalone Add row below preserves opposite column pixels, source whiteout and Undo',async({page})=>{
  await page.goto('/tests/browser/statement-rows/harness.html');
- await page.getByRole('button',{name:'Whiteout',exact:true}).click();
+ await drawPdfWhiteout(page);
  await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await page.evaluate(()=>{const f=(window as any).fixture;f.before=structuredClone(f.project);});
  await page.getByRole('button',{name:'Edit source text',exact:true}).click();

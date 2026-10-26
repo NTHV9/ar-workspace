@@ -1,11 +1,12 @@
 import {test,expect} from '@playwright/test';
+import {drawPdfWhiteout} from '../fixtures/pdf-tools';
 import {reviewPreviewPages} from '../fixtures/pdf-preview';
 const fields=['title','company-address','address','company','guest','tax-id','voucher','room','arrival','departure','guests','folio','confirmation','cashier-number','print-date','transaction-date','description','reference','debit','credit','total-debit','total-credit','net','vat','non-vat','total','outstanding','cashier-name'];
 for(const key of fields)test(`original Invoice field ${key}: keyboard edit, Preview/export and unchanged neighbors`,async({page})=>{
  await page.goto('/tests/browser/document-fields/harness.html');await page.waitForFunction(()=>(window as any).fixture);await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
  // A white 15pt blank-corner object forces both reference and edited exports
  // through the identical raster pipeline; it covers no original artwork/text.
- await page.getByRole('button',{name:'Whiteout',exact:true}).click();await page.getByText('Position & size',{exact:true}).click();for(const [field,value]of [['x','0'],['y','0'],['width','15'],['height','15']])await page.getByRole('spinbutton',{name:'Layer '+field,exact:true}).fill(value);await page.getByRole('button',{name:'Save draft',exact:true}).click();await page.evaluate(()=>{const f=(window as any).fixture;f.before=structuredClone(f.project);});
+ await drawPdfWhiteout(page);await page.getByText('Position & size',{exact:true}).click();for(const [field,value]of [['x','0'],['y','0'],['width','15'],['height','15']])await page.getByRole('spinbutton',{name:'Layer '+field,exact:true}).fill(value);await page.getByRole('button',{name:'Save draft',exact:true}).click();await page.evaluate(()=>{const f=(window as any).fixture;f.before=structuredClone(f.project);});
  await page.getByRole('button',{name:'Edit source text',exact:true}).click();
  const target=await page.evaluate(key=>(window as any).fixture.catalog.find((v:any)=>v.key===key),key);await page.getByRole('button',{name:'Edit original text: '+target.text,exact:true}).nth(target.occurrence).click();const input=page.getByRole('textbox',{name:'Layer text',exact:true}),original=await input.inputValue(),first=/[0-9]/.test(original[0])?String((Number(original[0])+1)%10):original[0]==='I'?'L':'I',replacement=first+original.slice(1);
  await expect(page.getByRole('button',{name:'Add row below',exact:true})).toBeEnabled();
