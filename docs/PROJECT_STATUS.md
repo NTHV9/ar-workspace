@@ -1,3 +1,46 @@
+## 2026-10-26 — English one-click send and dedicated results released
+
+**Implemented, tested, deployed and enabled.** Application source
+`a13d1b55d15cdac56319177549b3c6d0d164cc1c`, Worker version
+`cc1cd663-9862-437b-b59d-e334e4f3a16f`, replaces the post-send composer with an
+English progress/result surface for standalone, separate Account and combined
+email paths. Explicit Send now saves/validates/freezes the current envelope and
+sends once without an acceptance checkbox or repeated confirmation popup.
+Separate Account selection/overview remains useful; Send N emails is direct.
+
+Gmail acceptance completes the employee task. Email sent is a primary teal-check
+completion; History update pending is secondary. Manual Back to Collections is
+available during history checks; actual send/exit and unsafe editing operations
+remain protected. There is no automatic navigation or new polling. Sent history
+requires strict recorded evidence; unknown outcomes retain check/reload/manual
+matching and exact original-request recovery, including draft-origin sends.
+Unattempted Accounts remain reachable. Exit fences block send races and prevent
+late checks from recreating discarded resume state; failed cleanup stays visible.
+
+Same-source GitHub run1061 / 40291349205 passed4,774 units,144 migrations/38 SQL
+fixtures, existing concurrency and three real-SQL/fake-Gmail contracts,578
+browser cases, three performance and15 publication cases. Local scoped tests and
+37 final fixture/layout cases pass; nine responsive stories and actual host
+captures were inspected at1440/1280/390. Independent task/final Astra reviews
+have no remaining P1/P2 findings. No test timeout or application guard was relaxed.
+
+An exploratory run also selected eight unrelated old ui-depth cases outside the
+permanent inventory; their September authentication/report/range assumptions
+predate current requirements. Those files were left unchanged. Current result
+layout coverage is separate; explicit Admin fixture context restores legacy
+Draft tests without changing production permissions. Existing reference PNGs
+were restored after evidence-producing checks.
+
+Production health is OK and all55 shipped JS/CSS/WASM hashes match. Ten existing
+anonymous mail routes reject access. No backend, schema, PDF engine or VAT change
+was made; runtime retirement/retention/OPERA/budget settings remain unchanged.
+No live SMTP test or billing/reminder-date command was issued. Result behavior
+was verified with actual React/browser controllers and isolated synthetic API
+and SQL/provider responses; this is not a claim of a new live-provider send.
+Receipt: evidence/email-send-summary-acceptance-20261026.json. PR146 exists on
+GitHub; this very long chat's100-attachment limit prevented an additional UI link.
+The unrelated independent project-audit checkpoint/file remain untouched.
+
 ## 2026-10-26 — PDF editing frame dismisses on blank-space click
 
 **Implemented, tested, deployed and enabled.** Source

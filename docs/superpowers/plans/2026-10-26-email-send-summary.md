@@ -1,6 +1,6 @@
 # Email Send Summary Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace send-time composers with prominent, truthful progress and result screens, with a manual return to Collections.
 
@@ -94,7 +94,7 @@ displayed scope, never a claim that every message was sent.
 consumes `EmailDeliveryView` from `worker/email/shared.ts` and existing design
 tokens. No fetch, routing, storage or provider side effects in these files.
 
-- [ ] **Step 1: Write failing classifier and markup tests.** Use Vitest and
+- [x] **Step 1: Write failing classifier and markup tests.** Use Vitest and
   `renderToStaticMarkup` (existing React, no DOM dependency). Pin:
 
 ```ts
@@ -112,9 +112,9 @@ expect(emailSendOutcome({id:'d',mode:'draft',state:'created'})).toBe('unconfirme
   `keeps Back enabled for history-pending with busy true`,
   `disables Back when backDisabled is true`. Assert exact headlines,
   both standard actions, CC/BCC visibility via details and injected recovery.
-- [ ] **Step 2: Run** `pnpm exec vitest run tests/email-send-result.test.ts`;
+- [x] **Step 2: Run** `pnpm exec vitest run tests/email-send-result.test.ts`;
   expect initial failure because the new exports do not exist.
-- [ ] **Step 3: Implement** the interface and spec copy. A focusable heading
+- [x] **Step 3: Implement** the interface and spec copy. A focusable heading
   receives focus once on meaningful result-state transitions; use a polite
   live status for progress, stable error alerts and no duplicated status prose.
   Standard return is disabled only when `state === 'sending' || backDisabled`;
@@ -124,8 +124,8 @@ expect(emailSendOutcome({id:'d',mode:'draft',state:'created'})).toBe('unconfirme
   will automatically complete. Gmail uses the supplied URL,
   `target="_blank"` and `rel="noopener noreferrer"`. Wrap recipient text and
   counts on compact screens. Keep CSS scoped to the result component.
-- [ ] **Step 4: Run** the focused unit test and `pnpm typecheck`; expect pass.
-- [ ] **Step 5: Handoff** the fixed exports to both implementation owners. Commit
+- [x] **Step 4: Run** the focused unit test and `pnpm typecheck`; expect pass.
+- [x] **Step 5: Handoff** the fixed exports to both implementation owners. Commit
   only when the parent authorizes the implementation checkpoint; stage explicit
   Task 1 paths, never unrelated documentation. Suggested message:
   `feat: add shared email send result presentation`.
@@ -142,7 +142,7 @@ Existing `onClose` and batch registration retain their meanings. Production
 standalone result always has the explicit Collections callback; direct test
 harnesses may use their supplied onClose as the fallback.
 
-- [ ] **Step 1: Write failing browser cases** in existing suites using synthetic
+- [x] **Step 1: Write failing browser cases** in existing suites using synthetic
   route fixtures. `single send replaces composer and stays until manual return`:
   defer POST response, assert `Sending email…`, hidden Email message field,
   disabled Back to Collections; resolve sent+recorded, assert `Email sent`, exact
@@ -167,10 +167,10 @@ harnesses may use their supplied onClose as the fallback.
   lands on Collections, not Account/PDF. `failed result exit stays visible`:
   abandon failure does not navigate. `closed sent job reload remains a receipt`:
   no PDF read/reopen request, manual Collections still works.
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
   `pnpm test:browser:smoke tests/browser/email-composer.spec.ts tests/browser/email-navigation.spec.ts tests/browser/document-route.spec.ts`;
   expect new assertions to fail on the old visible composer/navigation.
-- [ ] **Step 3: Integrate** within EmailComposer's existing dialog. Replace
+- [x] **Step 3: Integrate** within EmailComposer's existing dialog. Replace
   reviewSend -> confirming/ack -> sendNow with one `sendNow(): Promise<void>`
   user action under the existing synchronous admission lock: save current edits,
   validate current recipients/package/policy, freeze the returned saved draft and
@@ -192,17 +192,17 @@ harnesses may use their supplied onClose as the fallback.
   reloadDeliveryStatus is pending. Preserve live/unmount guards and durable
   receipt truth when late responses settle. Actual sends, unsafe unsaved edits
   and cleanup in flight retain their protection.
-- [ ] **Step 4: Wire** the optional callback through DocumentRoute and App as
+- [x] **Step 4: Wire** the optional callback through DocumentRoute and App as
   specified. Closed-job sent receipt uses the callback too; do not fetch expired
   files to manufacture missing summary detail. Preserve leavePreparation and
   leaveDocument execution and surface their errors. No automatic close timer.
   Existing server-side receipts/reconciliation continue history work after return;
   no new polling/provider calls or mandatory human retry is introduced.
-- [ ] **Step 5: Run** Step 2 command plus
+- [x] **Step 5: Run** Step 2 command plus
   `pnpm exec vitest run tests/email-delivery-status.test.ts tests/email-draft-admin.test.ts tests/email-verified-sent-recovery.test.ts`
   and `pnpm typecheck`; expect pass. Update old post-send headline assertions
   only where the approved UI replaced them; retain their behavioral assertions.
-- [ ] **Step 6: Handoff/commit** explicit Task 2 paths after parent approval.
+- [x] **Step 6: Handoff/commit** explicit Task 2 paths after parent approval.
   Suggested message: `feat: show dedicated single email send results`.
 
 ### Task 3: Separate and combined Account batch results
@@ -217,7 +217,7 @@ its existing confirmed/guarded leave-then-onClose path. Optional
 needed to hide header preparation controls; derive locked results from existing
 `combinedLocked` wherever sufficient. No changes to sendBatch API or state IDs.
 
-- [ ] **Step 1: Write failing batch browser cases.** Separate: `batch sending
+- [x] **Step 1: Write failing batch browser cases.** Separate: `batch sending
   replaces review with progress`, `partial send retains unsent Account tabs`,
   `same Account stage groups count as two messages and one Account`, `unknown
   entry check never resends`, `batch result exit failure retains resume state`.
@@ -244,10 +244,10 @@ needed to hide header preparation controls; derive locked results from existing
   Review emails or Email overview opens selection with zero send calls; Send N
   emails directly performs exactly N admitted requests. Keep selection checkboxes;
   assert no send-acceptance checkbox/popup, no duplicated send CTA and no send on F5.
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
   `pnpm test:browser:smoke tests/browser/combined-email.spec.ts tests/browser/batch-workspace/pdf-editor.spec.ts`;
   expect new result assertions to fail initially.
-- [ ] **Step 3: Integrate separate results.** Freeze the selected envelopes before
+- [x] **Step 3: Integrate separate results.** Freeze the selected envelopes before
   transport as today, retain them in memory for this result and derive restored
   attempts from existing entries after F5. Render shared result plus per-entry
   evidence/recovery and remaining-work action. Keep two-worker send concurrency,
@@ -263,7 +263,7 @@ needed to hide header preparation controls; derive locked results from existing
   `state === 'sent' && recorded === true`; accepted remains sent with history
   update pending, never history-complete. Show unavailable metadata honestly after reload until verified
   reads provide it; do not create fake snapshots or persist customer copies.
-- [ ] **Step 4: Integrate combined results.** Use `combinedDelivery(current)` and
+- [x] **Step 4: Integrate combined results.** Use `combinedDelivery(current)` and
   existing `saved.content`, `saved.members` and reviewed totals. Separate true
   request progress from generic operation busy. When locked, replace common
   editor/review UI with shared result while retaining current check(),
@@ -287,11 +287,11 @@ needed to hide header preparation controls; derive locked results from existing
   responses must not resurrect removed resume state or write after unmount.
   No required check/retry before accepted-result return, and no new polling or
   provider call; existing durable backend processing retains history work.
-- [ ] **Step 5: Run** Step 2 command plus
+- [x] **Step 5: Run** Step 2 command plus
   `pnpm exec vitest run tests/batch-state.test.ts tests/batch-lifecycle.test.ts tests/combined-email-state.test.ts tests/combined-email-delivery.test.ts tests/email-send-result.test.ts`
   and `pnpm typecheck`; expect pass. Old test assertions can follow the new
   headings, but no receipt/no-resend/reload assertion may be deleted to pass.
-- [ ] **Step 6: Handoff/commit** explicit Task 3 paths after parent approval.
+- [x] **Step 6: Handoff/commit** explicit Task 3 paths after parent approval.
   Suggested message: `feat: show Account batch email results`.
 
 ### Task 4: Integrate, inspect and independently review
@@ -301,21 +301,21 @@ PROJECT_STATUS checkpoint, preserving the unrelated 17-line audit work.
 
 **Interfaces:** complete flow from all prior tasks; no new production interface.
 
-- [ ] **Step 1: Run sequentially** `pnpm test`, `pnpm build`, then the focused
+- [x] **Step 1: Run sequentially** `pnpm test`, `pnpm build`, then the focused
   browser commands from Tasks 2 and 3 plus `tests/browser/email-draft-recovery.spec.ts`.
   Expect all tests/build to pass. Do not relax gates or run heavy suites in parallel.
-- [ ] **Step 2: Capture and inspect** synthetic result states for all three flows
+- [x] **Step 2: Capture and inspect** synthetic result states for all three flows
   at 1440×900, 1280×800 and 390×844. At least one long To/CC/BCC list and mixed
   partial result must be inspected. Assert heading focus, live status, keyboard
   access to recovery and return, horizontal scroll width <= viewport, hidden
   composer fields and no duplicate Send buttons. Store new captures under
   `evidence/email-send-summary-<flow>-<state>-<width>.png`, never overwrite reference
   PNGs or old visual goldens. Do one batched correction and confirmation pass.
-- [ ] **Step 3: Review** with Astra High against the spec and actual diff. Trace
+- [x] **Step 3: Review** with Astra High against the spec and actual diff. Trace
   4xx rejection, accepted receipt, unknown outcome, recorded result, refresh and
   every exit callback; verify no source/backend/tax changes and no new secret or
   customer data. Recheck any reported defect after correction.
-- [ ] **Step 4: Report** implemented/tested separately from deployed/enabled.
+- [x] **Step 4: Report** implemented/tested separately from deployed/enabled.
   Parent records customer-free evidence in PROJECT_STATUS without disturbing
   the unrelated audit. Deployment and any real mail test require their own
   concrete authorized release/test destinations; this UI plan itself sends no
