@@ -2,14 +2,13 @@ import {createContext,useContext} from 'react';
 import type {DocumentJob} from '../../worker/documents/jobs';
 import {documentCreateDigest,type CreateDigestInput} from '../../shared/document-create-digest';
 import {enqueueExactAbandon,deliverExitEntry,acknowledgeExitEntry,reconcileExitOutbox,readExitOutbox,type VerifiedExitSnapshot,type CreateExitReference,type ExitEntry} from './exit-outbox';
-export function attachTabExit(target:Window,onExit:()=>void){
- // Unsupported/ambiguous departures preserve work. Any PageSwap suppresses close.
- if(!('onpageswap'in target))return ()=>{};
- let swapped=false,departed=false;
- const swap=()=>{swapped=true;};const show=()=>{swapped=false;departed=false;};
- const hide=(event:PageTransitionEvent)=>{if(event.persisted||swapped||departed)return;departed=true;onExit();};
- target.addEventListener('pageswap',swap);target.addEventListener('pageshow',show);target.addEventListener('pagehide',hide);
- return ()=>{target.removeEventListener('pageswap',swap);target.removeEventListener('pageshow',show);target.removeEventListener('pagehide',hide);};
+export function attachTabExit(target:Window,onExit:()=>void,onBeforeUnload?:()=>void){
+ // Owner policy: reload and native close both Exit. BFCache and focus do not.
+ let departed=false;
+ const show=()=>{departed=false;};
+ const hide=(event:PageTransitionEvent)=>{if(event.persisted||departed)return;departed=true;onExit();};
+ target.addEventListener('pageshow',show);target.addEventListener('pagehide',hide);if(onBeforeUnload)target.addEventListener('beforeunload',onBeforeUnload);
+ return ()=>{target.removeEventListener('pageshow',show);target.removeEventListener('pagehide',hide);if(onBeforeUnload)target.removeEventListener('beforeunload',onBeforeUnload);};
 }
 export function authSessionId(token:string):string|null{try{const value=JSON.parse(atob(token.split('.')[1].replaceAll('-','+').replaceAll('_','/'))).session_id;return typeof value==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)?value:null;}catch{return null;}}
 export function createPreparationExit(actorId:string,sessionId:string,workspaceOwner:string,storage:Storage,getAuth:()=>{actorId:string;authSessionId:string;token:string}|null){
@@ -19,6 +18,8 @@ export function createPreparationExit(actorId:string,sessionId:string,workspaceO
  const jobs=new Set<string>(),settledJobs=new Set<string>(),creates=new Map<string,CreateExitReference>();const acceptedCreates=new Set<string>();let departed=false;
  const current=()=>{const auth=getAuth();return !departed&&auth?.actorId===actorId&&auth.authSessionId===sessionId;};
  const snapshot=():VerifiedExitSnapshot=>({actorId,authSessionId:sessionId,jobIds:[...jobs],creates:[...creates.values()]});
+ let authorizationNavigation:{attempts:number}|null=null;
+ const commitExit=()=>{if(!current())return false;const entries=enqueueExactAbandon(storage,snapshot());departed=true;for(const entry of entries)void deliverExitEntry(storage,entry,getAuth);return entries.length>0;};
  return {
   current,hasCreates:()=>creates.size>0,
   retainJob(job:DocumentJob){if(!current())throw Error('The current preparation session changed.');if(job.owner!==workspaceOwner)throw Error('Document identity could not be verified.');if(job.preparation_retirement?.accepted){settledJobs.add(job.id);jobs.delete(job.id);return;}if(settledJobs.has(job.id))return;if(job.lifecycle==='transient'&&!job.closed_at){if(jobs.size>=21&&!jobs.has(job.id))throw Error('Preparation cleanup scope is full.');jobs.add(job.id);}},
@@ -30,7 +31,11 @@ export function createPreparationExit(actorId:string,sessionId:string,workspaceO
   isSettled:(jobId:string)=>settledJobs.has(jobId),
   clear(){jobs.clear();},
   async beforeResume(jobId:string){if(!current())throw Error('The current preparation session changed.');if(settledJobs.has(jobId)||blockedJobs.has(jobId)||readExitOutbox(storage).some(e=>e.actorId===actorId&&'jobId'in e&&e.jobId===jobId)){await reconcileExitOutbox(storage,actorId,getAuth,workspaceOwner);throw Error('Temporary cleanup was requested for this preparation. Return to the account to start a new preparation.');}},
-  exit(){if(!current())return;const entries=enqueueExactAbandon(storage,snapshot());departed=true;for(const entry of entries)void deliverExitEntry(storage,entry,getAuth);},
+  // A validated Gmail authorization redirect is a handoff, not abandonment.
+  authorizeNavigation(){if(!current())throw Error('The current preparation session changed.');const pending={attempts:0};authorizationNavigation=pending;return()=>{if(authorizationNavigation===pending)authorizationNavigation=null;};},
+  beforeNativeUnload(){if(authorizationNavigation&&++authorizationNavigation.attempts>1)authorizationNavigation=null;},
+  nativeExit:()=>authorizationNavigation?.attempts===1?false:commitExit(),
+  exit:commitExit,
   reconcile:()=>reconcileExitOutbox(storage,actorId,getAuth,workspaceOwner),
  };
 }

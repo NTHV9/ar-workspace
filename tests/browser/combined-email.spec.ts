@@ -1,3 +1,5 @@
+// These isolated harness reloads test component rehydration, not the App-level F5 policy.
+// Native refresh/close discard is qualified in preparation-tab-exit.spec.ts.
 import {test,expect,type Page} from '@playwright/test';
 
 async function pauseFirstAdmission(page:Page){await page.evaluate(()=>{const write=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(this===sessionStorage&&key.startsWith('ar-account-batch:')&&JSON.parse(value).combined?.attempted){Storage.prototype.setItem=write;throw new DOMException('Synthetic admission pause','QuotaExceededError');}return write.call(this,key,value);};});}
@@ -24,7 +26,7 @@ test('combined original retry cannot send while batch exit cleanup is in flight'
  await readyCombined(page);await page.evaluate(()=>{const previous=window.fetch.bind(window);(window as any).exitRetrySends=0;window.fetch=async(input,init={})=>{const url=new URL(input instanceof Request?input.url:String(input),location.origin);if(url.pathname.endsWith('/send')){(window as any).exitRetrySends++;return Response.json({error:'unauthorized'},{status:401});}if(url.pathname.endsWith('/abandon'))await new Promise<void>(resolve=>(window as any).releaseCombinedExit=resolve);return previous(input,init);};(document.querySelector('#allow-confirm') as HTMLInputElement).checked=true;});await page.getByRole('button',{name:'Send now',exact:true}).click();await expect(page.getByRole('heading',{name:'Sending not confirmed',exact:true})).toBeVisible();await page.getByRole('button',{name:'Check shared status',exact:true}).click();await expect(page.getByRole('button',{name:'Retry original send request',exact:true})).toBeEnabled();await page.locator('.batch-heading').getByRole('button',{name:'Collections',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof (window as any).releaseCombinedExit)).toBe('function');await expect(page.getByRole('button',{name:'Retry original send request',exact:true})).toBeDisabled();expect(await page.evaluate(()=>(window as any).exitRetrySends)).toBe(1);
 });
 
-test('common email keeps manual fields across Account, mode and F5 switches',async({page})=>{
+test('isolated common-email component rehydration keeps fields across account and mode switches',async({page})=>{
 
  await page.goto('/tests/browser/batch-workspace/harness.html');await page.getByRole('button',{name:'Collections',exact:true}).click();
 

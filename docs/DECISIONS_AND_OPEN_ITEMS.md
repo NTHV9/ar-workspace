@@ -1,3 +1,21 @@
+## 2026-10-27 — Latest owner decision: refresh/F5 discards preparation
+
+The owner explicitly changes the policy: refresh/F5 and normal tab close discard
+temporary preparation. Browser-tab switching preserves it. This supersedes earlier
+F5-preservation and deferred-native-close proposals. A cancelled beforeunload does
+not exit; existing BFCache behavior remains protected. A validated Gmail connection
+redirect is a requested authorization handoff, not an abandoned preparation.
+
+Use existing exact, current-auth Exit commands and managed deletion. After reload,
+the discarded document/batch must not reopen or issue another creation request;
+return to Collections. A tab/actor/scope-bound sessionStorage marker is UX metadata
+only, written after durable Exit admission; it never authorizes server deletion.
+Remove only the matching local batch-resume record and pointer. Keep unresolved
+outbox commands until exact acknowledgment. Explicit Exit and trusted Sent retain
+their established behavior, business history and Sheet authority. Do not claim
+physical absence before provider acknowledgment, or guaranteed events on crash/kill.
+Implementation, qualification and deployment are recorded in PROJECT_STATUS.
+
 ## 2026-10-27 — Exit and completed-send file cleanup; Sheet dates remain authoritative
 
 The owner explicitly confirms that closing a preparation tab is Exit, while F5,

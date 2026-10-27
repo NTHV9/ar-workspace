@@ -1,4 +1,5 @@
 import {PreparationExitContext,createPreparationExit,attachTabExit,authSessionId} from './preparation/tab-exit';
+import {rememberExitReturn,consumeExitReturn} from './preparation/exit-return';
 import {ProviderQuotaNotice} from './operations/ProviderQuotaNotice';
 import {ProviderUsageContext,useProviderUsage} from './operations/useProviderUsage';
 import type {BatchSelection} from './batch/selection';
@@ -65,8 +66,8 @@ async function readJson<T extends object>(response: Response): Promise<T> {
   return data as T;
 }
 export function App() {
-  useEffect(()=>{const original=new URLSearchParams(location.search),normalized=initialWorkspaceParams(original);if(!hasAuthCallback(original)&&normalized.toString()!==original.toString())history.replaceState(null,'','?'+normalized+location.hash);},[]);
-  const [params,setParams]=useState(()=>initialWorkspaceParams(new URLSearchParams(location.search)));
+  const [params,setParams]=useState(()=>initialWorkspaceParams(consumeExitReturn(sessionStorage,new URLSearchParams(location.search))));
+  useEffect(()=>{const original=new URLSearchParams(location.search);if(!hasAuthCallback(original)&&params.toString()!==original.toString())history.replaceState(null,'','?'+params+location.hash);},[]);
   const recovery=false;
   const [authReady,setAuthReady]=useState(false);
   const loginCallback=useRef(new URLSearchParams(location.search).has('code'));
@@ -97,7 +98,7 @@ export function App() {
   const exitSession=session?authSessionId(session.access_token):null;
   const preparationExit=useMemo(()=>session&&exitSession?createPreparationExit(session.user.id,exitSession,workspaceAccess?.workspaceOwnerId??session.user.id,localStorage,()=>{const s=exitAuth.current,id=s?authSessionId(s.access_token):null;return s&&id?{actorId:s.user.id,authSessionId:id,token:s.access_token}:null;}):null,[session?.user.id,exitSession,workspaceAccess?.workspaceOwnerId]);
   const preparationExitRef=useRef(preparationExit);preparationExitRef.current=preparationExit;
-  useEffect(()=>{if(!preparationExit||review)return;void preparationExit.reconcile().catch(()=>{});return attachTabExit(window,()=>preparationExit.exit());},[preparationExit,review]);
+  useEffect(()=>{if(!preparationExit||review)return;void preparationExit.reconcile().catch(()=>{});return attachTabExit(window,()=>{const creating=preparationExit.hasCreates();if(preparationExit.nativeExit())rememberExitReturn(sessionStorage,session!.user.id,paramsRef.current,creating);},()=>preparationExit.beforeNativeUnload());},[preparationExit,review]);
 
   const providerAdministrator=!review&&workspaceAccess?.administrator===true&&session?.user.email?.toLowerCase()==='ar@katathani.com';
   const providerUsage=useProviderUsage(session?.access_token??'',providerAdministrator,session?JSON.stringify([session.user.id,workspaceAccess?.workspaceOwnerId??session.user.id]):'');

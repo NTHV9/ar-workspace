@@ -6,7 +6,7 @@ import '@fontsource/plus-jakarta-sans/latin-400.css';import '@fontsource/plus-ja
 const exitProof=new URLSearchParams(location.search).has('exit-proof'),actor='00000000-0000-4000-8000-000000000001',session='00000000-0000-4000-8000-000000000099';
 const job={id:exitProof?'a0000000-0000-4000-8000-000000000001':'job-audit',...(exitProof?{owner:actor,lifecycle:'transient'}:{}),hotel:'KAT',account_id:'A',account_name:'Synthetic Travel',invoice_ids:['I1'],manifest:[{id:'I1',invoice_no:'SYN-10085'}],state:'ready',revision:1,exports:[],files:[],acknowledged:true};
 const role=new URLSearchParams(location.search).get('role'),member=role==='unresolved'?null:{email:role==='staff'?'staff@example.invalid':'ar@katathani.com',administrator:role!=='staff',regions:['phuket','khao-lak'],revision:1};
-const exit=exitProof?createPreparationExit(actor,session,actor,localStorage,()=>({actorId:actor,authSessionId:session,token:'synthetic'})):null;if(exit){exit.retainJob(job);attachTabExit(window,()=>exit.exit());window.auditExit=exit;window.auditJob=job;}
+const exit=exitProof?createPreparationExit(actor,session,actor,localStorage,()=>({actorId:actor,authSessionId:session,token:'synthetic'})):null;if(exit){exit.retainJob(job);attachTabExit(window,()=>exit.nativeExit(),()=>exit.beforeNativeUnload());window.auditExit=exit;window.auditJob=job;}
 const content=React.createElement(WorkspaceAccessContext.Provider,{value:member},React.createElement(CollectionPolicyProvider,{token:'synthetic'},React.createElement(EmailComposer,{job,token:'synthetic',onClose:()=>{}})));
 createRoot(document.getElementById('root')).render(exit?React.createElement(PreparationExitContext.Provider,{value:exit},content):content);
 </script></body></html>

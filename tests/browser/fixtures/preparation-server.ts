@@ -35,6 +35,8 @@ export async function preparationServer(options:{upstream:string;scenario:string
     if(method!=='GET'){unexpected.push(method+' '+path);json(res,{error:'unexpected_synthetic_write'},501);return;}
     if(path==='/api/access/me'){json(res,syntheticWorkspaceAccess({id:actor,email:'ar@katathani.com'}));return;}
     if(path==='/api/access/signature'){json(res,{revision:1,enabled:false,signature:{staffId:actor,name:'Synthetic Staff',title:'AR Officer',workplace:''}});return;}
+    if(path==='/api/collection-queue'){json(res,{rows:[]});return;}
+    if(path==='/api/mail-reconciliation'){json(res,{last:null});return;}
     if(path==='/api/portfolio'){json(res,{status:'connected',accounts:[{hotel:'KAT',id:'synthetic',name:'Synthetic',type:'Agent',open:100,over90:0,items:1}],refresh:{running:false,hotels:[]}});return;}
     if(path==='/api/accounts/KAT/synthetic'){json(res,{invoices:[{id:'A',hotel:'KAT',account_id:'synthetic',guest:'Synthetic',invoice_no:'INVOICE-A',folio_no:'FOLIO-A',transaction_date:'2026-09-01',original:100,open:100,aging:'Up to 30',verification_state:'verified',collection_role:'standalone',collection_selectable:true}]});return;}
     if(path===`/api/documents/${id}/files/b0000000-0000-4000-8000-000000000001`&&bytes){res.writeHead(200,{'Content-Type':'application/pdf'});res.end(bytes);return;}

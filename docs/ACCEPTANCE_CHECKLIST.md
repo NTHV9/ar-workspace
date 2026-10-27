@@ -1,5 +1,7 @@
 # Checklist ตรวจรับตามสเปก
 
+> Latest owner decision, 27 October 2026: refresh/F5 and normal tab close discard temporary preparation; tab switching preserves it. Reload must return Collections without recreating the discarded single/batch request. Cancelled departure and requested Gmail authorization must preserve work. These criteria supersede older F5-resume expectations below; exact authenticated cleanup and history/Sheet protections remain required.
+
 ## Dashboard scope update — 12 September 2026
 
 - [x] Single-day/inclusive range filters; closing-date positive invoices and dated activity remain distinct

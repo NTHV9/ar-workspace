@@ -1,0 +1,12 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {attachTabExit,createPreparationExit} from '../src/preparation/tab-exit';
+import {readExitOutbox} from '../src/preparation/exit-outbox';
+const actor='00000000-0000-4000-8000-000000000001',sid='00000000-0000-4000-8000-000000000002',job='00000000-0000-4000-8000-000000000003';
+function setup(){const data=new Map<string,string>(),storage={get length(){return data.size;},key:(i:number)=>[...data.keys()][i]??null,getItem:(k:string)=>data.get(k)??null,setItem:(k:string,v:string)=>{data.set(k,v);},removeItem:(k:string)=>{data.delete(k);},clear:()=>data.clear()} as Storage;const exit=createPreparationExit(actor,sid,actor,storage,()=>({actorId:actor,authSessionId:sid,token:'synthetic'}));exit.retainJob({id:job,owner:actor,lifecycle:'transient'} as any);vi.stubGlobal('fetch',vi.fn(async()=>new Response('',{status:503})));return {storage,exit};}
+afterEach(()=>vi.unstubAllGlobals());
+it('the requested authorization navigation preserves preparation, not queueing Exit',()=>{const {exit,storage}=setup();exit.authorizeNavigation();exit.beforeNativeUnload();expect(exit.nativeExit()).toBe(false);expect(readExitOutbox(storage)).toEqual([]);expect(exit.current()).toBe(true);});
+it('cancelled authorization followed by reload/close is a new Exit',()=>{const {exit,storage}=setup();exit.authorizeNavigation();exit.beforeNativeUnload();exit.beforeNativeUnload();expect(exit.nativeExit()).toBe(true);expect(readExitOutbox(storage)).toHaveLength(1);});
+it('a failed start releases only that authorization hold and keeps explicit Exit immediate',()=>{const {exit,storage}=setup();const release=exit.authorizeNavigation();release();exit.beforeNativeUnload();expect(exit.nativeExit()).toBe(true);expect(readExitOutbox(storage)).toHaveLength(1);});
+it('lifecycle wiring observes beforeunload without prompting or acting on focus',()=>{const {exit,storage}=setup(),target=new EventTarget() as unknown as Window;attachTabExit(target,()=>exit.nativeExit(),()=>exit.beforeNativeUnload());exit.authorizeNavigation();target.dispatchEvent(new Event('beforeunload'));target.dispatchEvent(Object.assign(new Event('pagehide'),{persisted:false}));expect(readExitOutbox(storage)).toEqual([]);});
+
+it('an older failed attempt cannot release a newer authorization navigation hold',()=>{const {exit,storage}=setup();const releaseOld=exit.authorizeNavigation();exit.authorizeNavigation();releaseOld();exit.beforeNativeUnload();expect(exit.nativeExit()).toBe(false);expect(readExitOutbox(storage)).toEqual([]);});

@@ -1,3 +1,38 @@
+## 2026-10-27 — Owner-approved refresh/F5 discard candidate
+
+**Implemented and locally qualified; exact-head GitHub and deployment remain
+required.** The owner's final decision makes refresh/F5 and native close discard
+temporary preparation; switching browser tabs preserves it. This supersedes the
+earlier F5-preservation/deferred-close discussions. Non-persisted pagehide uses
+the existing exact Exit outbox without PageSwap/closed-window heuristics.
+Cancelled beforeunload and BFCache remain inert. A successfully queued Exit writes
+only tab/actor/exact-scope UX metadata so reload returns Collections before old
+document/batch effects mount. Only that batch's resume record/pointer is removed;
+unresolved commands, receipts and business history remain protected.
+
+The existing validated Gmail authorization redirect is preserved as a requested
+handoff. Its in-memory hold covers one observed unload; a subsequent departure
+after cancellation is ordinary Exit, and explicit Exit still acts immediately.
+No token is copied into return metadata or new storage. Financial/VAT, PDF editor,
+Worker/SQL cleanup logic, provider plans, credentials, Workflows and crons are
+unchanged. No actual customer email, Sheet write or cloud mutation was performed
+to prepare this candidate.
+
+Fresh fixed-source local evidence:25 Edge browser cases PASS,40 Chromium cases
+PASS across five repetitions,4,913 whole unit tests PASS with9 intentional/
+separately qualified skips; TypeScript, production build and Worker dry-run PASS.
+The frozen4 runtime files plus218 browser-build files were hash-checked unchanged.
+Fresh independent bounded review is READY. The40 native repeat cases now precede
+the complete smoke suite in GitHub; YAML and selected-case count were validated.
+
+Historical run1078 passed666/667 smoke cases and exposed delayed failed-reload
+cleanup under the then-required preserve rule. A500ms observation reproduced it
+locally5/5 before teardown. The owner subsequently chose discard on refresh,
+so the current tests assert cleanup for both successful and failed reload rather
+than concealing that observation. The plan and latest decision record the policy.
+Final exact-source CI/deployment outcomes will be recorded in PR150 and the
+release receipt; no passing or deployed claim is made for the candidate yet.
+
 ## 2026-10-27 — Native-close HTTP verification qualification
 
 **Verification repair implemented and locally tested; exact-head GitHub outcome

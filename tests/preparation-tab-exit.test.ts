@@ -7,14 +7,15 @@ const actor='00000000-0000-4000-8000-000000000001',session='00000000-0000-4000-8
 function storage():Storage{const map=new Map<string,string>();return {get length(){return map.size;},clear:()=>map.clear(),key:i=>[...map.keys()][i]??null,getItem:k=>map.get(k)??null,setItem:(k,v)=>{map.set(k,v);},removeItem:k=>{map.delete(k);}};}
 const hide=(target:EventTarget,persisted=false)=>target.dispatchEvent(Object.assign(new Event('pagehide'),{persisted}));
 afterEach(()=>vi.unstubAllGlobals());
-it('reload PageSwap (including null activation), bfcache, focus and disposal never discard; subsequent real close fires once',()=>{
+it('all non-persisted departures including reload/PageSwap exit once; BFCache and tab switching preserve work',()=>{
  const target=Object.assign(new EventTarget(),{onpageswap:null}) as unknown as Window,exit=vi.fn(),dispose=attachTabExit(target,exit);
  for(const name of ['blur','visibilitychange','focus'])target.dispatchEvent(new Event(name));expect(exit).not.toHaveBeenCalled();
- target.dispatchEvent(Object.assign(new Event('pageswap'),{activation:null}));hide(target);expect(exit).not.toHaveBeenCalled();
- target.dispatchEvent(new Event('pageshow'));hide(target,true);expect(exit).not.toHaveBeenCalled();
- target.dispatchEvent(new Event('pageshow'));hide(target);hide(target);expect(exit).toHaveBeenCalledTimes(1);dispose();expect(exit).toHaveBeenCalledTimes(1);
+ target.dispatchEvent(Object.assign(new Event('pageswap'),{activation:null}));hide(target,true);expect(exit).not.toHaveBeenCalled();
+ hide(target);hide(target);expect(exit).toHaveBeenCalledTimes(1);
+ target.dispatchEvent(new Event('pageshow'));target.dispatchEvent(new Event('pageswap'));hide(target);expect(exit).toHaveBeenCalledTimes(2);
+ dispose();target.dispatchEvent(new Event('pageshow'));hide(target);expect(exit).toHaveBeenCalledTimes(2);
 });
-it('unsupported event surface preserves work',()=>{const target=new EventTarget() as unknown as Window,exit=vi.fn();attachTabExit(target,exit);hide(target);expect(exit).not.toHaveBeenCalled();});
+it('non-persisted pagehide exits without requiring PageSwap capability',()=>{const target=new EventTarget() as unknown as Window,exit=vi.fn();attachTabExit(target,exit);hide(target);expect(exit).toHaveBeenCalledOnce();});
 it('durably stores deduped exact metadata before transport and uses current token with no unload signal',async()=>{
  const s=storage(),snapshot={actorId:actor,authSessionId:session,jobIds:[job,job],creates:[{commandKey:command,hotel:'KAT',payloadDigest:'a'.repeat(64)}]};
  enqueueExactAbandon(s,snapshot);enqueueExactAbandon(s,snapshot);expect(readExitOutbox(s)).toHaveLength(2);
