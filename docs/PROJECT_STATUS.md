@@ -1,3 +1,14 @@
+## 2026-10-27 — Clean saved-draft fixture successor qualification
+
+GitHub1079 passed40 native repeat cases and668/670 full smoke cases. Two document
+return cases were blocked by the existing unsaved-message confirmation: the
+canonical test actor now initializes normal self-CC, while their mock saved draft
+omitted it. The fixture now includes the required self-CC. Both original tests
+and all54 document-route cases pass locally without changing their assertions.
+The two selectors now also run in the early qualification gate. Application code
+and frozen artifacts remain byte-identical to c18b52a; successor CI is required
+before deployment. No runtime workaround, retry or timeout increase was added.
+
 ## 2026-10-27 — Owner-approved refresh/F5 discard candidate
 
 **Implemented and locally qualified; exact-head GitHub and deployment remain
