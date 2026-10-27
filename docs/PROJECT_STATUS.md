@@ -1,3 +1,38 @@
+## 2026-10-27 — Preparation Exit, completed-send cleanup and approved old files
+
+**Implemented, tested, deployed and enabled.** Application source
+`163e7484c54012a33ffc9ee57f79b5628b10ba03`, Worker version
+`e30c9a07-89f7-4439-9f8c-ad1c7f8e9ce9`; the
+[customer-free release receipt](RELEASE_PREPARATION_CLEANUP_20261027.json)
+records qualification, hosted migration versions and actual deletion outcomes.
+
+Fresh intentional Exit/tab close and trusted completed Gmail submission retire
+redundant preparation files through exact managed deletion. F5/reload and tab or
+Account switching within the open batch do not request discard. Accepted sending
+can finish employee work while business-history confirmation retries. Stable
+commands, current authorization, immutable original outcomes, verified current
+job identity and preadmitted-operation completion remain protected. No optional
+editor persistence, extra confirmation, scheduler or Workflow was added.
+
+The approved old20 preparations are complete: **73 objects /19,943,743 bytes**,
+including10 prior deletions and63 newly deleted objects, all have provider ACK,
+deleted receipts and observed Storage absence at2026-10-27 00:36:41 UTC. The four
+closed jobs account for12 files; the separately approved sixteen for61 files.
+Exact customer/job/object IDs stay private. Actual mail/history was preserved;
+no mail resend, Gmail message/draft deletion or Sheet write was part of cleanup.
+Sheet billing and Follow-up1–3 dates remain authoritative, including employee
+edits/deletions. Both source Sheet modified times and old mail state groups were
+unchanged across the actual operation; no Sheet status was converted into Sent.
+
+Same-source GitHub run1075 passed4,902 units, the registered real-SQL contracts,
+149 source migrations/45 rollback fixtures,664 smoke,3 performance and15
+publication browser cases. Fresh task/fix/whole-branch reviews are READY. Live
+health,9 related asset hashes and8 anonymous-route rejections passed. The three
+forward migrations brought hosted history160→163 without rewriting old history;
+11 new private tables have RLS and10 public wrappers are service-only. Advisors
+remain at the existing INFO-only baseline. Invoice/VAT and PDF-editor source,
+provider plans, Spend Cap, credentials, four Workflows and three crons are unchanged.
+
 ## 2026-10-27 — Actual provider quotas and administrator warning thresholds
 
 **Implemented, tested, deployed and enabled.** Application source
