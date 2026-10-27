@@ -1,3 +1,66 @@
+## 2026-10-27 — Native-close HTTP verification qualification
+
+**Verification repair implemented and locally tested; exact-head GitHub outcome
+must be checked before reporting qualification.** The departure fixture now serves
+synthetic auth, API and PDF bytes over real loopback HTTP without Playwright
+request routing. An excluded URL predicate did not disable protocol interception:
+the installed Playwright implementation enables Fetch interception for all URLs
+whenever routing is active. This removes a known uncontrolled test boundary; it
+does not establish the sole precise cause of Linux run1076.
+
+Existing literal receipt/marker and no-abandon assertions remain. Added actual
+PDF Workspace reload/reopen, tab-switch preservation of an accepted Note and
+unusable close-reply recovery using the same exact command, without another
+create or send. Failed reload now remains failed across automatic browser retries
+and must reject with a network error. Unknown fixture writes and external browser
+requests fail the tests. No browser assertion/timeout/retry was weakened.
+
+Fresh local Edge qualification passed20 cases; Chromium passed25 cases across
+five repetitions of five key scenarios, with0 failures/skips/retries. Typecheck
+passed. Whole units passed4,902 tests with9 separately qualified/intentional skips
+using two local workers and no concurrent browser load. The earlier overloaded
+run is retained as failed evidence: invoice-posted-generates-read and
+invoice-transfer-read each exceeded the unchanged5-second timeout. No Invoice
+test, formula, read path or timeout was modified. Independent bounded review is
+READY after correcting and reproducing the navigation-retry fixture finding.
+A local negative control deliberately dropped the close fetch: the exact HTTP
+receipt assertion failed as required, then the reviewed test bytes were restored.
+
+GitHub now repeats those five native HTTP scenarios five times after the full
+smoke suite, without automatic retries. The final check outcome is recorded in
+[PR150](https://github.com/NTHV9/ar-workspace/pull/150) and its exact-head checks.
+This change updates verification and documentation only: the application tree
+remains identical to deployed163e748, including F5/tab-switch lifecycle, Invoice,
+VAT, PDF editor and database behavior. No runtime replacement is needed for this
+test-only repair. No customer email, Sheet write, cloud mutation or paid resource
+was used to prepare this qualification. Earlier audit/release facts remain below.
+
+## 2026-10-27 — Verification audit: tab-close delivery remains unresolved
+
+**Reviewed and locally tested; no new application change or deployment.**
+GitHub run1076 / 40428054872 at documentation commit `c3751b5` failed
+`qualified actual browser departure: switch-close`: the independent HTTP observer
+received no abandon request within15 seconds. Its report records663 expected
+browser outcomes,1 unexpected outcome and0 retries/flaky outcomes. Typecheck,
+unit, SQL and build stages passed; later performance/publication stages were skipped.
+Run1075 passing at application source `163e748` does not settle this later failure.
+The two commits differ only in release documentation, not application source.
+
+The earlier fixed-clock test, shared-database fixture serialization, SQL delimiter
+repair and unmarked API-response compatibility changes address concrete causes.
+The close-transport interception change remains unqualified as a complete fix:
+recording pagehide, a persisted outbox entry and fetch initiation does not prove
+server acceptance or deletion. The existing recovery requires another authorized
+app visit and cannot establish immediate cleanup for an undelivered close request.
+The preceding release's unconditional tab-close wording is therefore superseded
+by this unresolved qualification; confirmed old-file deletion is unaffected.
+
+Fresh local review on Windows/Edge passed45 targeted unit tests,10 repeated
+switch-close browser cases and all17 preparation-tab-exit browser cases, with
+no retry or assertion changes. This does not reproduce or resolve Linux/Chromium
+run1076. No GitHub rerun/push, customer email, Sheet write or cloud mutation was
+performed for this audit. Existing unrelated worktree edits were preserved.
+
 ## 2026-10-27 — Preparation Exit, completed-send cleanup and approved old files
 
 **Implemented, tested, deployed and enabled.** Application source

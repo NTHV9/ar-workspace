@@ -1,16 +1,17 @@
 import {syntheticInvoice} from './fixtures/invoice-pdf';
 import {choosePdfTool} from './fixtures/pdf-tools';
 import {test,expect} from '@playwright/test';
-import http from 'node:http';
+import {preparationServer} from './fixtures/preparation-server';
+import {seedTabSession} from './fixtures/auth-session';
 import {currentWorkspaceSession} from './fixtures/workspace-route';
 const actor='00000000-0000-4000-8000-000000000001',id='a0000000-0000-4000-8000-000000000001';
 const token='e30.'+Buffer.from(JSON.stringify({sub:actor,session_id:'00000000-0000-4000-8000-000000000099'})).toString('base64url')+'.synthetic';
-for(const scenario of ['retired-history-reload-close','reload-close','switch-close','cancelled-close','address-navigation','network-error-reload','unsupported-close','pending-create-close','batch-lost-reload-exit','batch-lost-reload-close','single-cancel-menu','single-cancel-failed','single-cancel-signout','single-nav-back'])test(`qualified actual browser departure: ${scenario}`,async({page,context},testInfo)=>{
- const batchCase=scenario.startsWith('batch-lost-'),singleCancel=scenario.startsWith('single-cancel-')||scenario==='single-nav-back';const batchId='b0000000-0000-4000-8000-000000000077',batchCommand='c0000000-0000-4000-8000-000000000077';let failedReceipt=false;
- const bytes=scenario==='cancelled-close'?await syntheticInvoice():null;
- const exitHeaders:{marker:string|undefined;origin:string|undefined}[]=[];const received:string[]=[],creates:Record<string,unknown>[]=[],commandBodies:Record<string,unknown>[]=[];const upstream=new URL(String(testInfo.project.use.baseURL)).origin;
- const observer=http.createServer(async(req,res)=>{if(req.url==='/other'){res.writeHead(200,{'Content-Type':'text/html'});res.end('<html><body>Other page</body></html>');return;}if(req.url?.endsWith('/abandon')){exitHeaders.push({marker:req.headers['x-ar-exit-command'] as string|undefined,origin:req.headers['x-ar-exit-origin-session'] as string|undefined});received.push(req.url);if(scenario==='single-cancel-failed'&&!failedReceipt&&req.url.includes('/commands/')){failedReceipt=true;res.writeHead(503);res.end('{}');return;}if(req.url.includes('/commands/')){let body='';for await(const chunk of req)body+=chunk;commandBodies.push(JSON.parse(body));}res.setHeader('Content-Type','application/json');res.end(JSON.stringify(req.url.includes('/commands/')?{commandKey:req.url.split('/')[4],hotel:'KAT',payloadDigest:commandBodies.at(-1)?.payloadDigest,outcome:'cancelled'}:{job:{id},outcome:'discarded'}));return;}try{const r=await fetch(upstream+req.url);res.writeHead(r.status,{'Content-Type':r.headers.get('content-type')??'text/html'});res.end(Buffer.from(await r.arrayBuffer()));}catch{res.writeHead(503);res.end();}});
- await new Promise<void>(r=>observer.listen(0,'127.0.0.1',r));const address=observer.address() as import('node:net').AddressInfo,url=`http://127.0.0.1:${address.port}`;
+for(const scenario of ['retired-history-reload-close','reload-close','workspace-reload-close','switch-close','workspace-switch-close','cancelled-close','close-lost-response-recovery','address-navigation','network-error-reload','unsupported-close','pending-create-close','batch-lost-reload-exit','batch-lost-reload-close','single-cancel-menu','single-cancel-failed','single-cancel-signout','single-nav-back'])test(`qualified actual browser departure: ${scenario}`,async({page,context},testInfo)=>{
+ const batchCase=scenario.startsWith('batch-lost-'),singleCancel=scenario.startsWith('single-cancel-')||scenario==='single-nav-back';const batchId='b0000000-0000-4000-8000-000000000077',batchCommand='c0000000-0000-4000-8000-000000000077';
+ const bytes=scenario==='cancelled-close'||scenario.startsWith('workspace-')?await syntheticInvoice():null;
+ const observer=await preparationServer({upstream:String(testInfo.project.use.baseURL),scenario,actor,jobId:id,token,bytes});
+ const {url,received,creates,commandBodies,exitHeaders}=observer;
+ const external:string[]=[];context.on('request',request=>{if(new URL(request.url()).origin!==url)external.push(request.method()+' '+new URL(request.url()).origin);});
  const alive=await context.newPage();await alive.goto(url+'/other');
  try{
   if(scenario==='unsupported-close')await page.addInitScript(()=>{delete (window as unknown as {onpageswap?:unknown}).onpageswap;delete (Window.prototype as unknown as {onpageswap?:unknown}).onpageswap;});
@@ -22,11 +23,7 @@ for(const scenario of ['retired-history-reload-close','reload-close','switch-clo
    addEventListener('error',event=>record('page-error',{kind:event.error instanceof Error?event.error.name:'Error',code:/metadata|quota|session changed|cleanup identity|scope is too large/i.exec(event.message)?.[0]??'unclassified'}));
    for(const name of ['pageswap','pagehide','pageshow'])addEventListener(name,()=>{localStorage.setItem('test-events',JSON.stringify([...JSON.parse(localStorage.getItem('test-events')??'[]'),name]));});});
   if(batchCase)await page.addInitScript(({actor,batchId,batchCommand})=>{const key='ar-account-batch:'+actor+':'+batchId;if(!sessionStorage.getItem(key))sessionStorage.setItem(key,JSON.stringify({version:1,id:batchId,owner:actor,workspaceOwner:actor,region:'phuket',options:{content:'statement',layout:'combined'},entries:[{commandKey:batchCommand,selection:{key:'synthetic-group',hotel:'KAT',accountId:'synthetic',accountName:'Synthetic',ids:['A'],purpose:'billing',stage:''}}]}));},{actor,batchId,batchCommand});
-  await currentWorkspaceSession(page,{id:actor,email:'ar@katathani.com'},token);
-  const independentExit=(u:URL)=>u.origin===url&&!u.search&&/^\/api\/documents\/(?:commands\/)?[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/abandon$/i.test(u.pathname);
-  await page.unroute('**/*');await page.route(u=>!independentExit(u),r=>['127.0.0.1','localhost','example.supabase.co'].includes(new URL(r.request().url()).hostname)?r.fallback():r.abort('blockedbyclient'));
-  await page.route('https://example.supabase.co/**',r=>r.fulfill({json:{id:actor,email:'ar@katathani.com',user:{id:actor,email:'ar@katathani.com'}}}));
-  await page.route(u=>u.pathname.startsWith('/api/')&&!independentExit(u),r=>{const p=new URL(r.request().url()).pathname;if(p.endsWith('/abandon'))return r.fallback();if(p==='/api/config')return r.fulfill({json:{supabaseUrl:'https://example.supabase.co',publishableKey:'synthetic',googleEnabled:true}});if(p==='/api/access/me')return r.fallback();if(p==='/api/portfolio')return r.fulfill({json:{status:'connected',accounts:[{hotel:'KAT',id:'synthetic',name:'Synthetic',type:'Agent',open:100,over90:0,items:1}],refresh:{running:false,hotels:[]}}});if(p==='/api/accounts/KAT/synthetic')return r.fulfill({json:{invoices:[{id:'A',hotel:'KAT',account_id:'synthetic',guest:'Synthetic',invoice_no:'INVOICE-A',folio_no:'FOLIO-A',transaction_date:'2026-09-01',original:100,open:100,aging:'Up to 30',verification_state:'verified',collection_role:'standalone',collection_selectable:true}]}});if(p==='/api/documents'&&r.request().method()==='POST'){creates.push(r.request().postDataJSON());return r.abort('failed');}if(p===`/api/documents/${id}/files/b0000000-0000-4000-8000-000000000001`&&bytes)return r.fulfill({contentType:'application/pdf',body:Buffer.from(bytes)});if(p===`/api/documents/${id}`)return r.fulfill({json:{...scenario==='retired-history-reload-close'?{preparation_retirement:{accepted:true},closed_at:null}:{},id,owner:actor,hotel:'KAT',account_id:'synthetic',account_name:'Synthetic',invoice_ids:['A'],content:'invoices',layout:'combined',purpose:'billing',lifecycle:'transient',state:'ready',revision:0,files:[{id:'b0000000-0000-4000-8000-000000000001',state:'ready',kind:'invoice',invoice_id:'A',byte_count:bytes?.length??null,sha256:null}],manifest:[{id:'A',invoice_no:'A'}],exports:[],acknowledged:false,created_at:'2026-10-27T00:00:00Z'}});return r.fulfill({status:501,json:{error:'synthetic_unavailable'}});});
+  await seedTabSession(page,{id:actor,email:'ar@katathani.com'},token);
   await page.goto(url);await expect(page.getByRole('button',{name:'Aging',exact:true})).toBeVisible();await page.evaluate(({id,create,batch})=>{history.pushState(null,'',batch?'/?collectionBatch='+batch:create?'/?account=synthetic&property=KAT':'/?documentJob='+id);dispatchEvent(new PopStateEvent('popstate'));},{id,create:scenario==='pending-create-close'||singleCancel,batch:batchCase?batchId:''});
   if(scenario==='retired-history-reload-close'){await expect(page.getByRole('heading',{name:'Preparation closed',exact:true})).toBeVisible();await page.reload();await expect(page.getByRole('heading',{name:'Preparation closed',exact:true})).toBeVisible();expect(received).toEqual([]);}
   if(scenario!=='retired-history-reload-close'&&scenario!=='pending-create-close'&&!singleCancel&&!batchCase)await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toBeVisible();
@@ -38,12 +35,21 @@ for(const scenario of ['retired-history-reload-close','reload-close','switch-clo
    if(scenario.endsWith('-exit')){await page.locator('.batch-heading').getByRole('button',{name:'Collections',exact:true}).click();await expect.poll(()=>received).toEqual([`/api/documents/commands/${batchCommand}/abandon`]);await expect.poll(()=>page.evaluate(({actor,batchId})=>sessionStorage.getItem('ar-account-batch:'+actor+':'+batchId),{actor,batchId})).toBeNull();}
   }
   if(singleCancel){
-   if(scenario==='single-nav-back'){await page.evaluate(()=>history.back());await expect.poll(()=>received.length).toBe(1);expect(new URL(page.url()).searchParams.has('account')).toBe(false);}
+   if(scenario==='single-nav-back'){await page.evaluate(()=>history.back());await expect.poll(()=>received.length).toBe(1);await expect.poll(()=>new URL(page.url()).searchParams.has('account')).toBe(false);}
    await page.getByRole('button',{name:'Cancel',exact:true}).click();
    if(scenario==='single-cancel-failed'){await expect(page.locator('.document-dialog')).toBeVisible();await expect(page.getByRole('alert')).toBeVisible();expect(creates).toHaveLength(1);await page.getByRole('button',{name:'Cancel',exact:true}).click();}
    await expect(page.locator('.document-dialog')).toHaveCount(0);await page.getByRole('button',{name:scenario==='single-cancel-signout'?'Sign out':'Collections',exact:true}).click();await expect.poll(()=>received.length).toBe(scenario==='single-cancel-failed'?2:1);expect(creates).toHaveLength(1);
   }
-  if(scenario==='reload-close'){
+  if(scenario==='workspace-reload-close'){
+   await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
+   await page.reload();await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toBeVisible();expect(received).toEqual([]);
+   await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');expect(received).toEqual([]);
+  }else if(scenario==='workspace-switch-close'){
+   await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
+   await choosePdfTool(page,'Note');await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('Note');const changes=await page.locator('.pdf-differences').innerText();
+   for(let n=0;n<3;n++){await alive.bringToFront();await page.bringToFront();}
+   expect(received).toEqual([]);await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('Note');await expect.poll(()=>page.locator('.pdf-differences').innerText()).toBe(changes);await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeEnabled();page.once('dialog',d=>d.accept());
+  }else if(scenario==='reload-close'){
    await page.reload();await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toBeVisible();expect(received).toEqual([]);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('test-events')??'[]'))).toContain('pageswap');
   }else if(scenario==='switch-close'){await alive.bringToFront();await page.bringToFront();expect(received).toEqual([]);}
   else if(scenario==='cancelled-close'){
@@ -53,18 +59,24 @@ for(const scenario of ['retired-history-reload-close','reload-close','switch-clo
    page.once('dialog',d=>d.accept());
   }else if(scenario==='address-navigation'){await page.goto(url+'/other');expect(received).toEqual([]);}
   else if(scenario==='network-error-reload'){
-   await page.route(u=>!independentExit(u),r=>r.request().isNavigationRequest()?r.abort('internetdisconnected'):r.fallback());await page.reload().catch(()=>{});expect(received).toEqual([]);
+   observer.failNavigations();await expect(page.reload()).rejects.toThrow(/net::ERR_(EMPTY_RESPONSE|CONNECTION_RESET)/);expect(received).toEqual([]);
   }else if(scenario==='unsupported-close')expect(await page.evaluate(()=> 'onpageswap'in window)).toBe(false);
   await page.close({runBeforeUnload:true});
-  const closes=['reload-close','switch-close','cancelled-close'].includes(scenario);
+  const closes=['reload-close','workspace-reload-close','switch-close','workspace-switch-close','cancelled-close','close-lost-response-recovery'].includes(scenario);
   if(closes)await expect.poll(()=>received).toEqual([`/api/documents/${id}/abandon`]);else if(scenario==='pending-create-close'){await expect.poll(()=>received).toEqual([`/api/documents/commands/${creates[0].commandKey}/abandon`]);expect(commandBodies).toHaveLength(1);expect(Object.keys(commandBodies[0]).sort()).toEqual(['hotel','payloadDigest']);expect(commandBodies[0].hotel).toBe('KAT');expect(commandBodies[0].payloadDigest).toMatch(/^[0-9a-f]{64}$/);}else if(batchCase)await expect.poll(()=>received).toEqual([`/api/documents/commands/${batchCommand}/abandon`]);else if(singleCancel)expect(received.length).toBe(scenario==='single-cancel-failed'?2:1);else expect(received).toEqual([]);
   for(const headers of exitHeaders){expect(headers.marker).toMatch(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i);expect(headers.origin).toBe('00000000-0000-4000-8000-000000000099');}
   if(scenario==='single-cancel-failed')expect(exitHeaders[0].marker).toBe(exitHeaders[1].marker);
-  expect(alive.isClosed()).toBe(false);
+  if(scenario==='close-lost-response-recovery'){
+   await expect.poll(()=>alive.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('ar-preparation-exit-v1:')).length)).toBe(1);
+   await seedTabSession(alive,{id:actor,email:'ar@katathani.com'},token);await alive.goto(url);await expect(alive.getByRole('button',{name:'Aging',exact:true})).toBeVisible();
+   await expect.poll(()=>received).toEqual([`/api/documents/${id}/abandon`,`/api/documents/${id}/abandon`]);expect(exitHeaders[0]).toEqual(exitHeaders[1]);
+   await expect.poll(()=>alive.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('ar-preparation-exit-v1:')).length)).toBe(0);expect(creates).toEqual([]);
+  }
+  expect(observer.unexpected).toEqual([]);expect(external).toEqual([]);expect(alive.isClosed()).toBe(false);
   const navigation=await alive.evaluate(()=>JSON.parse(localStorage.getItem('test-events')??'[]'));
   await testInfo.attach('departure-evidence',{body:JSON.stringify({scenario,navigation,received,observerAlive:!alive.isClosed()}),contentType:'application/json'});
 
- }finally{try{const diagnostics=await alive.evaluate(()=>({events:JSON.parse(localStorage.getItem('departure-diagnostics')??'[]'),legacyEvents:JSON.parse(localStorage.getItem('test-events')??'[]'),outbox:Object.keys(localStorage).filter(k=>k.startsWith('ar-preparation-exit-v1:')).map(k=>{const e=JSON.parse(localStorage.getItem(k)!);return {version:e.version,actorId:e.actorId,authSessionId:e.authSessionId,jobId:e.jobId,commandKey:e.commandKey,hotel:e.hotel,payloadDigest:e.payloadDigest,state:e.state,queuedAt:e.queuedAt};})}));await testInfo.attach('departure-diagnostics-always',{body:JSON.stringify({scenario,received:[...received],observerAlive:!alive.isClosed(),...diagnostics}),contentType:'application/json'});}finally{await alive.close();await new Promise<void>((r,e)=>observer.close(err=>err?e(err):r()));}}
+ }finally{try{const diagnostics=await alive.evaluate(()=>({events:JSON.parse(localStorage.getItem('departure-diagnostics')??'[]'),legacyEvents:JSON.parse(localStorage.getItem('test-events')??'[]'),outbox:Object.keys(localStorage).filter(k=>k.startsWith('ar-preparation-exit-v1:')).map(k=>{const e=JSON.parse(localStorage.getItem(k)!);return {version:e.version,actorId:e.actorId,authSessionId:e.authSessionId,jobId:e.jobId,commandKey:e.commandKey,hotel:e.hotel,payloadDigest:e.payloadDigest,state:e.state,queuedAt:e.queuedAt};})}));await testInfo.attach('departure-diagnostics-always',{body:JSON.stringify({scenario,received:[...received],observerAlive:!alive.isClosed(),...diagnostics}),contentType:'application/json'});}finally{await alive.close();await observer.close();}}
 
 });
 

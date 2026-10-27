@@ -59,6 +59,8 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Verify app, full PDF Workspace and Google Sheet workflows
         run: pnpm test:browser:smoke
+      - name: Verify native close, reload and tab-switch repeatability
+        run: pnpm exec playwright test --config playwright.smoke.config.ts tests/browser/preparation-tab-exit.spec.ts -g 'qualified actual browser departure: (reload-close|workspace-reload-close|switch-close|workspace-switch-close|close-lost-response-recovery)$' --repeat-each=5 --output=test-results/preparation-close-repeatability
       - name: Verify background refresh and parallel PDF loading
         run: pnpm exec playwright test --config playwright.performance.config.ts -g 'PDF performance|saved Aging is usable'
       - name: Verify publication polling and continuous Aging
