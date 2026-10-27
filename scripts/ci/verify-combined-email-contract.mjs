@@ -15,9 +15,12 @@ export async function verifyCombinedEmailContract({root,runDir,executable,env,da
  // test output or a Vite/browser environment variable.
  writeFileSync(file,JSON.stringify({psql,env,database,expectedAddress,port,nonce:randomUUID()}),{mode:0o600,flag:'wx'});
  try{
-  const run=spawnSync(process.execPath,[join(root,'node_modules/vitest/vitest.mjs'),'run','tests/combined-email-sql-contract.test.ts'],{cwd:root,env:{...process.env,AR_SYNTHETIC_SQL_CONNECTION_FILE:file},windowsHide:true,encoding:'utf8',timeout:120000});
+  // These fixture files share one database/owner, including an outer transaction
+  // and temporary trigger setup. Dedicated multi-session race scripts retain
+  // their explicit concurrency; only these independent fixture files serialize.
+  const run=spawnSync(process.execPath,[join(root,'node_modules/vitest/vitest.mjs'),'run','--no-file-parallelism','tests/combined-email-sql-contract.test.ts','tests/document-command-abandon.test.ts'],{cwd:root,env:{...process.env,AR_SYNTHETIC_SQL_CONNECTION_FILE:file},windowsHide:true,encoding:'utf8',timeout:120000});
   writeFileSync(join(runDir,'combined-email-sql-contract-vitest.log'),(run.stdout??'')+'\n'+(run.stderr??''));
-  if(run.status!==0||!/[3] passed/.test(run.stdout)||/\bskipped\b/.test(run.stdout))throw Error('Combined Worker/SQL contract failed\n'+run.stdout+'\n'+run.stderr);
+  if(run.status!==0||!/6 passed/.test(run.stdout)||/\bskipped\b/.test(run.stdout))throw Error('Combined Worker/SQL contract failed\n'+run.stdout+'\n'+run.stderr);
   const evidence={synthetic:true,workerHttp:true,realSql:true,scenarios:['plain','signed','accepted-history-failure'],providerPostsPerScenario:1,rolledBack:true};
   writeFileSync(join(runDir,'combined-email-sql-contract.json'),JSON.stringify(evidence,null,2));return evidence;
  }finally{unlinkSync(file);}

@@ -1,3 +1,147 @@
+## 2026-10-27 — Clean saved-draft fixture successor qualification
+
+GitHub1079 passed40 native repeat cases and668/670 full smoke cases. Two document
+return cases were blocked by the existing unsaved-message confirmation: the
+canonical test actor now initializes normal self-CC, while their mock saved draft
+omitted it. The fixture now includes the required self-CC. Both original tests
+and all54 document-route cases pass locally without changing their assertions.
+The two selectors now also run in the early qualification gate. Application code
+and frozen artifacts remain byte-identical to c18b52a; successor CI is required
+before deployment. No runtime workaround, retry or timeout increase was added.
+
+## 2026-10-27 — Owner-approved refresh/F5 discard candidate
+
+**Implemented and locally qualified; exact-head GitHub and deployment remain
+required.** The owner's final decision makes refresh/F5 and native close discard
+temporary preparation; switching browser tabs preserves it. This supersedes the
+earlier F5-preservation/deferred-close discussions. Non-persisted pagehide uses
+the existing exact Exit outbox without PageSwap/closed-window heuristics.
+Cancelled beforeunload and BFCache remain inert. A successfully queued Exit writes
+only tab/actor/exact-scope UX metadata so reload returns Collections before old
+document/batch effects mount. Only that batch's resume record/pointer is removed;
+unresolved commands, receipts and business history remain protected.
+
+The existing validated Gmail authorization redirect is preserved as a requested
+handoff. Its in-memory hold covers one observed unload; a subsequent departure
+after cancellation is ordinary Exit, and explicit Exit still acts immediately.
+No token is copied into return metadata or new storage. Financial/VAT, PDF editor,
+Worker/SQL cleanup logic, provider plans, credentials, Workflows and crons are
+unchanged. No actual customer email, Sheet write or cloud mutation was performed
+to prepare this candidate.
+
+Fresh fixed-source local evidence:25 Edge browser cases PASS,40 Chromium cases
+PASS across five repetitions,4,913 whole unit tests PASS with9 intentional/
+separately qualified skips; TypeScript, production build and Worker dry-run PASS.
+The frozen4 runtime files plus218 browser-build files were hash-checked unchanged.
+Fresh independent bounded review is READY. The40 native repeat cases now precede
+the complete smoke suite in GitHub; YAML and selected-case count were validated.
+
+Historical run1078 passed666/667 smoke cases and exposed delayed failed-reload
+cleanup under the then-required preserve rule. A500ms observation reproduced it
+locally5/5 before teardown. The owner subsequently chose discard on refresh,
+so the current tests assert cleanup for both successful and failed reload rather
+than concealing that observation. The plan and latest decision record the policy.
+Final exact-source CI/deployment outcomes will be recorded in PR150 and the
+release receipt; no passing or deployed claim is made for the candidate yet.
+
+## 2026-10-27 — Native-close HTTP verification qualification
+
+**Verification repair implemented and locally tested; exact-head GitHub outcome
+must be checked before reporting qualification.** The departure fixture now serves
+synthetic auth, API and PDF bytes over real loopback HTTP without Playwright
+request routing. An excluded URL predicate did not disable protocol interception:
+the installed Playwright implementation enables Fetch interception for all URLs
+whenever routing is active. This removes a known uncontrolled test boundary; it
+does not establish the sole precise cause of Linux run1076.
+
+Existing literal receipt/marker and no-abandon assertions remain. Added actual
+PDF Workspace reload/reopen, tab-switch preservation of an accepted Note and
+unusable close-reply recovery using the same exact command, without another
+create or send. Failed reload now remains failed across automatic browser retries
+and must reject with a network error. Unknown fixture writes and external browser
+requests fail the tests. No browser assertion/timeout/retry was weakened.
+
+Fresh local Edge qualification passed20 cases; Chromium passed25 cases across
+five repetitions of five key scenarios, with0 failures/skips/retries. Typecheck
+passed. Whole units passed4,902 tests with9 separately qualified/intentional skips
+using two local workers and no concurrent browser load. The earlier overloaded
+run is retained as failed evidence: invoice-posted-generates-read and
+invoice-transfer-read each exceeded the unchanged5-second timeout. No Invoice
+test, formula, read path or timeout was modified. Independent bounded review is
+READY after correcting and reproducing the navigation-retry fixture finding.
+A local negative control deliberately dropped the close fetch: the exact HTTP
+receipt assertion failed as required, then the reviewed test bytes were restored.
+
+GitHub now repeats those five native HTTP scenarios five times after the full
+smoke suite, without automatic retries. The final check outcome is recorded in
+[PR150](https://github.com/NTHV9/ar-workspace/pull/150) and its exact-head checks.
+This change updates verification and documentation only: the application tree
+remains identical to deployed163e748, including F5/tab-switch lifecycle, Invoice,
+VAT, PDF editor and database behavior. No runtime replacement is needed for this
+test-only repair. No customer email, Sheet write, cloud mutation or paid resource
+was used to prepare this qualification. Earlier audit/release facts remain below.
+
+## 2026-10-27 — Verification audit: tab-close delivery remains unresolved
+
+**Reviewed and locally tested; no new application change or deployment.**
+GitHub run1076 / 40428054872 at documentation commit `c3751b5` failed
+`qualified actual browser departure: switch-close`: the independent HTTP observer
+received no abandon request within15 seconds. Its report records663 expected
+browser outcomes,1 unexpected outcome and0 retries/flaky outcomes. Typecheck,
+unit, SQL and build stages passed; later performance/publication stages were skipped.
+Run1075 passing at application source `163e748` does not settle this later failure.
+The two commits differ only in release documentation, not application source.
+
+The earlier fixed-clock test, shared-database fixture serialization, SQL delimiter
+repair and unmarked API-response compatibility changes address concrete causes.
+The close-transport interception change remains unqualified as a complete fix:
+recording pagehide, a persisted outbox entry and fetch initiation does not prove
+server acceptance or deletion. The existing recovery requires another authorized
+app visit and cannot establish immediate cleanup for an undelivered close request.
+The preceding release's unconditional tab-close wording is therefore superseded
+by this unresolved qualification; confirmed old-file deletion is unaffected.
+
+Fresh local review on Windows/Edge passed45 targeted unit tests,10 repeated
+switch-close browser cases and all17 preparation-tab-exit browser cases, with
+no retry or assertion changes. This does not reproduce or resolve Linux/Chromium
+run1076. No GitHub rerun/push, customer email, Sheet write or cloud mutation was
+performed for this audit. Existing unrelated worktree edits were preserved.
+
+## 2026-10-27 — Preparation Exit, completed-send cleanup and approved old files
+
+**Implemented, tested, deployed and enabled.** Application source
+`163e7484c54012a33ffc9ee57f79b5628b10ba03`, Worker version
+`e30c9a07-89f7-4439-9f8c-ad1c7f8e9ce9`; the
+[customer-free release receipt](RELEASE_PREPARATION_CLEANUP_20261027.json)
+records qualification, hosted migration versions and actual deletion outcomes.
+
+Fresh intentional Exit/tab close and trusted completed Gmail submission retire
+redundant preparation files through exact managed deletion. F5/reload and tab or
+Account switching within the open batch do not request discard. Accepted sending
+can finish employee work while business-history confirmation retries. Stable
+commands, current authorization, immutable original outcomes, verified current
+job identity and preadmitted-operation completion remain protected. No optional
+editor persistence, extra confirmation, scheduler or Workflow was added.
+
+The approved old20 preparations are complete: **73 objects /19,943,743 bytes**,
+including10 prior deletions and63 newly deleted objects, all have provider ACK,
+deleted receipts and observed Storage absence at2026-10-27 00:36:41 UTC. The four
+closed jobs account for12 files; the separately approved sixteen for61 files.
+Exact customer/job/object IDs stay private. Actual mail/history was preserved;
+no mail resend, Gmail message/draft deletion or Sheet write was part of cleanup.
+Sheet billing and Follow-up1–3 dates remain authoritative, including employee
+edits/deletions. Both source Sheet modified times and old mail state groups were
+unchanged across the actual operation; no Sheet status was converted into Sent.
+
+Same-source GitHub run1075 passed4,902 units, the registered real-SQL contracts,
+149 source migrations/45 rollback fixtures,664 smoke,3 performance and15
+publication browser cases. Fresh task/fix/whole-branch reviews are READY. Live
+health,9 related asset hashes and8 anonymous-route rejections passed. The three
+forward migrations brought hosted history160→163 without rewriting old history;
+11 new private tables have RLS and10 public wrappers are service-only. Advisors
+remain at the existing INFO-only baseline. Invoice/VAT and PDF-editor source,
+provider plans, Spend Cap, credentials, four Workflows and three crons are unchanged.
+
 ## 2026-10-27 — Actual provider quotas and administrator warning thresholds
 
 **Implemented, tested, deployed and enabled.** Application source

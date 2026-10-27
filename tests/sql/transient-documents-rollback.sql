@@ -1,6 +1,6 @@
 begin;
 do $$
-declare actor uuid;scope text:='SYNTHETIC-TRANSIENT-'||gen_random_uuid();j jsonb;jid uuid;fid uuid;r jsonb;e jsonb;key text;obj uuid:=gen_random_uuid();draft jsonb;mid uuid:=gen_random_uuid();legacy jsonb;rid uuid;claim uuid:=gen_random_uuid();cancel_key text;extra_key text;
+declare actor uuid;scope text:='SYNTHETIC-TRANSIENT-'||gen_random_uuid();j jsonb;jid uuid;fid uuid;r jsonb;e jsonb;key text;obj uuid:=gen_random_uuid();draft jsonb;mid uuid:=gen_random_uuid();legacy jsonb;rid uuid;claim uuid:=gen_random_uuid();cancel_key text;extra_key text;shared uuid;scenario text;
 begin
  select id into actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
  insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state) values('KAT',scope,'Synthetic transient','SYNTHETIC',100,0,1,'verified');
@@ -47,7 +47,23 @@ begin
  insert into storage.objects(bucket_id,name,metadata) values('ar-working-files',extra_key,'{"size":100}');
  perform public.ar_document_observe_supplemental_upload(actor,extra_key,repeat('d',64));
  if not exists(select 1 from ar_private.retention_storage_receipts where storage_key=extra_key and sha256=repeat('d',64)) then raise exception 'orphan supplemental receipt missing';end if;
- if ar_private.retention_transient_eligibility(actor,'supabase',extra_key) is not null then raise exception 'supplemental fast retention applied';end if;
+ if ar_private.retention_transient_eligibility(actor,'supabase',extra_key)->>'complete' is distinct from 'true' then raise exception 'closed supplemental with positive AR not promptly eligible';end if;
+ -- An email-path receipt never overrules a real business/Drive reference.
+ foreach scenario in array array['remittance','drive'] loop
+  begin
+   shared:=gen_random_uuid();
+   if scenario='remittance' then
+    insert into public.ar_remittances(id,owner,hotel,account_id,account_name,account_type,received_date,reference) values(shared,actor,'KAT',scope,'Synthetic','SYNTHETIC',current_date,'Synthetic shared attachment');
+    insert into public.ar_remittance_lines(record_id,invoice_id,position,snapshot) values(shared,'A',1,'{}');
+    insert into ar_private.remittance_files(id,record_id,name,mime,byte_count,sha256,storage_key,state,inspection,ready_at) values(gen_random_uuid(),shared,'Synthetic.pdf','application/pdf',100,repeat('d',64),extra_key,'ready','{"version":1,"pages":1}',clock_timestamp());
+   else
+    insert into ar_private.drive_archives(id,owner,kind,target_revision,folder_id) values(shared,actor,'test',1,'synthetic-folder');
+    insert into ar_private.drive_archive_files(archive_id,ordinal,name,storage_key,byte_count,sha256) values(shared,0,'Synthetic.pdf',extra_key,100,repeat('d',64));
+   end if;
+   if ar_private.retention_transient_eligibility(actor,'supabase',extra_key)->>'error' is distinct from 'retention_shared_reference' then raise exception 'shared supplemental policy bypass: %',scenario;end if;
+   raise exception using errcode='ZP001',message='synthetic shared reference rolled back';
+  exception when sqlstate 'ZP001' then null;end;
+ end loop;
  insert into storage.objects(id,bucket_id,name,metadata) values(obj,'ar-working-files',key,'{"size":100}');
  r:=public.ar_retention_enroll(actor,'supabase',obj::text,7200);rid:=(r->>'id')::uuid;
  if r->>'state'<>'waiting' or (r->>'dueAt')::timestamptz>clock_timestamp() then raise exception 'transient not promptly eligible: %',r;end if;

@@ -35,7 +35,7 @@ export function combinedPublic(value:CombinedEmail):CombinedEmail {
  return {id:value.id,revision:value.revision,mailbox:value.mailbox,content:parseCombinedContent(value.content),
   members:value.members.map(m=>({memberId:m.memberId,documentJobId:m.documentJobId,documentRevision:m.documentRevision,draftId:m.draftId,draftRevision:m.draftRevision,stage:m.stage,policyVersion:m.policyVersion,hotel:m.hotel,accountId:m.accountId,accountName:m.accountName,invoiceIds:m.invoiceIds,purpose:m.purpose,layout:m.layout,stageLabel:m.stageLabel,files:(m.files??[]).map(f=>({fileId:f.fileId,name:f.name,byteCount:f.byteCount,sha256:f.sha256}))})),
   totals:value.totals?{accounts:value.totals.accounts,invoices:value.totals.invoices,files:value.totals.files,bytes:value.totals.bytes}:value.totals,
-  delivery:delivery?{id:delivery.id,state:delivery.state,mode:delivery.mode,gmailAccepted:delivery.gmailAccepted,recorded:delivery.recorded,reason:delivery.reason,stage:delivery.stage,stageLabel:delivery.stageLabel,sentAt:delivery.sentAt}:null};
+  delivery:delivery?{id:delivery.id,state:delivery.state,mode:delivery.mode,gmailAccepted:delivery.gmailAccepted,recorded:delivery.recorded,reason:delivery.reason,stage:delivery.stage,stageLabel:delivery.stageLabel,sentAt:delivery.sentAt,...(delivery.preparationRetirement?.accepted===true?{preparationRetirement:{accepted:true as const}}:{})}:null};
 }
 export async function getCombined(env:EmailEnv,actor:string,id:string):Promise<CombinedEmail>{
  const value=await emailRpc<CombinedEmail&{error?:string}|null>(env,'ar_combined_email_get',{p_actor:actor,p_id:id});if(!value)throw Error('email_missing');if(value.error)throw Error(value.error);return combinedPublic(value);

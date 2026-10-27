@@ -102,7 +102,7 @@ test('workspace-generated Invoice keeps an editable Voucher field when OPERA has
 
 const jobId = 'a0000000-0000-4000-8000-000000000001';
 const fileId = 'b0000000-0000-4000-8000-000000000001';
-const user = { id: 'synthetic-document-user', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
+const user = { id: '00000000-0000-4000-8000-000000000003', email: 'ar@katathani.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-09-09T00:00:00Z' };
 test('Escape cannot hide an admitted document creation before its result',async({page})=>{
  const c=await mockApplication(page,'combined','transient');let release=()=>{};const gate=new Promise<void>(r=>{release=r;});let requests=0;
  await page.route('**/api/documents',async route=>{requests++;await gate;await route.fulfill({json:c.job});});
@@ -133,10 +133,11 @@ test('closing PDF Workspace retries failed cleanup while retaining edits',async(
  await expect(page.getByRole('alertdialog')).toContainText('Temporary file cleanup failed');await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC KEEP UNTIL CLEANUP CONFIRMED');
  await page.screenshot({path:'evidence/pdf-close-cleanup-retry-2026-10-08.png',animations:'disabled'});await page.getByRole('button',{name:'Discard changes and close',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation discarded',exact:true})).toBeVisible();expect(attempts).toBe(2);
 });
-test('reload and document read rerenders never request abandonment',async({page})=>{
- await mockApplication(page,'combined','transient');let attempts=0;await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({status:500,json:{error:'unexpected_abandon'}});});
- await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();await page.reload();await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();expect(attempts).toBe(0);
+test('reload leaves preparation while failed cleanup remains in its durable recovery queue',async({page})=>{
+ await mockApplication(page,'combined','transient',undefined,true);let attempts=0;await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({status:500,json:{error:'cleanup_unavailable'}});});
+ await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();await page.reload();await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');await expect.poll(()=>attempts).toBeGreaterThan(0);expect(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('ar-preparation-exit-v1:')).length)).toBeGreaterThan(0);await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toHaveCount(0);
 });
+
 test('browser Back waits for job-specific abandonment before leaving',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');let attempts=0,release!:()=>void;const gate=new Promise<void>(r=>{release=r;});
  await page.route(`**/api/documents/${jobId}/abandon`,async r=>{attempts++;await gate;await r.fulfill({json:{job:controls.job,outcome:'discarded'}});});
@@ -154,12 +155,12 @@ test('pending abandonment is read-only even when ready source bytes exist',async
  await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect(page.getByRole('heading',{name:'Preparation cleanup pending',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toHaveCount(0);expect(controls.sourceReads).toBe(0);
 });
 
-test('F5 preserves the same active preparation without requesting abandonment',async({page})=>{
- const c=await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,'/?documentJob='+jobId);
- await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();const reads=c.documentReads;
- await page.reload();await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();
- await expect.poll(()=>c.documentReads).toBeGreaterThan(reads);expect(new URL(page.url()).searchParams.get('documentJob')).toBe(jobId);expect(c.abandons).toBe(0);expect(c.discards).toBe(0);expect(c.outboundRequests).toEqual([]);
+test('F5 discards the active preparation and returns Collections without another create or send',async({page})=>{
+ const c=await mockApplication(page,'combined','transient',undefined,true);await openWorkspaceRoute(page,'/?documentJob='+jobId);
+ await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();
+ await page.reload();await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toHaveCount(0);await expect.poll(()=>c.abandons).toBeGreaterThan(0);expect(c.discards).toBe(0);expect(c.createRequests).toEqual([]);expect(c.outboundRequests).toEqual([]);
 });
+
 test('email to document internal transition retains preparation and never abandons',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');controls.job.acknowledged=true;controls.job.exports=[{name:'Synthetic.pdf',storage_key:'synthetic/export.pdf',byte_count:100,sha256:'synthetic'}];let attempts=0;
  await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({status:500,json:{error:'unexpected_abandon'}});});
@@ -201,7 +202,7 @@ test('source package memory budget rejects before download instead of opening a 
 });
 function session(token: string) { return { access_token: token, refresh_token: 'synthetic-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user }; }
 
-async function mockApplication(page: Page, requestedLayout='combined', lifecycle:'legacy'|'transient'='legacy',pdfBytes?:Uint8Array) {
+async function mockApplication(page: Page, requestedLayout='combined', lifecycle:'legacy'|'transient'='legacy',pdfBytes?:Uint8Array,nativeExit=false) {
   const source = await PDFDocument.create();
   const font = await source.embedFont(StandardFonts.Helvetica);
   source.addPage([595, 842]).drawText('SYNTHETIC INVOICE A', { x: 45, y: 740, font, size: 18 });
@@ -237,7 +238,7 @@ async function mockApplication(page: Page, requestedLayout='combined', lifecycle
     if (url.pathname === `/api/documents/${jobId}/files/${fileId}`) { controls.sourceReads++; return route.fulfill({ contentType: 'application/pdf', body: bytes }); }
     if (url.pathname === `/api/documents/${jobId}/project`) return route.fulfill({json:controls.uploadRequests.at(-1)?.project});
     if (url.pathname === '/api/gmail/status')return route.fulfill({json:{region:'phuket',expectedEmail:'ar@katathani.com',configured:true,connected:true,canRead:true,email:'ar@katathani.com'}});
-    if (url.pathname === '/api/email/open') {controls.emailOpens.push(request.postDataJSON());return route.fulfill({json:{id:'synthetic-draft',document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Synthetic message',body:'Synthetic only',exports:job.exports,attachments:[],revision:0,package_changed:false}});}
+    if (url.pathname === '/api/email/open') {controls.emailOpens.push(request.postDataJSON());return route.fulfill({json:{id:'synthetic-draft',document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:'billing',recipients:{to:[],cc:['ar@katathani.com'],bcc:[]},subject:'Synthetic message',body:'Synthetic only',exports:job.exports,attachments:[],revision:0,package_changed:false}});}
     if (url.pathname === `/api/documents/${jobId}/upload`) {
       if (url.searchParams.get('kind') === 'export') controls.exportUploads++;
       if (url.searchParams.get('kind') === 'project') controls.uploadRequests.push({ token, project: request.postDataJSON() });
@@ -252,7 +253,7 @@ async function mockApplication(page: Page, requestedLayout='combined', lifecycle
     }
     return route.fulfill({ status: 501, json: { error: 'unmocked_synthetic_test_api' } });
   });
-  await currentWorkspaceSession(page,user,'synthetic-token-old');
+  await currentWorkspaceSession(page,user,nativeExit?'e30.'+Buffer.from(JSON.stringify({sub:user.id,session_id:'00000000-0000-4000-8000-000000000099'})).toString('base64url')+'.synthetic':'synthetic-token-old');
   return controls;
 }
 
@@ -425,14 +426,11 @@ test('transient edits survive resize but cannot be saved as a project',async({pa
  await page.setViewportSize({width:1280,height:800});await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC TAB-ONLY EDIT');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
  await expect(page.getByRole('alertdialog',{name:'Unsaved PDF changes'})).toContainText('PDF edits only live in this tab');await page.getByRole('button',{name:'Discard changes and close',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation discarded',exact:true})).toBeVisible();
 });
-test('browser Back warns before discarding tab-only PDF edits',async({page})=>{
- await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,`/?documentJob=${jobId}`);
- // Give this isolated fixture the same same-document history shape as opening
- // an Account from Portfolio and replacing its URL with document preparation.
+test('intentional browser Back discards tab-only PDF edits without another confirmation',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,`/?documentJob=${jobId}`);
  await page.evaluate(()=>{const current=location.href;history.replaceState(null,'','/');history.pushState(null,'',current);});
- await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC KEEP ON BACK');
- const prompt=page.waitForEvent('dialog');await page.evaluate(()=>history.back());const dialog=await prompt;expect(dialog.message()).toContain('tab-only PDF edits');await dialog.dismiss();
- await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC KEEP ON BACK');await expect(page).toHaveURL(new RegExp('documentJob='+jobId));
+ await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC DISCARD ON EXIT');
+ const dialogs:string[]=[];page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});await page.evaluate(()=>history.back());await expect(page.getByRole('dialog',{name:'PDF Workspace',exact:true})).toHaveCount(0);expect(dialogs).toEqual([]);expect(controls.abandons).toBe(1);expect(controls.outboundRequests).toEqual([]);
 });
 
 test('a review in flight locks editing and keeps email closed until confirmed',async({page})=>{
@@ -506,4 +504,9 @@ for(const hotel of ['KAT','TSK'])test(hotel+' source text deletion and compact r
  await expect(page.getByRole('combobox',{name:'PDF page',exact:true}).locator('option')).toHaveCount(1);
  expect(controls.outboundRequests).toEqual([]);expect(controls.emailOpens).toEqual([]);
  await page.screenshot({path:'evidence/pdf-source-deletion-'+hotel.toLowerCase()+'-application-preview.png',animations:'disabled'});
+});
+for(const kind of ['maintained','legacy'])test(`single consumes ${kind} id-only terminal receipt without replacing full document state`,async({page})=>{
+ const controls=await mockApplication(page,'combined','transient'),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));let attempts=0;
+ await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({json:{job:{id:jobId},outcome:'protected',...kind==='maintained'?{preparationRetirement:{accepted:true}}:{},...kind==='maintained'?{currentJob:{...controls.job,preparation_retirement:{accepted:true}}}:{}}});});
+ await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation closed',exact:true})).toBeVisible();await expect(page.locator('.document-jobs')).toContainText('KAT · Synthetic Document Account · 1 selected invoices');await page.locator('.document-jobs > .back-bottom').click();await expect.poll(()=>new URL(page.url()).searchParams.has('documentJob')).toBe(false);expect(attempts).toBe(1);expect(errors).toEqual([]);
 });

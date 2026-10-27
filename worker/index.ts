@@ -123,7 +123,8 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
     let user = await auth.json() as { id?:string;email?: string; email_confirmed_at?: string; is_anonymous?: boolean };
     if (!user.id||!user.email||!user.email_confirmed_at||user.is_anonymous) return json({error:'forbidden'},403);
     if(env.GOOGLE_ONLY_AUTH==='true'&&!await googleSession(env,authorization,user.id))return json({error:'sign_in_again'},401);
-    env={...env,REQUEST_ACTOR:user.id};
+    let requestSession:string|undefined;try{const claims=JSON.parse(atob(authorization.slice(7).split('.')[1].replaceAll('-','+').replaceAll('_','/')));if(claims.sub===user.id&&typeof claims.session_id==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(claims.session_id))requestSession=claims.session_id;}catch{/* Marked Exit requires the verified token's session. */}
+    env={...env,REQUEST_ACTOR:user.id,REQUEST_SESSION:requestSession};
     if(accessRequest)return accessApi(request,env,user.id,user.email);
     let grant:AccessGrant|undefined;
     if(user.email.toLowerCase()!==administratorEmail){

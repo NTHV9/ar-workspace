@@ -19,3 +19,8 @@ export function emailDeliveryStatus(delivery:EmailDeliveryView):{title:string;de
  if(delivery.mode==='draft'&&delivery.state==='created')return {title:'Gmail draft — not sent',detail:'Saved in Gmail. No billing / collection history is recorded. Review & send now when ready.',tone:'draft'};
  return {title:'Send result unknown — do not resend',detail:'Sending has not been confirmed. Check sent status or review the existing sent message before taking another action.',tone:'attention',reason:reasons[delivery.reason??'']??'Your message and files are retained while the result is checked.'};
 }
+
+/** Retirement is durable for this exact delivery even when a late view omits it. */
+export function retainRetirementProjection<T extends {id:string;preparationRetirement?:{accepted:boolean}}>(selected:T,...observed:(T|null|undefined)[]):T{
+ return observed.some(value=>value?.id===selected.id&&value.preparationRetirement?.accepted)?{...selected,preparationRetirement:{accepted:true}}:selected;
+}

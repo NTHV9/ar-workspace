@@ -49,3 +49,11 @@ it('retains cross-origin and body budget protection',async()=>{
  const f=vi.fn();vi.stubGlobal('fetch',f);const r=await emailApi(new Request('https://app.test/api/email/combined',{method:'POST',headers:{Origin:'https://foreign.test','Content-Type':'application/json'},body:JSON.stringify(input)}),{},id);expect(r.status).toBe(403);
  expect((await emailApi(request({...input,padding:'x'.repeat(1048576)}),{},id)).status).toBe(413);expect(f).not.toHaveBeenCalled();
 });
+it('actual combined GET and existing-send replay preserve only safe retirement acceptance while history is pending',async()=>{
+ const calls:string[]=[];vi.stubGlobal('fetch',async(url:string)=>{calls.push(url);return Response.json({id,revision:1,members,content,mailbox:'phuket',delivery:{id:other,mode:'send',state:'awaiting_evidence',recorded:false,gmailAccepted:true,preparationRetirement:{accepted:true,privateProof:'must-not-leak'},snapshot:'must-not-leak'}});});
+ const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic'};
+ for(const req of [new Request('https://app.test/api/email/combined/'+id),request({revision:1,commandId:other,confirmed:true},'/api/email/combined/'+id+'/send')]){
+  const r=await emailApi(req,env,id);expect(r.status).toBe(200);const body=await r.json() as any,delivery=body.delivery??body;expect(delivery).toMatchObject({id:other,state:'awaiting_evidence',recorded:false,gmailAccepted:true,preparationRetirement:{accepted:true}});expect(delivery.preparationRetirement).toEqual({accepted:true});expect(JSON.stringify(body)).not.toContain('must-not-leak');
+ }
+ expect(calls).toHaveLength(2);expect(calls.every(url=>url.endsWith('/ar_combined_email_get'))).toBe(true);
+});

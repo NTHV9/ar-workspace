@@ -5,7 +5,7 @@ import {readManagedStorage,StorageWriteNotDispatched} from '../operations/storag
 import type {RefreshEnv} from '../refresh/backend';
 import {documentSource} from './source-policy';
 import {PDFDocument} from 'pdf-lib';
-import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput} from './jobs';
+import {createDocumentJob,documentJob,dispatchDocumentJob,reconcileDocumentStatus,uploadPrivate,uuidPattern,type DocumentCreateInput,type DocumentJob} from './jobs';
 import {isHotelId} from '../../src/domain/hotels';
 import {administratorEmail} from '../../src/access/model';
 import {boundedBody} from '../email/shared';
@@ -27,6 +27,10 @@ async function rpc(env:RefreshEnv,name:string,args:Record<string,unknown>){const
 export async function documentApi(request:Request,env:RefreshEnv,owner:string,headers:Record<string,string>,background?:{waitUntil(promise:Promise<unknown>):void}):Promise<Response>{
  try{
   if(!uuidPattern.test(owner)||!env.SUPABASE_URL||!env.SUPABASE_SECRET_KEY)return json({error:'document_service_unavailable'},503);
+  const marker=request.headers.get('X-AR-Exit-Command'),originSession=request.headers.get('X-AR-Exit-Origin-Session');
+  if(originSession!==null&&(!marker||!uuidPattern.test(originSession)))return json({error:'document_request_invalid'},400);
+  if(marker!==null&&(!uuidPattern.test(marker)||!env.REQUEST_ACTOR||!env.REQUEST_SESSION))return json({error:'document_request_invalid'},400);
+  const exitArgs=marker?{p_exit_command:marker,p_session:originSession??env.REQUEST_SESSION,p_current_session:env.REQUEST_SESSION}:{};
   const url=new URL(request.url);const origin=request.headers.get('Origin');if(request.method!=='GET'&&origin&&origin!==url.origin)return json({error:'forbidden'},403);
   const backup=/^\/api\/documents\/([0-9a-f-]{36})\/backup\/([0-9a-f-]{36})$/.exec(url.pathname);
   if(backup){
@@ -54,17 +58,36 @@ export async function documentApi(request:Request,env:RefreshEnv,owner:string,he
    input.statementSource=documentSource({content:String(input.content),statementSource:input.statementSource,ids:input.ids});
    return json(await createDocumentJob(env,owner,input as unknown as DocumentCreateInput),202);
   }
+  const command=/^\/api\/documents\/commands\/([0-9a-f-]{36})\/abandon$/.exec(url.pathname);
+  if(command){
+   if(request.method!=='POST')return json({error:'method_not_allowed'},405);
+   const input=await bodyJson(request,1024);
+   if(!uuidPattern.test(command[1])||!isHotelId(input.hotel)||typeof input.payloadDigest!=='string'||!/^[0-9a-f]{64}$/.test(input.payloadDigest)||Object.keys(input).some(k=>!['hotel','payloadDigest'].includes(k)))return json({error:'document_request_invalid'},400);
+   if(!env.REQUEST_ACTOR)return json({error:'document_forbidden'},403);
+   const resolved=await rpc(env,marker?'ar_document_command_exit':'ar_document_command_abandon',{...exitArgs,p_actor:env.REQUEST_ACTOR,p_owner:owner,p_command_key:command[1],p_hotel:input.hotel,p_payload_digest:input.payloadDigest}) as {job_id?:string;commandKey:string;hotel:string;payloadDigest:string;outcome:string};
+   if(resolved.commandKey!==command[1]||resolved.hotel!==input.hotel||resolved.payloadDigest!==input.payloadDigest)throw Error('document_command_receipt_invalid');
+   if(['discarded','pending','protected'].includes(resolved.outcome)){if(!resolved.job_id||!uuidPattern.test(resolved.job_id))throw Error('document_command_receipt_invalid');if(resolved.outcome==='discarded'&&background)try{background.waitUntil(cleanupTransientDocument(env,owner,resolved.job_id).catch(()=>{}));}catch{}return json(resolved);}
+   if(!resolved.job_id)return json(resolved);
+   if(!uuidPattern.test(resolved.job_id))throw Error('document_command_receipt_invalid');
+   // Separate RPC transaction: release command lock before existing global/actor abandon locks.
+   const result=await rpc(env,marker?'ar_document_exit':'ar_document_abandon',{...exitArgs,p_actor:marker?env.REQUEST_ACTOR:owner,...(marker?{p_owner:owner}:{}),p_job_id:resolved.job_id}) as {job:DocumentJob;outcome:string};
+   if(result.job?.id!==resolved.job_id)throw Error('document_command_receipt_invalid');
+   if(result.outcome==='discarded'&&background)try{background.waitUntil(cleanupTransientDocument(env,owner,resolved.job_id).catch(()=>{}));}catch{}
+   return json({...result,commandKey:command[1],hotel:input.hotel,payloadDigest:input.payloadDigest});
+  }
   const match=/^\/api\/documents\/([0-9a-f-]{36})(?:\/(project|save|upload|files|exports|dispatch|review|discard|abandon)(?:\/([0-9a-f-]+))?)?$/.exec(url.pathname);
   if(!match||!uuidPattern.test(match[1]))return json({error:'not_found'},404);
   const [,id,action,child]=match,job=await documentJob(env,id);if(!job)return json({error:'document_job_missing'},404);if(job.owner!==owner)return json({error:'forbidden'},403);
   if(!action&&request.method==='GET')return json(await reconcileDocumentStatus(env,job));
   if(['discard','abandon'].includes(action)&&request.method==='POST'){
-   const result=await rpc(env,action==='abandon'?'ar_document_abandon':'ar_document_discard',{p_actor:owner,p_job_id:id});
-   const closed=action==='discard'||(result as {outcome?:string}).outcome==='discarded';
+   const result=await rpc(env,action==='abandon'&&marker?'ar_document_exit':action==='abandon'?'ar_document_abandon':'ar_document_discard',{...(action==='abandon'?exitArgs:{}),p_actor:action==='abandon'&&marker?env.REQUEST_ACTOR:owner,...(action==='abandon'&&marker?{p_owner:owner}:{}),p_job_id:id});
+   const closed=action==='discard'||marker!==null&&(result as {preparationRetirement?:{accepted:boolean}}).preparationRetirement?.accepted===true||(result as {outcome?:string}).outcome==='discarded';
    if(closed&&background){try{background.waitUntil(cleanupTransientDocument(env,owner,id).catch(()=>{}));}catch{/* Scheduled maintenance retains the durable retry. */}}
-   return json(result);
+   // Original receipt is immutable; this separately named DTO is the verified current pre-read.
+   return action==='abandon'&&marker!==null?json({...result as Record<string,unknown>,currentJob:job}):json(result);
   }
-  if(job.closed_at)return json({error:'document_closed'},410);
+  if(job.preparation_retirement?.accepted)return json({error:'document_preparation_retired'},410);
+  if(job.bytes_released)return json({error:'document_bytes_released'},410);if(job.closed_at)return json({error:'document_closed'},410);
   if(job.discard_requested_at)return json({error:'document_discard_pending'},409);
   if(job.lifecycle==='transient'&&(['project','save'].includes(action)||action==='upload'&&url.searchParams.get('kind')==='project'))return json({error:'document_project_retired'},409);
   if(action==='review'&&request.method==='POST'){

@@ -47,9 +47,18 @@ export async function sweepTransientDocuments(env:RetentionProviderEnv){
   }
  }catch{/* Preserve unknown receipts; never re-upload or guess absence. */}
  await backendRpc(env,'ar_document_finalize_abandoned',{p_actor:actor,p_limit:10});
+ let retirementErrors=0;
+ if(!env.ACCEPTANCE)try{await backendRpc(env,'ar_preparation_retirement_maintain',{p_actor:actor,p_limit:10});}catch{retirementErrors++;}
  const rows=await backendRpc<{objectId:string;itemId:string|null}[]>(env,'ar_document_cleanup_candidates',{p_actor:actor,p_limit:10});
  if(!Array.isArray(rows)||rows.length>10)throw Error('retention_unavailable');
- return runTransientCleanupRows(env,actor,rows);
+ // The operator-approved cohort is finite (SQL caps its pinned inventory at
+ // 200). Drain each exact object once; blocked/uncertain work waits for the
+ // established next run, with no new schedule and no repeated provider command.
+ const approved=env.ACCEPTANCE?[]:await backendRpc<{objectId:string;itemId:string|null}[]>(env,'ar_pdf_byte_release_candidates',{p_actor:actor});
+ if(!Array.isArray(approved)||approved.length>200)throw Error('retention_unavailable');
+ let retired:{objectId:string;itemId:string|null}[]=[];
+ if(!env.ACCEPTANCE)try{retired=await backendRpc(env,'ar_preparation_retirement_candidates',{p_actor:actor});if(!Array.isArray(retired)||retired.length>10)throw Error('retention_unavailable');}catch{retired=[];retirementErrors++;}
+ const result=await runTransientCleanupRows(env,actor,[...new Map([...rows,...approved,...retired].map(row=>[row.objectId,row])).values()]);return {...result,errors:result.errors+retirementErrors};
 }
 
 /** Cleanup is bounded to this exact owned closed job; it never starts a global sweep. */

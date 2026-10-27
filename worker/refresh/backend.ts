@@ -9,6 +9,7 @@ export interface RefreshParams { accountBatchVersion?:2; invoiceTaxRulesProbe?:b
 export interface RefreshEnv extends OperaEnv,BudgetEnvironment,RetentionEnvironment {
   GOOGLE_ONLY_AUTH?:string;
   REQUEST_ACTOR?:string;
+  REQUEST_SESSION?:string;
   REQUEST_ACCESS?:import('../access/api').AccessGrant;
   SUPABASE_URL?:string; SUPABASE_SECRET_KEY?:string;
   AR_REFRESH?:{create(options:{id:string;params:RefreshParams}):Promise<unknown>;get(id:string):Promise<{status():Promise<{status?:string}>}>};

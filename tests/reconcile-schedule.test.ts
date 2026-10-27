@@ -31,7 +31,7 @@ function maintenanceHarness(failing: string[]=[]){
   if(name==='ar_period_summary_plan')return Response.json({actor:serviceActor,tasks:[]});
   if(name==='ar_mail_reconcile_request')return Response.json({id:'run',created:false,state:'complete'});
   if(name==='ar_financial_service_actor')return Response.json(serviceActor);
-  if(name==='ar_document_finalize_abandoned'||name==='ar_document_pending_uploads'||name==='ar_document_cleanup_candidates')return Response.json([]);
+  if(name==='ar_document_finalize_abandoned'||name==='ar_document_pending_uploads'||name==='ar_document_cleanup_candidates'||name==='ar_pdf_byte_release_candidates')return Response.json([]);
   if(name==='ar_financial_log_prune')return Response.json({status:'succeeded',deleted:1000,moreEligible:true,retentionMonths:1,checkedAt:'2026-09-15T09:00:00Z'});
   if(name==='ar_request_refresh')return Response.json({status:'succeeded',created:false});
   throw Error('Unexpected synthetic RPC');
@@ -60,6 +60,7 @@ it('keeps Gmail and document maintenance running when financial pruning fails',a
  expect(calls.filter(c=>c.name==='ar_financial_log_prune')).toHaveLength(1);
  expect(calls.some(c=>c.name==='ar_mail_reconcile_request')).toBe(true);
  expect(calls.some(c=>c.name==='ar_document_cleanup_candidates')).toBe(true);
+ expect(calls.some(c=>c.name==='ar_pdf_byte_release_candidates')).toBe(true);
 });
 
 it('financial log maintenance runs independently when Gmail and file cleanup are disabled',async()=>{

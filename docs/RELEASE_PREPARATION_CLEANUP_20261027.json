@@ -1,0 +1,69 @@
+{
+  "sourceCommit": "163e7484c54012a33ffc9ee57f79b5628b10ba03",
+  "predecessorSourceCommit": "95fd6b459faf195873cef819223f6a8bcfa5d9c2",
+  "workerVersion": "e30c9a07-89f7-4439-9f8c-ad1c7f8e9ce9",
+  "deploymentUrl": "https://ar-workspace.ar-c82.workers.dev",
+  "implemented": true,
+  "tested": true,
+  "deployed": true,
+  "enabled": true,
+  "qualification": {
+    "githubRun": "https://github.com/NTHV9/ar-workspace/actions/runs/40423147958",
+    "githubConclusion": "success",
+    "unitPasses": 4902,
+    "separatelyExecutedGatedSqlTests": 9,
+    "sourceMigrations": 149,
+    "rollbackFixtures": 45,
+    "browserPasses": { "smoke": 664, "performance": 3, "publication": 15 },
+    "finalReview": "ready",
+    "immutableArtifactFiles": 94,
+    "publicAssets": 90,
+    "liveRelatedAssetHashesMatched": 9,
+    "anonymousExitRoutesRejected": 2,
+    "anonymousMailRoutesRejected": 6,
+    "newPrivateTablesRlsEnabled": 11,
+    "publicServiceOnlyFunctionsVerified": 10,
+    "newAdvisorWarningsOrErrors": 0
+  },
+  "hostedMigrations": {
+    "historyRowsBefore": 160,
+    "historyRowsAfter": 163,
+    "applied": [
+      { "source": "20261026184003_ar_document_command_abandon.sql", "hostedVersion": "20261027002449" },
+      { "source": "20261026201149_ar_old_pdf_byte_release.sql", "hostedVersion": "20261027002503" },
+      { "source": "20261026215052_ar_live_preparation_byte_retirement.sql", "hostedVersion": "20261027002518" }
+    ],
+    "existingHistoryRewritten": false
+  },
+  "approvedOldFileCleanup": {
+    "preparations": 20,
+    "objects": 73,
+    "bytes": 19943743,
+    "previouslyDeletedObjects": 10,
+    "newlyDeletedObjects": 63,
+    "providerAcknowledgedAndAbsent": 73,
+    "stillPresent": 0,
+    "verifiedAtUtc": "2026-10-27T00:36:41Z",
+    "closedCohort": { "preparations": 4, "objects": 12, "bytes": 3724063 },
+    "separatelyApprovedExceptionCohort": { "preparations": 16, "objects": 61, "bytes": 16219680 },
+    "storageMetadataDeletedByRawSql": false,
+    "localCustomerPdfBackupsCreated": 0
+  },
+  "preserved": {
+    "actualMailAndBusinessHistory": true,
+    "oldMailStateGroupsUnchanged": true,
+    "sheetBillingAndFollowUp1To3Authority": true,
+    "employeeDateEditsAndDeletions": true,
+    "sheetModifiedTimesUnchangedAcrossCleanup": true,
+    "f5DoesNotRequestDiscard": true,
+    "tabSwitchDoesNotRequestDiscard": true,
+    "legacyBodylessExitResponseCompatibility": true,
+    "invoiceAndPdfEditorSourceUnchangedFromPredecessor": true,
+    "providerPlansSpendCapCredentialsWorkflowsAndCrons": true
+  },
+  "emailResends": 0,
+  "sheetWritesByCleanup": 0,
+  "gmailMessagesOrDraftsDeletedByCleanup": 0,
+  "newPaidResources": 0,
+  "privateCustomerIdentifiersIncluded": false
+}

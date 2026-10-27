@@ -1,3 +1,4 @@
+import {retireCompletedPreparation} from '../documents/completion-retirement';
 import {hotelMailbox,mailboxSender,frozenMailIdentity,type MailboxId} from '../../src/domain/mailboxes';
 import {signatureLogoFile} from './signature-logo';
 import {signatureWorkplace,parseSignatureProfile} from '../../src/email/signature';
@@ -18,7 +19,7 @@ import type {MailFile} from './mime';
 import {verifySentEvidence,verifyDraftEvidence,decodeUrl64,type ExpectedMail} from './sent-evidence';
 import {parseRecipients} from '../settings/validation';
 import {syntheticConversation,type ThreadProof} from './threads';
-export interface Delivery {id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;draft_send_claimed_at?:string|null;verified_sent_evidence?:{gmailId:string;sentAt:string;mailbox:MailboxId}|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string;signatureHotel?:string}};claimed?:boolean;error?:string}
+export interface Delivery {preparationRetirement?:{accepted:true};id:string;owner:string;draft_id:string|null;revision:number|null;mode:'send'|'draft'|'test';state:string;stage:string|null;stage_snapshot?:unknown;message_id:string;gmail_id:string|null;provider_receipt_id:string|null;gmail_draft_id:string|null;draft_send_claimed_at?:string|null;verified_sent_evidence?:{gmailId:string;sentAt:string;mailbox:MailboxId}|null;sent_at:string|null;reason:string|null;created_at:string;snapshot:{expected:ExpectedMail&{recipientHash?:string;supplementalSource?:TestSupplementals;replyToDeliveryId?:string;signatureHotel?:string}};claimed?:boolean;error?:string}
 const submittedSendReceipt=(d:Delivery)=>!!(d.provider_receipt_id&&/^[A-Za-z0-9_-]+$/.test(d.provider_receipt_id)&&(d.mode==='send'||d.mode==='draft'&&d.draft_send_claimed_at));
 const acknowledgedSend=(d:Delivery)=>d.state==='sent'||!!d.sent_at||submittedSendReceipt(d);
 function verifiedExternalSend(d:Delivery){
@@ -29,7 +30,7 @@ export const deliveryView=(d:Delivery)=>{
  const stage=isCollectionStageKey(d.stage)?d.stage:null;let stageLabel=stage?policyStageLabel(stage):null;
  if(stage&&d.stage_snapshot)try{const snapshot=parseStageSnapshot(d.stage_snapshot);if(snapshot.key===stage)stageLabel=snapshot.label;}catch{/* Keep the recorded stage key when its historical label cannot be verified. */}
  const verified=verifiedExternalSend(d);
- return {id:d.id,state:d.state,mode:d.mode,gmailAccepted:acknowledgedSend(d)||!!verified,sentAt:d.sent_at??verified?.sentAt??null,reason:d.reason,stage,stageLabel,recorded:d.state==='sent'&&d.mode!=='test'};
+ return {...(d.preparationRetirement?{preparationRetirement:d.preparationRetirement}:{}),id:d.id,state:d.state,mode:d.mode,gmailAccepted:acknowledgedSend(d)||!!verified,sentAt:d.sent_at??verified?.sentAt??null,reason:d.reason,stage,stageLabel,recorded:d.state==='sent'&&d.mode!=='test'};
 };
 async function record(env:EmailEnv,actor:string,d:Delivery,state:string,gmailId:string|null=null,draftId:string|null=null,reason:string|null=null){
  await emailRpc(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:state,p_gmail_id:gmailId,p_gmail_draft_id:draftId,p_reason:reason});
@@ -42,6 +43,7 @@ async function confirmAcknowledgedSend(env:EmailEnv,actor:string,d:Delivery,id:s
  const accepted={...d,provider_receipt_id:id,state:'awaiting_evidence'};
  try{
   if(persistReceipt&&!await emailRpc<boolean>(env,'ar_mail_record',{p_actor:actor,p_id:d.id,p_state:'awaiting_evidence',p_gmail_id:id,p_gmail_draft_id:null,p_reason:null}))throw Error('email_record_unavailable');
+  accepted.preparationRetirement=await retireCompletedPreparation(env,actor,d.id)??accepted.preparationRetirement;
   const confirmed=await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:d.id,p_gmail_id:id,p_sent_at:sentAt});
   if(confirmed.error||!['sent','review_required'].includes(String(confirmed.state)))throw Error('email_record_unavailable');
   if(confirmed.state==='review_required'){
@@ -166,7 +168,7 @@ export async function sendSignatureDiagnostic(env:EmailEnv,actor:string,id:strin
  return submit(env,actor,claim,raw,token);
 }
 export async function checkDelivery(env:EmailEnv,actor:string,id:string){
- const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d)throw Error('email_missing');if(d.state==='sent')return deliveryView(d);
+ const d=await emailRpc<Delivery|null>(env,'ar_mail_get',{p_actor:actor,p_id:id});if(!d)throw Error('email_missing');if(submittedSendReceipt(d)||verifiedExternalSend(d))d.preparationRetirement=await retireCompletedPreparation(env,actor,d.id)??d.preparationRetirement;if(d.state==='sent')return deliveryView(d);
  const identity=frozenMailIdentity(d.snapshot.expected);if(!await gmailCanRead(env,actor,identity.mailbox))throw Error('gmail_read_permission_required');const token=await gmailToken(env,actor,identity.mailbox),headers={Authorization:'Bearer '+token};
  // A durable provider receipt from our own successful send already proves the
  // submitted MIME was accepted. Retrying its history only needs Gmail's date,
@@ -241,6 +243,7 @@ export async function checkDelivery(env:EmailEnv,actor:string,id:string){
   // Preserve independently verified external Sent evidence before the business
   // transaction. This never upgrades a Draft-create receipt or skips verification.
   if(d.mode!=='test'&&!await emailRpc<boolean>(env,'ar_mail_record_verified_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt,p_expected:d.snapshot.expected}))throw Error('email_record_unavailable');
+  d.preparationRetirement=await retireCompletedPreparation(env,actor,d.id)??d.preparationRetirement;
   const confirmed=await emailRpc<Record<string,unknown>>(env,'ar_mail_confirm_sent',{p_actor:actor,p_id:id,p_gmail_id:messageId,p_sent_at:result.sentAt});
   if(confirmed.error||!['sent','review_required'].includes(String(confirmed.state)))throw Error('email_record_unavailable');
   if(confirmed.state==='review_required'){
