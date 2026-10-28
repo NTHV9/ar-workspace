@@ -7,6 +7,7 @@ import {trackerIdentityMatches} from './native';
 import {OperaError} from '../opera/client';
 import {syncMissingSentRows,type SentAppendInput,type SentAppendResult} from './append';
 import {syncCreditTerms} from './credit';
+import {validTrackerWriteDiagnostic,type TrackerWriteOutcome} from './write-diagnostics';
 
 type SyncPhase='provider_read'|'validate'|'snapshot_import'|'membership'|'credit'|'outbox'|'write_result'|'provider_write'|'finish';
 const syncErrorCodes=new Set([
@@ -33,8 +34,8 @@ export interface ProviderWrite {version:string;rowKey:string;expectedIdentity:Om
 export interface TrackerAdapter {
  appendSentRow?(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:SentAppendInput):Promise<SentAppendResult>;
  read(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<ProviderSnapshot>;
- write(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:ProviderWrite):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>;
- writeBatch?(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>;
+ write(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:ProviderWrite):Promise<TrackerWriteOutcome>;
+ writeBatch?(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly ProviderWrite[]):Promise<TrackerWriteOutcome>;
 }
 export const trackerFile=(env:TrackerEnv,region:RegionId)=>region==='phuket'?env.REPORT_SHEET_PHUKET_ID:env.REPORT_SHEET_KHAOLAK_ID;
 function normalizedRows(snapshot:ProviderSnapshot){
@@ -122,20 +123,28 @@ export async function syncTracker(env:TrackerEnv,actor:string,owner:string,regio
   }
   for(const item of eligible.filter(i=>contradictory.has(i.rowKey)))await record(item,'conflict');
   const attempted=eligible.filter(i=>!contradictory.has(i.rowKey)),inputs=[...groups.values()].filter(g=>!contradictory.has(g.rowKey));
+  const diagnose=async(result:TrackerWriteOutcome)=>{
+   if(region!=='phuket'||result.status==='written'||!validTrackerWriteDiagnostic(result.diagnostic))return;
+   const d=result.diagnostic;
+   // Attribution must never turn a failed diagnostic RPC into another provider upload.
+   try{await backendRpc(env,'ar_tracker_write_diagnostic',{p_actor:actor,p_region:region,p_lock:lock,p_ids:attempted.map(i=>i.id),p_code:d.code,p_mutation_started:d.mutationStarted,p_upstream_status:d.upstreamStatus??null});}catch{/* Preserve the existing durable queue disposition even if attribution is unavailable. */}
+  };
   // Durably freeze every native intent before the first provider mutation. A
   // worker termination/result-RPC failure must not turn it into another POST.
   if(region==='khao-lak'&&inputs.length)for(const item of attempted){const intent=await record(item,'uncertain');if(intent.state!=='uncertain')throw Error('tracker_intent_not_confirmed');}
   if(inputs.length&&adapter.writeBatch){
    phase='provider_write';
-   let result:{status:'written'|'conflict'|'uncertain';version?:string};
-   try{result=await adapter.writeBatch(env,owner,region,claim.fileId,inputs);}catch{result={status:'uncertain'};}
+   let result:TrackerWriteOutcome;
+   try{result=await adapter.writeBatch(env,owner,region,claim.fileId,inputs);}catch{result={status:'uncertain',...(region==='phuket'?{diagnostic:{code:'adapter_exception_unknown' as const,mutationStarted:null}}:{})};}
    if(result.version)version=result.version;
    for(const item of attempted)await record(item,result.status);
+   await diagnose(result);
   }else if(inputs.length===1){
    phase='provider_write';
-   let result:{status:'written'|'conflict'|'uncertain';version?:string};
-   try{result=await adapter.write(env,owner,region,claim.fileId,{...inputs[0],version});}catch{result={status:'uncertain'};}
+   let result:TrackerWriteOutcome;
+   try{result=await adapter.write(env,owner,region,claim.fileId,{...inputs[0],version});}catch{result={status:'uncertain',...(region==='phuket'?{diagnostic:{code:'adapter_exception_unknown' as const,mutationStarted:null}}:{})};}
    if(result.version)version=result.version;for(const item of attempted)await record(item,result.status);
+   await diagnose(result);
   }else for(const item of attempted)await record(item,'held');
   phase='finish';await backendRpc(env,'ar_tracker_finish',{p_actor:actor,p_region:region,p_lock:lock,p_version:version,p_error:null});return {status:'checked'};
  }catch(error){

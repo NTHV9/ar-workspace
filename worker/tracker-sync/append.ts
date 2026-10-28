@@ -57,7 +57,11 @@ export async function syncMissingSentRows(env:TrackerEnv,actor:string,owner:stri
   try{result=await adapter.appendSentRow(env,owner,region,fileId,{plan:job.plan,identity,priorUncertain});}catch{result={status:'uncertain',mutationStarted:true};}
   const state=result.status==='written'?'written':result.status==='exists'?'hold':result.status==='conflict'?'hold':!priorUncertain&&result.retrySafe&&(result.mutationStarted===false||[412,429].includes(result.rejectedStatus??0))?'pending':'uncertain';
   await backendRpc(env,'ar_tracker_append_finish',{p_actor:actor,p_region:region,p_lock:lock,p_id:job.id,p_state:state,p_receipt:{planHash:job.planHash,metadataId:job.plan.metadataId,rowKey:job.plan.rowKey,providerVersion:result.version??job.plan.providerVersion,mutationStarted:result.mutationStarted===true,...(result.rejectedStatus!==undefined?{rejectedStatus:result.rejectedStatus}:{}),...(result.status==='written'?{matches:result.identityMatched===true}:{}),...(result.status==='exists'?{existingIdentity:true}:{})}});
-  if(result.status==='written'||result.status==='exists'){changed=true;current=await adapter.read(env,owner,region,fileId);}else deferred=true;
+  const mayHaveChanged=result.status==='written'||result.status==='exists'||result.mutationStarted===true||result.version!==undefined&&result.version!==current.version;
+  if(result.status!=='written'&&result.status!=='exists')deferred=true;
+  // A lost append response may still have committed. Never reuse its old ETag
+  // for later appends or date writes; a failed reread stops this sync safely.
+  if(mayHaveChanged){changed=true;current=await adapter.read(env,owner,region,fileId);}
  }
  return {changed,deferred};
 }

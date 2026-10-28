@@ -7,6 +7,7 @@ import {prepareTrackerWorkbook,readTrackerSentRowContext,appendTrackerSentRows,v
 import {readNativeTracker,readNativeTrackerChangeHint,writeNativeTrackerBatch} from './native';
 import {appendNativeTracker,readNativeAppendSheetId} from './append-native';
 import type {SentAppendInput,SentAppendResult} from './append';
+import type {TrackerWriteDiagnostic,TrackerWriteOutcome} from './write-diagnostics';
 
 const XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',NATIVE='application/vnd.google-apps.spreadsheet';
 const targets={phuket:{name:'Master_KAT_AR_Tracker_Phuket.xlsx',mime:XLSX},'khao-lak':{name:'Master_SAN_AR_Tracker',mime:NATIVE}} as const;
@@ -72,25 +73,32 @@ export async function readTrackerFileVersion(env:TrackerEnv,owner:string,region:
 /** Version comparisons are observations, never atomic authorization. v3 If-Match
  * was ignored by the live synthetic probe; native conditional writes remain
  * unproven. Preserve a visible conflict hold rather than overwrite a collaborator. */
-export async function writeTrackerCells(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:ProviderWrite):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
+export async function writeTrackerCells(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:ProviderWrite):Promise<TrackerWriteOutcome>{
  return writeTrackerBatch(env,owner,region,fileId,[input]);
 }
-export async function writeTrackerBatch(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
+export async function writeTrackerBatch(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly ProviderWrite[]):Promise<TrackerWriteOutcome>{
  target(env,region,fileId);
  if(region==='khao-lak'&&env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true'){const token=await access(env,owner),meta=await metadata(token,region,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict'};return writeNativeTrackerBatch(token,fileId,inputs);}
- if(region!=='phuket'||(env as CasEnv).TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict'};
+ if(region!=='phuket')return {status:'conflict'};
+ const outcome=(status:'conflict'|'uncertain',code:TrackerWriteDiagnostic['code'],mutationStarted:boolean,upstreamStatus?:number,version?:string):TrackerWriteOutcome=>({status,...version!==undefined?{version}:{},diagnostic:{code,mutationStarted,...upstreamStatus!==undefined?{upstreamStatus}:{}}});
+ if((env as CasEnv).TRACKER_BLOB_CAS_ENABLED!=='true')return outcome('conflict','cas_disabled',false);
  if(!inputs.length||inputs.length>100||inputs.reduce((sum,input)=>sum+input.changes.length,0)>300)throw Error('tracker_batch_limit');
  if(inputs.some(input=>!input.changes.length||input.changes.some(c=>c.field==='S'?c.expected!==null||!validTrackerCredit(c.value):!['R','U','V','W'].includes(c.field)||typeof c.value!=='string')))throw Error('tracker_patch_forbidden');
  const token=await access(env,owner),current=await readStable(token,region,fileId);
- if(!current.etag||inputs.some(input=>input.version!==current.version)||current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true)return {status:'conflict'};
+ if(!current.etag)return outcome('conflict','missing_etag',false);
+ if(current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true)return outcome('conflict','not_editable',false);
+ if(inputs.some(input=>input.version!==current.version))return outcome('conflict','snapshot_changed',false);
  let bytes:Uint8Array;
- try{bytes=current.prepared.patchBatch(inputs.map(input=>({rowKey:input.rowKey,expectedIdentity:{...input.expectedIdentity,folioNo:input.expectedIdentity.folio},changes:input.changes as TrackerCellChange[]})));}catch{return {status:'conflict'};}
+ try{bytes=current.prepared.patchBatch(inputs.map(input=>({rowKey:input.rowKey,expectedIdentity:{...input.expectedIdentity,folioNo:input.expectedIdentity.folio},changes:input.changes as TrackerCellChange[]})));}catch(error){
+  const reasons=new Map<string,TrackerWriteDiagnostic['code']>([['tracker_identity_conflict','row_identity_changed'],['tracker_cell_conflict','cell_preimage_changed'],['tracker_formula_or_missing_cell','formula_or_missing_cell'],['tracker_cell_metadata_unsupported','cell_metadata_unsupported'],['tracker_signed_workbook_unsupported','signed_workbook']]);
+  return outcome('conflict',reasons.get(error instanceof Error?error.message:'')??'patch_rejected',false);
+ }
  let response:Response;
- try{response=await v2(token,fileId,'PUT',{headers:{'If-Match':current.etag,'Content-Type':XLSX},body:bytes as BodyInit});}catch{return {status:'uncertain'};}
- if(response.status===412){await response.body?.cancel();return {status:'conflict'};}
- if(!response.ok){await response.body?.cancel();return {status:'uncertain'};}await response.body?.cancel();
- try{const confirmed=await readStable(token,region,fileId);if(await digest(confirmed.bytes)!==await digest(bytes))return {status:'conflict',version:confirmed.version};return {status:'written',version:confirmed.version};}
- catch{return {status:'uncertain'};}
+ try{response=await v2(token,fileId,'PUT',{headers:{'If-Match':current.etag,'Content-Type':XLSX},body:bytes as BodyInit});}catch{return outcome('uncertain','upload_transport_unknown',true);}
+ if(response.status===412){await response.body?.cancel();return outcome('conflict','cas_412',true,412);}
+ if(!response.ok){await response.body?.cancel();return outcome('uncertain','upload_http_unknown',true,response.status);}await response.body?.cancel();
+ try{const confirmed=await readStable(token,region,fileId);if(await digest(confirmed.bytes)!==await digest(bytes))return outcome('conflict','readback_changed',true,undefined,confirmed.version);return {status:'written',version:confirmed.version};}
+ catch{return outcome('uncertain','readback_unavailable',true);}
 }
 /** Appending is separate from date writeback: an existing identity is never
  * modified, including a deliberately blank date or a changed staff formula. */
