@@ -34,7 +34,7 @@ it('reads a bound snapshot through existing grant and exposes proven blob CAS on
 });
 it.each([{readOnly:true},{contentReadOnly:true}])('never advertises proven write capability or uploads when provider rights are limited: %j',async rights=>{
  const state=fake(rights);const snapshot=await readTrackerWorkbook(env,owner,'phuket',fileId);expect(snapshot.capabilities.conditionalWrite).toBe('unverified');
- expect(await writeTrackerCells(env,owner,'phuket',fileId,input(snapshot.version))).toEqual({status:'conflict'});expect(state.writes).toHaveLength(0);
+ expect(await writeTrackerCells(env,owner,'phuket',fileId,input(snapshot.version))).toEqual({status:'conflict',diagnostic:{code:'not_editable',mutationStarted:false}});expect(state.writes).toHaveLength(0);
 });
 it('reads only the original file version without downloading or rewriting spreadsheet content',async()=>{
  const state=fake();expect(await readTrackerFileVersion(env,owner,'phuket',fileId)).toBe('1');
@@ -50,19 +50,19 @@ it('uses one true conditional v2 upload and exact whole-byte readback before ack
  const upload=state.fn.mock.calls.find(([url])=>String(url).includes('/upload/drive/v2/'))!;expect(upload[1]?.redirect).toBe('manual');expect(new Headers(upload[1]?.headers).get('Authorization')).toBe('Bearer synthetic-token');
 });
 it('stale or missing strong ETag and row-identity changes prevent any upload',async()=>{
- const state=fake();expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"older-tag"'))).toEqual({status:'conflict'});expect(state.writes).toHaveLength(0);
- fake({missingTag:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict'});
- const wrong=input('v2:"synthetic-tag-1"');wrong.expectedIdentity.invoiceNo='17';const guarded=fake();expect(await writeTrackerCells(env,owner,'phuket',fileId,wrong)).toEqual({status:'conflict'});expect(guarded.writes).toHaveLength(0);
+ const state=fake();expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"older-tag"'))).toEqual({status:'conflict',diagnostic:{code:'snapshot_changed',mutationStarted:false}});expect(state.writes).toHaveLength(0);
+ fake({missingTag:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict',diagnostic:{code:'missing_etag',mutationStarted:false}});
+ const wrong=input('v2:"synthetic-tag-1"');wrong.expectedIdentity.invoiceNo='17';const guarded=fake();expect(await writeTrackerCells(env,owner,'phuket',fileId,wrong)).toEqual({status:'conflict',diagnostic:{code:'row_identity_changed',mutationStarted:false}});expect(guarded.writes).toHaveLength(0);
 });
 it('412 holds a competitor and upload timeouts never retry or restore',async()=>{
- const stale=fake({staleOnUpload:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict'});expect(stale.writes).toHaveLength(1);expect(parseTrackerWorkbook(stale.bytes(),'phuket').rows[0].fields.R).toBeNull();
- const timeout=fake({responseLost:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'uncertain'});expect(timeout.writes).toHaveLength(1);
+ const stale=fake({staleOnUpload:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict',diagnostic:{code:'cas_412',mutationStarted:true,upstreamStatus:412}});expect(stale.writes).toHaveLength(1);expect(parseTrackerWorkbook(stale.bytes(),'phuket').rows[0].fields.R).toBeNull();
+ const timeout=fake({responseLost:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'uncertain',diagnostic:{code:'upload_transport_unknown',mutationStarted:true}});expect(timeout.writes).toHaveLength(1);
 });
 it('post-upload collaborator changes are not undone or falsely acknowledged',async()=>{
- const state=fake({changedAfterUpload:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict',version:'v2:"synthetic-tag-2"'});expect(state.writes).toHaveLength(1);expect(parseTrackerWorkbook(state.bytes(),'phuket').rows[0].fields.U).toBe('2026-11-11');
+ const state=fake({changedAfterUpload:true});expect(await writeTrackerCells(env,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict',version:'v2:"synthetic-tag-2"',diagnostic:{code:'readback_changed',mutationStarted:true}});expect(state.writes).toHaveLength(1);expect(parseTrackerWorkbook(state.bytes(),'phuket').rows[0].fields.U).toBe('2026-11-11');
 });
 it('unproven native writes and disabled blob writes are held without obtaining a grant or touching a provider',async()=>{
- const state=fake();expect(await writeTrackerCells(env,owner,'khao-lak',nativeId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict'});expect(await writeTrackerCells({...env,TRACKER_BLOB_CAS_ENABLED:'false'} as TrackerEnv,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict'});expect(state.fn).not.toHaveBeenCalled();
+ const state=fake();expect(await writeTrackerCells(env,owner,'khao-lak',nativeId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict'});expect(await writeTrackerCells({...env,TRACKER_BLOB_CAS_ENABLED:'false'} as TrackerEnv,owner,'phuket',fileId,input('v2:"synthetic-tag-1"'))).toEqual({status:'conflict',diagnostic:{code:'cas_disabled',mutationStarted:false}});expect(state.fn).not.toHaveBeenCalled();
 });
 it('metadata/content churn is bounded and file-scope denial asks for authorization',async()=>{
  const churn=fake({churn:true});await expect(readTrackerWorkbook(env,owner,'phuket',fileId)).rejects.toThrow('tracker_snapshot_changed');expect(churn.writes).toHaveLength(0);
@@ -100,4 +100,22 @@ it('validates every batch row before publishing and applies stale/uncertain outc
   if(mode==='invalid')inputs[1].expectedIdentity.invoiceNo='WRONG';
   expect((await writeTrackerBatch(env,owner,'phuket',fileId,inputs)).status).toBe(mode==='timeout'?'uncertain':'conflict');expect(state.writes).toHaveLength(mode==='invalid'?0:1);
  }
+});
+
+it.each([
+ {kind:'snapshot',options:{},code:'snapshot_changed',status:'conflict',mutationStarted:false},
+ {kind:'etag',options:{missingTag:true},code:'missing_etag',status:'conflict',mutationStarted:false},
+ {kind:'rights',options:{readOnly:true},code:'not_editable',status:'conflict',mutationStarted:false},
+ {kind:'identity',options:{},code:'row_identity_changed',status:'conflict',mutationStarted:false},
+ {kind:'preimage',options:{},code:'cell_preimage_changed',status:'conflict',mutationStarted:false},
+ {kind:'412',options:{staleOnUpload:true},code:'cas_412',status:'conflict',mutationStarted:true},
+ {kind:'timeout',options:{responseLost:true},code:'upload_transport_unknown',status:'uncertain',mutationStarted:true},
+ {kind:'readback',options:{changedAfterUpload:true},code:'readback_changed',status:'conflict',mutationStarted:true},
+])('attributes $kind without leaking provider values into diagnostic metadata',async test=>{
+ fake(test.options);const write=input(test.kind==='snapshot'?'v2:"SYNTHETIC-PRIVATE-VERSION"':'v2:"synthetic-tag-1"');
+ if(test.kind==='identity')write.expectedIdentity.invoiceNo='SYNTHETIC-PRIVATE-INVOICE';
+ if(test.kind==='preimage')write.changes[0].expected='2026-09-01';
+ const result=await writeTrackerCells(env,owner,'phuket',fileId,write);
+ expect(result).toMatchObject({status:test.status,diagnostic:{code:test.code,mutationStarted:test.mutationStarted}});
+ const diagnostic=Reflect.get(result,'diagnostic');expect(JSON.stringify(diagnostic)).not.toMatch(/SYNTHETIC-PRIVATE|synthetic-token|SyntheticOriginalTracker|synthetic-tag/);
 });

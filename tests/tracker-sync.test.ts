@@ -98,6 +98,41 @@ it.each(['conflict','uncertain'] as const)('holds every attempted item after one
  const p=adapter();p.read=vi.fn(async()=>({...structuredClone(snapshot),capabilities:{conditionalWrite:'proven' as const}}));p.writeBatch=vi.fn(async()=>({status:state}));
  await syncTracker(env,actor,actor,'phuket',p);expect(p.writeBatch).toHaveBeenCalledTimes(1);expect(p.write).not.toHaveBeenCalled();expect(calls.filter(c=>c.name==='ar_tracker_write_result').map(c=>c.body.p_state)).toEqual([state,state]);
 });
+it('records bounded failure attribution after the durable outcome, without provider values',async()=>{
+ const calls=database([{id:'q',rowKey:'opaque-key',field:'U',value:'2026-09-02',expected:null,state:'pending'}]);const p=adapter();
+ p.read=vi.fn(async()=>({...structuredClone(snapshot),capabilities:{conditionalWrite:'proven' as const}}));
+ p.writeBatch=vi.fn(async()=>({status:'conflict' as const,diagnostic:{code:'cas_412' as const,mutationStarted:true,upstreamStatus:412}}));
+ await syncTracker(env,actor,actor,'phuket',p);
+ const diagnostic=calls.find(c=>c.name==='ar_tracker_write_diagnostic');expect(diagnostic?.body).toMatchObject({p_actor:actor,p_region:'phuket',p_ids:['q'],p_code:'cas_412',p_mutation_started:true,p_upstream_status:412});
+ expect(calls.indexOf(diagnostic!)).toBeGreaterThan(calls.findIndex(c=>c.name==='ar_tracker_write_result'));
+ expect(JSON.stringify(diagnostic?.body)).not.toContain('opaque-key');expect(p.writeBatch).toHaveBeenCalledOnce();
+});
+it('an adapter exception after possible publication records mutation uncertainty rather than a false preflight claim',async()=>{
+ const calls=database([{id:'q',rowKey:'opaque-key',field:'U',value:'2026-09-02',expected:null,state:'pending'}]);const p=adapter();let mutationStarted=false;
+ p.read=vi.fn(async()=>({...structuredClone(snapshot),capabilities:{conditionalWrite:'proven' as const}}));
+ p.writeBatch=vi.fn(async()=>{mutationStarted=true;throw Error('SYNTHETIC PRIVATE failure after publication');});
+ await syncTracker(env,actor,actor,'phuket',p);expect(mutationStarted).toBe(true);
+ expect(calls.find(c=>c.name==='ar_tracker_write_diagnostic')?.body).toMatchObject({p_code:'adapter_exception_unknown',p_mutation_started:null});
+ expect(calls.find(c=>c.name==='ar_tracker_write_result')?.body.p_state).toBe('uncertain');expect(p.writeBatch).toHaveBeenCalledOnce();
+});
+it.each([
+ {code:'SYNTHETIC PRIVATE raw provider body',mutationStarted:false},
+ {code:'cas_412',mutationStarted:'false'},
+ {code:'cas_412',mutationStarted:true,upstreamStatus:999},
+ {code:'cas_412',mutationStarted:true,providerToken:'SYNTHETIC PRIVATE token'},
+])('does not transmit malformed diagnostic metadata (%j)',async diagnostic=>{
+ const calls=database([{id:'q',rowKey:'opaque-key',field:'U',value:'2026-09-02',expected:null,state:'pending'}]);const p=adapter();
+ p.read=vi.fn(async()=>({...structuredClone(snapshot),capabilities:{conditionalWrite:'proven' as const}}));
+ p.writeBatch=vi.fn(async()=>{const result={status:'conflict' as const};Reflect.set(result,'diagnostic',diagnostic);return result;});
+ await syncTracker(env,actor,actor,'phuket',p);expect(calls.some(c=>c.name==='ar_tracker_write_diagnostic')).toBe(false);expect(calls.find(c=>c.name==='ar_tracker_write_result')?.body.p_state).toBe('conflict');
+});
+it('a failed diagnostic record does not block the existing uncertain receipt or cause another upload',async()=>{
+ const calls=database([{id:'q',rowKey:'opaque-key',field:'U',value:'2026-09-02',expected:null,state:'pending'}]),baseFetch=globalThis.fetch;
+ vi.stubGlobal('fetch',async(...args:Parameters<typeof fetch>)=>{if(String(args[0]).endsWith('ar_tracker_write_diagnostic'))throw Error('SYNTHETIC PRIVATE diagnostic transport');return baseFetch(...args);});
+ const p=adapter();p.read=vi.fn(async()=>({...structuredClone(snapshot),capabilities:{conditionalWrite:'proven' as const}}));
+ p.writeBatch=vi.fn(async()=>({status:'uncertain' as const,diagnostic:{code:'upload_transport_unknown' as const,mutationStarted:true}}));
+ await syncTracker(env,actor,actor,'phuket',p);expect(calls.find(c=>c.name==='ar_tracker_write_result')?.body.p_state).toBe('uncertain');expect(p.writeBatch).toHaveBeenCalledOnce();
+});
 it('does not treat duplicate keys or failed imports as a successful snapshot',async()=>{
  const calls=database(),p=adapter();p.read=vi.fn(async()=>({...snapshot,rows:[...snapshot.rows,...snapshot.rows]}));
  await expect(syncTracker(env,actor,actor,'phuket',p)).rejects.toThrow('tracker_schema_unverified');expect(calls.some(c=>c.name==='ar_tracker_snapshot')).toBe(false);expect(calls.at(-1)?.body.p_error).toBe('tracker_unavailable');
