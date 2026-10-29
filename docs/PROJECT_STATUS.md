@@ -4907,3 +4907,11 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - Not deployed/enabled: production unchanged. Five source/Non-VAT findings and
   remaining native references still prevent claiming complete parity. OPERA browser
   control attachment currently times out; local qualification continues.
+
+
+## 2026-10-29 - Workflow retention implementation (not deployed yet)
+
+- User approved success retention 1 day/error retention 7 days and source-qualified cleanup of old terminal Workflow instances. All four existing bindings now explicitly encode this policy; no change to resources, schedules, concurrency or global observability.
+- Added a tested reconciliation-only fence for old document dispatch before provider history can expire. Exited/released preparations never dispatch; active provider instances continue on their original queue. Frozen/uncertain bytes, lifecycle retirement, mail commands and Sent facts are preserved.
+- Added a private dry-run/exact-ID operator utility with complete pagination, provider identity/version/status/end-time revalidation, <=5-minute source evidence, pre-command attempt receipts and no automatic retry after uncertain deletion. Legacy opaque IDs are held, not deleted. Source evidence is SELECT-only and independently reviewed.
+- Focused qualification: 22 tests passed; initial 4,949-unit suite passed before the additional opaque-ID regression; final full suite underway. Typecheck/build passed before that small inventory-only refinement. Full GitHub verification, production setting changes and exact cleanup remain pending. No production mutation yet.

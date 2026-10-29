@@ -18,12 +18,12 @@ it('uses post-status state when a pending file was claimed during the lookup',as
 });
 it('new document jobs use dedicated capacity even when refresh capacity is occupied',async()=>{
  const refresh={create:vi.fn(),get:vi.fn()},documents={create:vi.fn().mockResolvedValue({}),get:vi.fn(async()=>({status:async()=>({status:'queued'})}))};
- const result=await dispatchDocumentJob({AR_REFRESH:refresh,AR_DOCUMENTS:documents},{...job,execution_queue:'documents'});
+ const result=await dispatchDocumentJob({AR_REFRESH:refresh,AR_DOCUMENTS:documents},{...job,execution_queue:'documents',created_at:new Date().toISOString()});
  expect(result.execution_queue).toBe('documents');expect(documents.create).toHaveBeenCalledWith({id:job.id,params:{runId:job.id,hotel:'KAT',documentJob:true}});expect(refresh.create).not.toHaveBeenCalled();expect(refresh.get).not.toHaveBeenCalled();
 });
 it('missing document binding never falls back to a different queue and risks a second print',async()=>{
  const refresh={create:vi.fn(),get:vi.fn()};await expect(dispatchDocumentJob({AR_REFRESH:refresh},{...job,execution_queue:'documents'})).rejects.toThrow('document_dispatch_unavailable');expect(refresh.create).not.toHaveBeenCalled();
 });
 it('a historical request stays on its original queue after deployment',async()=>{
- const refresh={create:vi.fn().mockResolvedValue({}),get:vi.fn(async()=>({status:async()=>({status:'running'})}))},documents={create:vi.fn(),get:vi.fn()};await dispatchDocumentJob({AR_REFRESH:refresh,AR_DOCUMENTS:documents},{...job,execution_queue:'refresh'});expect(refresh.create).toHaveBeenCalledOnce();expect(documents.create).not.toHaveBeenCalled();
+ const refresh={create:vi.fn().mockResolvedValue({}),get:vi.fn(async()=>({status:async()=>({status:'running'})}))},documents={create:vi.fn(),get:vi.fn()};await dispatchDocumentJob({AR_REFRESH:refresh,AR_DOCUMENTS:documents},{...job,execution_queue:'refresh'});expect(refresh.create).not.toHaveBeenCalled();expect(refresh.get).toHaveBeenCalledWith(job.id);expect(documents.create).not.toHaveBeenCalled();
 });

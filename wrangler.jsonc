@@ -8,7 +8,7 @@
   "preview_urls": false,
   "limits": {"subrequests":50000},
   "triggers": { "crons": ["0 0,12 * * *", "*/15 * * * *", "0,5,10,15,20,25,30,35,40,45,50,55 * * * *"] },
-  "workflows": [{"name":"ar-workspace-tracker","binding":"AR_TRACKER","class_name":"ArTrackerWorkflow","concurrency":{"limit":2}},{"name":"ar-workspace-documents","binding":"AR_DOCUMENTS","class_name":"ArDocumentWorkflow","concurrency":{"limit":2}},{ "name": "ar-workspace-refresh", "binding": "AR_REFRESH", "class_name": "ArRefreshWorkflow", "concurrency": { "limit": 2 } }, {"name":"ar-workspace-financial","binding":"AR_FINANCIAL","class_name":"ArFinancialWorkflow","concurrency":{"limit":2}}],
+  "workflows": [{"name":"ar-workspace-tracker","binding":"AR_TRACKER","class_name":"ArTrackerWorkflow","concurrency":{"limit":2},"default_retention":{"success_retention":"1 day","error_retention":"7 days"}},{"name":"ar-workspace-documents","binding":"AR_DOCUMENTS","class_name":"ArDocumentWorkflow","concurrency":{"limit":2},"default_retention":{"success_retention":"1 day","error_retention":"7 days"}},{"name":"ar-workspace-refresh","binding":"AR_REFRESH","class_name":"ArRefreshWorkflow","concurrency":{"limit":2},"default_retention":{"success_retention":"1 day","error_retention":"7 days"}},{"name":"ar-workspace-financial","binding":"AR_FINANCIAL","class_name":"ArFinancialWorkflow","concurrency":{"limit":2},"default_retention":{"success_retention":"1 day","error_retention":"7 days"}}],
   "assets": { "directory": "dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "vars": {
     "OPERATIONS_BUDGET_ENABLED": "true",
