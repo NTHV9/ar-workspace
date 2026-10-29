@@ -1,4 +1,5 @@
 import {cleanupTransientDocument} from '../operations/retention-sweep';
+import {canCreateDocumentWorkflow} from '../operations/workflow-retention';
 import {assertWritesEnabled} from '../operations/write-hold';
 import {writeManagedStorage} from '../operations/storage';
 import {workspaceStatement} from '../statement/generate';
@@ -25,8 +26,12 @@ export async function reconcileDocumentStatus(env:RefreshEnv,job:DocumentJob){
  return (await documentJob(env,job.id))??job;
 }
 export async function dispatchDocumentJob(env:RefreshEnv,job:DocumentJob){
+ if(job.closed_at||job.discard_requested_at||job.bytes_released||job.preparation_retirement?.accepted)return reconcileDocumentStatus(env,job);
  if(!job.files.some(f=>['pending','generating'].includes(f.state)))return job;
  const workflow=documentWorkflow(env,job);if(!workflow)throw new Error('document_dispatch_unavailable');
+ // Expired provider IDs must never turn an old preparation into a new rendering.
+ // Status failures retain unresolved files; active instances continue on their original queue.
+ if(!canCreateDocumentWorkflow(job.created_at))return reconcileDocumentStatus(env,job);
  if(job.files.some(f=>['pending','generating'].includes(f.state))){
   try{await workflow.create({id:job.id,params:{runId:job.id,hotel:job.hotel,documentJob:true}});}
   catch{try{await(await workflow.get(job.id)).status();}catch{throw new Error('document_dispatch_unavailable');}}
