@@ -23,3 +23,7 @@ User-authorized policy: successful Cloudflare Workflow state lasts 1 day; errore
 ## Review focus
 
 Exact 24h/7d completion boundaries; active/unknown/invalid/future states; stale/malformed source proof; cross-workflow identity and scheduled companion mapping; duplicate/truncated pagination; lost-delete response must not restart or send; expired document IDs cannot create; fresh/active jobs and frozen ready/uncertain bytes stay unchanged.
+
+## Review correction
+
+Closed/retired dispatch is reconciliation-only rather than a bare return. This preserves safe known-terminal classification for a fresh exited job while still never creating, rendering or sending. Existing unknown generation/missing-object byte-retirement holds remain unchanged; this release does not claim they are resolved. Added regression observed red, then green. The first qualified CI run passed, but final source is requalified after this correction.

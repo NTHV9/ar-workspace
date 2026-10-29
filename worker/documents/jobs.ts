@@ -26,7 +26,7 @@ export async function reconcileDocumentStatus(env:RefreshEnv,job:DocumentJob){
  return (await documentJob(env,job.id))??job;
 }
 export async function dispatchDocumentJob(env:RefreshEnv,job:DocumentJob){
- if(job.closed_at||job.discard_requested_at||job.bytes_released||job.preparation_retirement?.accepted)return job;
+ if(job.closed_at||job.discard_requested_at||job.bytes_released||job.preparation_retirement?.accepted)return reconcileDocumentStatus(env,job);
  if(!job.files.some(f=>['pending','generating'].includes(f.state)))return job;
  const workflow=documentWorkflow(env,job);if(!workflow)throw new Error('document_dispatch_unavailable');
  // Expired provider IDs must never turn an old preparation into a new rendering.

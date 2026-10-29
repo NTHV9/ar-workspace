@@ -7,7 +7,15 @@ afterEach(()=>{vi.unstubAllGlobals();vi.useRealTimers();});
 it.each([{closed_at:'2026-10-29T05:59:00Z'},{discard_requested_at:'2026-10-29T05:59:00Z'},{bytes_released:true},{preparation_retirement:{accepted:true}}])('never dispatches a fresh preparation already exited or released (%j)',async closure=>{
  vi.useFakeTimers();vi.setSystemTime(now);const create=vi.fn(),get=vi.fn(),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
  const closed={...job,created_at:new Date(now-60000).toISOString(),...closure};
- expect(await dispatchDocumentJob({AR_REFRESH:{create,get}},closed)).toBe(closed);expect(create).not.toHaveBeenCalled();expect(get).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+ expect(await dispatchDocumentJob({AR_REFRESH:{create,get}},closed)).toBe(closed);expect(create).not.toHaveBeenCalled();expect(get).toHaveBeenCalledWith(job.id);expect(fetcher).not.toHaveBeenCalled();
+});
+it.each(['complete','errored','running'])('an exited fresh job still reconciles known %s results without a new execution',async status=>{
+ vi.useFakeTimers();vi.setSystemTime(now);const create=vi.fn(),changes:unknown[]=[];
+ const exited={...job,created_at:new Date(now-60000).toISOString(),discard_requested_at:new Date(now-1000).toISOString()};
+ vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{if(url.endsWith('/ar_document_fail_file'))changes.push(JSON.parse(String(options.body)));return Response.json(exited);});
+ await dispatchDocumentJob({SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_SECRET_KEY:'synthetic',AR_REFRESH:{create,get:async()=>({status:async()=>({status})})}},exited);
+ expect(create).not.toHaveBeenCalled();expect(changes).toHaveLength(status==='running'?0:2);
+ if(status!=='running')expect(changes).toEqual([{p_job_id:job.id,p_file_id:'pending',p_code:'document_workflow_interrupted',p_uncertain:false},{p_job_id:job.id,p_file_id:'claimed',p_code:'document_workflow_interrupted',p_uncertain:true}]);
 });
 it('pins the requested retention on all four existing bindings without enabling logs',()=>{
  const c=JSON.parse(readFileSync('wrangler.jsonc','utf8'));expect(c.workflows).toHaveLength(4);
