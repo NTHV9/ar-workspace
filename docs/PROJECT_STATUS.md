@@ -1,17 +1,48 @@
-## 2026-10-30 - Immediate cleanup authoritative clock qualification
+## 2026-10-30 - Never-started Exit cancellation qualification
 
-Implemented/tested locally, not deployed: exact transient cleanup now requests
-the existing SQL claim for waiting/claimed/uncertain items instead of comparing
-a newly assigned SQL dueAt to the Worker's request clock. SQL retains server
-time, lease, eligibility, exact identity and final arm authority. Wait/busy never
-reach the provider; unknown outcomes remain reconciliation-only. Blocked/deleted
-no-ops, bounded exact job candidates and the general monthly sweep remain intact.
+Implemented/tested locally, not applied live: only accepted Exit plus wholly
+unchanged initial pending files and no byte/upload/mail/reference evidence may
+create an immutable cancellation receipt. The existing claim/Exit lock domain
+serializes both orders; Exit-first seals admission, claim-first preserves the
+original slow/uncertain generation and peer-drain path. Only exact never-created
+keys gain a cancellation-proof exception; no fake deletion ACKs or original Exit
+receipt changes. Closed jobs expose discarded and leave the active queue.
 
-Regression with the real retention runner and synthetic provider/RPC boundaries
-fails before the fix (5 failed/2 passed), passes after (7 cases plus7 existing
-cleanup cases). Independent reviewer ran33 cases, READY. Local4,973 units/9
-existing skips and typecheck/build pass. Required GitHub and immediate live
-physical-deletion proof are pending. No new schema, schedule or resource.
+Local clean154 migrations,52 rollback fixtures and6 real concurrency/Worker
+contract groups pass, including actual lock waits in both orders.4 Worker tests
+prove stale/current Invoice/Statement snapshots cannot render/upload after
+claim denial. Full4,977 unit tests/9 existing skips and typecheck/build pass.
+Independent fresh-context review READY; optional isolated storage-operation and
+shared-reference negative variants remain covered by explicit guards and the
+existing broader graph contracts. One disposable database was dropped and the
+reused attested local server stopped; no new cluster. Required GitHub checks and
+exact closure of the3 approved old jobs are pending. No live mutation yet.
+
+## 2026-10-30 - Immediate cleanup authoritative clock released
+
+Implemented/tested/deployed/enabled: source4d2b19f51e86666d8b4f64e75bfc20ad872461b8,
+PR158/CI1089, Worker e9013fb6-b787-4d50-b169-d683b99ec628. Exact transient cleanup
+requests the existing SQL claim for waiting/claimed/uncertain work, avoiding a
+redundant Worker-clock comparison. Server due/lease/identity/eligibility/final-arm
+checks remain; wait/busy never touch the provider, uncertain work only reconciles.
+Blocked/deleted no-ops, bounded exact job candidates and monthly sweep unchanged.
+No new schema, resource or schedule; recreate migration20261030103406 remains live.
+
+Local4,973 units/9 existing skips,typecheck/build and independent review READY
+(33 tests). GitHub1089 passes4,973 units,153 migrations/51 SQL fixtures and real
+concurrency contracts,40 native repeats,2 document returns,677 smoke,3 performance
+and15 publication cases. Runtime/bindings/handlers unchanged except COMMIT_SHA;
+all112 served public assets match the qualified frontend, including old hashed
+assets retained for open tabs.
+
+Live WAKL both/separate two-invoice QA produced three ready files twice, opened
+PDF Workspace and exited silently to Collections. First physical cleanup finished
+6.509 seconds after Exit, before round-two creation; second cleanup6.630 seconds.
+Exact owned job storage objects,drafts,deliveries are all zero for both rounds.
+All218 baseline Sent fingerprints unchanged; no QA email or billing-date action.
+The earlier delayed QA files are also absent. Historical per-invocation Worker
+clock offsets were not logged; the precise original skew is not claimed measured.
+Three older retired queued metadata jobs remain deferred separately.
 
 ## 2026-10-30 - Recreate while old cleanup settles released
 
