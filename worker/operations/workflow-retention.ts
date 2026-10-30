@@ -72,6 +72,7 @@ export async function purgeWorkflowBatch(approved:readonly WorkflowInstance[],po
 }
 export function canCreateDocumentWorkflow(createdAt:string,now=Date.now()){
  const created=Date.parse(createdAt);
- // Completion cannot precede DB job creation. Stop new admission one hour before the 1-day expiry floor.
- return Number.isFinite(created)&&Number.isFinite(now)&&created<=now&&now-created<23*3600000;
+ // DB and Worker clocks are independent; a small lead must not strand a fresh job.
+ // Five minutes of skew stays inside the one-hour margin before the 24-hour expiry floor.
+ return Number.isFinite(created)&&Number.isFinite(now)&&created-now<=5*60000&&now-created<23*3600000;
 }
