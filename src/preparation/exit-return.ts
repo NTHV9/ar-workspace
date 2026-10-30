@@ -3,6 +3,12 @@ import {hasAuthCallback} from '../navigation';
 const KEY='ar-preparation-return-v1',TAB='ar-google-tab-v1',uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 type ReturnMarker={version:1;actor:string;tab:string;scope:'document'|'batch'|'create';id:string;hotel?:string};
 const valid=(m:ReturnMarker)=>m&&Object.keys(m).sort().join(',')===(m.scope==='create'?'actor,hotel,id,scope,tab,version':'actor,id,scope,tab,version')&&m.version===1&&uuid.test(m.actor)&&typeof m.tab==='string'&&m.tab.startsWith(TAB+'-')&&uuid.test(m.tab.slice(TAB.length+1))&&(['document','batch'].includes(m.scope)?uuid.test(m.id):m.scope==='create'&&typeof m.id==='string'&&m.id.length>0&&m.id.length<=256&&isHotelId(m.hotel));
+function collectionDestination(input:URLSearchParams){const next=new URLSearchParams();for(const key of ['region','hotel','qstage','qpurpose'])if(input.has(key))next.set(key,input.get(key)!);next.set('collections','1');return next;}
+/** An old async Exit must not replace a different live document or an active batch. */
+export function exitedDocumentDestination(input:URLSearchParams,jobId:string):URLSearchParams|null{
+ if(!uuid.test(jobId)||input.get('documentJob')!==jobId||input.has('collectionBatch'))return null;
+ return collectionDestination(input);
+}
 
 /** UX fence only. The caller must durably enqueue exact Exit before recording it. */
 export function rememberExitReturn(storage:Storage,actor:string,params:URLSearchParams,hasCreates:boolean):boolean{
@@ -31,6 +37,6 @@ export function consumeExitReturn(storage:Storage,input:URLSearchParams):URLSear
    storage.removeItem('ar-account-batch:'+marker.actor+':'+marker.id);
    for(const region of ['phuket','khao-lak']){const key='ar-account-batch-active:'+marker.actor+':'+region;if(storage.getItem(key)===marker.id)storage.removeItem(key);}
   }
-  const next=new URLSearchParams();for(const key of ['region','hotel','qstage','qpurpose'])if(input.has(key))next.set(key,input.get(key)!);next.set('collections','1');return next;
+  return collectionDestination(input);
  }catch{return original;}
 }

@@ -1,3 +1,19 @@
+## 2026-10-30 - Silent preparation Exit and exited-route recovery
+
+Implemented, not deployed: an explicitly exited single PDF preparation returns
+silently to Collections after a verified cleanup receipt. Revisited exact exited
+URLs and server-confirmed discard requests return without a futile Retry page,
+a notice, a replacement preparation or a provider restart. Transient PDF Exit
+requires no discard popup; failed cleanup preserves edits for retry. Exact route,
+actor/session and server identity checks remain. Pending cleanup outbox, Sent
+manual return, batch peers, and F5/native-close discard policy remain intact.
+
+Evidence: regression observed failing before the fix; 4,966 local unit tests
+pass (nine existing intentional skips), typecheck and build pass. Document
+regressions and independent scoped review pass; native repeatability and required
+GitHub checks are in progress. Live verification/deployment are still pending.
+The three previously retired queued metadata jobs remain deferred separately.
+
 ## 2026-10-27 — Clean saved-draft fixture successor qualification
 
 GitHub1079 passed40 native repeat cases and668/670 full smoke cases. Two document
