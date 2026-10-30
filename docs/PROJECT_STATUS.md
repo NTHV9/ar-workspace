@@ -1,18 +1,45 @@
-## 2026-10-30 - Silent preparation Exit and exited-route recovery
+## 2026-10-30 - Fresh preparation during retired-file cleanup
 
-Implemented, not deployed: an explicitly exited single PDF preparation returns
-silently to Collections after a verified cleanup receipt. Revisited exact exited
-URLs and server-confirmed discard requests return without a futile Retry page,
-a notice, a replacement preparation or a provider restart. Transient PDF Exit
-requires no discard popup; failed cleanup preserves edits for retry. Exact route,
-actor/session and server identity checks remain. Pending cleanup outbox, Sent
-manual return, batch peers, and F5/native-close discard policy remain intact.
+Implemented/tested locally, not applied to production: reproduce retention_busy
+with the real v5 create/Exit/claim/arm/recreate SQL chain. An unclaimed control
+succeeds. Restrict the broad Invoice-overlap exemption to an immutable matching
+same-owner released transient Supabase object. Keep exact-key rejection and
+forward nested byte keys through the reference trigger, including remittance
+files without invoice lines. Ordinary/Drive/incomplete locks remain protected.
 
-Evidence: regression observed failing before the fix; 4,966 local unit tests
-pass (nine existing intentional skips), typecheck and build pass. Document
-regressions and independent scoped review pass; native repeatability and required
-GitHub checks are in progress. Live verification/deployment are still pending.
-The three previously retired queued metadata jobs remain deferred separately.
+Local PG17: all51 rollback fixtures and five real concurrency/Worker-contract
+groups pass; KAT/WAKL x claimed/uncertain fresh generation/review/email open,
+new-command idempotency and old-key rebind rejection pass. Explicit arm=true
+verified.4,966 unit tests/9 existing skips and typecheck pass. Independent scoped
+review READY. One disposable database was dropped and its reused attested local
+server stopped; no additional PostgreSQL cluster was created. Required GitHub
+checks and exact live migration/verification are pending. No mail or Sheet writes.
+
+## 2026-10-30 - Silent preparation Exit released
+
+Implemented/tested/deployed/enabled: source eb3df7405cd41afb1dd02629d495b65eff2908a2,
+Worker 2a0535f2-eb76-495a-8489-79f6cd6bff66, PR156 / GitHub1087 success.
+Single transient PDF Exit and known-exited routes return silently to Collections.
+No discard popup or automatic replacement. Failed Exit retains edits; exact
+identity/session fences, pending cleanup outbox, Sent manual return and batch
+peers remain intact. F5/native-close discard and ordinary tab-switch survival
+remain qualified.
+
+Local 4,966 units /9 existing skips,81 document+batch browser checks,40 native
+repetitions,typecheck/build and independent review pass. GitHub:152 migrations,
+50 rollback fixtures,40 native repetitions,2 document returns,677 smoke,3
+performance,15 publication cases pass. Backend bundle is byte-identical;
+bindings/runtime/handlers preserved except COMMIT_SHA. All112 public assets
+match, including21 previous hashed assets retained for already-open tabs.
+Live disposable PDF: create, edit, silent Exit, create same invoice as a distinct
+job, open and silent Exit verified. Both test jobs discarded; stored objects,
+drafts and deliveries all zero. Original215 Sent fingerprints unchanged;
+three legitimate outside-workflow events preserved.
+
+Owner subsequently reported a separate WAKL recreate error (retention_busy).
+This new cleanup/create interaction is being diagnosed; it is not claimed fixed
+by the silent-route release. Three old retired queued metadata jobs remain
+deferred separately.
 
 ## 2026-10-27 — Clean saved-draft fixture successor qualification
 
