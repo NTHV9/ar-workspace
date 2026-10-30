@@ -4915,3 +4915,11 @@ Deployment follow-up: source `ce9c7ac27f98ee5c2b977e9dad0d4f547ba4b7d4` deployed
 - Added a tested reconciliation-only fence for old document dispatch before provider history can expire. Exited/released preparations never dispatch; active provider instances continue on their original queue. Frozen/uncertain bytes, lifecycle retirement, mail commands and Sent facts are preserved.
 - Added a private dry-run/exact-ID operator utility with complete pagination, provider identity/version/status/end-time revalidation, <=5-minute source evidence, pre-command attempt receipts and no automatic retry after uncertain deletion. Legacy opaque IDs are held, not deleted. Source evidence is SELECT-only and independently reviewed.
 - Focused qualification: 22 tests passed; initial 4,949-unit suite passed before the additional opaque-ID regression; final full suite underway. Typecheck/build passed before that small inventory-only refinement. Full GitHub verification, production setting changes and exact cleanup remain pending. No production mutation yet.
+
+
+## 2026-10-30 - Fresh document dispatch clock-skew regression (implemented, not deployed)
+
+- Live reported preparation was persisted about 159 seconds before provider creation, then generated four PDFs in about 19 seconds. Other fresh queued/pending jobs had no provider instances and were later exited by staff; they were not restarted. Current provider document capacity was idle.
+- Confirmed code defect: the recent strict created_at <= Worker clock check suppresses new creation when DB time leads by even 1 ms. Request-level tests reproduced queued/no dispatch on both original queues (six red before fix). The original request clock was not recorded, so historical exact skew is an inference.
+- Minimal fix admits up to five minutes of DB clock lead, inside the existing one-hour safety margin before provider expiry. The 23-hour upper fence, exact ID/queue, closure/reconciliation and excessive-future/invalid holds remain unchanged. Retention remains success 1 day/error 7 days.
+- Focused 52 tests/typecheck passed; independent review READY and independently reran 36 tests. Full local suite and GitHub verification pending before deployment. No real document restart, email or business/Sheet date mutation in diagnosis.
