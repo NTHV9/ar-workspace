@@ -89,6 +89,14 @@ try{
    report.quotaBaseline='budget_usage_unverified reproduced on null quota telemetry before warn-only migration';
    console.log('PASS quota suspension baseline reproduced');
   }
+  if(name.endsWith('_ar_retired_file_recreate_scope.sql')){
+   let reproduced=false;
+   try{file(join(root,'tests/sql/tracker-preparation-recreate-retention-rollback.sql'));}
+   catch{const log=readFileSync(join(runDir,String(sequence).padStart(3,'0')+'-psql.log'),'utf8');reproduced=/fresh preparation blocked by exited-file cleanup: retention_busy/.test(log);}
+   if(!reproduced)throw Error('Exited-file cleanup / fresh preparation regression did not reproduce before migration');
+   report.recreateRetentionBaseline='fresh preparation rejected with retention_busy while an exited file was armed';
+   console.log('PASS exited-file cleanup recreate baseline reproduced');
+  }
   file(join(migrationDir,name));report.migrations.push(name);
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
