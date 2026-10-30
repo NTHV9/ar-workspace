@@ -155,8 +155,8 @@ export function PdfWorkspace({ onDeliveryChange,reviewOnly=false,onReviewStateCh
   function namePending(id:string,pending:boolean){setPendingNames(previous=>{if(previous.has(id)===pending)return previous;const next=new Set(previous);if(pending)next.add(id);else next.delete(id);return next;});if(pending)invalidate();}
   function renameOutput(id:string,name:string){if(!project||busy)return;const next={...project,outputNames:{...project.outputNames,[id]:name}};deliveryFilenames(next,outputGroups);if(!commit(next))throw Error('The filename could not be applied. Try again.');}
   function renameSource(id:string,name:string){if(!project||busy)return;if(!commit({...project,sourceNames:{...project.sourceNames,[id]:name}}))throw Error('The scan name could not be applied. Try again.');}
-  async function finishClose(){if(busy||area.isActive())return;setBusy(true);setError('');try{await onClose();setCloseConfirm(false);}catch(e){setError(e instanceof Error?e.message:'Temporary file cleanup failed. Keep editing or retry closing.');setCloseConfirm(true);}finally{setBusy(false);}}
-  function requestClose() { if(area.isActive())return; if (dirty || busy || (transient && past.length > 0)) setCloseConfirm(true); else void finishClose(); }
+  async function finishClose(){if(busy||area.isActive())return;setBusy(true);setError('');try{await onClose();setCloseConfirm(false);}catch(e){setError(e instanceof Error?e.message:'Temporary file cleanup failed. Keep editing or retry closing.');if(!transient)setCloseConfirm(true);}finally{setBusy(false);}}
+  function requestClose() { if(area.isActive()||busy)return; if (!transient&&dirty) setCloseConfirm(true); else void finishClose(); }
   async function saveDraft(closeAfter = false) {
     if (!project || !onSaveDraft || busy || area.isActive() || pendingNames.size) return;
     const startedAt = revision.current, session = sources, snapshot = project;

@@ -11,6 +11,10 @@ export function attachTabExit(target:Window,onExit:()=>void,onBeforeUnload?:()=>
  return ()=>{target.removeEventListener('pageshow',show);target.removeEventListener('pagehide',hide);if(onBeforeUnload)target.removeEventListener('beforeunload',onBeforeUnload);};
 }
 export function authSessionId(token:string):string|null{try{const value=JSON.parse(atob(token.split('.')[1].replaceAll('-','+').replaceAll('_','/'))).session_id;return typeof value==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)?value:null;}catch{return null;}}
+export class PreparationExitedError extends Error {
+ readonly jobId:string;
+ constructor(jobId:string){super('Temporary cleanup was requested for this preparation. Return to the account to start a new preparation.');this.name='PreparationExitedError';this.jobId=jobId;}
+}
 export function createPreparationExit(actorId:string,sessionId:string,workspaceOwner:string,storage:Storage,getAuth:()=>{actorId:string;authSessionId:string;token:string}|null){
  let initial:ReturnType<typeof readExitOutbox>=[];try{initial=readExitOutbox(storage).filter(e=>e.actorId===actorId);}catch{/* Isolate recovery errors to preparation routes; unrelated work continues. */}
  const blockedJobs=new Set(initial.flatMap(e=>'jobId'in e?[e.jobId]:[])),blockedCommands=new Set(initial.flatMap(e=>'commandKey'in e?[e.commandKey]:[]));
@@ -30,7 +34,7 @@ export function createPreparationExit(actorId:string,sessionId:string,workspaceO
   settled(jobId:string,receipt?:{job?:{id:string};outcome?:string}){if(receipt){const direct=directEntries.get(jobId);if(!direct||!acknowledgeExitEntry(storage,direct.entry,receipt,direct.auth,getAuth))return false;directEntries.delete(jobId);}settledJobs.add(jobId);jobs.delete(jobId);return true;},
   isSettled:(jobId:string)=>settledJobs.has(jobId),
   clear(){jobs.clear();},
-  async beforeResume(jobId:string){if(!current())throw Error('The current preparation session changed.');if(settledJobs.has(jobId)||blockedJobs.has(jobId)||readExitOutbox(storage).some(e=>e.actorId===actorId&&'jobId'in e&&e.jobId===jobId)){await reconcileExitOutbox(storage,actorId,getAuth,workspaceOwner);throw Error('Temporary cleanup was requested for this preparation. Return to the account to start a new preparation.');}},
+  async beforeResume(jobId:string){if(!current())throw Error('The current preparation session changed.');if(settledJobs.has(jobId)||blockedJobs.has(jobId)||readExitOutbox(storage).some(e=>e.actorId===actorId&&'jobId'in e&&e.jobId===jobId)){await reconcileExitOutbox(storage,actorId,getAuth,workspaceOwner);throw new PreparationExitedError(jobId);}},
   // A validated Gmail authorization redirect is a handoff, not abandonment.
   authorizeNavigation(){if(!current())throw Error('The current preparation session changed.');const pending={attempts:0};authorizationNavigation=pending;return()=>{if(authorizationNavigation===pending)authorizationNavigation=null;};},
   beforeNativeUnload(){if(authorizationNavigation&&++authorizationNavigation.attempts>1)authorizationNavigation=null;},

@@ -129,9 +129,9 @@ test('closing PDF Workspace retries failed cleanup while retaining edits',async(
  const controls=await mockApplication(page,'combined','transient');let attempts=0;
  await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return attempts===1?r.fulfill({status:503,json:{error:'cleanup_unavailable'}}):r.fulfill({json:{job:{...controls.job,closed_at:'2026-10-08T00:00:00Z',closed_reason:'discarded'},outcome:'discarded'}});});
  await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC KEEP UNTIL CLEANUP CONFIRMED');
- await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Discard changes and close',exact:true}).click();
- await expect(page.getByRole('alertdialog')).toContainText('Temporary file cleanup failed');await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC KEEP UNTIL CLEANUP CONFIRMED');
- await page.screenshot({path:'evidence/pdf-close-cleanup-retry-2026-10-08.png',animations:'disabled'});await page.getByRole('button',{name:'Discard changes and close',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation discarded',exact:true})).toBeVisible();expect(attempts).toBe(2);
+ await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
+ await expect(page.locator('.pdf-workspace .pdf-error')).toContainText('Temporary file cleanup failed');await expect(page.getByRole('alertdialog')).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC KEEP UNTIL CLEANUP CONFIRMED');
+ await page.screenshot({path:'evidence/pdf-close-cleanup-retry-2026-10-08.png',animations:'disabled'});await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');expect(attempts).toBe(2);
 });
 test('reload leaves preparation while failed cleanup remains in its durable recovery queue',async({page})=>{
  await mockApplication(page,'combined','transient',undefined,true);let attempts=0;await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({status:500,json:{error:'cleanup_unavailable'}});});
@@ -150,9 +150,9 @@ test('sign out waits for abandonment and retries failures',async({page})=>{
  await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect(page.getByRole('heading',{name:'Document preparation',exact:true})).toBeVisible();await page.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page.getByRole('alert')).toContainText('cleanup unavailable');
  await page.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page.getByRole('button',{name:'Sign in with Google',exact:true})).toBeVisible();expect(attempts).toBe(2);
 });
-test('pending abandonment is read-only even when ready source bytes exist',async({page})=>{
+test('pending abandonment silently returns without reading ready source bytes',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');await page.route(`**/api/documents/${jobId}`,r=>r.fulfill({json:{...controls.job,discard_requested_at:'2026-10-08T00:00:00Z'}}));
- await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect(page.getByRole('heading',{name:'Preparation cleanup pending',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toHaveCount(0);expect(controls.sourceReads).toBe(0);
+ await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');await expect(page.getByRole('heading',{name:'Preparation cleanup pending',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toHaveCount(0);expect(controls.sourceReads).toBe(0);
 });
 
 test('F5 discards the active preparation and returns Collections without another create or send',async({page})=>{
@@ -256,6 +256,74 @@ async function mockApplication(page: Page, requestedLayout='combined', lifecycle
   await currentWorkspaceSession(page,user,nativeExit?'e30.'+Buffer.from(JSON.stringify({sub:user.id,session_id:'00000000-0000-4000-8000-000000000099'})).toString('base64url')+'.synthetic':'synthetic-token-old');
   return controls;
 }
+
+test('known exited single preparation history silently returns to Collections without reopening or creating work',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient',undefined,true);
+ await openWorkspaceRoute(page,'/?documentJob='+jobId);
+ await expect(page.getByRole('button',{name:'Open PDF Workspace',exact:true})).toBeVisible();
+ await page.locator('.document-jobs > .back-bottom').click();
+ await expect.poll(()=>new URL(page.url()).searchParams.has('documentJob')).toBe(false);
+ expect(controls.abandons).toBe(1);const reads=controls.documentReads;
+ await auditRoute(page,'region=phuket&hotel=KAT&documentJob='+jobId);
+ await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');
+ await expect.poll(()=>new URL(page.url()).searchParams.has('documentJob')).toBe(false);
+ await expect(page.getByText('Temporary cleanup was requested for this preparation. Return to the account to start a new preparation.',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Retry loading documents',exact:true})).toHaveCount(0);
+ expect(controls.documentReads).toBe(reads);expect(controls.abandons).toBe(1);
+ expect(controls.sourceReads).toBe(0);expect(controls.createRequests).toEqual([]);expect(controls.outboundRequests).toEqual([]);
+});
+
+test('valid-session staff PDF editing and same-session token refresh do not request Exit',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient',undefined,true),owner='00000000-0000-4000-8000-000000000077';
+ controls.job.owner=owner;
+ await page.route('**/api/access/me',r=>r.fulfill({json:{memberId:user.id,email:user.email,displayName:'Synthetic Staff',active:true,administrator:false,regions:['phuket','khao-lak'],workspaceOwnerId:owner,revision:1}}));
+ await openWorkspaceRoute(page,'/?documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await choosePdfTool(page,'Note');const text=page.getByRole('textbox',{name:'Layer text',exact:true});await text.fill('SYNTHETIC ACTIVE EDIT');
+ const nextToken='e30.'+Buffer.from(JSON.stringify({sub:user.id,session_id:'00000000-0000-4000-8000-000000000099',jti:'refreshed'})).toString('base64url')+'.synthetic';
+ await page.evaluate(value=>{const key=sessionStorage.getItem('ar-google-tab-v1')!;sessionStorage.setItem(key,JSON.stringify(value));const channel=new BroadcastChannel(key);channel.postMessage({event:'TOKEN_REFRESHED',session:value});channel.close();},session(nextToken));
+ await expect.poll(()=>controls.portfolioRequests.includes('Bearer '+nextToken)).toBe(true);
+ await expect(text).toHaveValue('SYNTHETIC ACTIVE EDIT');expect(new URL(page.url()).searchParams.get('documentJob')).toBe(jobId);
+ expect(controls.abandons).toBe(0);expect(controls.createRequests).toEqual([]);expect(controls.outboundRequests).toEqual([]);
+});
+
+test('transient PDF Exit silently discards edited work and returns to Collections',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient',undefined,true);let dialogs=0;
+ page.on('dialog',async dialog=>{dialogs++;await dialog.dismiss();});
+ await openWorkspaceRoute(page,'/?documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('DISPOSABLE SYNTHETIC EDIT');
+ await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
+ await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');
+ expect(new URL(page.url()).searchParams.has('documentJob')).toBe(false);expect(controls.abandons).toBe(1);
+ expect(dialogs).toBe(0);expect(controls.createRequests).toEqual([]);expect(controls.outboundRequests).toEqual([]);
+ await expect(page.getByRole('button',{name:'Retry loading documents',exact:true})).toHaveCount(0);
+});
+
+for(const kind of ['discarded','pending-exit'])test(`server-known ${kind} preparation silently returns without a local tombstone`,async({page})=>{
+ const controls=await mockApplication(page,'combined','transient',undefined,true);
+ Object.assign(controls.job,kind==='discarded'?{closed_at:'2026-10-30T01:00:00Z',closed_reason:'discarded'}:{discard_requested_at:'2026-10-30T01:00:00Z',preparation_retirement:{accepted:true}});
+ await openWorkspaceRoute(page,'/?region=phuket&hotel=KAT&documentJob='+jobId);
+ await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');
+ expect(new URL(page.url()).searchParams.has('documentJob')).toBe(false);
+ expect(controls.abandons).toBe(0);expect(controls.sourceReads).toBe(0);expect(controls.createRequests).toEqual([]);expect(controls.outboundRequests).toEqual([]);
+ await expect(page.getByRole('button',{name:'Retry loading documents',exact:true})).toHaveCount(0);
+});
+
+test('a confirmed Sent result still waits for the employee to return manually',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient',undefined,true);
+ Object.assign(controls.job,{closed_at:'2026-10-30T01:00:00Z',closed_reason:'sent',preparation_retirement:{accepted:true}});
+ await openWorkspaceRoute(page,'/?documentJob='+jobId);await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
+ expect(new URL(page.url()).searchParams.get('documentJob')).toBe(jobId);expect(controls.abandons).toBe(0);expect(controls.outboundRequests).toEqual([]);
+});
+
+test('failed transient Exit retains edits and does not navigate or open a discard popup',async({page})=>{
+ const controls=await mockApplication(page,'combined','transient',undefined,true);
+ await page.route(`**/api/documents/${jobId}/abandon`,r=>r.fulfill({status:503,json:{error:'document_unavailable'}}));
+ await openWorkspaceRoute(page,'/?documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();
+ await choosePdfTool(page,'Note');const text=page.getByRole('textbox',{name:'Layer text',exact:true});await text.fill('KEEP SYNTHETIC EDIT UNTIL EXIT CONFIRMED');
+ await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
+ await expect(page.locator('.pdf-workspace .pdf-error')).toBeVisible();await expect(text).toHaveValue('KEEP SYNTHETIC EDIT UNTIL EXIT CONFIRMED');
+ expect(new URL(page.url()).searchParams.get('documentJob')).toBe(jobId);expect(controls.outboundRequests).toEqual([]);
+});
 
 for(const width of [1440,390])test(`document actions ${width} are readable before hover, including the create-job dialog`,async({page})=>{
  await page.setViewportSize({width,height:width===390?844:900});
@@ -416,7 +484,7 @@ test('download-only review allows unread pages and closing discards temporary pr
  const download=page.waitForEvent('download');await preview.getByRole('button',{name:'Download reviewed PDFs',exact:true}).click();const received=await download;expect(received.suggestedFilename()).toContain('.pdf');const filePath=await received.path();if(!filePath)throw Error('Missing downloaded PDF');expect((await PDFDocument.load(await(await import('node:fs/promises')).readFile(filePath))).getPageCount()).toBe(3);
  expect(controls.emailOpens).toHaveLength(0);expect(controls.discards).toBe(0);
  await page.getByRole('button',{name:'Close final preview',exact:true}).click();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Preparation discarded',exact:true})).toBeVisible();expect(controls.abandons).toBe(1);expect(controls.discards).toBe(0);
+ await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');expect(controls.abandons).toBe(1);expect(controls.discards).toBe(0);
  await expect(page.getByRole('button',{name:'Continue to email',exact:true})).toHaveCount(0);expect(controls.uploadRequests).toHaveLength(0);
 });
 
@@ -424,7 +492,7 @@ test('transient edits survive resize but cannot be saved as a project',async({pa
  await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await choosePdfTool(page,'Note');await page.getByRole('textbox',{name:'Layer text',exact:true}).fill('SYNTHETIC TAB-ONLY EDIT');
  await page.setViewportSize({width:390,height:844});await expect(page.getByText('Your edits stay in this tab.',{exact:false})).toBeVisible();await expect(page.getByRole('button',{name:'Save draft for desktop',exact:true})).toHaveCount(0);
  await page.setViewportSize({width:1280,height:800});await expect(page.getByRole('textbox',{name:'Layer text',exact:true})).toHaveValue('SYNTHETIC TAB-ONLY EDIT');await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();
- await expect(page.getByRole('alertdialog',{name:'Unsaved PDF changes'})).toContainText('PDF edits only live in this tab');await page.getByRole('button',{name:'Discard changes and close',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation discarded',exact:true})).toBeVisible();
+ await expect(page.getByRole('alertdialog')).toHaveCount(0);await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');
 });
 test('intentional browser Back discards tab-only PDF edits without another confirmation',async({page})=>{
  const controls=await mockApplication(page,'combined','transient');await openWorkspaceRoute(page,`/?documentJob=${jobId}`);
@@ -508,5 +576,5 @@ for(const hotel of ['KAT','TSK'])test(hotel+' source text deletion and compact r
 for(const kind of ['maintained','legacy'])test(`single consumes ${kind} id-only terminal receipt without replacing full document state`,async({page})=>{
  const controls=await mockApplication(page,'combined','transient'),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));let attempts=0;
  await page.route(`**/api/documents/${jobId}/abandon`,r=>{attempts++;return r.fulfill({json:{job:{id:jobId},outcome:'protected',...kind==='maintained'?{preparationRetirement:{accepted:true}}:{},...kind==='maintained'?{currentJob:{...controls.job,preparation_retirement:{accepted:true}}}:{}}});});
- await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();await expect(page.getByRole('heading',{name:'Preparation closed',exact:true})).toBeVisible();await expect(page.locator('.document-jobs')).toContainText('KAT · Synthetic Document Account · 1 selected invoices');await page.locator('.document-jobs > .back-bottom').click();await expect.poll(()=>new URL(page.url()).searchParams.has('documentJob')).toBe(false);expect(attempts).toBe(1);expect(errors).toEqual([]);
+ await openWorkspaceRoute(page,'/');await auditRoute(page,'documentJob='+jobId);await page.getByRole('button',{name:'Open PDF Workspace',exact:true}).click();await page.getByRole('button',{name:'Close PDF Workspace',exact:true}).click();await expect.poll(()=>new URL(page.url()).searchParams.get('collections')).toBe('1');expect(new URL(page.url()).searchParams.has('documentJob')).toBe(false);await expect(page.getByRole('heading',{name:'Preparation closed',exact:true})).toHaveCount(0);expect(attempts).toBe(1);expect(controls.job.hotel).toBe('KAT');expect(controls.job.account_name).toBe('Synthetic Document Account');expect(controls.job.manifest).toHaveLength(1);expect(errors).toEqual([]);
 });
