@@ -1,0 +1,21 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+import type {WorkflowStep} from 'cloudflare:workers';
+const m=vi.hoisted(()=>({rpc:vi.fn(),statement:vi.fn(),invoice:vi.fn(),write:vi.fn(),resources:vi.fn(),cleanup:vi.fn()}));
+vi.mock('../worker/refresh/backend',()=>({backendRpc:m.rpc}));
+vi.mock('../worker/statement/generate',()=>({workspaceStatement:m.statement}));
+vi.mock('../worker/invoice/generate',()=>({workspaceInvoice:m.invoice}));
+vi.mock('../worker/operations/storage',()=>({writeManagedStorage:m.write}));
+vi.mock('../worker/documents/resources',()=>({documentResources:m.resources}));
+vi.mock('../worker/operations/retention-sweep',()=>({cleanupTransientDocument:m.cleanup}));
+import {runDocumentJob,type DocumentJob} from '../worker/documents/jobs';
+const job:DocumentJob={id:'10000000-0000-4000-8000-000000000001',owner:'20000000-0000-4000-8000-000000000001',hotel:'TLFO',account_id:'synthetic',account_name:'Synthetic',content:'invoices',layout:'separate',purpose:'billing',invoice_ids:['A'],manifest:[],invoice_source:'workspace',lifecycle:'transient',state:'queued',revision:0,project_key:null,exports:[],acknowledged:false,created_at:'2026-10-30T00:00:00Z',files:[{id:'30000000-0000-4000-8000-000000000001',kind:'invoice',invoice_id:'A',ordinal:0,state:'pending',storage_key:null,error_code:null,byte_count:null,sha256:null}]};
+const closed:DocumentJob={...job,state:'failed',closed_at:'2026-10-30T00:01:00Z',closed_reason:'discarded',discard_requested_at:'2026-10-30T00:01:00Z',bytes_released:true,preparation_retirement:{accepted:true},files:job.files.map(f=>({...f,state:'unavailable',error_code:'cancelled_before_pdf_claim'}))};
+beforeEach(()=>{vi.clearAllMocks();m.resources.mockReturnValue({});});
+it.each([[true,'invoice'],[false,'invoice'],[true,'statement'],[false,'statement']] as const)('never renders or uploads a sealed preparation with stale snapshot=%s kind=%s',async(stale,kind)=>{
+ const snapshot={...job,files:job.files.map(f=>({...f,kind,invoice_id:kind==='statement'?null:f.invoice_id}))},cancelled={...closed,files:closed.files.map(f=>({...f,kind,invoice_id:kind==='statement'?null:f.invoice_id}))};
+ let reads=0;m.rpc.mockImplementation(async(_env:unknown,name:string)=>{if(name==='ar_document_get')return reads++===0&&stale?snapshot:cancelled;if(name==='ar_document_claim_file')return {claimed:false,file:cancelled.files[0],cancelled_before_claim:true};throw Error('Unexpected mutating RPC '+name);});
+ const run=vi.fn(async(_name:string,_options:unknown,work:()=>Promise<unknown>)=>work()),step={do:run} as unknown as WorkflowStep;
+ expect(await runDocumentJob({},job.id,step)).toEqual({state:'failed',files:1});
+ expect(m.statement).not.toHaveBeenCalled();expect(m.invoice).not.toHaveBeenCalled();expect(m.write).not.toHaveBeenCalled();expect(m.cleanup).not.toHaveBeenCalled();
+ expect(m.rpc.mock.calls.filter(c=>c[1]==='ar_document_claim_file')).toHaveLength(stale?1:0);expect(m.rpc.mock.calls.some(c=>/finish|fail|abandon|upload/.test(c[1]))).toBe(false);
+});

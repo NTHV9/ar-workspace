@@ -1,3 +1,4 @@
+import {verifyUnstartedPreparationConcurrency} from './verify-unstarted-preparation-concurrency.mjs';
 import {verifyPreparationRetirementConcurrency} from './verify-preparation-retirement-concurrency.mjs';
 import {verifyCommandExitConcurrency} from './verify-command-exit-concurrency.mjs';
 import {verifyPdfReleaseConcurrency} from './verify-pdf-release-concurrency.mjs';
@@ -97,6 +98,14 @@ try{
    report.recreateRetentionBaseline='fresh preparation rejected with retention_busy while an exited file was armed';
    console.log('PASS exited-file cleanup recreate baseline reproduced');
   }
+  if(name.endsWith('_ar_preparation_cancel_before_claim.sql')){
+   let reproduced=false;
+   try{file(join(root,'tests/sql/tracker-preparation-never-started-exit-rollback.sql'));}
+   catch{const log=readFileSync(join(runDir,String(sequence).padStart(3,'0')+'-psql.log'),'utf8');reproduced=/unstarted preparation was not discarded after accepted Exit/.test(log);}
+   if(!reproduced)throw Error('Unstarted Exit/late-claim regression did not reproduce before migration');
+   report.unstartedExitBaseline='accepted Exit leaves unclaimed pending files queued before cancellation barrier';
+   console.log('PASS unstarted Exit cancellation baseline reproduced');
+  }
   file(join(migrationDir,name));report.migrations.push(name);
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));
@@ -135,6 +144,8 @@ try{
  console.log('PASS real SQL provider-claim-first / byte-release-first admission ordering');
  report.preparationRetirementConcurrency=await verifyPreparationRetirementConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
  console.log('PASS real SQL ordinary/draft/combined claim-first and Exit-first retirement admission');
+ report.unstartedPreparationConcurrency=await verifyUnstartedPreparationConcurrency({root,runDir,executable,env:cleanEnv,database,expectedAddress,port});
+ console.log('PASS real SQL unstarted Exit-first cancellation and claim-first slow-generation preservation');
  report.passed=true;console.log(`PASS ${report.migrations.length} migrations; ${report.fixtures.length} tracker SQL rollback fixtures`);
 }finally{
  if(created){try{tool('dropdb',['--no-password',database]);}catch{report.cleanupError='Synthetic database drop failed';}}
