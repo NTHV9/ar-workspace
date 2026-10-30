@@ -73,7 +73,9 @@ async function runTransientCleanupRows(env:RetentionProviderEnv,actor:string,row
  for(const row of rows){try{
   let item=row.itemId?await retentionStatus(env,actor,row.itemId):await enrollRetention(env,actor,'supabase',row.objectId);
   counts.checked++;
-  if(item.state==='claimed'||item.state==='uncertain'||item.dueAt&&Date.parse(item.dueAt)<=Date.now()){
+  // SQL owns due/lease time. A newly due item may look future to a frozen or
+  // behind Worker clock; a server wait/busy never reaches the provider.
+  if(item.state==='waiting'||item.state==='claimed'||item.state==='uncertain'){
    const claim=crypto.randomUUID();item=await runRetentionItem(env,actor,item.id,claim,retentionProviders(env,actor,item.id,claim));
   }
   if(item.state==='deleted')counts.deleted++;
