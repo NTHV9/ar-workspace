@@ -1,19 +1,39 @@
-## 2026-10-30 - Fresh preparation during retired-file cleanup
+## 2026-10-30 - Immediate cleanup authoritative clock qualification
 
-Implemented/tested locally, not applied to production: reproduce retention_busy
-with the real v5 create/Exit/claim/arm/recreate SQL chain. An unclaimed control
-succeeds. Restrict the broad Invoice-overlap exemption to an immutable matching
-same-owner released transient Supabase object. Keep exact-key rejection and
-forward nested byte keys through the reference trigger, including remittance
-files without invoice lines. Ordinary/Drive/incomplete locks remain protected.
+Implemented/tested locally, not deployed: exact transient cleanup now requests
+the existing SQL claim for waiting/claimed/uncertain items instead of comparing
+a newly assigned SQL dueAt to the Worker's request clock. SQL retains server
+time, lease, eligibility, exact identity and final arm authority. Wait/busy never
+reach the provider; unknown outcomes remain reconciliation-only. Blocked/deleted
+no-ops, bounded exact job candidates and the general monthly sweep remain intact.
 
-Local PG17: all51 rollback fixtures and five real concurrency/Worker-contract
-groups pass; KAT/WAKL x claimed/uncertain fresh generation/review/email open,
-new-command idempotency and old-key rebind rejection pass. Explicit arm=true
-verified.4,966 unit tests/9 existing skips and typecheck pass. Independent scoped
-review READY. One disposable database was dropped and its reused attested local
-server stopped; no additional PostgreSQL cluster was created. Required GitHub
-checks and exact live migration/verification are pending. No mail or Sheet writes.
+Regression with the real retention runner and synthetic provider/RPC boundaries
+fails before the fix (5 failed/2 passed), passes after (7 cases plus7 existing
+cleanup cases). Independent reviewer ran33 cases, READY. Local4,973 units/9
+existing skips and typecheck/build pass. Required GitHub and immediate live
+physical-deletion proof are pending. No new schema, schedule or resource.
+
+## 2026-10-30 - Recreate while old cleanup settles released
+
+Implemented/tested/deployed/enabled: SQL source9f3ba7f6c60130be26769553d6d9371b65934085,
+PR157/CI1088, actual migration20261030103406. Immutable same-owner released
+transient proof exempts only the broad Invoice-overlap lock; exact keys, shared
+mutex, ordinary/Drive/incomplete locks and permissions remain protected. Nested
+keys are forwarded, including remittance files without Invoice lines.
+
+Local153 migrations/51 SQL fixtures/five concurrency-contract groups,4,966
+units/9 existing skips,typecheck and independent review pass. GitHub passes
+153 migrations/51 fixtures,40 native repeats,2 document returns,677 smoke,3
+performance,15 publication checks. Live WAKL both/separate two-invoice scenario
+produced three ready files twice, opened PDF Workspace and exited silently to
+Collections. Both test jobs now have zero objects/drafts/deliveries. All218 Sent
+fingerprints unchanged. Function ACL/security flags/search paths and advisory
+sets unchanged; Worker/served assets stayed on the prior qualified release.
+
+Owner's physical-deletion check exposed a separate immediate-cleanup delay:
+first-round files were still waiting when round two was created. Ordinary later
+maintenance removed them. Do not claim this SQL repair made deletion immediate;
+the Worker clock follow-up below is separately qualified.
 
 ## 2026-10-30 - Silent preparation Exit released
 
