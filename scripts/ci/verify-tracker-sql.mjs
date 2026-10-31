@@ -106,6 +106,14 @@ try{
    report.unstartedExitBaseline='accepted Exit leaves unclaimed pending files queued before cancellation barrier';
    console.log('PASS unstarted Exit cancellation baseline reproduced');
   }
+  if(name.endsWith('_ar_reviewed_invoice_send_scope.sql')){
+   let reproduced=false;
+   try{file(join(root,'tests/sql/tracker-reviewed-invoice-scope-rollback.sql'));}
+   catch{const log=readFileSync(join(runDir,String(sequence).padStart(3,'0')+'-psql.log'),'utf8');reproduced=/reviewed source scope rejected: document_export_invalid/.test(log);}
+   if(!reproduced)throw Error('Reviewed invoice scope regression did not reproduce before migration');
+   report.reviewedScopeBaseline='reviewed invoice metadata rejected before covered-scope migration';
+   console.log('PASS reviewed attachment invoice scope baseline reproduced');
+  }
   file(join(migrationDir,name));report.migrations.push(name);
  }
  file(join(root,'scripts/recovery/local-fixture-prerequisites.sql'));

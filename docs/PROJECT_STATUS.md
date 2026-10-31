@@ -1,3 +1,31 @@
+## 2026-10-31 - Reviewed attachment invoice scope qualification
+
+Implemented/tested locally, not deployed: exported PDF source coverage now travels
+with each exact uploaded receipt. New drafts freeze the reviewed Invoice union;
+single and combined admission capture only those workflow and money facts before
+the provider POST. Original preparation/file identity and attempted delivery
+evidence stay immutable. No mandatory Preview, filename/count inference or
+post-send PDF/provider read is introduced. Account email evidence and result/
+template counts use frozen/current covered scope; documents retain source scope.
+
+Legacy unknown coverage cannot silently authorize a new send. Same-revision
+retained editor provenance can upgrade through the existing Go to email handoff;
+without it the reviewed package is not regenerated from original sources. Existing
+provider attempts, including created Gmail Drafts, bypass rendering and retain
+their recovery path. Sheet retry remains independent from PDF bytes and never
+resends Gmail; a staff-edited date survives repeated confirmation.
+
+Local4,990 units/9 existing skips, typecheck, clean155 migrations/54 SQL fixtures
+and6 real concurrency/Worker-contract groups pass. Reviewed-scope regressions
+were observed failing before fixes. Actual browser tests cover removed-source
+separate/combined sends without Preview, final export grouping, existing Draft
+round-trip with zero PDF writes, and lost-response recovery. Related151 browser
+cases initially had2 partial-fixture result-render failures; both were corrected
+and targeted rechecks pass. Fresh independent review READY (34 focused tests).
+GitHub/build/release qualification is recorded next; no live migration, email,
+Invoice/date correction, Sheet write or resource/configuration change performed.
+The owner has already corrected the affected date; do not rewrite it.
+
 ## 2026-10-30 - Never-started Exit cancellation qualification
 
 Implemented/tested locally, not applied live: only accepted Exit plus wholly

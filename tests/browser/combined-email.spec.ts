@@ -2,12 +2,26 @@
 // Native refresh/close discard is qualified in preparation-tab-exit.spec.ts.
 import {test,expect,type Page} from '@playwright/test';
 
+test('combined email uses covered subsets and shows actual totals without Preview',async({page})=>{
+ await readyCombined(page,false,false,true);
+ await page.getByRole('button',{name:'Send now',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Sending not confirmed',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Check shared status',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();
+ await expect(page.locator('.email-send-result__counts')).toContainText('Invoices2');
+ const proof=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('combined-proof')!));
+ expect(proof.sends).toBe(1);
+ expect(proof.saved.members.find((m:any)=>m.accountId==='10').invoiceIds).toEqual(['102']);
+ expect(proof.saved.totals.invoices).toBe(2);
+});
+
 async function pauseFirstAdmission(page:Page){await page.evaluate(()=>{const write=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(this===sessionStorage&&key.startsWith('ar-account-batch:')&&JSON.parse(value).combined?.attempted){Storage.prototype.setItem=write;throw new DOMException('Synthetic admission pause','QuotaExceededError');}return write.call(this,key,value);};});}
 
-async function readyCombined(page:Page,exitProof=false,separate=false){
+async function readyCombined(page:Page,exitProof=false,separate=false,removeInvoice=false){
  await page.goto('/tests/browser/batch-workspace/harness.html'+(exitProof?'?exit-proof=1':''));await page.getByRole('button',{name:'Collections',exact:true}).click();
  for(const [name,id] of [['Azure Travel','1001'],['Coral Travel','3001']]){await page.getByRole('button',{name:`Open KAT account ${name} · Synthetic`,exact:true}).click();await page.getByRole('checkbox',{name:`Queue select ${id}`,exact:true}).check();}
- await page.getByRole('button',{name:'Prepare documents',exact:true}).click();await page.getByRole('button',{name:'Prepare accounts',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();if(separate)return;await combinedServer(page);await page.getByRole('radio',{name:'One combined email',exact:true}).click();
+ if(removeInvoice){await page.getByRole('button',{name:'Open KAT account Azure Travel · Synthetic',exact:true}).click();await page.getByRole('checkbox',{name:'Queue select 1002',exact:true}).check();}
+ await page.getByRole('button',{name:'Prepare documents',exact:true}).click();if(removeInvoice)await page.getByRole('combobox',{name:'Document content',exact:true}).selectOption('invoices');await page.getByRole('button',{name:'Prepare accounts',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');if(removeInvoice)await page.getByRole('button',{name:'Delete page',exact:true}).click();await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();if(separate)return;await combinedServer(page);await page.getByRole('radio',{name:'One combined email',exact:true}).click();
  await page.getByLabel('Common To',{exact:true}).fill('manual@example.invalid');await page.getByLabel('Common subject',{exact:true}).fill('One click reviewed message');await page.getByLabel('Common message',{exact:true}).fill('Reviewed common content');
 }
 
@@ -55,7 +69,7 @@ async function combinedServer(page:Page){await page.evaluate(()=>{
 
  const state=JSON.parse(sessionStorage.getItem('combined-proof')||'{"sends":0,"requests":[]}'),db=JSON.parse(sessionStorage.getItem('ar-batch-fixture-server-v1')!);state.requests.push((init.method??'GET')+' '+url.pathname);const body=init.body?JSON.parse(String(init.body)):null;
 
- if(url.pathname==='/api/email/combined'&&init.method==='POST'){state.saved={id:body.id,revision:body.revision+1,content:body.content,mailbox:'phuket',delivery:null,members:body.members.map((m:any)=>{const j=db.jobs[m.documentJobId],d=db.drafts[m.draftId];return {...m,hotel:j.hotel,accountId:j.account_id,accountName:j.account_name,invoiceIds:j.invoice_ids,purpose:j.purpose,layout:j.layout,stageLabel:null,files:d.exports.map((f:any,i:number)=>({fileId:m.memberId+':'+i,name:j.hotel+' '+f.name,byteCount:f.byte_count,sha256:f.sha256}))};})};state.saved.totals={accounts:state.saved.members.length,invoices:state.saved.members.reduce((n:number,m:any)=>n+m.invoiceIds.length,0),files:state.saved.members.reduce((n:number,m:any)=>n+m.files.length,0),bytes:state.saved.members.reduce((n:number,m:any)=>n+m.files.reduce((a:number,f:any)=>a+f.byteCount,0),0)};}
+ if(url.pathname==='/api/email/combined'&&init.method==='POST'){state.saved={id:body.id,revision:body.revision+1,content:body.content,mailbox:'phuket',delivery:null,members:body.members.map((m:any)=>{const j=db.jobs[m.documentJobId],d=db.drafts[m.draftId];return {...m,hotel:j.hotel,accountId:j.account_id,accountName:j.account_name,invoiceIds:d.invoice_ids,purpose:j.purpose,layout:j.layout,stageLabel:null,files:d.exports.map((f:any,i:number)=>({fileId:m.memberId+':'+i,name:j.hotel+' '+f.name,byteCount:f.byte_count,sha256:f.sha256}))};})};state.saved.totals={accounts:state.saved.members.length,invoices:state.saved.members.reduce((n:number,m:any)=>n+m.invoiceIds.length,0),files:state.saved.members.reduce((n:number,m:any)=>n+m.files.length,0),bytes:state.saved.members.reduce((n:number,m:any)=>n+m.files.reduce((a:number,f:any)=>a+f.byteCount,0),0)};}
 
  if(url.pathname.endsWith('/send')){state.sends++;state.saved.delivery={id:'combined-proof',mode:'send',state:'awaiting_evidence',gmailAccepted:true,recorded:false,reason:'history_recording_unavailable'};sessionStorage.setItem('combined-proof',JSON.stringify(state));throw Error('synthetic lost send response');}
 

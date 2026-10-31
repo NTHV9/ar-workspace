@@ -17,7 +17,7 @@ begin
  k:='jobs/'||(j->>'id')||'/exports/'||gen_random_uuid()||'.pdf';
  perform public.ar_document_begin_upload(actor,(j->>'id')::uuid,k,p_bytes,p_sha->>h);
  perform public.ar_document_register_upload((j->>'id')::uuid,k,p_bytes,p_sha->>h,'application/pdf');
- r:=public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('name',h||'-reviewed.pdf','storage_key',k,'byte_count',p_bytes,'sha256',p_sha->>h)),true);
+ r:=public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('invoice_ids',j->'invoice_ids','name',h||'-reviewed.pdf','storage_key',k,'byte_count',p_bytes,'sha256',p_sha->>h)),true);
  if r?'error' then raise exception 'Synthetic review failed %',r;end if;
  d:=public.ar_email_open(actor,(j->>'id')::uuid,1);if d?'error' then raise exception 'Synthetic open failed %',d;end if;
  members:=members||jsonb_build_array(jsonb_build_object('memberId',gen_random_uuid(),'documentJobId',j->>'id','documentRevision',1,'draftId',d->>'id','draftRevision',d->'revision','stage',null,'policyVersion',null));

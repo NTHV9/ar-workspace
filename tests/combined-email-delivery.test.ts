@@ -17,14 +17,14 @@ async function fixture(){
  const drafts=members.map(m=>({id:m.draftId,owner:actor,document_job_id:m.documentJobId,document_revision:1,revision:1,hotel:m.hotel,account_id:m.accountId,invoice_ids:['I'],purpose:'billing',recipients:{to:[],cc:[],bcc:[]},subject:'Separate untouched',body:'Separate untouched',exports:[{name:'Invoice.pdf',storage_key:`jobs/${m.documentJobId}/exports/reviewed.pdf`,byte_count:bytes.length,sha256:digest}],attachments:[] as {id:string;name:string;storage_key:string;mime:string;byte_count:number;sha256:string}[],package_changed:false}));
  return {p,drafts};
 }
-function server(p:CombinedEmail,drafts:any[],options:{unknown?:boolean;historyFailure?:boolean}={}){
+function server(p:CombinedEmail,drafts:any[],options:{unknown?:boolean;historyFailure?:boolean;originalInvoiceIds?:string[]}={}){
  let delivery:any=null,posts=0;const reads:string[]=[];const mime:string[]=[];
  vi.stubGlobal('fetch',async(url:string,init:RequestInit={})=>{
  const v=init.body?JSON.parse(String(init.body)):{};
  if(url.endsWith('/ar_combined_email_get'))return Response.json({...p,delivery:delivery?{id:delivery.id,state:delivery.state,mode:'send',recorded:delivery.state==='sent',gmailAccepted:!!delivery.provider_receipt_id}:null});
  if(url.endsWith('/ar_email_get'))return Response.json(drafts.find(d=>d.id===v.p_id)??null);
  if(url.endsWith('/ar_email_business_preflight'))return Response.json({allowed:true});
- if(url.endsWith('/ar_document_get')){const m=p.members.find(m=>m.documentJobId===v.p_job_id)!;return Response.json({id:m.documentJobId,owner:actor,revision:1,acknowledged:true,hotel:m.hotel,account_id:m.accountId,invoice_ids:m.invoiceIds,layout:m.layout});}
+ if(url.endsWith('/ar_document_get')){const m=p.members.find(m=>m.documentJobId===v.p_job_id)!;return Response.json({id:m.documentJobId,owner:actor,revision:1,acknowledged:true,hotel:m.hotel,account_id:m.accountId,invoice_ids:options.originalInvoiceIds??m.invoiceIds,layout:m.layout});}
  if(url.endsWith('/ar_storage_read'))return Response.json({allowed:true});
  if(url.includes('/storage/')){reads.push(url);return new Response(bytes);}
  if(url.endsWith('/ar_combined_mail_claim')){if(v.p_expected.signatureHotel!==p.content.signatureHotel)return Response.json({error:'email_signature_changed'});if(delivery)return Response.json({...delivery,claimed:false});delivery={id:v.p_id,owner:actor,draft_id:null,mode:'send',state:'pending',message_id:v.p_message_id,created_at:new Date().toISOString(),snapshot:{expected:v.p_expected}};return Response.json({...delivery,claimed:true});}
@@ -74,4 +74,9 @@ it('keeps mixed export layouts and supplemental files in their own order with on
 it('fails closed on member storage path substitution even when the content digest is unchanged',async()=>{
  const {p,drafts}=await fixture();drafts[1].exports[0].storage_key=drafts[0].exports[0].storage_key;const s=server(p,drafts);
  await expect(sendCombined(env,actor,id,{revision:1,commandId:command,confirmed:true})).rejects.toThrow('email_attachment_invalid');expect(s.posts()).toBe(0);
+});
+it('sends the reviewed member subset while retaining the larger original job identity',async()=>{
+ const {p,drafts}=await fixture();const s=server(p,drafts,{originalInvoiceIds:['REMOVED','I']});
+ expect(await sendCombined(env,actor,id,{revision:1,commandId:command,confirmed:true})).toMatchObject({recorded:true});
+ expect(s.posts()).toBe(1);expect(s.reads).toHaveLength(2);
 });

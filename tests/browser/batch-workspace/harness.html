@@ -90,9 +90,10 @@ window.fetch=async(input,init={})=>{
  }
  if(path==='/api/email/open'){
   const job=db.jobs[body.jobId];if(!job||!job.acknowledged||job.revision!==body.documentRevision)return json({error:'email_package_not_reviewed'},409);
-  if(body.previousDraft){const previous=db.drafts[body.previousDraft.id];if(!previous||previous.document_job_id!==job.id)return json({error:'email_forbidden'},403);if(previous.document_revision!==job.revision){if(previous.delivery)return json({error:'email_handoff_pending'},409);if(previous.revision!==body.previousDraft.revision)return json({error:'email_revision_conflict'},409);previous.document_revision=job.revision;previous.exports=job.exports;previous.revision++;}db.opened[`${job.id}:${job.revision}`]=previous.id;return json(previous);}
+  const covered=job.exports.every(f=>Array.isArray(f.invoice_ids))?job.invoice_ids.filter(id=>job.exports.some(f=>f.invoice_ids.includes(id))):job.invoice_ids;
+  if(body.previousDraft){const previous=db.drafts[body.previousDraft.id];if(!previous||previous.document_job_id!==job.id)return json({error:'email_forbidden'},403);if(previous.document_revision!==job.revision){if(previous.delivery)return json({error:'email_handoff_pending'},409);if(previous.revision!==body.previousDraft.revision)return json({error:'email_revision_conflict'},409);previous.document_revision=job.revision;previous.exports=job.exports;previous.invoice_ids=covered;previous.revision++;}db.opened[`${job.id}:${job.revision}`]=previous.id;return json(previous);}
   if(db.opened[`${job.id}:${job.revision}`])return json(db.drafts[db.opened[`${job.id}:${job.revision}`]]);
-  const id=crypto.randomUUID(),draft={id,owner,document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:job.invoice_ids,purpose:job.purpose,recipients:{to:job.account_id==='20'?[]:[`${job.hotel.toLowerCase()}@synthetic.example`],cc:[],bcc:[]},subject:`Synthetic ${job.hotel} ${job.account_name}`,body:'Synthetic billing message. No real email is sent.',rich_body:null,exports:job.exports,attachments:[],revision:0,package_changed:false,gmail_handoff:null,delivery:null,billing_method:'email'};
+  const id=crypto.randomUUID(),draft={id,owner,document_job_id:job.id,document_revision:job.revision,hotel:job.hotel,account_id:job.account_id,account_name:job.account_name,invoice_ids:covered,purpose:job.purpose,recipients:{to:job.account_id==='20'?[]:[`${job.hotel.toLowerCase()}@synthetic.example`],cc:[],bcc:[]},subject:`Synthetic ${job.hotel} ${job.account_name}`,body:'Synthetic billing message. No real email is sent.',rich_body:null,exports:job.exports,attachments:[],revision:0,package_changed:false,gmail_handoff:null,delivery:null,billing_method:'email'};
   db.drafts[id]=draft;db.opened[`${job.id}:${job.revision}`]=id;return json(draft);
  }
  const check=/^\/api\/email\/deliveries\/([^/]+)\/check$/.exec(path);
@@ -107,7 +108,7 @@ window.fetch=async(input,init={})=>{
    if(draft.delivery)return json(draft.delivery);
    if(draft.document_revision!==job.revision)return json({error:'email_package_changed'},409);
    if(body.revision!==draft.revision||body.confirmed!==true||!draft.recipients.to.length)return json({error:'email_incomplete'},409);
-   db.sends.push({draftId:draft.id,jobId:job.id,hotel:job.hotel,accountId:job.account_id,recipients:draft.recipients,files:draft.exports.map(f=>f.name),stage:body.stage,revision:body.revision});
+   db.sends.push({invoiceIds:draft.invoice_ids,draftId:draft.id,jobId:job.id,hotel:job.hotel,accountId:job.account_id,recipients:draft.recipients,files:draft.exports.map(f=>f.name),stage:body.stage,revision:body.revision});
    if(db.uncertainNext){db.uncertainNext=false;draft.delivery={id:crypto.randomUUID(),mode:'send',state:'awaiting_evidence',recorded:false,stage:body.stage};draft.gmail_handoff='awaiting_evidence';return json({error:'simulated_lost_response'},503);}
    draft.delivery={id:crypto.randomUUID(),mode:'send',state:'sent',recorded:true,stage:body.stage};draft.gmail_handoff='sent';job.closed_at=new Date().toISOString();job.closed_reason='sent';return json(draft.delivery);
   }

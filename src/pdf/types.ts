@@ -1,6 +1,6 @@
 import type { SourceTextReference } from './source-text';
 export type PdfSourceDocument = { id: string; name: string; kind: 'statement' | 'invoice' | 'attachment'; invoiceId?: string; invoiceLabel?:string; invoiceIds?:string[]; bytes: Uint8Array };
-export type PdfExportFile = { name: string; bytes: Uint8Array };
+export type PdfExportFile = { name: string; bytes: Uint8Array; invoiceIds?:string[] };
 export type ContentMode = 'statement' | 'invoices' | 'both';
 export type DeliveryLayout = 'combined' | 'split' | 'separate';
 export type PdfLayer = {

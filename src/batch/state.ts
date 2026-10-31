@@ -13,6 +13,7 @@ export interface CombinedBatchState {observedDelivery?:EmailDeliveryView;pending
 export interface BatchEntry {pdfDelivery?:'combined'|'split'|'separate';selection:BatchSelection;commandKey:string;jobId?:string;requested?:boolean;error?:string;stage?:string;policyVersion?:number|null;mailDraftId?:string;mailRevision?:number;attempted?:boolean;delivery?:EmailDeliveryView}
 export interface BatchRecord {emailMode?:'separate'|'combined';combined?:CombinedBatchState;version:1;id:string;owner:string;workspaceOwner?:string;region:RegionId;phase?:'pdf'|'email';options:BatchOptions;entries:BatchEntry[]}
 export interface BatchMailSnapshot {
+ invoiceIds?:string[];
  jobId:string;documentRevision:number;draftId:string;mailRevision:number;hotel:string;accountId:string;accountName:string;
  sender:string;purpose:'billing'|'collection';stage:string|null;policyVersion:number|null;
  recipients:{to:string[];cc:string[];bcc:string[]};subject:string;files:string[];
@@ -98,7 +99,7 @@ export async function sendBatch(approved:readonly BatchMailSnapshot[],send:(mail
 export function initialCombined(batch:BatchRecord):CombinedBatchState{return {id:crypto.randomUUID(),revision:0,commandId:crypto.randomUUID(),sendCommandId:crypto.randomUUID(),content:{recipients:defaultSelfCc(batch.entries[0].selection.hotel,{to:[],cc:[],bcc:[]}),subject:'',body:'',richBody:null,signatureHotel:batch.entries[0].selection.hotel as HotelId}};}
 export function combinedLocked(batch:BatchRecord){return !!batch.combined?.attempted||!!combinedDelivery(batch.combined);}
 export function assertCombinedBatch(batch:BatchRecord,saved:CombinedEmail){
- if(saved.id!==batch.combined?.id||saved.mailbox!==batch.region||saved.members.length!==batch.entries.length||new Set(saved.members.map(m=>m.memberId)).size!==saved.members.length||saved.members.some(m=>{const e=batch.entries.find(e=>e.commandKey===m.memberId);return !e||m.documentJobId!==e.jobId||m.hotel!==e.selection.hotel||m.accountId!==e.selection.accountId||m.invoiceIds.length!==e.selection.ids.length||new Set(m.invoiceIds).size!==m.invoiceIds.length||m.invoiceIds.some(id=>!e.selection.ids.includes(id));}))throw Error('The shared email does not match this selected batch.');
+ if(saved.id!==batch.combined?.id||saved.mailbox!==batch.region||saved.members.length!==batch.entries.length||new Set(saved.members.map(m=>m.memberId)).size!==saved.members.length||saved.members.some(m=>{const e=batch.entries.find(e=>e.commandKey===m.memberId);return !e||m.documentJobId!==e.jobId||m.hotel!==e.selection.hotel||m.accountId!==e.selection.accountId||!m.invoiceIds.length||new Set(m.invoiceIds).size!==m.invoiceIds.length||m.invoiceIds.some(id=>!e.selection.ids.includes(id));}))throw Error('The shared email does not match this selected batch.');
 }
 
 function validCombinedContent(c:CombinedContent,batch:BatchRecord){return !!c&&typeof c.subject==='string'&&typeof c.body==='string'&&batch.entries.some(e=>e.selection.hotel===c.signatureHotel)&&(['to','cc','bcc'] as const).every(k=>Array.isArray(c.recipients?.[k])&&c.recipients[k].every(v=>typeof v==='string'));}

@@ -13,7 +13,7 @@ begin
  select id into fid from public.ar_document_files where job_id=(j->>'id')::uuid;
  perform public.ar_document_claim_file((j->>'id')::uuid,fid);perform public.ar_document_finish_file((j->>'id')::uuid,fid,'jobs/'||(j->>'id')||'/originals/'||fid||'.pdf',100,repeat('a',64));
  k:='jobs/'||(j->>'id')||'/exports/'||gen_random_uuid()||'.pdf';perform public.ar_document_begin_upload(actor,(j->>'id')::uuid,k,100,repeat('b',64));perform public.ar_document_register_upload((j->>'id')::uuid,k,100,repeat('b',64),'application/pdf');
- perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
+ perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('invoice_ids',j->'invoice_ids','name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
  d:=public.ar_email_open(actor,(j->>'id')::uuid,1);if d?'error' then raise exception 'fixture open %',d;end if;
  if h='KAT' then
  d:=public.ar_email_save_v3(actor,(d->>'id')::uuid,(d->>'revision')::integer,d->>'purpose',d->'recipients',d->>'subject',d->>'body',null,null,jsonb_build_array(jsonb_build_object('storageKey',d#>>'{exports,0,storage_key}','name','Inv. 201.pdf')));
