@@ -3,6 +3,7 @@ import type {DocumentBatchSession} from '../DocumentRoute';
 import type {PdfExportFile} from '../pdf/types';
 import {createReviewHandoff} from '../pdf/review-handoff';
 import {pdfReadyForEmail} from './phase';
+import {hasReviewedInvoiceScope} from '../email/invoice-scope';
 type Prepared={files:PdfExportFile[];session:DocumentBatchSession};
 type Result={job:DocumentJob;session?:DocumentBatchSession};
 type Dependencies={
@@ -25,8 +26,10 @@ export function createBatchPdfPreparation(deps:Dependencies){
    (revision,files)=>{check();return deps.review(attempt.job,revision,files);});
   check();pending.delete(attempt.job.id);return completed(result,attempt.prepared.session);
  }
- const prepare=async(job:DocumentJob,session?:DocumentBatchSession):Promise<Result>=>{
-  check();if(job.closed_at)return {job};
+ const prepare=async(job:DocumentJob,session?:DocumentBatchSession,preserveAttempt=false):Promise<Result>=>{
+  // This only reopens recovery UI; provider admission still checks frozen server
+  // evidence. Never regenerate an existing Draft/uncertain delivery's package.
+  check();if(job.closed_at||preserveAttempt)return {job,session};
   if(job.state!=='ready')throw Error('Source PDFs are not ready. Wait for preparation or resolve the source error.');
   const previous=pending.get(job.id);
   if(previous){
@@ -37,6 +40,7 @@ export function createBatchPdfPreparation(deps:Dependencies){
   }
   if(session&&session.revision!==job.revision)throw Error('This PDF preparation changed. Your edits remain in this tab.');
   if(pdfReadyForEmail(job,session))return {job,session};
+  if(job.acknowledged&&job.exports.length&&!hasReviewedInvoiceScope(job.exports)&&!session?.editor)throw Error('Reopen this older package in PDF Workspace before continuing. Its reviewed files have not been replaced.');
   const prepared=await deps.render(job,session);check();
   const attempt={job,input:session,prepared,handoff:createReviewHandoff()};pending.set(job.id,attempt);
   return settle(attempt);

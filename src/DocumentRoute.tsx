@@ -1,3 +1,4 @@
+import {hasReviewedInvoiceScope} from './email/invoice-scope';
 import {verifiedExitJob,type DocumentExitReceipt} from './preparation/exit-outbox';
 import {usePreparationExit,PreparationExitedError} from './preparation/tab-exit';
 import type {BatchPhase} from './batch/phase';
@@ -101,7 +102,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onExitedRoute,o
  async function openEditor(restore=true){if(!job||compact||closed||sessionConflict.current)return;const life=generation.current,attempt=++opening.current;setBusy(true);setError('');try{
   const requestToken=tokenRef.current;const docs=await loadJobSources(job,requestToken,maxBytes);
   let project:PdfProject|undefined;if(!transient&&restore&&job.project_key)project=await requestJson<PdfProject>(`/api/documents/${job.id}/project`,tokenRef.current);
-  if(alive.current&&generation.current===life&&opening.current===attempt&&tokenRef.current===requestToken){setInitialProject(project);setEditorSession(undefined);setEditorReviewed(!!project&&job.acknowledged&&job.exports.length>0);handoff.current=createReviewHandoff();setSources(docs);}
+  if(alive.current&&generation.current===life&&opening.current===attempt&&tokenRef.current===requestToken){setInitialProject(project);setEditorSession(undefined);setEditorReviewed(!!project&&job.acknowledged&&hasReviewedInvoiceScope(job.exports));handoff.current=createReviewHandoff();setSources(docs);}
  }catch(e){if(alive.current&&generation.current===life&&opening.current===attempt)setError(e instanceof Error?e.message:'Unable to open editor');}finally{if(alive.current&&generation.current===life&&opening.current===attempt)setBusy(false);}}
  async function uploadExport(file:PdfExportFile){if(!job)throw Error('Document preparation unavailable');return requestJson<Omit<DocumentExport,'name'>>(`/api/documents/${job.id}/upload?kind=export`,tokenRef.current,{method:'POST',headers:{'Content-Type':'application/pdf'},body:new Uint8Array(file.bytes).buffer});}
  async function review(files:PdfExportFile[],next:'email'|'download'){
@@ -112,7 +113,7 @@ export default function DocumentRoute({token,jobId,batch,onClose,onExitedRoute,o
   return ()=>{for(const file of files){const url=URL.createObjectURL(new Blob([new Uint8Array(file.bytes).buffer],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}};
  }
  async function save(files:PdfExportFile[],project:PdfProject){if(!job)throw new Error('Document preparation unavailable');const exports:DocumentExport[]=[];
-  for(const file of files)exports.push({...await uploadExport(file),name:file.name});
+  for(const file of files)exports.push({...await uploadExport(file),name:file.name,...file.invoiceIds?{invoice_ids:[...file.invoiceIds]}:{}});
   const receipt=await requestJson<Omit<DocumentExport,'name'>>(`/api/documents/${job.id}/upload?kind=project`,tokenRef.current,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(project)});
   const saved=await requestJson<DocumentJob>(`/api/documents/${job.id}/save`,tokenRef.current,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:job.revision,projectKey:receipt.storage_key,exports,acknowledged:true})});if(alive.current)setJob(saved);
  }

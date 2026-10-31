@@ -14,7 +14,7 @@ begin
  select id into fid from public.ar_document_files where job_id=(j->>'id')::uuid;
  perform public.ar_document_claim_file((j->>'id')::uuid,fid);perform public.ar_document_finish_file((j->>'id')::uuid,fid,'jobs/'||(j->>'id')||'/originals/'||fid||'.pdf',100,repeat('a',64));
  k:='jobs/'||(j->>'id')||'/exports/'||gen_random_uuid()||'.pdf';perform public.ar_document_begin_upload(actor,(j->>'id')::uuid,k,100,repeat('b',64));perform public.ar_document_register_upload((j->>'id')::uuid,k,100,repeat('b',64),'application/pdf');
- perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
+ perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('invoice_ids',j->'invoice_ids','name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
  d:=public.ar_email_open(actor,(j->>'id')::uuid,1);if d?'error' then raise exception 'fixture open %',d;end if;
  members:=members||jsonb_build_array(jsonb_build_object('memberId',case when h='KAT' then '00000000-0000-4000-8000-000000000001' else '00000000-0000-4000-8000-000000000002' end,'documentJobId',j->>'id','documentRevision',1,'draftId',d->>'id','draftRevision',d->'revision','stage',null,'policyVersion',null));
  end loop;
@@ -94,7 +94,7 @@ begin
  select id into fid from public.ar_document_files where job_id=(j->>'id')::uuid;
  perform public.ar_document_claim_file((j->>'id')::uuid,fid);perform public.ar_document_finish_file((j->>'id')::uuid,fid,'jobs/'||(j->>'id')||'/originals/'||fid||'.pdf',100,repeat('a',64));
  k:='jobs/'||(j->>'id')||'/exports/'||gen_random_uuid()||'.pdf';perform public.ar_document_begin_upload(actor,(j->>'id')::uuid,k,100,repeat('b',64));perform public.ar_document_register_upload((j->>'id')::uuid,k,100,repeat('b',64),'application/pdf');
- perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
+ perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('invoice_ids',j->'invoice_ids','name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
  d:=public.ar_email_open(actor,(j->>'id')::uuid,1);if d?'error' then raise exception 'fixture open %',d;end if;
  members:=members||jsonb_build_array(jsonb_build_object('memberId',case when h='KAT' then '00000000-0000-4000-8000-000000000001' else '00000000-0000-4000-8000-000000000002' end,'documentJobId',j->>'id','documentRevision',1,'draftId',d->>'id','draftRevision',d->'revision','stage',case when h='KAT' then 'Follow 1' else 'Follow 2' end,'policyVersion',(select version from ar_private.collection_policy_head where singleton)));
  end loop;
@@ -166,7 +166,7 @@ begin
  select id into fid from public.ar_document_files where job_id=(j->>'id')::uuid;
  perform public.ar_document_claim_file((j->>'id')::uuid,fid);perform public.ar_document_finish_file((j->>'id')::uuid,fid,'jobs/'||(j->>'id')||'/originals/'||fid||'.pdf',100,repeat('a',64));
  k:='jobs/'||(j->>'id')||'/exports/'||gen_random_uuid()||'.pdf';perform public.ar_document_begin_upload(actor,(j->>'id')::uuid,k,100,repeat('b',64));perform public.ar_document_register_upload((j->>'id')::uuid,k,100,repeat('b',64),'application/pdf');
- perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
+ perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('invoice_ids',j->'invoice_ids','name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
  d:=public.ar_email_open(actor,(j->>'id')::uuid,1);if d?'error' then raise exception 'fixture open %',d;end if;
  members:=members||jsonb_build_array(jsonb_build_object('memberId',case when h='KAT' then '00000000-0000-4000-8000-000000000001' else '00000000-0000-4000-8000-000000000002' end,'documentJobId',j->>'id','documentRevision',1,'draftId',d->>'id','draftRevision',d->'revision','stage',case when h='KAT' then 'Follow 1' else 'Follow 2' end,'policyVersion',(select version from ar_private.collection_policy_head where singleton)));
  end loop;
@@ -252,7 +252,7 @@ begin
   select id into fid from public.ar_document_files where job_id=(j->>'id')::uuid;
   perform public.ar_document_claim_file((j->>'id')::uuid,fid);perform public.ar_document_finish_file((j->>'id')::uuid,fid,'jobs/'||(j->>'id')||'/originals/'||fid||'.pdf',100,repeat('a',64));
   k:='jobs/'||(j->>'id')||'/exports/'||gen_random_uuid()||'.pdf';perform public.ar_document_begin_upload(actor,(j->>'id')::uuid,k,100,repeat('b',64));perform public.ar_document_register_upload((j->>'id')::uuid,k,100,repeat('b',64),'application/pdf');
-  perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
+  perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('invoice_ids',j->'invoice_ids','name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
   d:=public.ar_email_open(actor,(j->>'id')::uuid,1);
   members:=members||jsonb_build_array(jsonb_build_object('memberId',gen_random_uuid(),'documentJobId',j->>'id','documentRevision',1,'draftId',d->>'id','draftRevision',d->'revision','stage',case n when 1 then 'Follow 1' else 'Follow 2' end,'policyVersion',(select version from ar_private.collection_policy_head where singleton)));
  end loop;
@@ -284,7 +284,7 @@ begin
   select id into fid from public.ar_document_files where job_id=(j->>'id')::uuid;
   perform public.ar_document_claim_file((j->>'id')::uuid,fid);perform public.ar_document_finish_file((j->>'id')::uuid,fid,'jobs/'||(j->>'id')||'/originals/'||fid||'.pdf',100,repeat('a',64));
   k:='jobs/'||(j->>'id')||'/exports/'||gen_random_uuid()||'.pdf';perform public.ar_document_begin_upload(actor,(j->>'id')::uuid,k,100,repeat('b',64));perform public.ar_document_register_upload((j->>'id')::uuid,k,100,repeat('b',64),'application/pdf');
-  perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
+  perform public.ar_document_review(actor,(j->>'id')::uuid,0,jsonb_build_array(jsonb_build_object('invoice_ids',j->'invoice_ids','name','Synthetic.pdf','storage_key',k,'byte_count',100,'sha256',repeat('b',64))),true);
   d:=public.ar_email_open(actor,(j->>'id')::uuid,1);
   members:=members||jsonb_build_array(jsonb_build_object('memberId',gen_random_uuid(),'documentJobId',j->>'id','documentRevision',1,'draftId',d->>'id','draftRevision',d->'revision','stage',case n when 1 then 'Follow 1' else 'Follow 2' end,'policyVersion',(select version from ar_private.collection_policy_head where singleton)));
  end loop;

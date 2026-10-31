@@ -2,7 +2,7 @@ import {expect,it} from 'vitest';
 import {pdfReadyForEmail,retainPdfSession} from '../src/batch/phase';
 import type {DocumentBatchSession} from '../src/DocumentRoute';
 
-const reviewed={state:'ready',acknowledged:true,exports:[{}],revision:3,closed_at:null};
+const reviewed={state:'ready',acknowledged:true,exports:[{invoice_ids:['I']}],revision:3,closed_at:null};
 it('requires each account to have current confirmed PDFs before the whole batch opens email',()=>{
  expect(pdfReadyForEmail(reviewed)).toBe(true);
  expect(pdfReadyForEmail({...reviewed,acknowledged:false})).toBe(false);

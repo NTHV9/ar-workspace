@@ -2,6 +2,50 @@ import {test,expect,type Page} from '@playwright/test';
 import {PDFDocument} from 'pdf-lib';
 import {choosePdfTool} from '../fixtures/pdf-tools';
 const serverKey='ar-batch-fixture-server-v1';
+
+test('older created Gmail Draft returns from PDFs without replacing its immutable reviewed files',async({page})=>{
+ await begin(page);
+ await page.evaluate(()=>{
+  const previous=window.fetch.bind(window);let legacyJob:string|undefined;(window as any).legacyPdfWrites=0;
+  const strip=(exports:any[])=>exports.map(({invoice_ids,...f})=>f);
+  window.fetch=async(input,init={})=>{
+   const path=new URL(input instanceof Request?input.url:String(input),location.origin).pathname;
+   if(legacyJob&&path.startsWith(`/api/documents/${legacyJob}/`)&&/\/(upload|review)$/.test(path)){(window as any).legacyPdfWrites++;return Response.json({error:'document_mail_pending'},{status:409});}
+   const response=await previous(input,init);
+   if(path==='/api/email/open'){
+    const draft=await response.json() as {exports:any[];document_job_id:string};legacyJob??=draft.document_job_id;
+    if(draft.document_job_id!==legacyJob)return Response.json(draft);
+    return Response.json({...draft,exports:strip(draft.exports),gmail_handoff:'created',delivery:{id:'synthetic-existing-draft',mode:'draft',state:'created',recorded:false}});
+   }
+   if(path===`/api/documents/${legacyJob}`&&(!init.method||init.method==='GET')){const job=await response.json() as {exports:any[]};return Response.json({...job,exports:strip(job.exports)});}
+   return response;
+  };
+ });
+ await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();
+ await page.locator('.batch-heading').getByRole('button',{name:'Back to PDFs',exact:true}).click();
+ await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
+ await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).legacyPdfWrites)).toBe(0);
+ expect((await state(page)).sends).toEqual([]);
+});
+
+test('removed invoice stays out of separate batch sends and displayed totals without Preview',async({page})=>{
+ await begin(page,'separate','Bay Travel · Synthetic','invoices');
+ await page.getByRole('button',{name:'Delete page',exact:true}).click();
+ await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();
+ await expect(page.locator('.email-heading')).toContainText('1 invoices');
+ await tab(page,'Bay Travel');await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();
+ await page.locator('.batch-heading').getByRole('button',{name:'Review emails',exact:true}).click();
+ await page.getByRole('button',{name:'Send 2 emails',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Emails sent',exact:true})).toBeVisible();
+ await expect(page.locator('.email-send-result__counts')).toContainText('Invoices2');
+ const proof=await state(page);expect(proof.sends).toHaveLength(2);
+ expect(proof.sends.find((s:any)=>s.accountId==='10')?.invoiceIds).toEqual(['102']);
+ expect(proof.jobs.find(j=>j.accountId==='10')?.ids).toEqual(['101','102']);
+});
 test('partial separate result keeps the unattempted account editable and attempted account on its result',async({page})=>{
  await begin(page);await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();await tab(page,'Bay Travel');await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();await page.locator('.batch-heading').getByRole('button',{name:'Review emails',exact:true}).click();await page.getByRole('checkbox',{name:/^Send Bay Travel/}).uncheck();await page.getByRole('button',{name:'Send 1 emails',exact:true}).click();await expect(page.getByRole('heading',{name:'Email results',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Review remaining emails',exact:true}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();await tab(page,'Azure Travel');await expect(page.getByRole('heading',{name:'Email sent',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toHaveCount(0);expect((await state(page)).sends).toHaveLength(1);
 });
@@ -16,12 +60,12 @@ for(const outcome of ['pending','protected'])test(`explicit batch exit clears re
  expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('ar-account-batch:')||key.startsWith('ar-account-batch-active:')))).toEqual([]);
  const proof=await state(page);expect(proof.requests.some((request:string)=>request.endsWith('/abandon'))).toBe(true);expect(proof.sends).toEqual([]);
 });
-async function state(page:Page){return page.evaluate(key=>{const db=JSON.parse(sessionStorage.getItem(key)!);return {jobs:Object.values(db.jobs).map((j:any)=>({id:j.id,hotel:j.hotel,accountId:j.account_id,ids:j.invoice_ids,exports:j.exports,revision:j.revision,closed:j.closed_reason})),drafts:Object.values(db.drafts).map((d:any)=>({id:d.id,jobId:d.document_job_id,hotel:d.hotel,accountId:d.account_id,subject:d.subject,recipients:d.recipients,exports:d.exports,delivery:d.delivery})),sends:db.sends,requests:db.requests};},serverKey);}
-async function begin(page:Page,layout='combined',second='Bay Travel · Synthetic'){
+async function state(page:Page){return page.evaluate(key=>{const db=JSON.parse(sessionStorage.getItem(key)!);return {jobs:Object.values(db.jobs).map((j:any)=>({id:j.id,hotel:j.hotel,accountId:j.account_id,ids:j.invoice_ids,exports:j.exports,revision:j.revision,closed:j.closed_reason})),drafts:Object.values(db.drafts).map((d:any)=>({invoiceIds:d.invoice_ids,id:d.id,jobId:d.document_job_id,hotel:d.hotel,accountId:d.account_id,subject:d.subject,recipients:d.recipients,exports:d.exports,delivery:d.delivery})),sends:db.sends,requests:db.requests};},serverKey);}
+async function begin(page:Page,layout='combined',second='Bay Travel · Synthetic',content='both'){
  await page.goto('/tests/browser/batch-workspace/harness.html');await page.getByRole('button',{name:'Collections',exact:true}).click();
  await page.getByRole('button',{name:'Open KAT account Azure Travel · Synthetic',exact:true}).click();await page.getByRole('checkbox',{name:'Queue select 1001',exact:true}).check();await page.getByRole('checkbox',{name:'Queue select 1002',exact:true}).check();
  await page.getByRole('button',{name:`Open ${second.startsWith('Bay')?'TSK':'KAT'} account ${second}`,exact:true}).click();await page.getByRole('checkbox',{name:`Queue select ${second.startsWith('Bay')?'2001':'3001'}`,exact:true}).check();
- await page.getByRole('button',{name:'Prepare documents',exact:true}).click();await page.getByRole('combobox',{name:'Files for each account',exact:true}).selectOption(layout);await page.getByRole('button',{name:'Prepare accounts',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
+ await page.getByRole('button',{name:'Prepare documents',exact:true}).click();await page.getByRole('combobox',{name:'Document content',exact:true}).selectOption(content);await page.getByRole('combobox',{name:'Files for each account',exact:true}).selectOption(layout);await page.getByRole('button',{name:'Prepare accounts',exact:true}).click();await expect(page.locator('.pdf-paper .pdf-canvas')).toHaveAttribute('data-render-state','ready');
 }
 async function tab(page:Page,name:string){await page.getByRole('navigation',{name:'Accounts in this batch',exact:true}).getByRole('button',{name:new RegExp(name)}).click();}
 async function separateOverview(page:Page){await page.locator('.batch-heading').getByRole('button',{name:'Go to email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();await tab(page,'Bay Travel');await expect(page.getByRole('textbox',{name:'Email message',exact:true})).toBeVisible();await page.locator('.batch-heading').getByRole('button',{name:'Review emails',exact:true}).click();await expect(page.getByRole('heading',{name:'Separate emails for each account',exact:true})).toBeVisible();}

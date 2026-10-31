@@ -150,6 +150,18 @@ export function deliveryGroups(project: PdfProject, sources: PdfSourceDocument[]
   return [...(statement.length ? [{ id:id('statement',statements),name: 'Statement', pages: statement }] : []), ...(project.delivery === 'split' ? (invoice.length ? [{ id:id('invoices',invoices),name: 'Invoices', pages: invoice.flatMap(g => g.pages) }] : []) : invoice)];
 }
 
+/** Coverage follows delivered source pages, never filenames, PDF count or text edits. */
+export function deliveryInvoiceIds(project:PdfProject,pages:PdfProjectPage[],sources:PdfSourceDocument[]):string[]{
+ const catalog=new Map(sources.map(s=>[s.id,s])),ids=new Set<string>();
+ for(const sourceId of new Set(pages.map(p=>p.sourceId))){
+  const source=catalog.get(sourceId);if(!source)throw Error('A delivered page has no source document.');
+  if(source.kind==='statement')for(const id of source.invoiceIds??[])ids.add(id);
+  else if(source.kind==='invoice')ids.add(source.invoiceId||source.id);
+  else {const binding=project.invoiceAttachments?.find(a=>a.sourceId===sourceId);if(!binding)throw Error('Choose an invoice for every attached PDF.');ids.add(binding.invoiceId);}
+ }
+ return [...ids].sort();
+}
+
 export function movePage(project: PdfProject, id: string, direction: -1 | 1): PdfProject {
   const page = project.pages.find(p => p.id === id);
   if (!page) return project;

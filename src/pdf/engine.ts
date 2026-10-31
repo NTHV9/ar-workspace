@@ -9,7 +9,7 @@ import type {PDFDocumentProxy} from 'pdfjs-dist';
 import {loadPdf,renderPdfPage} from './pdfjs';
 import { PDFDocument } from 'pdf-lib';
 import type { DetectedText, PdfLayer, PdfProject, PdfProjectPage, PdfSourceDocument, PdfExportFile } from './types';
-import { deliveryGroups, wrapText } from './model';
+import { deliveryGroups, deliveryInvoiceIds, wrapText } from './model';
 import {deliveryFilenames} from './filenames';
 import { mapSourceRect, mapSourceTextRect } from './row-layout';
 import { extractSourceText, extractSourceImages } from './source-extraction';
@@ -268,7 +268,7 @@ export async function exportProject(project: PdfProject, sources: PdfSourceDocum
         const [copy] = await output.copyPages(input, [page.sourcePage - 1]); output.addPage(copy);
       }
     }
-    files.push({ name: filenames[index], bytes: await output.save() });
+    files.push({ name: filenames[index], bytes: await output.save(),invoiceIds:deliveryInvoiceIds(project,group.pages,sources) });
   }
   return files;
 }

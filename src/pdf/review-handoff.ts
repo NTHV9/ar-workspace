@@ -17,7 +17,7 @@ export function createReviewHandoff() {
       if (current.result) return current.result;
       for (let i = current.receipts.length; i < files.length; i++) {
         const receipt = await upload(files[i]);
-        current.receipts.push({...receipt, name: files[i].name});
+        current.receipts.push({...receipt, name: files[i].name,...files[i].invoiceIds?{invoice_ids:[...files[i].invoiceIds!]}:{}});
       }
       current.result = await review(current.revision, current.receipts);
       return current.result;

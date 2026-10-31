@@ -5,7 +5,7 @@ declare actor uuid:=ar_private.access_owner();jid uuid:=gen_random_uuid();did uu
  insert into public.ar_accounts(hotel,id,name,type,open,over90,items,verification_state) values('KAT',scope,'Synthetic C','SYNTHETIC',100,0,1,'verified');
  insert into public.ar_invoices(hotel,account_id,id,transaction_date,original,open,verification_state,collection_role,compressed,synced_at) values('KAT',scope,'A',current_date,100,100,'verified','standalone',false,now());
  update public.ar_invoice_workflow set billing_required=true,credit_term=30 where hotel='KAT' and account_id=scope and invoice_id='A';
- key:='jobs/'||jid||'/exports/'||gen_random_uuid()||'.pdf';exports:=jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',key,'byte_count',p_bytes,'sha256',p_sha));
+ key:='jobs/'||jid||'/exports/'||gen_random_uuid()||'.pdf';exports:=jsonb_build_array(jsonb_build_object('invoice_ids',jsonb_build_array('A'),'name','Synthetic.pdf','storage_key',key,'byte_count',p_bytes,'sha256',p_sha));
  insert into public.ar_document_jobs(id,owner,command_key,hotel,account_id,account_name,invoice_ids,content,layout,purpose,fingerprint,manifest,balance_snapshot,state,lifecycle,acknowledged,exports)
  values(jid,actor,cmd,'KAT',scope,'Synthetic C',array['A'],'invoices','combined','billing',md5(jid::text),'[{"id":"A","open":100}]',100,'ready','transient',true,exports);
  insert into public.ar_email_drafts(id,owner,document_job_id,document_revision,hotel,account_id,account_name,invoice_ids,purpose,recipients,subject,body,exports)

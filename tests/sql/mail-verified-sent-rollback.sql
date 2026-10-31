@@ -9,7 +9,7 @@ do $$declare actor uuid;scope text:='SYNTHETIC-DRAFT-SEND-'||gen_random_uuid();j
  perform public.ar_document_claim_file(jid,fid);perform public.ar_document_finish_file(jid,fid,'jobs/'||jid||'/originals/'||fid||'.pdf',100,repeat('a',64));
  key:='jobs/'||jid||'/exports/'||gen_random_uuid()||'.pdf';
  perform public.ar_document_begin_upload(actor,jid,key,100,repeat('b',64));perform public.ar_document_register_upload(jid,key,100,repeat('b',64),'application/pdf');
- perform public.ar_document_review(actor,jid,0,jsonb_build_array(jsonb_build_object('name','Synthetic.pdf','storage_key',key,'byte_count',100,'sha256',repeat('b',64))),true);
+ perform public.ar_document_review(actor,jid,0,jsonb_build_array(jsonb_build_object('invoice_ids',job->'invoice_ids','name','Synthetic.pdf','storage_key',key,'byte_count',100,'sha256',repeat('b',64))),true);
  perform set_config('ar.test.verified_sent_job',jid::text,true);
 end$$;
 
