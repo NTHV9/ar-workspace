@@ -1,3 +1,4 @@
+import {readWrapperArAdjustmentClaims} from './ar-only-wrapper-adjustment-read';
 import {discoverPostedEmbeddedRevenue} from './ar-only-posted-embedded-revenue-claims';
 import {readPostedEmbeddedRevenue} from './ar-only-posted-embedded-revenue-read';
 import {exclusiveNonRevenueZeroVatNetProvenance} from './exclusive-nonrevenue-zero-vat-net';
@@ -65,7 +66,7 @@ export function arOnlyInvoiceModel(packet:InvoicePacket,now?:Date){
  if(Number(!!packet.currentArTaxProof)+Number(!!packet.arOnlyPostedProof)+Number(!!packet.arOnlyPosProof)+Number(!!packet.arOnlyNonVatProof)+Number(!!packet.arOnlyWrapperNetVatProof)+Number(!!packet.arOnlyPosServiceProof)+Number(!!packet.arOnlyPosFeeProof)+Number(!!packet.arOnlyPosDiscountProof)+Number(!!packet.arOnlyPosMultiVatProof)+Number(!!packet.arOnlyPosSignedMultiVatProof)+Number(!!packet.arOnlyPosSalesProof)+Number(!!packet.arOnlyZeroVatNetProof)+Number(!!packet.arOnlySourceClaimsProof)!==1)unsupported('missing-proof');
  if(packet.arPostedGenerates?.length&&!packet.arOnlyPostedProof)unsupported('posted-generates');
  try{return invoiceModel(packet,now);}catch(error){
-  if(error instanceof Error&&(['document_invoice_current_ar_tax_unverified','document_invoice_tax_code_unsupported','document_invoice_tax_rate_unsupported','document_invoice_ar_tax_unsupported','document_invoice_ar_only_nonvat_unverified','document_invoice_direct_zero_tax_unverified','document_invoice_ar_only_wrapper_net_vat_unverified','document_invoice_ar_only_pos_service_unverified','document_invoice_ar_only_pos_fee_unverified','document_invoice_ar_only_pos_discount_unverified','document_invoice_ar_only_pos_multi_vat_unverified','document_invoice_ar_only_pos_signed_multi_vat_unverified','document_invoice_ar_only_pos_sales_unverified','document_invoice_ar_only_zero_vat_net_unverified','document_invoice_ar_only_source_claims_unverified','document_invoice_ar_only_posted_tax_claims_unverified','document_invoice_transferred_current_ar_rules_unverified','document_invoice_transfer_projection_calculation_unverified','document_invoice_ar_only_posted_pos_fee_unverified','document_invoice_explicit_revenue_pos_unverified','document_invoice_zero_vat_net_calculation_unverified','document_invoice_pos_receipt_service_unverified'].includes(error.message)||error.message.startsWith('document_invoice_ar_only_pos_unverified:')))throw new ArOnlyProofUnsupported(error.message,{cause:error});
+  if(error instanceof Error&&(['document_invoice_current_ar_tax_unverified','document_invoice_tax_code_unsupported','document_invoice_tax_rate_unsupported','document_invoice_ar_tax_unsupported','document_invoice_ar_only_nonvat_unverified','document_invoice_direct_zero_tax_unverified','document_invoice_ar_only_wrapper_net_vat_unverified','document_invoice_ar_only_wrapper_adjustment_unverified','document_invoice_ar_only_pos_service_unverified','document_invoice_ar_only_pos_fee_unverified','document_invoice_ar_only_pos_discount_unverified','document_invoice_ar_only_pos_multi_vat_unverified','document_invoice_ar_only_pos_signed_multi_vat_unverified','document_invoice_ar_only_pos_sales_unverified','document_invoice_ar_only_zero_vat_net_unverified','document_invoice_ar_only_source_claims_unverified','document_invoice_ar_only_posted_tax_claims_unverified','document_invoice_transferred_current_ar_rules_unverified','document_invoice_transfer_projection_calculation_unverified','document_invoice_ar_only_posted_pos_fee_unverified','document_invoice_explicit_revenue_pos_unverified','document_invoice_zero_vat_net_calculation_unverified','document_invoice_pos_receipt_service_unverified'].includes(error.message)||error.message.startsWith('document_invoice_ar_only_pos_unverified:')))throw new ArOnlyProofUnsupported(error.message,{cause:error});
   throw error;
  }
 }
@@ -147,6 +148,7 @@ export async function readArOnlyInvoicePacket(reader:ArOnlyInvoiceReader,manifes
   return finish(qualified);
  }
  const wrapperNet=discoverWrapperNetVat(initial);
+ if(wrapperNet.length&&initial.arDetails?.length)return finish(await readWrapperArAdjustmentClaims(reader,initial,()=>readFresh()));
  if(wrapperNet.length)return finish(await readPostedWrapperClaims(reader,initial,()=>readFresh()));
 
  const postedOnly=!initial.arDetails?.length;

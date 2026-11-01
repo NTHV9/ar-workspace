@@ -1,3 +1,31 @@
+## 2026-11-01 - Mixed posted-wrapper/current-AR adjustment qualification
+
+Implemented/tested locally, not deployed: a selected late same-account AR rebate
+is not a reservation posting; the wrapper-only ownership gate rejected that mixed
+invoice before its current AR tax evidence could be verified. A separate bounded
+source-claims profile composes existing posted-wrapper verification with exact
+negative manual Lodging/RM AR ownership and paired current-rule/calculator reads.
+Original selected gross remains unchanged. Calculator VAT is a report projection,
+never a fabricated posted identity or a claim about historical configuration.
+
+Read-only OPERA UI confirms original accommodation rows, the later rebate and
+current balance. Fresh paired AR-only reads qualify the source; the private
+rendered one-page PDF preserves all10 rows, rebate and before-VAT/VAT/current
+balance arithmetic. No native PDF footer parity is claimed for this new case.
+Original source, source/rule/calculator failures, aliases, parent/leaf roles,
+reservation representations, deferred/reference ambiguities and no-fallback
+boundaries are covered. Existing proof branches and formulas are unchanged.
+
+Local5,032 units/9 existing skips,typecheck/build pass. The first parallel run
+had2 existing5-second render timeouts; the full standalone rerun is green with
+no timeout/expectation changes. Independent fresh review READY with289 tests,
+including42 new cases. Its2 P2 findings were reproduced RED then repaired.
+The92 rebuilt frontend files match the live base byte-for-byte. Required GitHub
+and deployment are pending; production remains d828523. No business/Sheet/date,
+mail or OPERA ledger action, new permanent resource or schedule. Existing employee
+preparation remains untouched. Private captures and diagnostic credentials stay
+ignored and must be removed after verification; preview sessions were torn down.
+
 ## 2026-10-31 - Reviewed attachment invoice scope qualification
 
 Implemented/tested locally, not deployed: exported PDF source coverage now travels
