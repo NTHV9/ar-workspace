@@ -3,7 +3,7 @@ import {setupRegional} from './fixtures/hotel-regions';
 
 for(const [region,hotels,otherHotel] of [
  ['phuket',['KAT','TSK'],'TLKL'],
- ['khao-lak',['TLKL','WAKL','TLFO','TSAN'],'KAT'],
+ ['khao-lak',['TLKL','WAKL','TLFO','TSAN','TSUN'],'KAT'],
 ] as const)test(`completed ${region} history is released while another region is still running`,async({page})=>{
  const c=await setupRegional(page,false,true),posted:string[]=[],statusRegions:string[]=[];
  const completed:{hotel:string;from:string;to:string;status:string;finishedAt:string}[]=[];

@@ -8,7 +8,7 @@ import {syntheticManagement} from './fixtures/management-dashboard';
 import {parseManagementQuery} from '../worker/dashboard/management-api';
 it.each(['phuket','khao-lak'] as const)('validates signed report and exact regional ledgers: %s',region=>{
  const v=syntheticManagement(region);expect(managementResult(v,region,'All',v.from,v.to)).toBe(v);
- expect(managementAccounts(v.accountsOver60!,'tour OTA','account',false)).toHaveLength(region==='phuket'?2:4);
+ expect(managementAccounts(v.accountsOver60!,'tour OTA','account',false)).toHaveLength(region==='phuket'?2:5);
 });
 it.each(['net','cohort','count','foreign','duplicate','age'])('rejects corrupted complete management totals: %s',reason=>{
  const v=syntheticManagement();if(reason==='net')v.hotels[0].amount='999.00';if(reason==='cohort')v.cohort[0].amount='1.00';if(reason==='count')v.hotels[0].over60=3;
@@ -46,7 +46,7 @@ it('Account sorting stays inside canonical Hotel groups and Hotel sorting revers
  expect(grouped.map(group=>group.hotel)).toEqual(['KAT','TSK']);expect(grouped.map(group=>group.rows.map(row=>row.amount))).toEqual([['20.00','200.00'],['20.00','200.00']]);
  expect(grouped.flatMap(group=>group.rows.map(row=>row.hotel))).toEqual(['KAT','KAT','TSK','TSK']);
  expect(dashboardHotelGroups(sorted,'phuket',row=>row.hotel,true).map(group=>group.hotel)).toEqual(['TSK','KAT']);
- const khao=syntheticManagement('khao-lak').accountsOver60!;expect(dashboardHotelGroups([...khao].reverse(),'khao-lak',row=>row.hotel).map(group=>group.hotel)).toEqual(['TLKL','WAKL','TLFO','TSAN']);
+ const khao=syntheticManagement('khao-lak').accountsOver60!;expect(dashboardHotelGroups([...khao].reverse(),'khao-lak',row=>row.hotel).map(group=>group.hotel)).toEqual(['TLKL','WAKL','TLFO','TSAN','TSUN']);
 });
 it('validates dates and reserved regional scope without allowing paged partial summaries',()=>{
  expect(parseManagementQuery(new URL('https://example.test/api/dashboard/management?from=2026-09-01&to=2026-09-30&region=khao-lak'))).toMatchObject({p_hotel:'KhaoLak',p_from:'2026-09-01'});

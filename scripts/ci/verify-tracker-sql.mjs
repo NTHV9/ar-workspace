@@ -74,6 +74,14 @@ try{
  file(join(root,'scripts/recovery/supabase-stubs.sql'));
  const migrationDir=join(root,'supabase/migrations');
  for(const name of readdirSync(migrationDir).filter(n=>/^\d{14}_[a-z0-9_]+\.sql$/.test(n)).sort()){
+  if(name.endsWith('_ar_tsun_operational_support.sql')){
+   let reproduced=false;
+   try{file(join(root,'tests/sql/tracker-tsun-onboarding-rollback.sql'));}
+   catch{const log=readFileSync(join(runDir,String(sequence).padStart(3,'0')+'-psql.log'),'utf8');reproduced=/tsun_not_supported/.test(log);}
+   if(!reproduced)throw Error('TSUN operational regression did not reproduce before migration');
+   report.tsunBaseline='TSUN rejected as unsupported before operational support migration';
+   console.log('PASS TSUN unsupported baseline reproduced');
+  }
   if(name.endsWith('_ar_tracker_resolve_authority_alias.sql')){
    let reproduced=false;
    try{file(join(root,'tests/sql/tracker-resolve-authority-alias-rollback.sql'));}

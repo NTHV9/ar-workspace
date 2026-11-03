@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {setupRegional} from './fixtures/hotel-regions';
-const regions={phuket:['KAT','TSK'],'khao-lak':['TLKL','WAKL','TLFO','TSAN']};
+const regions={phuket:['KAT','TSK'],'khao-lak':['TLKL','WAKL','TLFO','TSAN','TSUN']};
 const matrices=['Closing balances by hotel','Activity by hotel','Payment amounts by hotel','Billing status by hotel','Latest Follow-Up by hotel'];
 for(const [region,hotels] of Object.entries(regions))for(const width of [1280,390])test(`Period comparisons have room for ${region} at ${width}`,async({page})=>{
  const c=await setupRegional(page,false,true);await page.setViewportSize({width,height:1000});await page.goto('/?dashboard=1&region='+region);

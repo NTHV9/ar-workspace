@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {setupRegional,regionalAccounts} from './fixtures/hotel-regions';
-const regions={phuket:['KAT','TSK'],'khao-lak':['TLKL','WAKL','TLFO','TSAN']};
+const regions={phuket:['KAT','TSK'],'khao-lak':['TLKL','WAKL','TLFO','TSAN','TSUN']};
 
 for(const [region,hotels] of Object.entries(regions)){
  for(const width of [1440,1280,390])test(`Portfolio overview ${region} fits ${width}`,async({page})=>{
@@ -8,7 +8,7 @@ for(const [region,hotels] of Object.entries(regions)){
   const overview=page.getByRole('region',{name:'Portfolio overview'}),table=page.getByRole('table',{name:'Portfolio aging by hotel'});
   await expect(overview).toBeVisible();await expect(overview.locator('.portfolio-hotel-card')).toHaveCount(hotels.length);
   await expect(table.locator('thead th')).toHaveCount(8);await expect(table.locator('tbody tr')).toHaveCount(hotels.length);
-  await expect(overview).toContainText(region==='phuket'?'1.8K':'10.8K');
+  await expect(overview).toContainText(region==='phuket'?'1.8K':'15K');
   if(width>=1280){expect(await table.evaluate(e=>e.scrollWidth<=e.parentElement!.clientWidth)).toBe(true);for(const card of await overview.locator('.portfolio-hotel-card').all())expect(await card.locator('.portfolio-hotel-value').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);}
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   expect(c.regionalCalls.some(r=>r.path==='/api/dashboard/aging-invoices')).toBe(false);

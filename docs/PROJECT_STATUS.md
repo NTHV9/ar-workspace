@@ -1,3 +1,42 @@
+## 2026-11-03 - TSUN coordinated onboarding qualified locally (release pending)
+
+Owner authorized all3 parts and release series1.1 (build1.1.0, delivered filename
+AgingMaster_1.1.exe). Owner will distribute to other publishing PCs and explicitly
+chose staff's first real Sheet publication once all6 Detailed Aging inputs exist.
+No partial SUN-only live Sheet publication or other-PC upgrade is claimed.
+
+Implemented: seventh operational hotel/fifth Khao Lak hotel; SUN/TSUN tracker
+aliases normalize asTSUN with same-hotel/account append identity; regional access,
+mailbox, refresh, financial scopes and transient exit metadata. Exact18 catalog
+function patches preserve ACL/searchpaths/owners and existing hotel lock ordinals.
+New private TSUN assets are derived from owner's RTFs;6 incumbent Invoice images/
+layouts/bank text match byte-for-byte,6 Statement logos/footer match exact pixels,
+and all bank fields match visual source readback. Removed only literal stray
+footer word in the new derived TSUN Statement, leaving original RTF unchanged.
+
+Actual read-only TSUN source:2 AR accounts/3 rows match Detailed Aging and exclude
+Accruals.2 folio Invoices qualify; a Credit without original Folio keeps the
+existing Invoice refusal. Statement now admits exact nullable absent folio,
+retaining all identity/payment/balance checks, so all3 AR rows are represented.
+Real/synthetic one-page and45-row PDFs pass bounds/row/money checks and visuals.
+No native Statement voucher-field parity is claimed; existing source policy stays.
+Property-only Back navigation now retains inferred region, verified TSUN/TLKL/KAT.
+
+Final local web5052passed/9existing skips,typecheck/build PASS. An intermediate
+run hit an existing5-second transfer test timeout; standalone full rerun is green
+with no timeout or assertion changes. SQL156 migrations/55 rollbackfixtures and
+concurrency contracts PASS at unchanged8-second capacity benchmark. CurrentCFO43
+and dedicatedTSUN/incumbent6 browser tests PASS. Broader obsolete manual browser
+flows remain documented rather than restoring retired UI or deleting coverage.
+Independent web and whole-change reviews READY. Master review's omitted-summary
+P2 was reproduced RED and fixed; final Master1002passed/8existing skips,lint/type
+checks pass. Corrected frozen1.1.0 build/static qualification is underway.
+
+Not deployed/enabled yet: GitHub qualification, exact migration/private asset/
+Worker activation and final EXE delivery remain. Production remains4a081f4.
+No real mail, Sheet/date write, financial publication or OPERA ledger change by
+this task. Original files and unrelated dirty worktree changes are preserved.
+
 ## 2026-11-01 - Mixed posted-wrapper/current-AR adjustment qualification
 
 Implemented/tested locally, not deployed: a selected late same-account AR rebate

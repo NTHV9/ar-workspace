@@ -7,7 +7,7 @@ import {agingBucketKey,agingPercentage} from './dashboard/aging-model';
 import {refreshLabel} from './ui';
 import './portfolio-overview.css';
 
-const hotelStyle:Record<HotelId,{color:string;tint:string}>={KAT:{color:'#4169ff',tint:'#eff3ff'},TSK:{color:'#168c83',tint:'#eaf8f5'},TLKL:{color:'#397ba8',tint:'#eef6fc'},WAKL:{color:'#8b60ad',tint:'#f5f0fa'},TLFO:{color:'#9b6d17',tint:'#fcf6e8'},TSAN:{color:'#ae5365',tint:'#fbf0f2'}};
+const hotelStyle:Record<HotelId,{color:string;tint:string}>={KAT:{color:'#4169ff',tint:'#eff3ff'},TSK:{color:'#168c83',tint:'#eaf8f5'},TLKL:{color:'#397ba8',tint:'#eef6fc'},WAKL:{color:'#8b60ad',tint:'#f5f0fa'},TLFO:{color:'#9b6d17',tint:'#fcf6e8'},TSAN:{color:'#ae5365',tint:'#fbf0f2'},TSUN:{color:'#a55e23',tint:'#fcf2e8'}};
 const ageColors=['#91b7f5','#6897ed','#8a80d5','#b497d3','#e1a459','#dc7d96'];
 const displayAmount=(amount:number|null,exact=false)=>amount===null?'—':money(amount,!exact).replace(/^THB /,'');
 const share=(value:number|null)=>value===null?'—':value.toFixed(1)+'%';

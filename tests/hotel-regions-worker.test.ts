@@ -59,7 +59,7 @@ describe('regional read query contracts',()=>{
  });
 });
 
-describe('six-property operational identities',()=>{
+describe('seven-property operational identities',()=>{
  it('accepts Khao Lak writes while preserving one exact hotel and account',()=>{
   const commandId='00000000-0000-4000-8000-000000000001';
   expect(parseExternalBilling({commandId,action:'record',hotel:'TLFO',accountId:'A',actualDate:'2026-09-15',channel:'system',reference:'Synthetic',note:'',amount:null,lines:[{invoiceId:'I',revision:0}]}).hotel).toBe('TLFO');
@@ -99,7 +99,7 @@ describe('regional API adapters and response fences',()=>{
  it('uses the regional overview RPC and enforces exact ordered result hotels',async()=>{
   vi.useFakeTimers();vi.setSystemTime(new Date('2026-09-15T03:00:00Z'));
   const calls:{url:string;body:unknown}[]=[];
-  vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push({url,body:JSON.parse(String(init.body))});return Response.json(overview(['TLKL','WAKL','TLFO','TSAN']));});
+  vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push({url,body:JSON.parse(String(init.body))});return Response.json(overview(['TLKL','WAKL','TLFO','TSAN','TSUN']));});
   const request=new Request('https://app.test/api/dashboard/hotel-overview?region=khao-lak&from=2026-09-01&to=2026-09-15');
   const response=await dashboardHotelOverviewApi(request,serviceEnv,actor);
   expect(response.status).toBe(200);
@@ -124,7 +124,7 @@ describe('regional API adapters and response fences',()=>{
   vi.stubGlobal('fetch',async(target:string,init:RequestInit={})=>{const path=new URL(target).pathname;if(path==='/auth/v1/user')return Response.json(user);const body=JSON.parse(String(init.body));if(path.endsWith('/ar_request_refresh')){requested.push(body.p_hotel);return Response.json({id:`run-${body.p_hotel}`,status:'queued',created:true});}if(path.endsWith('/ar_refresh_job')){const hotel=String(body.p_run_id).slice(4);return Response.json({hotel,account_id:null,reason:'manual'});}throw Error('unexpected');});
   const env={...appEnv,OPERA_CLIENT_ID:'synthetic',OPERA_CLIENT_SECRET:'synthetic',OPERA_APP_KEY:'synthetic',AR_REFRESH:{async create(value:{params:{hotel:string}}){dispatched.push(value.params.hotel);},async get(){return {async status(){return {status:'running'};}};}}};
   const response=await handleApi(authRequest('/api/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({region:'khao-lak',hotel:'All',reason:'manual'})}),env);
-  expect(response.status).toBe(200);expect(requested).toEqual(['TLKL','WAKL','TLFO','TSAN']);expect(dispatched).toEqual(requested);
+  expect(response.status).toBe(200);expect(requested).toEqual(['TLKL','WAKL','TLFO','TSAN','TSUN']);expect(dispatched).toEqual(requested);
  });
 
  it('uses regional refresh status and rejects a status row from another region',async()=>{

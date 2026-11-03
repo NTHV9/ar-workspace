@@ -20,17 +20,17 @@ describe('buildPortfolioOverview',()=>{
   expect(result.rows.flatMap(row=>row.members)).toEqual(accounts.slice(0,2));
  });
 
- it('keeps all four regional comparison cards when one Khao Lak hotel is selected',()=>{
-  const accounts=[account('TLKL','a',120),account('WAKL','b',60,{items:3}),account('TLFO','c',30),account('TSAN','d',30),account('KAT','e',1000)];
+ it('keeps all five regional comparison cards when one Khao Lak hotel is selected',()=>{
+  const accounts=[account('TLKL','a',120),account('WAKL','b',60,{items:3}),account('TLFO','c',30),account('TSAN','d',30),account('TSUN','e',60),account('KAT','f',1000)];
   const result=buildPortfolioOverview(accounts,'khao-lak','WAKL');
-  expect(result).toMatchObject({hotels:['TLKL','WAKL','TLFO','TSAN'],selectedHotels:['WAKL'],total:60,accountCount:1,itemCount:3,regionalTotal:240});
-  expect(result.cards.map(row=>[row.hotel,row.amount,row.share])).toEqual([['TLKL',120,50],['WAKL',60,25],['TLFO',30,12.5],['TSAN',30,12.5]]);
+  expect(result).toMatchObject({hotels:['TLKL','WAKL','TLFO','TSAN','TSUN'],selectedHotels:['WAKL'],total:60,accountCount:1,itemCount:3,regionalTotal:300});
+  expect(result.cards.map(row=>[row.hotel,row.amount,row.share])).toEqual([['TLKL',120,40],['WAKL',60,20],['TLFO',30,10],['TSAN',30,10],['TSUN',60,20]]);
   expect(result.rows.map(row=>row.hotel)).toEqual(['WAKL']);
  });
 
  it('reports missing hotels as unknown instead of converting them to zero',()=>{
   const result=buildPortfolioOverview([account('TLKL','saved',85)],'khao-lak','All');
-  expect(result).toMatchObject({partial:true,hasPublishedScope:true,missingHotels:['WAKL','TLFO','TSAN'],total:85,accountCount:1,itemCount:1});
+  expect(result).toMatchObject({partial:true,hasPublishedScope:true,missingHotels:['WAKL','TLFO','TSAN','TSUN'],total:85,accountCount:1,itemCount:1});
   expect(result.cards[1]).toEqual({hotel:'WAKL',available:false,members:[],amount:null,accountCount:null,itemCount:null,share:null,buckets:null});
   const selected=buildPortfolioOverview([account('TLKL','saved',85)],'khao-lak','TLKL');
   expect(selected).toMatchObject({partial:false,hasPublishedScope:true,missingHotels:[]});
@@ -57,8 +57,8 @@ describe('buildPortfolioOverview',()=>{
    {hotel:'TSAN',status:'running',last_success_at:'2026-09-13T00:00:00Z'},
   ]};
   const result=buildPortfolioOverview([],'khao-lak','All',refresh);
-  expect(result.missingHotels).toEqual(['WAKL','TLFO']);
-  expect(result.cards.map(row=>row.amount)).toEqual([0,null,null,0]);
+  expect(result.missingHotels).toEqual(['WAKL','TLFO','TSUN']);
+  expect(result.cards.map(row=>row.amount)).toEqual([0,null,null,0,null]);
  });
 
  it('preserves credits and source item counts without dropping unknown or offsetting accounts',()=>{

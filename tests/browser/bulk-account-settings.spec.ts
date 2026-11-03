@@ -1,5 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 import {auditWorkspace,auditLogin} from './fixtures/audit-workspace';
+import {HOTEL_IDS} from '../../src/domain/hotels';
 async function setup(page:Page,regional=false,defaults=false){
  await auditWorkspace(page);const calls:{path:string;body:any}[]=[],hotels=regional?['KAT','TSK']:['KAT','TSK','TLKL'];
  const rows=hotels.flatMap(hotel=>[{hotel,accountId:'same',name:'Synthetic Travel',type:'OTA',revision:1,billingRequired:true,creditTerm:30,billingMethod:'email',source:'account',invoices:12},{hotel,accountId:'new',name:'Synthetic New Account',type:'OTA',revision:0,billingRequired:null,creditTerm:null,billingMethod:null,source:'none',invoices:3}]);
@@ -32,7 +33,7 @@ test('type defaults preserve configured accounts and retry unknown save with the
  const {calls,failNext}=await setup(page);await page.getByRole('radio',{name:'Account types · fallback defaults'}).check();await page.getByRole('checkbox',{name:'OTA',exact:true}).check();
  await page.getByRole('checkbox',{name:'Billing requirement',exact:true}).check();await page.getByLabel('New billing requirement').selectOption('false');
  await page.getByRole('checkbox',{name:'Credit term',exact:true}).check();await page.getByLabel('New credit term').fill('7');await page.getByRole('button',{name:'Review changes',exact:true}).click();
- const review=page.getByRole('region',{name:'Review account settings'});await expect(review.getByText('Keeps Account settings',{exact:true})).toHaveCount(3);await expect(review).toContainText('6 type defaults');
+ const review=page.getByRole('region',{name:'Review account settings'});await expect(review.getByText('Keeps Account settings',{exact:true})).toHaveCount(3);await expect(review).toContainText('7 type defaults');expect(calls[0].body.types).toEqual(HOTEL_IDS.map(hotel=>({hotel,type:'OTA',revision:0})));
  failNext();await page.getByRole('button',{name:'Apply changes',exact:true}).click();await expect(page.getByRole('button',{name:'Edit selection',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Retry save',exact:true}).click();await expect(page.locator('.bulk-success')).toContainText('Saved');
  const writes=calls.filter(c=>c.path.endsWith('/apply'));expect(writes[0].body).toEqual(writes[1].body);
 });
@@ -69,7 +70,7 @@ for(const width of [1440,390])test('account headers sort and list filters preser
 test('display filters do not shrink a selected Account Type default group',async({page})=>{
  const {calls}=await setup(page);await page.getByRole('radio',{name:'Account types · fallback defaults'}).check();await page.getByRole('checkbox',{name:'OTA',exact:true}).check();
  await page.getByLabel('Filter setting status').selectOption('setup');await expect(page.getByRole('region',{name:'Account settings selection'}).locator('tbody tr')).toHaveCount(3);await expect(page.locator('.bulk-scope-count')).toContainText('all 6 accounts');
- await page.getByRole('checkbox',{name:'Credit term',exact:true}).check();await page.getByLabel('New credit term').fill('14');await page.getByRole('button',{name:'Review changes',exact:true}).click();expect(calls[0].body.accounts).toHaveLength(6);expect(calls[0].body.types).toHaveLength(6);
+ await page.getByRole('checkbox',{name:'Credit term',exact:true}).check();await page.getByLabel('New credit term').fill('14');await page.getByRole('button',{name:'Review changes',exact:true}).click();expect(calls[0].body.accounts).toHaveLength(6);expect(calls[0].body.types).toHaveLength(7);expect(calls[0].body.types).toEqual(HOTEL_IDS.map(hotel=>({hotel,type:'OTA',revision:0})));
 });
 async function accountNavigationFixture(page:Page,regional=false){
  const fixture=await setup(page,regional);let reads=0;

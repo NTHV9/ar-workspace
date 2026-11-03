@@ -5,7 +5,7 @@ export type TrackerField=typeof trackerFields[number];
 export type TrackerValues=Partial<Record<TrackerField,string|null>>;
 export interface TrackerIdentity {hotel:HotelId;invoiceNo:string;accountNo:string;folioNo?:string|null;transactionDate?:string|null}
 export interface TrackerCandidate extends TrackerIdentity {accountId:string;invoiceId:string}
-const aliases:Record<string,HotelId>={KT:'KAT',KAT:'KAT',TS:'TSK',TSK:'TSK',SAN:'TSAN',TSAN:'TSAN',WAT:'WAKL',WAKL:'WAKL',LFO:'TLFO',TLFO:'TLFO',TLKL:'TLKL'};
+const aliases:Record<string,HotelId>={KT:'KAT',KAT:'KAT',TS:'TSK',TSK:'TSK',SAN:'TSAN',TSAN:'TSAN',WAT:'WAKL',WAKL:'WAKL',LFO:'TLFO',TLFO:'TLFO',TLKL:'TLKL',SUN:'TSUN',TSUN:'TSUN'};
 export function trackerHotel(value:string,region:RegionId):HotelId|null {
  const hotel=aliases[value.trim().toUpperCase()];return hotel&&hotelRegion(hotel)===region?hotel:null;
 }
