@@ -9,3 +9,19 @@ it('rejects changed balances and child invoices',()=>{expect(()=>statementModel(
 it('rejects unrelated hotel, missing rows and unsupported money precision',()=>{expect(()=>statementModel(raw,[{...manifest[0],hotel:'TSK'}],'2026-09-09')).toThrow();expect(()=>statementModel(raw,[{...manifest[0],id:'404'}],'2026-09-09')).toThrow();const bad=structuredClone(raw);bad.accountDetails.invoices[0].amount=money(100.001);expect(()=>statementModel(bad,manifest,'2026-09-09')).toThrow();});
 
 it("rejects inconsistent payment signs rather than inferring a sign",()=>{const bad=structuredClone(raw);bad.accountDetails.invoices[0].payments=money(20);expect(()=>statementModel(bad,[manifest[0]],"2026-09-09")).toThrow();});
+
+const creditSource=(folioNo:unknown=undefined)=>({accountDetails:{...raw.accountDetails,hotelId:'TSUN',invoices:[{...invoice(1),invoiceType:'Credit',folioNo}]}});
+const creditSelection={...manifest[0],hotel:'TSUN',folio_no:null};
+it.each([undefined,null,''])('includes an exact current AR credit without a folio in Statement (%s)',folio=>{
+ const model=statementModel(creditSource(folio),[creditSelection],'2026-11-03');
+ expect(model.rows).toMatchObject([{id:'1',folio:'',debit:10000,credit:-2000,balance:8000}]);expect(model.total).toBe(8000);
+});
+it('still rejects a missing/present folio mismatch in either source direction',()=>{
+ expect(()=>statementModel(creditSource(201),[creditSelection],'2026-11-03')).toThrow('document_source_changed');
+ expect(()=>statementModel(creditSource(),[{...creditSelection,folio_no:'201'}],'2026-11-03')).toThrow('document_source_changed');
+});
+it('retains exact invoice identity and financial checks for a folio-less credit',()=>{
+ expect(()=>statementModel(creditSource(),[{...creditSelection,invoice_no:'999'}],'2026-11-03')).toThrow('document_source_changed');
+ expect(()=>statementModel(creditSource(),[{...creditSelection,open:79}],'2026-11-03')).toThrow('document_source_changed');
+ const bad=creditSource();bad.accountDetails.invoices[0].payments=money(20);expect(()=>statementModel(bad,[creditSelection],'2026-11-03')).toThrow('document_source_changed');
+});

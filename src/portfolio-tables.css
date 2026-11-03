@@ -5,7 +5,8 @@
 .portfolio .comparison td.wakl{--portfolio-hotel-fill:#f5f0fa}
 .portfolio .comparison td.tlfo{--portfolio-hotel-fill:#fcf6e8}
 .portfolio .comparison td.tsan{--portfolio-hotel-fill:#fbf0f2}
-.portfolio .comparison td:is(.kat,.tsk,.tlkl,.wakl,.tlfo,.tsan){
+.portfolio .comparison td.tsun{--portfolio-hotel-fill:#fcf2e8}
+.portfolio .comparison td:is(.kat,.tsk,.tlkl,.wakl,.tlfo,.tsan,.tsun){
  background:var(--portfolio-hotel-fill);
  color:inherit;
 }

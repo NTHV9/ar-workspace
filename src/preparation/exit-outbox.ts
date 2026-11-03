@@ -1,9 +1,10 @@
 import type {DocumentJob} from '../../worker/documents/jobs';
+import {isHotelId} from '../domain/hotels';
 export interface CreateExitReference {commandKey:string;hotel:string;payloadDigest:string}
 export interface VerifiedExitSnapshot {actorId:string;authSessionId:string;jobIds:string[];creates:CreateExitReference[]}
 export type ExitEntry={version:1|2;exitCommandId?:string;actorId:string;authSessionId:string;queuedAt:number;state:'pending'}&({jobId:string}|CreateExitReference);
 const KEY='ar-preparation-exit-v1:',MAX_ENTRIES=128,MAX_BYTES=48000,uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-const valid=(e:ExitEntry)=>e&&Object.keys(e).sort().join(',')===(((e.version===2?'exitCommandId,':'')+('jobId'in e?'actorId,authSessionId,jobId,queuedAt,state,version':'actorId,authSessionId,commandKey,hotel,payloadDigest,queuedAt,state,version')).split(',').sort().join(','))&&[1,2].includes(e.version)&&(e.version===1||uuid.test(e.exitCommandId??''))&&uuid.test(e.actorId)&&uuid.test(e.authSessionId)&&Number.isSafeInteger(e.queuedAt)&&e.state==='pending'&&('jobId'in e?uuid.test(e.jobId):uuid.test(e.commandKey)&&['KAT','TSK','TLKL','WAKL','TLFO','TSAN'].includes(e.hotel)&&/^[0-9a-f]{64}$/.test(e.payloadDigest));
+const valid=(e:ExitEntry)=>e&&Object.keys(e).sort().join(',')===(((e.version===2?'exitCommandId,':'')+('jobId'in e?'actorId,authSessionId,jobId,queuedAt,state,version':'actorId,authSessionId,commandKey,hotel,payloadDigest,queuedAt,state,version')).split(',').sort().join(','))&&[1,2].includes(e.version)&&(e.version===1||uuid.test(e.exitCommandId??''))&&uuid.test(e.actorId)&&uuid.test(e.authSessionId)&&Number.isSafeInteger(e.queuedAt)&&e.state==='pending'&&('jobId'in e?uuid.test(e.jobId):uuid.test(e.commandKey)&&isHotelId(e.hotel)&&/^[0-9a-f]{64}$/.test(e.payloadDigest));
 const identity=(e:ExitEntry)=>JSON.stringify([e.actorId,e.authSessionId,'jobId'in e?e.jobId:[e.commandKey,e.hotel,e.payloadDigest]]);
 const entryKey=(e:ExitEntry)=>KEY+identity(e);
 export function readExitOutbox(storage:Storage):ExitEntry[]{

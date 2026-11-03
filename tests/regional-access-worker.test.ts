@@ -3,7 +3,7 @@ import {handleApi} from '../worker/index';
 import {starterTemplates} from '../src/email/templates';
 const actor='00000000-0000-4000-8000-000000000031',owner='00000000-0000-4000-8000-000000000032',id='00000000-0000-4000-8000-000000000033';
 const env={SUPABASE_URL:'https://db.synthetic.invalid',SUPABASE_SECRET_KEY:'synthetic-server',SUPABASE_PUBLISHABLE_KEY:'synthetic-public'};
-const grant={email:'staff@example.invalid',administrator:false,regions:['khao-lak'],revision:1,workspaceOwnerId:owner,scopeHotels:['TLKL','WAKL','TLFO','TSAN']};
+const grant={email:'staff@example.invalid',administrator:false,regions:['khao-lak'],revision:1,workspaceOwnerId:owner,scopeHotels:['TLKL','WAKL','TLFO','TSAN','TSUN']};
 const request=(path:string,method='GET',body?:unknown)=>new Request('https://app.synthetic.invalid'+path,{method,headers:{Authorization:'Bearer synthetic-user','Content-Type':'application/json'},...(body&&method!=='GET'?{body:JSON.stringify(body)}:{})});
 afterEach(()=>vi.unstubAllGlobals());
 function transport(authorize:(body:Record<string,unknown>)=>Response,result:unknown={}){
@@ -38,6 +38,11 @@ it('rejects mismatched response data even after the route was authorized',async(
  transport(()=>Response.json({...grant,scopeHotels:['TLKL']}),{hotel:'KAT',accountId:'SYNTHETIC'});
  expect((await handleApi(request('/api/account-settings/TLKL/SYNTHETIC'),env)).status).toBe(503);
 });
+it('authorizes the exact delegated TSUN hotel/account and rejects a regional denial before reading settings',async()=>{
+ const calls=transport(body=>{expect(body).toMatchObject({p_actor:actor,p_kind:'hotel',p_hotel:'TSUN'});return Response.json({...grant,scopeHotels:['TSUN']});},{hotel:'TSUN',accountId:'same'});
+ expect((await handleApi(request('/api/account-settings/TSUN/same'),env)).status).toBe(200);expect(calls.map(c=>c.name)).toEqual(['ar_access_authorize','ar_settings_get']);expect(calls[1].body).toMatchObject({p_hotel:'TSUN',p_account_id:'same'});
+ const denied=transport(()=>Response.json({message:'access_forbidden'},{status:400}));expect((await handleApi(request('/api/account-settings/TSUN/same'),env)).status).toBe(403);expect(denied.map(c=>c.name)).toEqual(['ar_access_authorize']);
+});
 it('uses the scoped service reader instead of broadening direct authenticated data access',async()=>{
  const calls=transport(()=>Response.json({...grant,scopeHotels:['TLKL']}),[]);
  const response=await handleApi(request('/api/accounts/TLKL/SYNTHETIC'),env);expect(response.status).toBe(200);
@@ -57,7 +62,7 @@ it('does not let a delegated session inherit an administrator acceptance cookie'
  expect((await handleApi(r,env)).status).toBe(403);expect(calls).toHaveLength(0);
 });
 
-it.each([['phuket',['KAT','TSK']],['khao-lak',['TLKL','WAKL','TLFO','TSAN']]])('lets active %s staff save a shared template through the normal dispatcher',async(region,hotels)=>{
+it.each([['phuket',['KAT','TSK']],['khao-lak',['TLKL','WAKL','TLFO','TSAN','TSUN']]])('lets active %s staff save a shared template through the normal dispatcher',async(region,hotels)=>{
  const saved={...starterTemplates[0],id,revision:3};
  const calls=transport(body=>{expect(body).toMatchObject({p_actor:actor,p_kind:'global',p_method:'PUT',p_path:'/api/email/templates/'+id,p_mail:false});return Response.json({...grant,regions:[region],scopeHotels:hotels});},saved);
  const response=await handleApi(request('/api/email/templates/'+id,'PUT',{revision:2,content:starterTemplates[0]}),env);

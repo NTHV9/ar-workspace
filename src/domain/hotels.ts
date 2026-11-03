@@ -1,11 +1,12 @@
 /** Operational hotel IDs are deliberately distinct from reporting regions. */
-export const HOTEL_IDS = ['KAT','TSK','TLKL','WAKL','TLFO','TSAN'] as const;
+export const HOTEL_IDS = ['KAT','TSK','TLKL','WAKL','TLFO','TSAN','TSUN'] as const;
 export type HotelId = typeof HOTEL_IDS[number];
 /** Public property names shared by operational UI and per-hotel email signatures. */
 export const HOTEL_NAMES:Record<HotelId,string>={
  KAT:'Katathani Phuket Beach Resort',TSK:'The Shore at Katathani',
  TLKL:'The Little Shore Khao Lak by Katathani',WAKL:'The Waters Khaolak by Katathani',
  TLFO:'The Leaf Oceanside by Katathani',TSAN:'The Sands Khaolak by Katathani',
+ TSUN:'The Sun Club Khaolak by Katathani',
 };
 export const hotelName=(hotel:HotelId)=>HOTEL_NAMES[hotel];
 
@@ -13,13 +14,13 @@ export const REGION_IDS = ['phuket','khao-lak'] as const;
 export type RegionId = typeof REGION_IDS[number];
 
 /** Visible catalog only: pre-opening properties do not participate in financial or provider scopes. */
-export const PREOPENING_HOTELS = [{id:'TSUN',name:'The Sun Club Khaolak by Katathani',region:'khao-lak'}] as const;
+export const PREOPENING_HOTELS:readonly {id:string;name:string;region:RegionId}[] = [];
 
 const hotelsByRegion:Record<RegionId,readonly HotelId[]> = {
  phuket:Object.freeze(['KAT','TSK'] as HotelId[]),
- 'khao-lak':Object.freeze(['TLKL','WAKL','TLFO','TSAN'] as HotelId[]),
+ 'khao-lak':Object.freeze(['TLKL','WAKL','TLFO','TSAN','TSUN'] as HotelId[]),
 };
-const hotelRegions:Record<HotelId,RegionId> = {KAT:'phuket',TSK:'phuket',TLKL:'khao-lak',WAKL:'khao-lak',TLFO:'khao-lak',TSAN:'khao-lak'};
+const hotelRegions:Record<HotelId,RegionId> = {KAT:'phuket',TSK:'phuket',TLKL:'khao-lak',WAKL:'khao-lak',TLFO:'khao-lak',TSAN:'khao-lak',TSUN:'khao-lak'};
 
 export const isHotelId=(value:unknown):value is HotelId=>typeof value==='string'&&(HOTEL_IDS as readonly string[]).includes(value);
 export const isRegionId=(value:unknown):value is RegionId=>typeof value==='string'&&(REGION_IDS as readonly string[]).includes(value);

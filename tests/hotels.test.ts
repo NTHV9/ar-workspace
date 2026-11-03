@@ -5,9 +5,9 @@ describe('regional hotel scope',()=>{
  it('keeps the exact owner-approved property order in two disjoint regions',()=>{
   expect(REGION_IDS).toEqual(['phuket','khao-lak']);
   expect(regionHotels('phuket')).toEqual(['KAT','TSK']);
-  expect(regionHotels('khao-lak')).toEqual(['TLKL','WAKL','TLFO','TSAN']);
+  expect(regionHotels('khao-lak')).toEqual(['TLKL','WAKL','TLFO','TSAN','TSUN']);
   expect(HOTEL_IDS).toEqual([...regionHotels('phuket'),...regionHotels('khao-lak')]);
-  expect(new Set(HOTEL_IDS).size).toBe(6);
+  expect(new Set(HOTEL_IDS).size).toBe(7);
   expect(regionLabel('phuket')).toBe('Phuket');expect(regionLabel('khao-lak')).toBe('Khao Lak');
  });
  it('does not accept arbitrary property IDs or report scopes as operational hotels',()=>{
@@ -17,7 +17,7 @@ describe('regional hotel scope',()=>{
  });
  it('keeps hotel identity separate even when Account and Invoice IDs will match',()=>{
   for(const hotel of ['KAT','TSK'] as const){expect(hotelRegion(hotel)).toBe('phuket');expect(hotelInRegion(hotel,'khao-lak')).toBe(false);}
-  for(const hotel of ['TLKL','WAKL','TLFO','TSAN'] as const){expect(hotelRegion(hotel)).toBe('khao-lak');expect(hotelInRegion(hotel,'phuket')).toBe(false);}
+  for(const hotel of ['TLKL','WAKL','TLFO','TSAN','TSUN'] as const){expect(hotelRegion(hotel)).toBe('khao-lak');expect(hotelInRegion(hotel,'phuket')).toBe(false);}
  });
  it('preserves old Phuket URLs and resolves explicit Khao Lak properties',()=>{
   expect(resolveRegion(new URLSearchParams())).toBe('phuket');
@@ -30,7 +30,7 @@ describe('regional hotel scope',()=>{
   expect(resolveRegion(new URLSearchParams('region=phuket&property=TLKL'))).toBe('phuket');
   expect(resolveRegion(new URLSearchParams('region=bad&hotel=All'))).toBe('phuket');
  });
- it('retains Phuket default reports and maps only the explicit four-hotel scope',()=>{
+ it('retains Phuket default reports and maps only the explicit five-hotel scope',()=>{
   for(const value of [null,'','All']){expect(reportHotelScope('phuket',value)).toBe(null);expect(reportHotelScope('khao-lak',value)).toBe('KhaoLak');}
   expect(reportHotelScope('phuket','KAT')).toBe('KAT');expect(reportHotelScope('khao-lak','WAKL')).toBe('WAKL');
  });

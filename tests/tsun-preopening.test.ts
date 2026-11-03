@@ -5,9 +5,9 @@ import {signatureWorkplace} from '../src/email/signature';
 import {settingsAccountParams} from '../src/navigation';
 import {syntheticManagement} from './fixtures/management-dashboard';
 import {managementResult} from '../src/dashboard/management-data';
-it('shows the approved Sun Club catalog entry without expanding operational scopes',()=>{
- expect(PREOPENING_HOTELS).toEqual([{id:'TSUN',name:'The Sun Club Khaolak by Katathani',region:'khao-lak'}]);expect(HOTEL_IDS).toEqual(['KAT','TSK','TLKL','WAKL','TLFO','TSAN']);expect(regionHotels('khao-lak')).toEqual(['TLKL','WAKL','TLFO','TSAN']);expect(isHotelId('TSUN')).toBe(false);expect(()=>hotelMailbox('TSUN')).toThrow('email_invalid');expect(()=>signatureWorkplace('TSUN')).toThrow('signature_hotel_unavailable');expect(settingsAccountParams(new URLSearchParams(),{hotel:'TSUN',accountId:'same'},['khao-lak'])).toBeNull();
+it('admits Sun Club as the seventh operational hotel in its existing Khao Lak scope',()=>{
+ expect(PREOPENING_HOTELS).toEqual([]);expect(HOTEL_IDS).toEqual(['KAT','TSK','TLKL','WAKL','TLFO','TSAN','TSUN']);expect(regionHotels('khao-lak')).toEqual(['TLKL','WAKL','TLFO','TSAN','TSUN']);expect(isHotelId('TSUN')).toBe(true);expect(hotelMailbox('TSUN')).toBe('khao-lak');expect(signatureWorkplace('TSUN')).toBe('The Sun Club Khaolak by Katathani');expect(settingsAccountParams(new URLSearchParams(),{hotel:'TSUN',accountId:'same'},['khao-lak'])?.get('property')).toBe('TSUN');expect(settingsAccountParams(new URLSearchParams(),{hotel:'TSUN',accountId:'same'},['phuket'])).toBeNull();
 });
-it('retains the current four-Hotel Khao Lak report contract and totals',()=>{
- const data=syntheticManagement('khao-lak');expect(managementResult(data,'khao-lak','All',data.from,data.to)).toBe(data);expect(data.hotels).toHaveLength(4);expect(data.metrics.find(m=>m.key==='open')?.amount).toBe('4000.00');expect(data.hotels.some(h=>String(h.hotel)==='TSUN')).toBe(false);
+it('includes five independent Khao Lak hotels in report contracts and signed totals',()=>{
+ const data=syntheticManagement('khao-lak');expect(managementResult(data,'khao-lak','All',data.from,data.to)).toBe(data);expect(data.hotels).toHaveLength(5);expect(data.metrics.find(m=>m.key==='open')?.amount).toBe('5000.00');expect(data.hotels.map(h=>h.hotel)).toEqual(['TLKL','WAKL','TLFO','TSAN','TSUN']);
 });
