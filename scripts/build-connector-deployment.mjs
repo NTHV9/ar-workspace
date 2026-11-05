@@ -18,7 +18,7 @@ writeFileSync('dist-worker/assets.js', `export default ${JSON.stringify(assets)}
 writeFileSync('dist-worker/entry.js', `import worker from '../worker/index.ts';
 export { ArRefreshWorkflow } from '../worker/refresh/workflow.ts';
 import assets from './assets.js';
-export default { scheduled:worker.scheduled, async fetch(request, env) {
+export default { scheduled:worker.scheduled, async fetch(request, env, ctx) {
  const ASSETS={async fetch(req) {
   const url=new URL(req.url); const asset=assets[url.pathname] ?? (url.pathname.startsWith('/assets/') ? null : assets['/index.html']);
   if(!asset)return new Response('Not found',{status:404});
@@ -27,7 +27,7 @@ export default { scheduled:worker.scheduled, async fetch(request, env) {
   // Google Picker validates the restricted browser key against the app origin.
   // Cross-origin requests must identify that origin without exposing paths or queries.
   return new Response(req.method==='HEAD'?null:body,{headers:{'Content-Type':asset.type,'Cache-Control':url.pathname.startsWith('/assets/')?'public,max-age=31536000,immutable':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY'}});
- }}; return worker.fetch(request,{...env,ASSETS});
+ }}; return worker.fetch(request,{...env,ASSETS},ctx);
 }};`);
 await build({entryPoints:['dist-worker/entry.js'],bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers'],outfile:'dist-worker/deploy.js',minify:true});
 console.log(`Prepared ${Object.keys(assets).length} public assets for connector deployment.`);

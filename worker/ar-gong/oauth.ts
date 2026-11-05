@@ -1,14 +1,14 @@
-import OAuthProvider, {AuthorizationError, insufficientScope, type OAuthHelpers, type OAuthResourceContext} from '@cloudflare/workers-oauth-provider';
+import OAuthProvider, {AuthorizationError, OAuthError, insufficientScope, type OAuthHelpers, type OAuthResourceContext} from '@cloudflare/workers-oauth-provider';
 import {administratorEmail, parseAccess} from '../../src/access/model';
 import {googleSession} from '../access/session';
 import {boundedBody} from '../email/shared';
 import {backendRpc, type RefreshEnv} from '../refresh/backend';
-import {gongTools, readScope, uuid, type GongIdentity} from './tools';
+import {gongTools, readScope, uuid, validSession, type GongIdentity} from './tools';
 
 const authorizePath = '/api/ar-gong/authorize';
 const resourcePath = '/mcp';
 const paths = new Set([
-  authorizePath, '/api/ar-gong/token', '/api/ar-gong/register', resourcePath,
+  authorizePath, '/api/ar-gong/availability', '/api/ar-gong/token', '/api/ar-gong/register', resourcePath,
   '/.well-known/oauth-authorization-server', '/.well-known/oauth-protected-resource',
   '/.well-known/oauth-protected-resource/mcp',
 ]);
@@ -58,7 +58,7 @@ async function authorize(request: Request, env: GongEnv): Promise<Response> {
     if (request.method === 'GET') {
       if (url.search.length > 4096) return json({error: 'invalid_request'}, 400);
       await oauth.parseAuthRequest(request);
-      const connect = new URL('/', url.origin);
+      const connect = new URL('/connect/ar-gong', url.origin);
       connect.searchParams.set('arGong', url.search.slice(1));
       return new Response(null, {status: 303, headers: {Location: connect.href, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'}});
     }
@@ -94,6 +94,9 @@ async function authorize(request: Request, env: GongEnv): Promise<Response> {
     const result = await oauth.completeAuthorization({
       request: consent.request, userId: identity.actor, metadata: {}, scope: [readScope], props: identity,
     });
+    // The provider rewrites the grant on code exchange. Workers KV admits one write
+    // per second per key, so avoid handing off the code in that first write window.
+    await new Promise(resolve => setTimeout(resolve, 1100));
     return json({redirectTo: result.redirectTo}, 200, consent.headers);
   } catch (error) {
     if (request.method === 'GET' && error instanceof AuthorizationError && error.redirectTo) {
@@ -109,6 +112,9 @@ export async function handleGong(request: Request, env: GongEnv, ctx?: Execution
   const url = new URL(request.url);
   if (!env.OAUTH_KV || env.AR_GONG_ORIGIN !== url.origin || url.protocol !== 'https:' || !ctx) return json({error: 'not_found'}, 404);
   if (!env.AR_GONG_RATE) return json({error: 'not_found'}, 404);
+  if (url.pathname === '/api/ar-gong/availability') {
+    return request.method === 'GET' ? json({available: true}) : json({error: 'method_not_allowed'}, 405);
+  }
   if (url.pathname.startsWith('/api/ar-gong/')) {
     const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
     if (!(await env.AR_GONG_RATE.limit({key: 'oauth:' + ip})).success) {
@@ -126,6 +132,13 @@ export async function handleGong(request: Request, env: GongEnv, ctx?: Execution
         if (!(await bindings.AR_GONG_RATE!.limit({key: 'tools:' + props.actor})).success) {
           return json({error: 'rate_limited'}, 429, new Headers({'Retry-After': '60'}));
         }
+        try {
+          if (!await validSession(bindings, props)) {
+            return json({error: 'sign_in_again'}, 401, new Headers({'WWW-Authenticate': 'Bearer error="invalid_token"'}));
+          }
+        } catch {
+          return json({error: 'authorization_unavailable'}, 503);
+        }
         const response = await gongTools(req, bindings, props);
         const headers = new Headers(response.headers);
         headers.set('Cache-Control', 'no-store');
@@ -140,6 +153,12 @@ export async function handleGong(request: Request, env: GongEnv, ctx?: Execution
     scopesSupported: [readScope, 'offline_access'],
     requiredScopes: [readScope],
     resourceMetadata: {resource, authorization_servers: [url.origin]},
+    async tokenExchangeCallback({props}) {
+      if (!props || !await validSession(env, props as GongIdentity) ||
+          (props.administrator !== true && !await backendRpc(env, 'ar_access_self', {p_actor: props.actor}))) {
+        throw new OAuthError('invalid_grant', {description: 'The AR authorization is no longer active'});
+      }
+    },
     accessTokenTTL: 900,
     refreshTokenTTL: 86400,
     cookiePrefix: '__Host-ar-gong-',

@@ -9,7 +9,7 @@ interface Consent {handle: string; clientName: string; redirectHost: string; red
 
 export function gongConnectionRequest(): Pending | null {
   const url = new URL(location.href);
-  const query = url.searchParams.get('arGong');
+  const query = url.pathname === '/connect/ar-gong' ? url.searchParams.get('arGong') : null;
   if (query !== null) {
     url.searchParams.delete('arGong');
     history.replaceState(history.state, '', url);
@@ -37,6 +37,8 @@ export function GongConnect({pending}: {pending: Pending}) {
     let active = true;
     let cleanup: (() => void) | undefined;
     void (async () => {
+      const available = await fetch('/api/ar-gong/availability', {cache: 'no-store'});
+      if (!available.ok) throw Error();
       const config = await fetch('/api/config', {cache: 'no-store'});
       if (!config.ok) throw Error();
       const {supabaseUrl, publishableKey, googleEnabled} = await config.json() as {supabaseUrl?: string; publishableKey?: string; googleEnabled?: boolean};
@@ -82,7 +84,7 @@ export function GongConnect({pending}: {pending: Pending}) {
         if (typeof result.redirectTo !== 'string') throw Error();
         const redirect = new URL(result.redirectTo);
         if (redirect.protocol !== 'https:' && !(redirect.protocol === 'http:' &&
-            ['localhost', '127.0.0.1', '[::1]'].includes(redirect.hostname))) throw Error();
+            (['localhost', '[::1]'].includes(redirect.hostname) || /^127(?:\.\d{1,3}){3}$/.test(redirect.hostname)))) throw Error();
         sessionStorage.removeItem(storageKey);
         location.replace(redirect.href);
         return;

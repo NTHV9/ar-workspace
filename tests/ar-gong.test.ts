@@ -15,12 +15,20 @@ const googleToken = 'x.' + btoa(JSON.stringify({
 
 function memoryKv() {
   const records = new Map<string, string>();
+  const grantWrites = new Map<string, number>();
   return {
     async get(key: string, options?: {type: string}) {
       const value = records.get(key);
       return value === undefined ? null : options?.type === 'json' ? JSON.parse(value) : value;
     },
-    async put(key: string, value: string) { records.set(key, value); },
+    async put(key: string, value: string) {
+      if (key.startsWith('grant:')) {
+        const now = Date.now();
+        if (now - (grantWrites.get(key) ?? 0) < 1000) throw Error('KV PUT failed: 429');
+        grantWrites.set(key, now);
+      }
+      records.set(key, value);
+    },
     async delete(key: string) { records.delete(key); },
     async list({prefix = ''}: {prefix?: string} = {}) {
       return {keys: [...records.keys()].filter(key => key.startsWith(prefix)).map(name => ({name})), list_complete: true};
@@ -85,7 +93,9 @@ function fixture() {
     }).toString();
     const start = await fetchWorker(authorizePath + '?' + query);
     expect(start.status).toBe(303);
-    expect(new URL(start.headers.get('Location')!).searchParams.get('arGong')).toBe(query);
+    const consentPage = new URL(start.headers.get('Location')!);
+    expect(consentPage.pathname).toBe('/connect/ar-gong');
+    expect(consentPage.searchParams.get('arGong')).toBe(query);
     expect((await post(authorizePath, {action: 'preview', query}, {...web, Origin: 'https://other.test'})).status).toBe(400);
     const preview = await post(authorizePath, {action: 'preview', query}, web);
     expect(preview.status).toBe(200);
@@ -102,7 +112,7 @@ function fixture() {
       client_id, code_verifier: verifier, resource: origin + '/mcp',
     })});
     expect(token.status).toBe(200);
-    return (await token.json() as {access_token: string}).access_token;
+    return {clientId: client_id, ...await token.json() as {access_token: string; refresh_token: string}};
   }
   return {calls, state, fetchWorker, post, authorize};
 }
@@ -120,7 +130,7 @@ describe('AR_Gong OAuth and read isolation', () => {
     const anon = await fetchWorker('/mcp');
     expect(anon.status).toBe(401);
     expect(anon.headers.get('WWW-Authenticate')).toContain('resource_metadata=');
-    const token = await authorize();
+    const {access_token: token, refresh_token, clientId} = await authorize();
     const headers = {Authorization: 'Bearer ' + token, Accept: 'application/json, text/event-stream'};
     const rpc = (method: string, params?: unknown) => post('/mcp', {jsonrpc: '2.0', id: 1, method, params}, headers);
     const list = await rpc('tools/list');
@@ -140,7 +150,13 @@ describe('AR_Gong OAuth and read isolation', () => {
     state.phuket = false;
     expect(await (await aging('KAT')).json()).toMatchObject({result: {isError: true, structuredContent: {error: 'access_forbidden'}}});
     state.active = false;
-    expect(await (await aging('KAT')).json()).toMatchObject({result: {isError: true, structuredContent: {error: 'sign_in_again'}}});
+    expect((await aging('KAT')).status).toBe(401);
+    expect((await rpc('tools/list')).status).toBe(401);
+    const renewed = await fetchWorker('/api/ar-gong/token', {method: 'POST', body: new URLSearchParams({
+      grant_type: 'refresh_token', refresh_token, client_id: clientId, resource: origin + '/mcp',
+    })});
+    expect(renewed.status).toBe(400);
+    expect(await renewed.json()).toMatchObject({error: 'invalid_grant'});
     expect(reads()).toBe(2);
     expect((await post('/api/refresh', {hotel: 'KAT'}, headers)).status).toBe(401);
     expect((await post('/api/documents', {hotel: 'KAT'}, headers)).status).toBe(401);
