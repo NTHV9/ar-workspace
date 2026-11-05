@@ -64,7 +64,6 @@ export async function gongTools(request: Request, env: RefreshEnv, identity: Gon
   async function scope(h: HotelId, query: Request, read: (actor: string) => Promise<Record<string, unknown>>) {
     try {
       if (!isHotelId(h)) return toolResult({error: 'invalid_hotel'}, true);
-      if (!await validSession(scopedEnv, identity)) return toolResult({error: 'sign_in_again'}, true);
       if (identity.administrator === true) return toolResult({hotel: h, currency: 'THB', ...await read(identity.actor)});
       const grant = await authorizeRegionalRequest(query, scopedEnv, identity.actor);
       if (!grant.scopeHotels.includes(h)) return toolResult({error: 'access_forbidden'}, true);
@@ -119,7 +118,6 @@ export async function gongTools(request: Request, env: RefreshEnv, identity: Gon
     inputSchema: z.strictObject({region: z.enum(['phuket', 'khao-lak'])}), annotations: readOnly,
   }, async ({region}) => {
     try {
-      if (!await validSession(scopedEnv, identity)) return toolResult({error: 'sign_in_again'}, true);
       const url = new URL('/api/reports/tracker', origin);
       url.searchParams.set('region', region);
       if (!identity.administrator) await authorizeRegionalRequest(new Request(url), scopedEnv, identity.actor);

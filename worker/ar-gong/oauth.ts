@@ -15,6 +15,7 @@ const paths = new Set([
 
 export interface GongEnv extends RefreshEnv {
   AR_GONG_ORIGIN?: string;
+  AR_GONG_ACCESS?: 'pilot' | 'enabled';
   OAUTH_KV?: KVNamespace;
   AR_GONG_RATE?: {limit(input: {key: string}): Promise<{success: boolean}>};
   OAUTH_PROVIDER?: OAuthHelpers;
@@ -68,7 +69,7 @@ async function authorize(request: Request, env: GongEnv): Promise<Response> {
     }
     const body = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(await boundedBody(request, 8192)));
     const identity = await identify(request, env);
-    if (!identity) return json({error: 'access_denied'}, 403);
+    if (!identity || !allowsIdentity(env, identity)) return json({error: 'access_denied'}, 403);
     if (body?.action === 'preview' && typeof body.query === 'string' && body.query.length <= 4096) {
       const original = new URL(authorizePath, url.origin);
       original.search = body.query;
@@ -106,12 +107,17 @@ async function authorize(request: Request, env: GongEnv): Promise<Response> {
   }
 }
 
+function allowsIdentity(env: GongEnv, identity: GongIdentity) {
+  return env.AR_GONG_ACCESS === 'enabled' ||
+    (env.AR_GONG_ACCESS === 'pilot' && identity.administrator === true);
+}
+
 export function isGongPath(path: string) { return paths.has(path); }
 
 export async function handleGong(request: Request, env: GongEnv, ctx?: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   if (!env.OAUTH_KV || env.AR_GONG_ORIGIN !== url.origin || url.protocol !== 'https:' || !ctx) return json({error: 'not_found'}, 404);
-  if (!env.AR_GONG_RATE) return json({error: 'not_found'}, 404);
+  if (!env.AR_GONG_RATE || (env.AR_GONG_ACCESS !== 'pilot' && env.AR_GONG_ACCESS !== 'enabled')) return json({error: 'not_found'}, 404);
   if (url.pathname === '/api/ar-gong/availability') {
     return request.method === 'GET' ? json({available: true}) : json({error: 'method_not_allowed'}, 405);
   }
@@ -128,7 +134,7 @@ export async function handleGong(request: Request, env: GongEnv, ctx?: Execution
       async fetch(req, bindings, context) {
         const {auth, props} = context as OAuthResourceContext<GongIdentity>;
         if (!auth.scope.includes(readScope)) return insufficientScope(auth, [readScope]);
-        if (!props || auth.userId !== props.actor || auth.audience !== resource) return json({error: 'access_denied'}, 403);
+        if (!props || !allowsIdentity(bindings, props) || auth.userId !== props.actor || auth.audience !== resource) return json({error: 'access_denied'}, 403);
         if (!(await bindings.AR_GONG_RATE!.limit({key: 'tools:' + props.actor})).success) {
           return json({error: 'rate_limited'}, 429, new Headers({'Retry-After': '60'}));
         }
@@ -154,7 +160,7 @@ export async function handleGong(request: Request, env: GongEnv, ctx?: Execution
     requiredScopes: [readScope],
     resourceMetadata: {resource, authorization_servers: [url.origin]},
     async tokenExchangeCallback({props}) {
-      if (!props || !await validSession(env, props as GongIdentity) ||
+      if (!props || !allowsIdentity(env, props as GongIdentity) || !await validSession(env, props as GongIdentity) ||
           (props.administrator !== true && !await backendRpc(env, 'ar_access_self', {p_actor: props.actor}))) {
         throw new OAuthError('invalid_grant', {description: 'The AR authorization is no longer active'});
       }

@@ -36,8 +36,8 @@ function memoryKv() {
   } as unknown as KVNamespace;
 }
 
-function fixture() {
-  const env = {AR_GONG_ORIGIN: origin, OAUTH_KV: memoryKv(), AR_GONG_RATE: {limit: async () => ({success: true})}, SUPABASE_URL: db,
+function fixture(access: 'pilot' | 'enabled' = 'enabled') {
+  const env = {AR_GONG_ORIGIN: origin, AR_GONG_ACCESS: access, OAUTH_KV: memoryKv(), AR_GONG_RATE: {limit: async () => ({success: true})}, SUPABASE_URL: db,
     SUPABASE_PUBLISHABLE_KEY: 'test-public', SUPABASE_SECRET_KEY: 'test-private'};
   const ctx = {waitUntil: vi.fn(), passThroughOnException: vi.fn(), props: {}};
   const calls: string[] = [];
@@ -78,7 +78,7 @@ function fixture() {
     fetchWorker(path, {method: 'POST', headers: {'Content-Type': 'application/json', ...extra}, body: JSON.stringify(body)});
   const web = {Origin: origin, Authorization: 'Bearer ' + googleToken};
 
-  async function authorize() {
+  async function authorize(expectPilotDenial = false) {
     const registered = await post('/api/ar-gong/register', {
       client_name: 'Test AI', redirect_uris: [redirectUri], grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'], token_endpoint_auth_method: 'none',
@@ -98,6 +98,10 @@ function fixture() {
     expect(consentPage.searchParams.get('arGong')).toBe(query);
     expect((await post(authorizePath, {action: 'preview', query}, {...web, Origin: 'https://other.test'})).status).toBe(400);
     const preview = await post(authorizePath, {action: 'preview', query}, web);
+    if (expectPilotDenial) {
+      expect(preview.status).toBe(403);
+      return null;
+    }
     expect(preview.status).toBe(200);
     const {handle, clientName, redirectHost} = await preview.json() as {handle: string; clientName: string; redirectHost: string};
     expect({clientName, redirectHost}).toEqual({clientName: 'Test AI', redirectHost: '127.0.0.1'});
@@ -125,12 +129,17 @@ describe('AR_Gong OAuth and read isolation', () => {
     expect(response.status).toBe(404);
   });
 
+  it('denies consent to staff in the Cloudflare pilot', async () => {
+    const {authorize} = fixture('pilot');
+    expect(await authorize(true)).toBeNull();
+  });
+
   it('runs PKCE consent, reads only authorized properties and rejects revoked access and web writes', async () => {
     const {calls, state, fetchWorker, post, authorize} = fixture();
     const anon = await fetchWorker('/mcp');
     expect(anon.status).toBe(401);
     expect(anon.headers.get('WWW-Authenticate')).toContain('resource_metadata=');
-    const {access_token: token, refresh_token, clientId} = await authorize();
+    const {access_token: token, refresh_token, clientId} = (await authorize())!;
     const headers = {Authorization: 'Bearer ' + token, Accept: 'application/json, text/event-stream'};
     const rpc = (method: string, params?: unknown) => post('/mcp', {jsonrpc: '2.0', id: 1, method, params}, headers);
     const list = await rpc('tools/list');
