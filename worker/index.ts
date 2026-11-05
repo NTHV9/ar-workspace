@@ -1,3 +1,4 @@
+import type {GongEnv} from './ar-gong/oauth';
 import {retiredReportRequest} from './dashboard/current-only-policy';
 import {safeAuthenticationDiagnostic} from './opera/auth';
 import {trackerApi} from './tracker-sync/api';
@@ -50,7 +51,7 @@ import type {EmailEnv} from './email/shared';
 import {rendererProof} from './statement/proof';
 import {isHotelId,regionHotels} from '../src/domain/hotels';
 import {configuredOperaHotels,hotelBelongsToRegion,regionalHotelScope,resultMatchesHotelScope} from './hotels';
-interface Env extends TrackerWatchEnv,TrackerEnv,ReportSheetLinksEnv,FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
+interface Env extends GongEnv,TrackerWatchEnv,TrackerEnv,ReportSheetLinksEnv,FinancialLogRetentionEnv,FinancialIngestionEnv,OperaEnv,RefreshEnv,EmailEnv,ReconcileEnv,DriveEnv,RemittanceApiEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string; COMMIT_SHA?: string; ASSETS?: { fetch(request: Request): Promise<Response> } }
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 async function upstream(url: string, options: RequestInit) {
   const controller = new AbortController();
@@ -275,7 +276,13 @@ export async function handleApi(request: Request, env: Env,background?:{waitUnti
 }
 export default {
   async fetch(request: Request, env: Env,background?:{waitUntil(task:Promise<unknown>):void}) {
-    if (new URL(request.url).pathname.startsWith('/api/')) return handleApi(request, env,background);
+    const path = new URL(request.url).pathname;
+    if (path === '/mcp' || path.startsWith('/api/ar-gong/') || path.startsWith('/.well-known/oauth-')) {
+      if (!env.AR_GONG_ORIGIN || !env.OAUTH_KV) return new Response(null, {status: 404});
+      const {handleGong, isGongPath} = await import('./ar-gong/oauth');
+      if (isGongPath(path)) return handleGong(request, env, background as ExecutionContext | undefined);
+    }
+    if (path.startsWith('/api/')) return handleApi(request, env,background);
     return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Application assets unavailable', { status: 503 });
   },
   async scheduled(event:{cron?:string},env:Env) {
