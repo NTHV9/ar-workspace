@@ -35,3 +35,9 @@ coverage of all seven properties. A private read-only real-file dry run verified
 all 1,117 current ledger rows, followed by the owner-authorized exact grouping
 repair of the identified invoice with conditional upload and full readback.
 Final local, CI and deployment receipts are recorded in PROJECT_STATUS.
+
+Real-volume preflight reproduced a statement timeout in transfer admission. An
+EXPLAIN showed policy matching executed 31,008 times before discarding rows
+without any Account transfer. Materializing the latest reassigned-row scope
+reduced the same read-only query to three policy checks and about 9 ms, with
+the same two eligible results. No timeout or eligibility guard was relaxed.
