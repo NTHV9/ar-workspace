@@ -1,3 +1,19 @@
+## 2026-11-11 — AR Address primary and no-primary fallback
+
+Owner authorizes choosing a primary AR ADDRESS when several exist, and using an
+AR ADDRESS when none is primary so document preparation can continue. Shared
+Statement/Invoice resolver preserves exact Account-linked AR selection, otherwise
+uses the unique boolean-primary AR address, otherwise the first AR address in
+OPERA response order. BUSINESS primary is never eligible. Multiple primary AR
+addresses, broken explicit address references, wrong profile/account identity,
+incomplete lists and provider failures retain their existing errors.
+
+Implemented in worker/documents/addressee.ts; regression coverage in
+ tests/document-addressee.test.ts. Both new selection paths were observed failing
+before implementation; final focused suite passes 42 tests on the isolated release
+checkout based on the live 74c0470 source. No customer data or provider settings
+changed. Deployment is owner-authorized before GitHub CI; build/deployment result
+will be recorded below. Unrelated in-progress tracker edits are excluded.
 ## 2026-11-03 - TSUN coordinated onboarding qualified locally (release pending)
 
 Owner authorized all3 parts and release series1.1 (build1.1.0, delivered filename
