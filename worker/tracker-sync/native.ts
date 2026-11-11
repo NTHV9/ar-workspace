@@ -1,8 +1,13 @@
+import {planGroups,groupMarker,moneyCents,type GroupData,type GroupMarker,type GroupPlan} from './transfer-groups';
+import {validateTransferBatch,transferWasWritten,type TransferWrite,type TransferOutcome} from './transfer-model';
 import {readJson} from '../drive/shared';
 import {canResolveWithoutAccountNumber,trackerFields,trackerHotel,type TrackerField} from './model';
 import {trackerHeaders,trackerDateValue,validTrackerCredit} from './workbook';
 import type {ProviderRow,ProviderSnapshot,ProviderWrite} from './service';
 const TITLE='ลูกหนี้ เขาหลัก',ROOT='https://sheets.googleapis.com/v4/spreadsheets/';
+const transferWritableRows=new WeakSet<ProviderRow>();
+interface NativeGroupLayout {data:GroupData[];markers:GroupMarker[];valid:boolean}
+const nativeGroupLayouts=new WeakMap<ProviderSnapshot,NativeGroupLayout>();
 const dates=new Set(['R','T','U','V','W','X']),allowed=new Set(['R','U','V','W']);
 interface Cell {userEnteredValue?:{stringValue?:string;numberValue?:number;formulaValue?:string;boolValue?:boolean};effectiveValue?:{stringValue?:string;numberValue?:number;boolValue?:boolean;errorValue?:unknown};formattedValue?:string;textFormatRuns?:unknown[];chipRuns?:unknown[];userEnteredFormat?:{numberFormat?:{type?:string;pattern?:string}};effectiveFormat?:{numberFormat?:{type?:string;pattern?:string}}}
 interface Sheet {properties:{sheetId:number;title:string};data?:{startRow?:number;startColumn?:number;rowData?:{values?:Cell[]}[]}[]}
@@ -24,7 +29,7 @@ function parse(value:Record<string,unknown>,file:string){
   const identity=JSON.stringify([hotel,accountNo,invoiceNo,folio]);if(accountNo&&invoiceNo&&identities.has(identity))throw Error('tracker_native_identity_ambiguous');identities.add(identity);
   const fields:ProviderRow['fields']={},formulaFields:TrackerField[]=[];for(const field of trackerFields){const cell=get(field);if(cell?.userEnteredValue?.formulaValue)formulaFields.push(field);try{fields[field]=dates.has(field)?date(raw(cell)):raw(cell)||null;}catch{fields[field]=cell?.formattedValue??null;issues.push(field+'_invalid');}}
   const agent=!get('B')?.userEnteredValue?.formulaValue?raw(get('B'))?.trim():undefined,property=identityValue(get('A'));
-  rows.push({rowKey:key,hotel,accountNo,invoiceNo,folio,folioNo:folio,transactionDate,fields,...(agent?{agent,property}:{}),locator:{sheetId:gid,sheetName:TITLE,rowIndex},issues,formulaFields,blockedWriteFields:(['R','S','U','V','W'] as const).filter(f=>blockedDate(get(f)))});cells.set(key,row);
+  rows.push({rowKey:key,hotel,accountNo,invoiceNo,folio,folioNo:folio,transactionDate,fields,...(agent?{agent,property}:{}),locator:{sheetId:gid,sheetName:TITLE,rowIndex},issues,formulaFields,blockedWriteFields:(['R','S','U','V','W'] as const).filter(f=>blockedDate(get(f)))});if(['B','C','AG'].every(c=>!!get(c)&&!blockedDate(get(c))))transferWritableRows.add(rows[rows.length-1]);cells.set(key,row);
  }
  return {rows,cells,gid};
 }
@@ -80,8 +85,10 @@ async function nativeKeys(token:string,file:string){
   const key=row[0];if(key===undefined)return '';if(typeof key==='boolean')return key?'TRUE':'FALSE';if(typeof key==='string'||typeof key==='number'&&Number.isFinite(key))return String(key);throw Error('tracker_native_identity_invalid');
  });
 }
-export async function readNativeTracker(token:string,file:string):Promise<ProviderSnapshot>{
+export async function readNativeTracker(token:string,file:string,withGroups=false):Promise<ProviderSnapshot>{
  const keys=await nativeKeys(token,file);let extent=Math.max(2,keys.length);while(extent>2&&!keys[extent-1])extent--;
+ if(withGroups)extent=Math.min(100002,extent+3);
+ const grouping:NativeGroupLayout={data:[],markers:[],valid:true};
  const rows:ProviderRow[]=[],pageHashes:string[]=[],seenKeys=new Set<string>(),identities=new Set<string>();
  let gid:number|undefined,headers:NonNullable<NonNullable<Sheet['data']>[number]['rowData']>|undefined,retainedBytes=2;
  const digest=async(value:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -111,6 +118,32 @@ export async function readNativeTracker(token:string,file:string):Promise<Provid
    seenKeys.add(row.rowKey);identities.add(identity);
    retainedBytes+=new TextEncoder().encode(JSON.stringify(row)).byteLength+1;if(retainedBytes>16*1024*1024)throw Error('tracker_native_grid_too_large');rows.push(row);
   }
+  if(withGroups)try{
+   // LFS remains excluded from the app's operational snapshot. Its existing
+   // keyed invoice rows still participate in the Sheet's physical groups and
+   // subtotal sums, and must travel intact rather than disappear on regrouping.
+   for(let n=0;n<page.length;n++){
+    const cs=page[n].values??[],at=start+n;if(at<2||raw(cs[0])!=='LFS')continue;
+    if(identityValue(cs[0])!=='LFS')throw Error('tracker_transfer_layout_invalid');
+    const get=(c:string)=>cs[column(c)],key=identityValue(get('AG')),agent=identityValue(get('B'));
+    if(!key||key.length>500||/[\u0000-\u001f\u007f]/.test(key)||!agent||!identityValue(get('E'))||get('G')?.userEnteredValue?.formulaValue||!date(raw(get('G'))))throw Error('tracker_transfer_layout_invalid');
+    const cents=['H','I','J','K','L','M','N'].map(c=>{if(get(c)?.userEnteredValue?.formulaValue)throw Error('tracker_transfer_layout_invalid');return moneyCents(raw(get(c)));});
+    grouping.data.push({key,hotel:'LFS',agent,accountNo:identityValue(get('C')),row:at+1,cents});
+   }
+   for(const r of parsed.rows){
+    const index=(r.locator as {rowIndex:number}).rowIndex,rawRow=page[index-start]?.values??[];
+    const cents=['H','I','J','K','L','M','N'].map(c=>{const cell=rawRow[column(c)];if(cell?.userEnteredValue?.formulaValue)throw Error('tracker_transfer_layout_invalid');return moneyCents(raw(cell));});
+    grouping.data.push({key:r.rowKey,hotel:r.hotel,agent:r.agent??'',accountNo:r.accountNo,row:index+1,cents});
+   }
+   for(let i=0;i<page.length;i++){
+    const cells=page[i].values??[],label=raw(cells[column('D')])??'',formula=cells[column('H')]?.userEnteredValue?.formulaValue?.replace(/^=/,'')??'';
+    if(label.startsWith('▸ รวม ')){
+     if(cells[column('D')]?.userEnteredValue?.formulaValue)throw Error('tracker_transfer_layout_invalid');
+     const marker=groupMarker(start+i+1,label,formula,['H','I','J','K','L','M','N'].map(c=>moneyCents(raw(cells[column(c)]))));
+     if(marker)grouping.markers.push(marker);
+    }
+   }
+  }catch{grouping.valid=false;}
   // Keep a digest of each complete typed observation, then release its cells.
   // Only normalized business rows and the small headers survive to the next GET.
   pageHashes.push(await digest(value));
@@ -120,7 +153,12 @@ export async function readNativeTracker(token:string,file:string):Promise<Provid
  // Native publication keeps its existing best-effort/readback contract.
  if(JSON.stringify(after)!==JSON.stringify(keys))throw Error('tracker_snapshot_changed');
  const hash=await digest(pageHashes);
- return {version:'native-observed:'+hash,rows,schemaFingerprint:JSON.stringify([TITLE,gid,trackerHeaders]),capabilities:{conditionalWrite:'unverified',writeAssurance:'best-effort'}};
+ const snapshot:ProviderSnapshot={version:'native-observed:'+hash,rows,schemaFingerprint:JSON.stringify([TITLE,gid,trackerHeaders]),capabilities:{conditionalWrite:'unverified',writeAssurance:'best-effort'}};
+ if(withGroups){
+  nativeGroupLayouts.set(snapshot,grouping);
+  try{const plan=grouping.valid?planGroups(grouping.data,grouping.markers):undefined;snapshot.transferGroupsCorrect=grouping.valid&&(!plan||!plan.changed);}catch{snapshot.transferGroupsCorrect=false;}
+ }
+ return snapshot;
 }
 export async function writeNativeTrackerBatch(token:string,file:string,inputs:readonly ProviderWrite[]):Promise<{status:'written'|'conflict'|'uncertain';version?:string}>{
  if(!inputs.length||inputs.length>100||inputs.reduce((n,i)=>n+i.changes.length,0)>300)throw Error('tracker_batch_limit');
@@ -141,4 +179,104 @@ export async function writeNativeTrackerBatch(token:string,file:string,inputs:re
  // One best-effort atomic request, without any conditional-write guarantee.
  try{const response=await request(token,file,':batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requests,includeSpreadsheetInResponse:false})});if(!response.ok){await response.body?.cancel();return {status:'uncertain'};}const result=await readJson(response);if(result.spreadsheetId!==file)return {status:'uncertain'};}catch{return {status:'uncertain'};}
  try{const after=await readNativeTracker(token,file);if(after.schemaFingerprint!==current.schemaFingerprint)return {status:'uncertain',version:after.version};for(const input of inputs){const row=after.rows.find(r=>r.rowKey===input.rowKey);if(!row||!trackerIdentityMatches(row,input.expectedIdentity)||input.changes.some(c=>row.formulaFields?.includes(c.field)||row.fields[c.field]!==c.value))return {status:'uncertain',version:after.version};}return {status:'written',version:after.version};}catch{return {status:'uncertain'};}
+}
+
+/** Publish identity and physical Agent grouping atomically. Unknown outcomes are readback-only. */
+export async function writeNativeTrackerTransfers(token:string,file:string,inputs:readonly TransferWrite[]):Promise<TransferOutcome>{
+ const current=await readNativeTracker(token,file,true);
+ let rows:ProviderRow[];try{rows=validateTransferBatch(current,inputs);}catch{return {status:'conflict',mutationStarted:false};}
+ if(rows.some(r=>!transferWritableRows.has(r)))return {status:'conflict',mutationStarted:false};
+ const requests:unknown[]=rows.flatMap((row,index)=>{
+  const i=inputs[index],locator=row.locator as {sheetId:number;rowIndex:number};
+  return [['B',i.agent],['C',i.accountNo],['AG',i.newRowKey]].map(([field,value])=>({
+   updateCells:{start:{sheetId:locator.sheetId,rowIndex:locator.rowIndex,columnIndex:column(field)},
+    rows:[{values:[{userEnteredValue:{stringValue:value}}]}],fields:'userEnteredValue'}
+  }));
+ });
+ let groupPlan:GroupPlan|null;
+ try{
+  const layout=nativeGroupLayouts.get(current);if(!layout?.valid)return {status:'conflict',mutationStarted:false};
+  groupPlan=planGroups(layout.data.map(r=>{const input=inputs.find(i=>i.rowKey===r.key);return input?{...r,agent:input.agent,accountNo:input.accountNo}:r;}),layout.markers);
+  if(groupPlan?.changed)appendNativeGroupRequests(requests,groupPlan,(rows[0].locator as {sheetId:number}).sheetId);
+  requests.push(...await nativeUrgentKeyRequests(token,file,inputs,Math.max(current.rows.reduce((n,r)=>Math.max(n,(r.locator as {rowIndex:number}).rowIndex+1),2),groupPlan?.newEnd??0)));
+ }catch{return {status:'conflict',mutationStarted:false};}
+ try{
+  const response=await request(token,file,':batchUpdate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requests,includeSpreadsheetInResponse:false})});
+  if(!response.ok){const rejected=[400,401,403,404,429].includes(response.status);await response.body?.cancel();return {status:rejected?'conflict':'uncertain',mutationStarted:!rejected};}
+  const result=await readJson(response);if(result.spreadsheetId!==file)return {status:'uncertain',mutationStarted:true};
+ }catch{return {status:'uncertain',mutationStarted:true};}
+ try{const after=await readNativeTracker(token,file,true);return {status:after.transferGroupsCorrect===true&&after.schemaFingerprint===current.schemaFingerprint&&inputs.every(i=>transferWasWritten(after,i))?'written':'uncertain',mutationStarted:true,version:after.version};}
+ catch{return {status:'uncertain',mutationStarted:true};}
+}
+
+function appendNativeGroupRequests(requests:unknown[],plan:GroupPlan,sheetId:number){
+ const current:(number|string)[]=Array.from({length:plan.end-plan.start+1},(_,i)=>plan.start+i),base=plan.start-1;
+ const sourceRows=new Set(plan.items.filter(i=>i.kind==='data').map(i=>i.oldRow));
+ for(let index=0;index<plan.items.length;index++){
+  const item=plan.items[index];
+  const token=item.kind==='data'?item.oldRow:item.oldRow??'new-'+index;
+  let position=current[index]===token?index:current.indexOf(token,index);
+  if(position<0){
+   if(item.kind!=='total'||item.oldRow!==null)throw Error('tracker_transfer_layout_invalid');
+   requests.push({insertDimension:{range:{sheetId,dimension:'ROWS',startIndex:base+index,endIndex:base+index+1},inheritFromBefore:true}});
+   current.splice(index,0,token);
+   const template=current.indexOf(item.templateRow);if(template<0)throw Error('tracker_transfer_layout_invalid');
+   requests.push({copyPaste:{source:{sheetId,startRowIndex:base+template,endRowIndex:base+template+1,startColumnIndex:0,endColumnIndex:33},destination:{sheetId,startRowIndex:base+index,endRowIndex:base+index+1,startColumnIndex:0,endColumnIndex:33},pasteType:'PASTE_FORMAT'}});
+  }else if(position!==index){
+   if(position<index)throw Error('tracker_transfer_layout_invalid');
+   let count=1;
+   while(index+count<plan.items.length){
+    const next=plan.items[index+count],wanted=next.kind==='data'?next.oldRow:next.oldRow;
+    if(wanted===null||current[position+count]!==wanted)break;
+    count++;
+   }
+   requests.push({moveDimension:{source:{sheetId,dimension:'ROWS',startIndex:base+position,endIndex:base+position+count},destinationIndex:base+index}});
+   current.splice(index,0,...current.splice(position,count));index+=count-1;
+  }
+ }
+ if(current.length>plan.items.length){
+  if(current.slice(plan.items.length).some(v=>typeof v!=='number'||sourceRows.has(v)))throw Error('tracker_transfer_layout_invalid');
+  requests.push({deleteDimension:{range:{sheetId,dimension:'ROWS',startIndex:base+plan.items.length,endIndex:base+current.length}}});
+ }
+ for(const item of plan.items)if(item.kind==='total'&&item.rebuild){
+  requests.push({updateCells:{start:{sheetId,rowIndex:item.row-1,columnIndex:3},rows:[{values:[{userEnteredValue:{stringValue:'▸ รวม '+item.agent+' ('+item.count+' ใบ)'}}]}],fields:'userEnteredValue'}});
+  requests.push({updateCells:{start:{sheetId,rowIndex:item.row-1,columnIndex:7},rows:[{values:item.cents.map((_c,i)=>({userEnteredValue:{formulaValue:'=SUBTOTAL(9,'+'HIJKLMN'[i]+item.start+':'+'HIJKLMN'[i]+item.end+')'}}))}],fields:'userEnteredValue'}});
+ }
+ if(requests.length>2000)throw Error('tracker_transfer_layout_invalid');
+}
+
+async function nativeUrgentKeyRequests(token:string,file:string,inputs:readonly TransferWrite[],minimumEnd:number):Promise<unknown[]>{
+ const changed=inputs.filter(i=>i.rowKey!==i.newRowKey);if(!changed.length)return [];
+ const meta=await nativeJson(token,file,'?'+new URLSearchParams({fields:'spreadsheetId,sheets(properties(sheetId,title))',prettyPrint:'false'}));
+ if(meta.spreadsheetId!==file||!Array.isArray(meta.sheets))throw Error('tracker_native_schema_invalid');
+ const matches=(meta.sheets as Sheet[]).filter(s=>s.properties.title==='🔥 เร่งด่วน');if(!matches.length)return [];
+ if(matches.length!==1)throw Error('tracker_native_schema_invalid');
+ const title='🔥 เร่งด่วน',keys=await nativeJson(token,file,'/values/'+encodeURIComponent("'"+title+"'!R:R")+'?'+new URLSearchParams({valueRenderOption:'FORMULA',majorDimension:'ROWS'}));
+ if(keys.majorDimension!=='ROWS'||typeof keys.range!=='string'||!/^'🔥 เร่งด่วน'!R1:R[1-9][0-9]*$/.test(keys.range)||!Array.isArray(keys.values)||keys.values.length>100002)throw Error('tracker_native_schema_invalid');
+ const selected=(keys.values as unknown[][]).flatMap((r,index)=>{
+  if(!Array.isArray(r)||r.length>1)throw Error('tracker_native_schema_invalid');
+  const input=changed.find(i=>i.rowKey===r[0]);return input?[{input,row:index+1}]:[];
+ });
+ if(!selected.length)return [];
+ if(selected.length>changed.length||new Set(selected.map(s=>s.input.rowKey)).size!==selected.length)throw Error('tracker_identity_conflict');
+ const q=new URLSearchParams({includeGridData:'true',fields:'spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,textFormatRuns,chipRuns))))',prettyPrint:'false'});
+ q.append('ranges',"'"+title+"'!A1:R2");for(const s of selected)q.append('ranges',"'"+title+"'!A"+s.row+':R'+s.row);
+ const response=await nativeJson(token,file,'?'+q),sheets=(response.sheets as Sheet[]|undefined)?.filter(s=>s.properties.title===title);
+ if(response.spreadsheetId!==file||sheets?.length!==1||sheets[0].properties.sheetId!==matches[0].properties.sheetId)throw Error('tracker_native_schema_invalid');
+ const grid=new Map<number,Cell[]>();
+ for(const data of sheets[0].data??[]){if((data.startColumn??0)!==0)throw Error('tracker_native_schema_invalid');for(const [i,row]of(data.rowData??[]).entries())grid.set((data.startRow??0)+i,row.values??[]);}
+ const result:unknown[]=[];
+ for(const s of selected){
+  const row=grid.get(s.row-1),key=row?.[17];
+  const pattern=new RegExp("MATCH\\(\\$?R\\$?"+s.row+",'"+TITLE+"'!\\$?AG\\$?3:\\$?AG\\$?([1-9][0-9]*),0\\)","i");
+  const formula=row?.some(c=>{
+   const match=c.userEnteredValue?.formulaValue?.replace(/"(?:[^"]|"")*"/g,'""').match(pattern);
+   return !!match&&Number(match[1])>=minimumEnd;
+  });
+  if(!row||!formula||raw(key)!==s.input.rowKey||blockedDate(key))throw Error('tracker_identity_conflict');
+  const put=(col:number,value:string)=>result.push({updateCells:{start:{sheetId:matches[0].properties.sheetId,rowIndex:s.row-1,columnIndex:col},rows:[{values:[{userEnteredValue:{stringValue:value}}]}],fields:'userEnteredValue'}});
+  put(17,s.input.newRowKey);
+  if(raw(grid.get(1)?.[1])==='Agent'&&raw(row[1])===s.input.expectedAgent&&!blockedDate(row[1]))put(1,s.input.agent);
+ }
+ return result;
 }

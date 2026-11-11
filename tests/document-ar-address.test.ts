@@ -23,8 +23,9 @@ it('selects the linked AR address when one profile has several AR accounts',asyn
  const rows=[row('business','BUSINESS',true),row('ar-one','AR ADDRESS'),row('ar-two','AR ADDRESS')];
  expect((await accountWithAddressee(read(rows),'KAT','account',input('KAT','ar-two'))).address).toEqual(rows[2]);
 });
-it.each([undefined,'business'])('rejects multiple AR addresses without a linked AR reference (%s)',async attached=>{
- await expect(accountWithAddressee(read([row('business','BUSINESS',true),row('one','AR ADDRESS'),row('two','AR ADDRESS')]),'KAT','account',input('KAT',attached))).rejects.toThrow('document_addressee_ambiguous');
+it.each([undefined,'business'])('uses the first AR address in provider order when no AR primary or linked AR exists (%s)',async attached=>{
+ const rows=[row('business','BUSINESS',true),row('one','AR ADDRESS'),row('two','AR ADDRESS')];
+ expect((await accountWithAddressee(read(rows),'KAT','account',input('KAT',attached))).address).toEqual(rows[1]);
 });
 it('does not fall back to a business address when AR ADDRESS is missing',async()=>{
  await expect(accountWithAddressee(read([row('business','BUSINESS',true)]),'KAT','account',input('KAT','business'))).rejects.toThrow('document_addressee_ar_missing');

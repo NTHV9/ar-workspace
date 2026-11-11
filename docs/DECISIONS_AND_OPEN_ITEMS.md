@@ -1,3 +1,18 @@
+## 2026-11-11 - Transfers and AR Address follow-up
+
+The owner requires automatic Sheet Agent, Account No. and KEY updates after a
+verified same-hotel invoice transfer, including placement in the destination
+Agent group and correct subtotal counts/amounts. Preserve invoice values,
+billing/reminder dates and staff tracking data. Aging Master stays unchanged.
+The generated grouped workbook may be reorganized by the web synchronizer,
+using the existing XLSX CAS and native Sheets best-effort publication policies.
+Uncertain attempts require readback before any further mutation.
+
+For AR stationery, retain an exact Account-linked AR address when present.
+Otherwise prefer the unique AR primary, then the first AR address in provider
+order when no AR primary exists. BUSINESS remains ineligible. Multiple AR
+primaries and identity/completeness/provider errors retain their safety checks.
+
 ## 2026-10-27 — Latest owner decision: refresh/F5 discards preparation
 
 The owner explicitly changes the policy: refresh/F5 and normal tab close discard

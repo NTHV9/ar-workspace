@@ -1,3 +1,5 @@
+import {planGroups,groupMarker,moneyCents,type GroupPlan,type GroupTotal} from './transfer-groups';
+import {validateTransferBatch,type TransferWrite} from './transfer-model';
 import {inflateSync,Inflate} from 'fflate';
 import {canResolveWithoutAccountNumber,trackerFields,trackerHotel,type TrackerField,type TrackerIdentity,type TrackerValues} from './model';
 import type {RegionId} from '../../src/domain/hotels';
@@ -10,7 +12,7 @@ export interface TrackerRow extends TrackerIdentity {rowKey:string;folio:string|
 export interface ParsedTracker {rows:TrackerRow[];schemaFingerprint:string;sheetName:string;sheetPath:string;date1904:boolean}
 export interface TrackerCellChange {field:TrackerField;value:string;expected:string|null}
 export interface TrackerWorkbookEdit {rowKey:string;expectedIdentity:TrackerIdentity&{transactionDate?:string|null};changes:readonly TrackerCellChange[]}
-export interface PreparedTrackerWorkbook {snapshot:ParsedTracker;patchBatch(edits:readonly TrackerWorkbookEdit[]):Uint8Array}
+export interface PreparedTrackerWorkbook {snapshot:ParsedTracker;patchBatch(edits:readonly TrackerWorkbookEdit[]):Uint8Array;groupsCorrect():boolean}
 interface Entry {name:string;offset:number;method:number;flags:number;compressed:number;uncompressed:number;crc:number;central:Uint8Array;local:Uint8Array;data:Uint8Array}
 interface Cell {column:string;row:number;type:string;style:number;raw:string;formula:boolean;richText:boolean;start:number;end:number;xml:string}
 function fail():never {throw Error('tracker_workbook_invalid');}
@@ -119,7 +121,7 @@ function load(bytes:Uint8Array,region:RegionId,sentIdentity=false){
  return {entries,archiveComment:archive.comment,chosen,parsed:{rows,schemaFingerprint:JSON.stringify([chosen.name,chosen.path,trackerHeaders]),sheetName:chosen.name,sheetPath:chosen.path,date1904} satisfies ParsedTracker};
 }
 export function prepareTrackerWorkbook(bytes:Uint8Array,region:RegionId):PreparedTrackerWorkbook {
- try{const loaded=load(bytes,region),snapshot={...loaded.parsed,rows:loaded.parsed.rows.map(row=>({...row,fields:{...row.fields},locator:{...row.locator},...(row.issues?{issues:[...row.issues]}:{}),...(row.formulaFields?{formulaFields:[...row.formulaFields]}:{}),...(row.blockedWriteFields?{blockedWriteFields:[...row.blockedWriteFields]}:{})}))};return {snapshot,patchBatch:edits=>patchLoadedWorkbook(loaded,edits)};}catch(error){if(error instanceof Error&&error.message.startsWith('tracker_'))throw error;throw Error('tracker_workbook_invalid');}
+ try{const loaded=load(bytes,region),snapshot={...loaded.parsed,rows:loaded.parsed.rows.map(row=>({...row,fields:{...row.fields},locator:{...row.locator},...(row.issues?{issues:[...row.issues]}:{}),...(row.formulaFields?{formulaFields:[...row.formulaFields]}:{}),...(row.blockedWriteFields?{blockedWriteFields:[...row.blockedWriteFields]}:{})}))};return {snapshot,patchBatch:edits=>patchLoadedWorkbook(loaded,edits),groupsCorrect:()=>{try{const plan=workbookGroups(loaded);return !plan||!plan.changed;}catch{return false;}}};}catch(error){if(error instanceof Error&&error.message.startsWith('tracker_'))throw error;throw Error('tracker_workbook_invalid');}
 }
 export function parseTrackerWorkbook(bytes:Uint8Array,region:RegionId):ParsedTracker {return prepareTrackerWorkbook(bytes,region).snapshot;}
 function serialize(entries:Entry[],changedName:string,content:Uint8Array,comment:Uint8Array):Uint8Array {
@@ -228,4 +230,228 @@ export function appendTrackerSentRows(bytes:Uint8Array,region:RegionId,entries:r
  let text=loaded.chosen.text.slice(0,close.index)+added+loaded.chosen.text.slice(close.index);
  const dimension=/<(?:\w+:)?dimension\b[^>]*\/?\s*>/.exec(text);if(dimension){const a=attrs(dimension[0]),ref=/^([A-Z]{1,3})([1-9]\d*)(?::([A-Z]{1,3})([1-9]\d*))?$/.exec(a.ref??'');if(!ref)throw Error('tracker_sent_dimension_invalid');const maxCol=loaded.chosen.cells.reduce((max,c)=>Math.max(max,sentColumnIndex(c.column)),32),endCol=sentColumnIndex(ref[3]??ref[1])>maxCol?(ref[3]??ref[1]):maxCol<26?String.fromCharCode(65+maxCol):(()=>{let i=maxCol+1,result='';while(i){i--;result=String.fromCharCode(65+i%26)+result;i=Math.floor(i/26);}return result;})();const endRow=Math.max(Number(ref[4]??ref[2]),context.maxRow+entries.length);text=text.replace(dimension[0],dimension[0].replace(/\bref\s*=\s*(?:"[^"]*"|'[^']*')/,`ref="${ref[1]}${ref[2]}:${endCol}${endRow}"`));}
  let output=serialize(loaded.entries,loaded.chosen.path,encoder.encode(text),loaded.archiveComment);if(dateStyle.changed){const archive=zip(output);output=serialize(archive.entries,'xl/styles.xml',encoder.encode(dateStyle.changed),archive.comment);}return output;
+}
+
+/** Transfer identity and Agent grouping while preserving invoice values and formula semantics. */
+export function patchTrackerTransfers(bytes:Uint8Array,region:RegionId,inputs:readonly TransferWrite[]):Uint8Array {
+ const loaded=load(Uint8Array.from(bytes),region),snapshot={...loaded.parsed,version:'patch',capabilities:{conditionalWrite:'proven' as const}};
+ const rows=validateTransferBatch(snapshot,inputs);
+ if(loaded.entries.some(e=>e.name.startsWith('_xmlsignatures/')))throw Error('tracker_signed_workbook_unsupported');
+ const changes:{start:number;end:number;value:string}[]=[];
+ for(const [index,row] of rows.entries()){
+  const input=inputs[index];
+  for(const [field,value] of [['B',input.agent],['C',input.accountNo],['AG',input.newRowKey]]){
+   const cell=loaded.chosen.map.get(field+(row.locator as TrackerLocator).row);
+   if(!cell||cell.formula||!scalarTypes.has(cell.type)||blockedDateCell(cell))throw Error('tracker_cell_metadata_unsupported');
+   const tag=/^<([^\s>]+)/.exec(cell.xml)?.[1];if(!tag)fail();
+   const prefix=tag.includes(':')?tag.split(':')[0]+':':'';
+   const opening=cell.xml.slice(0,cell.xml.indexOf('>')+1).replace(/\s+t\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/, '>').slice(0,-1)+' t="inlineStr">';
+   changes.push({start:cell.start,end:cell.end,value:opening+'<'+prefix+'is><'+prefix+'t xml:space="preserve">'+sentEscape(value)+'</'+prefix+'t></'+prefix+'is></'+tag+'>'});
+  }
+ }
+ let text='',cursor=0;
+ for(const c of changes.sort((a,b)=>a.start-b.start)){if(c.start<cursor)throw Error('tracker_cell_conflict');text+=loaded.chosen.text.slice(cursor,c.start)+c.value;cursor=c.end;}
+ text+=loaded.chosen.text.slice(cursor);
+ const result=serialize(loaded.entries,loaded.chosen.path,encoder.encode(text),loaded.archiveComment);
+ const grouped=regroupTrackerWorkbook(retargetUrgentKeys(result,region,inputs),region);
+ const parsed=parseTrackerWorkbook(grouped,region);
+ for(const input of inputs){const row=parsed.rows.find(r=>r.rowKey===input.newRowKey);if(!row||row.accountNo!==input.accountNo||row.agent!==input.agent)throw Error('tracker_identity_conflict');}
+ return grouped;
+}
+
+function workbookGroups(loaded:ReturnType<typeof load>):GroupPlan|null {
+ const rows=loaded.parsed.rows.map(r=>({key:r.rowKey,hotel:r.hotel,agent:r.agent??'',accountNo:r.accountNo,row:r.locator.row,
+  cents:['H','I','J','K','L','M','N'].map(c=>{const cell=loaded.chosen.map.get(c+r.locator.row);if(cell?.formula)throw Error('tracker_transfer_layout_invalid');return moneyCents(cell?.raw);})}));
+ const markers=loaded.chosen.cells.filter(c=>c.column==='H'&&c.formula).flatMap(c=>{
+  const f=entities(/<(?:\w+:)?f\b[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/.exec(c.xml)?.[1]??'');
+  const m=groupMarker(c.row,loaded.chosen.map.get('D'+c.row)?.raw??'',f,['H','I','J','K','L','M','N'].map(col=>moneyCents(loaded.chosen.map.get(col+c.row)?.raw)));
+  return m?[m]:[];
+ });
+ return planGroups(rows,markers);
+}
+export function trackerWorkbookGroupsCorrect(bytes:Uint8Array,region:RegionId):boolean {
+ try{const plan=workbookGroups(load(bytes,region));return !plan||!plan.changed;}catch{return false;}
+}
+function rebasedFormula(value:string,oldRow:number,newRow:number):string {
+ const formula=entities(value);
+ const pieces=formula.split(/("(?:[^"]|"")*")/g);
+ return pieces.map((p,i)=>{
+  if(i%2)return p;
+  if(/[!\[\]]/.test(p)||/\b(?:INDIRECT|OFFSET)\s*\(/i.test(p))throw Error('tracker_transfer_layout_invalid');
+  return p.replace(/(\$?[A-Z]{1,3}\$?)([1-9]\d*)\b/g,(match,col:string,n:string,offset:number)=>{
+   if(p[offset+match.length]==='(')return match;
+   const r=Number(n);if(r!==oldRow&&r>2)throw Error('tracker_transfer_layout_invalid');
+   return col+(r===oldRow?newRow:r);
+  });
+ }).join('');
+}
+function movedRow(text:string,oldRow:number,newRow:number,total?:GroupTotal):string {
+ text=text.replace(/^<(?:\w+:)?row\b[^>]*>/,tag=>tag.replace(/\br=(?:"[^"]*"|'[^']*')/,'r="'+newRow+'"'));
+ const label=total?'▸ รวม '+total.agent+' ('+total.count+' ใบ)':'';
+ return text.replace(/<(?:\w+:)?c\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?c\s*>)/g,cell=>{
+  const ref=/\br="([A-Z]+)(\d+)"/.exec(cell);if(!ref||Number(ref[2])!==oldRow)throw Error('tracker_transfer_layout_invalid');
+  const col=ref[1],tag=/^<([^\s>]+)/.exec(cell)![1],prefix=tag.includes(':')?tag.split(':')[0]+':':'';
+  cell=cell.replace('r="'+col+oldRow+'"','r="'+col+newRow+'"');
+  if(total&&(col==='D'||['H','I','J','K','L','M','N'].includes(col))){
+   let opening=cell.slice(0,cell.indexOf('>')+1).replace(/\s+t\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/, '>');
+   if(col==='D')return opening.slice(0,-1)+' t="inlineStr"><'+prefix+'is><'+prefix+'t>'+sentEscape(label)+'</'+prefix+'t></'+prefix+'is></'+tag+'>';
+   const cents=total.cents['HIJKLMN'.indexOf(col)],formula=col==='H'||/<(?:\w+:)?f\b/.test(cell);
+   return opening+(formula?'<'+prefix+'f>SUBTOTAL(9,'+col+total.start+':'+col+total.end+')</'+prefix+'f>':'')+'<'+prefix+'v>'+(cents/100)+'</'+prefix+'v></'+tag+'>';
+  }
+  return cell.replace(/<(?:\w+:)?f\b([^>]*)>([\s\S]*?)<\/(?:\w+:)?f>/g,(_m,attributes:string,f:string)=>{
+   if(attributes.trim())throw Error('tracker_transfer_layout_invalid');
+   return '<'+prefix+'f>'+sentEscape(rebasedFormula(f,oldRow,newRow))+'</'+prefix+'f>';
+  });
+ });
+}
+/** Rebuild only the generated grouped ledger. Unknown layouts remain untouched. */
+export function regroupTrackerWorkbook(bytes:Uint8Array,region:RegionId):Uint8Array {
+ let loaded=load(bytes,region),plan=workbookGroups(loaded);
+ if(!plan||!plan.changed)return bytes;
+ const expanded=expandLedgerSharedFormulas(loaded);
+ if(expanded!==loaded.chosen.text){
+  loaded=load(serialize(loaded.entries,loaded.chosen.path,encoder.encode(expanded),loaded.archiveComment),region);
+  plan=workbookGroups(loaded);if(!plan)throw Error('tracker_transfer_layout_invalid');
+ }
+ if(loaded.entries.some(e=>e.name==='xl/calcChain.xml')||/<(?:\w+:)?(?:legacyDrawing|tableParts)\b/.test(loaded.chosen.text))throw Error('tracker_transfer_layout_attachments');
+ // Google Office editing adds empty drawing parts. Preserve those byte-for-byte;
+ // anchored objects require an explicit relocation policy before rows can move.
+ if(/<(?:\w+:)?drawing\b/.test(loaded.chosen.text)){
+  const filename=loaded.chosen.path.split('/').at(-1)!,relationships=xml(loaded.entries,'xl/worksheets/_rels/'+filename+'.rels');
+  const links=[...relationships.matchAll(/<(?:\w+:)?Relationship\b[^>]*\/>/g)].map(r=>attrs(r[0]));
+  const drawings=[...loaded.chosen.text.matchAll(/<(?:\w+:)?drawing\b([^>]*)\/>/g)];
+  if(!drawings.length)throw Error('tracker_transfer_layout_attachments');
+  for(const drawing of drawings){
+   const id=attrs(drawing[1])['r:id'],link=links.filter(l=>l.Id===id&&l.Type?.endsWith('/drawing'));
+   if(link.length!==1||link[0].TargetMode||!/^\.\.\/drawings\/drawing\d+\.xml$/.test(link[0].Target))throw Error('tracker_transfer_layout_attachments');
+   const content=xml(loaded.entries,'xl/'+link[0].Target.slice(3)).replace(/^<\?xml[^>]*\?>\s*/,'');
+   if(!/^<(?:\w+:)?wsDr\b[^>]*(?:\/>|>\s*<\/(?:\w+:)?wsDr>)\s*$/.test(content))throw Error('tracker_transfer_layout_attachments');
+  }
+ }
+ const body=/<((?:\w+:)?sheetData)\b[^>]*>([\s\S]*?)<\/\1>/.exec(loaded.chosen.text);
+ if(!body)throw Error('tracker_transfer_layout_sheet_data');
+ const rowXml=new Map<number,string>();
+ for(const r of body[2].matchAll(/<(?:\w+:)?row\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?row>)/g)){
+  const n=Number(/\br="(\d+)"/.exec(r[0])?.[1]);if(!n||rowXml.has(n))throw Error('tracker_transfer_layout_invalid');rowXml.set(n,r[0]);
+ }
+ if([...rowXml.keys()].some(n=>n>plan.end)||rowXml.size!==plan.end)throw Error('tracker_transfer_layout_row_extent');
+ // Other sheets may look up values by KEY over the whole ledger. A positional
+ // reference to a moving row needs explicit support before any publication.
+ const quoted="'"+loaded.chosen.name.replaceAll("'","''")+"'";
+ for(const entry of loaded.entries)if(/^xl\/worksheets\/[^/]+\.xml$/.test(entry.name)&&entry.name!==loaded.chosen.path){
+  const other=xml(loaded.entries,entry.name);
+  for(const f of other.matchAll(/<(?:\w+:)?f\b[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/g)){
+   const value=entities(f[1]);let cursor=0;
+   while((cursor=value.indexOf(quoted+'!',cursor))>=0){
+    const rest=value.slice(cursor+quoted.length+1),ref=/^\$?[A-Z]+\$?(\d+)(?::\$?[A-Z]+\$?(\d+))?/.exec(rest);
+    if(!ref||Number(ref[1])>2&&!(Number(ref[1])<=plan.start&&Number(ref[2])>=Math.max(plan.end,plan.newEnd)))throw Error('tracker_transfer_layout_invalid');
+    cursor+=quoted.length+1;
+   }
+  }
+ }
+ const rowBody=[rowXml.get(1)!,rowXml.get(2)!,...plan.items.map(item=>{
+  const source=item.kind==='data'?item.oldRow:item.templateRow,text=rowXml.get(source);if(!text)throw Error('tracker_transfer_layout_invalid');
+  if(item.kind==='total'&&item.oldRow===null&&loaded.chosen.cells.some(c=>c.row===source&&!['D','H','I','J','K','L','M','N'].includes(c.column)&&c.raw!==''))throw Error('tracker_transfer_layout_invalid');
+  return movedRow(text,source,item.row,item.kind==='total'?item:undefined);
+ })].join('');
+ let main=loaded.chosen.text.replace(body[0],'<'+body[1]+'>'+rowBody+'</'+body[1]+'>');
+ const delta=plan.newEnd-plan.end,shift=(v:string)=>v.replace(/(\$?[A-Z]{1,3}\$?)([1-9]\d*)/g,(_m,col:string,n:string)=>{
+  const r=Number(n);if(r===plan.end)return col+plan.newEnd;if(r>plan.end&&r<100000)return col+(r+delta);
+  if(r>2&&r!==plan.start&&r<plan.end)throw Error('tracker_transfer_layout_invalid');
+  return col+r;
+ });
+ main=main.replace(/\b(?:ref|sqref)="([^"]*)"/g,(whole,value:string)=>{
+  if(!/^[A-Z$0-9: ]+$/.test(value))return whole;
+  return whole.replace(value,shift(value));
+ });
+ const result=serialize(loaded.entries,loaded.chosen.path,encoder.encode(main),loaded.archiveComment);
+ const interim=load(result,region),book=xml(interim.entries,'xl/workbook.xml');
+ const updated=book.replace(/<definedName\b[^>]*>[\s\S]*?<\/definedName>/g,entry=>{
+  if(!entities(entry).includes(quoted+'!'))return entry;
+  if(!/\bname="_xlnm\._FilterDatabase"/.test(entry))throw Error('tracker_transfer_layout_invalid');
+  return entry.replace(/>([\s\S]*?)<\/definedName>/,(_m,v:string)=>'>'+sentEscape(shift(entities(v)))+'</definedName>');
+ });
+ const out=updated===book?result:serialize(interim.entries,'xl/workbook.xml',encoder.encode(updated),interim.archiveComment);
+ if(!trackerWorkbookGroupsCorrect(out,region))throw Error('tracker_transfer_layout_invalid');
+ return out;
+}
+
+function expandLedgerSharedFormulas(loaded:ReturnType<typeof load>,allowSheetRefs=false):string {
+ const masters=new Map<string,{column:number;row:number;formula:string;bounds:number[]}>();
+ const col=(v:string)=>[...v].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0);
+ const letters=(n:number)=>{let v='';for(;n>0;n=Math.floor((n-1)/26))v=String.fromCharCode(65+(n-1)%26)+v;return v;};
+ const tags=loaded.chosen.cells.flatMap(cell=>{
+  const f=/<((?:\w+:)?f)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/.exec(cell.xml);if(!f)return [];
+  const a=attrs(f[2]);
+  if(a.t!==undefined&&a.t!=='shared')throw Error('tracker_transfer_layout_invalid');
+  if(a.t==='shared'&&f[3]!==undefined){
+   const range=/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(a.ref??''),single=/^([A-Z]+)(\d+)$/.exec(a.ref??'');
+   const bounds=range?[col(range[1]),Number(range[2]),col(range[3]),Number(range[4])]:single?[col(single[1]),Number(single[2]),col(single[1]),Number(single[2])]:undefined;
+   if(!a.si||masters.has(a.si)||!bounds||bounds[0]!==col(cell.column)||bounds[1]!==cell.row)throw Error('tracker_transfer_layout_invalid');
+   masters.set(a.si,{column:col(cell.column),row:cell.row,formula:entities(f[3]),bounds});
+  }
+  return [{cell,f,a}];
+ });
+ if(!masters.size&&!tags.some(t=>t.a.t==='shared'))return loaded.chosen.text;
+ const replacements:{start:number;end:number;value:string}[]=[];
+ for(const {cell,f,a}of tags){
+  if(a.t!=='shared')continue;
+  const master=masters.get(a.si??''),c=col(cell.column);
+  if(!master||c<master.bounds[0]||c>master.bounds[2]||cell.row<master.bounds[1]||cell.row>master.bounds[3])throw Error('tracker_transfer_layout_invalid');
+  const formula=master.formula.split(/("(?:[^"]|"")*"|'(?:[^']|'')+'!|\b[A-Za-z_][A-Za-z0-9_.]*!)/g).map((part,index)=>{
+   if(index%2){if(part.endsWith('!')&&!allowSheetRefs)throw Error('tracker_transfer_layout_invalid');return part;}
+   if(/[!\[\]]/.test(part))throw Error('tracker_transfer_layout_invalid');
+   return part.replace(/(\$?)([A-Z]{1,3})(\$?)([1-9]\d*)\b/g,(match,absoluteCol:string,column:string,absoluteRow:string,row:string,offset:number)=>{
+    if(part[offset+match.length]==='(')return match;
+    const x=col(column)+(absoluteCol?0:c-master.column),y=Number(row)+(absoluteRow?0:cell.row-master.row);
+    if(x<1||x>16384||y<1||y>1048576)throw Error('tracker_transfer_layout_invalid');
+    return absoluteCol+letters(x)+absoluteRow+y;
+   });
+  }).join('');
+  const value=cell.xml.replace(f[0],'<'+f[1]+'>'+sentEscape(formula)+'</'+f[1]+'>');
+  replacements.push({start:cell.start,end:cell.end,value});
+ }
+ let result='',cursor=0;
+ for(const r of replacements.sort((a,b)=>a.start-b.start)){result+=loaded.chosen.text.slice(cursor,r.start)+r.value;cursor=r.end;}
+ return result+loaded.chosen.text.slice(cursor);
+}
+
+/** Retarget only the live urgent lookup, never historical/log copies of a KEY. */
+function retargetUrgentKeys(bytes:Uint8Array,region:RegionId,inputs:readonly TransferWrite[]):Uint8Array {
+ const changed=inputs.filter(i=>i.rowKey!==i.newRowKey);if(!changed.length)return bytes;
+ const loaded=load(bytes,region),book=xml(loaded.entries,'xl/workbook.xml'),rels=xml(loaded.entries,'xl/_rels/workbook.xml.rels');
+ const sheets=[...book.matchAll(/<(?:\w+:)?sheet\b[^>]*\/>/g)].map(m=>attrs(m[0])).filter(s=>s.name==='🔥 เร่งด่วน');
+ if(!sheets.length)return bytes;if(sheets.length!==1)throw Error('tracker_transfer_layout_invalid');
+ const links=[...rels.matchAll(/<(?:\w+:)?Relationship\b[^>]*\/>/g)].map(m=>attrs(m[0])).filter(r=>r.Id===sheets[0]['r:id']);
+ if(links.length!==1||links[0].TargetMode)throw Error('tracker_transfer_layout_invalid');
+ const path=links[0].Target.startsWith('/')?links[0].Target.slice(1):'xl/'+links[0].Target;
+ if(!/^xl\/worksheets\/[^/]+\.xml$/.test(path))throw Error('tracker_transfer_layout_invalid');
+ let text=xml(loaded.entries,path);const sharedEntry=loaded.entries.find(e=>e.name==='xl/sharedStrings.xml');
+ const shared=sharedEntry?[...xml(loaded.entries,sharedEntry.name).matchAll(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>/g)].map(m=>texts(m[1])):[];
+ const initial=cells(text,shared);
+ text=expandLedgerSharedFormulas({...loaded,chosen:{...loaded.chosen,text,cells:initial}},true);
+ const all=cells(text,shared),map=new Map(all.map(c=>[c.column+c.row,c])),updates=new Map<string,string>();
+ const title="'"+loaded.chosen.name.replaceAll("'","''")+"'!",escape=(v:string)=>v.replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
+ const groupPlan=workbookGroups(loaded),minimumEnd=groupPlan?Math.max(groupPlan.end,groupPlan.newEnd):loaded.parsed.rows.reduce((n,r)=>Math.max(n,r.locator.row),2);
+ const match=new RegExp('MATCH\\(\\$?([A-Z]+)\\$?(\\d+),'+escape(title)+'\\$?AG\\$?3:\\$?AG\\$?([1-9][0-9]*),0\\)','g');
+ for(const cell of all)if(cell.formula){
+  const f=entities(/<(?:\w+:)?f\b[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/.exec(cell.xml)?.[1]??'').replace(/"(?:[^"]|"")*"/g,'""');
+  for(const ref of f.matchAll(match)){
+   if(Number(ref[2])!==cell.row||Number(ref[3])<minimumEnd)throw Error('tracker_transfer_layout_invalid');
+   const key=map.get(ref[1]+ref[2]);if(!key||key.formula||!scalarTypes.has(key.type)||blockedDateCell(key))throw Error('tracker_cell_metadata_unsupported');
+   const input=changed.find(i=>i.rowKey===key.raw);if(!input)continue;
+   updates.set(key.column+key.row,input.newRowKey);
+   const agent=map.get('B'+key.row),header=map.get('B2')??map.get('B1');
+   if(header?.raw==='Agent'&&agent?.raw===input.expectedAgent&&!agent.formula&&!blockedDateCell(agent))updates.set('B'+key.row,input.agent);
+  }
+ }
+ if(!updates.size)return bytes;
+ let result='',cursor=0;
+ for(const cell of all.filter(c=>updates.has(c.column+c.row)).sort((a,b)=>a.start-b.start)){
+  const tag=/^<([^\s>]+)/.exec(cell.xml)![1],prefix=tag.includes(':')?tag.split(':')[0]+':':'';
+  const opening=cell.xml.slice(0,cell.xml.indexOf('>')+1).replace(/\s+t\s*=\s*(?:"[^"]*"|'[^']*')/,'').replace(/\/>$/, '>').slice(0,-1)+' t="inlineStr">';
+  result+=text.slice(cursor,cell.start)+opening+'<'+prefix+'is><'+prefix+'t>'+sentEscape(updates.get(cell.column+cell.row)!)+'</'+prefix+'t></'+prefix+'is></'+tag+'>';cursor=cell.end;
+ }
+ result+=text.slice(cursor);
+ return serialize(loaded.entries,path,encoder.encode(result),loaded.archiveComment);
 }
