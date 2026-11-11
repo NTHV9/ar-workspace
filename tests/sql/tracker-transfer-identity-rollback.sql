@@ -1,7 +1,7 @@
 begin;
 do $$
 #variable_conflict use_variable
-declare actor uuid;lease uuid:=gen_random_uuid();scope text:='SYNTH-TRANSFER-'||gen_random_uuid();h text;reg text;prop text;r jsonb;j jsonb;job uuid;oldkey text;newkey text;d date:=(now() at time zone 'Asia/Bangkok')::date-2;before_sent integer;
+declare actor uuid;lease uuid:=gen_random_uuid();scope text:='SYNTH-TRANSFER-'||gen_random_uuid();h text;reg text;prop text;r jsonb;j jsonb;job uuid;oldkey text;newkey text;d date:=(now() at time zone 'Asia/Bangkok')::date-2;before_sent integer;prior_transfer bigint;
 begin
  select id into strict actor from auth.users where lower(email)='ar@katathani.com' and email_confirmed_at is not null;
  select count(*) into before_sent from public.ar_sent_events;
@@ -27,6 +27,8 @@ begin
   perform public.ar_tracker_snapshot(actor,reg,lease,jsonb_build_array(jsonb_build_object(
    'rowKey',prop||'|NEW SYNTHETIC|I:'||scope||'-peer|1','hotel',h,'property',prop,'agent','NEW SYNTHETIC','accountNo','NEW-002','invoiceNo',scope||'-peer','folio','PEER-FOLIO','folioNo','PEER-FOLIO','transactionDate',(d-10)::text,
    'fields',jsonb_build_object('R',null,'S','30','T',null,'U',null,'V',null,'W',null),'locator','{}'::jsonb)));
+  insert into ar_private.tracker_identity_transfers(region,row_key,old_hotel,old_account,old_invoice,new_hotel,new_account,new_invoice,old_identity,new_identity,actor)
+   values(reg,oldkey,h,scope||'-prior','prior-i',h,scope,'old-i',r,r,actor) returning id into prior_transfer;
   update public.ar_invoices set open=0,verification_state='cleared' where hotel=h and account_id=scope and id='old-i';
   insert into public.ar_invoices(hotel,account_id,id,invoice_no,folio_no,transaction_date,original,open,verification_state,collection_role,compressed,synced_at)
    values(h,scope||'-new','new-i',scope,'FOLIO-003',d-10,100,100,'verified','standalone',false,now());
@@ -34,6 +36,14 @@ begin
   j:=public.ar_tracker_transfer_jobs(actor,reg,lease);
   select (v->>'id')::uuid into strict job from jsonb_array_elements(j)v where v->'write'->>'rowKey'=oldkey;
   if not exists(select 1 from jsonb_array_elements(j)v where v->'write'->>'newRowKey'=newkey and v->'write'->>'accountNo'='NEW-002') then raise exception 'wrong frozen target';end if;
+  -- A prior unknown provider outcome remains a logical-invoice barrier even
+  -- after OPERA creates another transaction and Account mapping.
+  insert into ar_private.tracker_transfer_writes(transfer_id,region,row_key,new_row_key,hotel,account_id,invoice_id,old_identity,expected_agent,agent,account_no,state)
+   values(prior_transfer,reg,oldkey,oldkey,h,scope,'old-i',jsonb_build_object('hotel',h,'accountNo','PRIOR','invoiceNo',scope,'folio','FOLIO-003','transactionDate',(d-10)::text),'PRIOR','OLD SYNTHETIC','OLD-001','uncertain');
+  if public.ar_tracker_transfer_result(actor,reg,lease,job,'uncertain')->>'state'<>'cancelled' then raise exception 'later transfer raced an unresolved earlier publication';end if;
+  delete from ar_private.tracker_transfer_writes where transfer_id=prior_transfer;
+  j:=public.ar_tracker_transfer_jobs(actor,reg,lease);
+  if not exists(select 1 from jsonb_array_elements(j)v where v->>'id'=job::text and v->>'state'='pending') then raise exception 'resolved uncertainty did not release later transfer';end if;
   update public.ar_invoices set synced_at=now()-interval '2 hours' where hotel=h and account_id=scope||'-new' and id='new-i';
   if public.ar_tracker_transfer_result(actor,reg,lease,job,'uncertain')->>'state'<>'cancelled' then raise exception 'stale source authorized transfer';end if;
   update public.ar_invoices set synced_at=now() where hotel=h and account_id=scope||'-new' and id='new-i';

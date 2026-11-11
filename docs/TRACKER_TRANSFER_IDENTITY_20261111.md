@@ -20,7 +20,8 @@ transfers use the original strong Drive v2 ETag conditional upload and exact
 readback. Native Sheets uses the existing guarded best-effort policy and one
 atomic batch. Before any provider mutation the journal is durable. A lost
 response or interrupted attempt remains readback-only, including a check that
-grouping is correct. No mail boundary is called.
+grouping is correct. A later transfer of the same logical invoice waits for an earlier uncertain
+publication to resolve. No mail boundary is called.
 
 The same release integrates the owner-approved primary/first-AR fallback from
 688a726 and fixes its two obsolete strict-address tests. The original AR_Gong KV
