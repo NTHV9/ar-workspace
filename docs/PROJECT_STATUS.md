@@ -1,3 +1,13 @@
+Deployment verified: source 688a7268087ef4d64f151db5e028747c5789cb81,
+Worker 6940f1d9-883f-4f21-bf89-5128481b1cfc at
+https://ar-workspace.ar-c82.workers.dev. Build/typecheck and 42 focused tests pass;
+live health confirms exact source, database_verified and OPERA connected. No
+assets changed. This confirms release health, not generation for the photographed
+customer Account. GitHub CI follows deployment at the owner's explicit request.
+An earlier full run in the shared dirty checkout overlapped test edits and also
+reported tracker-transfer-groups: "also repairs an identity already changed
+manually inside the old group" failing. That uncommitted tracker work is excluded
+from this release; no claim of a passing full suite is made from that run.
 ## 2026-11-11 — AR Address primary and no-primary fallback
 
 Owner authorizes choosing a primary AR ADDRESS when several exist, and using an
