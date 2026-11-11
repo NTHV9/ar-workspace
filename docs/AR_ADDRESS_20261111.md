@@ -6,8 +6,9 @@ OPERA address type code AR ADDRESS, irrespective of BUSINESS primary status.
 
 An exact attached AR address resolves multiple AR addresses for a shared profile.
 When the attached address is BUSINESS and the same profile has one AR address,
-use that AR address. Several AR addresses without an exact attached AR reference
-remain ambiguous. Profile/account identity, complete-list checks, and string-line
+use that AR address. Without a linked AR reference, use the unique AR primary, then the first AR
+address in provider order when no AR primary exists, per the owner's follow-up.
+Multiple AR primaries remain ambiguous. Profile/account identity, complete-list checks, and string-line
 validation stay enforced. No AR address produces an actionable missing-address
 error. Accounts without a linked profile keep their direct AR-account stationery,
 except explicitly non-AR address types, which are rejected.

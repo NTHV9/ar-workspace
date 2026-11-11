@@ -31,7 +31,10 @@ export async function accountWithAddressee(reader:{profile?:(profileId:string)=>
  const arAddresses=addresses.filter(row=>isArAddress(record(row.address)));
  if(!arAddresses.length)throw Error('document_addressee_ar_missing');
  const linkedAr=linked.filter(row=>isArAddress(record(row.address)));
- const matches=linkedAr.length?linkedAr:arAddresses;
+ // Preserve an explicit Account AR selection, then prefer AR primary.
+ // Owner permits the first AR address in provider order when none is primary.
+ const primaryAr=arAddresses.filter(row=>record(row.address).primaryInd===true);
+ const matches=linkedAr.length?linkedAr:primaryAr.length?primaryAr:arAddresses.slice(0,1);
  if(matches.length!==1)throw Error('document_addressee_ambiguous');
  const chosen=matches[0],address=record(chosen.address);
  // Keep verified blank AR lines and country as supplied. Never invent postal text.

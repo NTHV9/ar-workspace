@@ -1,3 +1,6 @@
+import {patchTrackerTransfers} from './workbook';
+import {writeNativeTrackerTransfers} from './native';
+import {validateTransferBatch,type TransferWrite,type TransferOutcome} from './transfer-model';
 import {driveToken} from '../drive/oauth';
 import {google,identity} from '../drive/provider';
 import {boundedBytes,readJson} from '../drive/shared';
@@ -54,9 +57,9 @@ async function readStable(token:string,region:RegionId,fileId:string){
 }
 export async function readTrackerWorkbook(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<ProviderSnapshot>{
  target(env,region,fileId);const token=await access(env,owner);
- if(region==='khao-lak'&&env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true'){const meta=await metadata(token,region,fileId),snapshot=await readNativeTracker(token,fileId);if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)snapshot.capabilities.writeAssurance='held';return snapshot;}
+ if(region==='khao-lak'&&env.TRACKER_NATIVE_BEST_EFFORT_ENABLED==='true'){const meta=await metadata(token,region,fileId),snapshot=await readNativeTracker(token,fileId,env.TRACKER_TRANSFER_IDENTITY_ENABLED==='true');if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)snapshot.capabilities.writeAssurance='held';return snapshot;}
  const snapshot=await readStable(token,region,fileId);
- return {version:snapshot.version,rows:snapshot.parsed.rows,schemaFingerprint:snapshot.parsed.schemaFingerprint,
+ return {version:snapshot.version,rows:snapshot.parsed.rows,schemaFingerprint:snapshot.parsed.schemaFingerprint,...(env.TRACKER_TRANSFER_IDENTITY_ENABLED==='true'?{transferGroupsCorrect:snapshot.prepared.groupsCorrect()}:{}),
   capabilities:{conditionalWrite:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'proven':'unverified',writeAssurance:region==='phuket'&&(env as CasEnv).TRACKER_BLOB_CAS_ENABLED==='true'&&snapshot.etag&&snapshot.metadata.capabilities?.canEdit===true&&snapshot.metadata.capabilities?.canModifyContent===true?'cas':'held'}};
 }
 /** A change hint only. The normal adapter still rereads and validates all
@@ -142,4 +145,27 @@ export async function appendSentTrackerRow(env:TrackerEnv,owner:string,region:Re
   return {status:'uncertain',mutationStarted:true};
  }catch{return {status:'uncertain',mutationStarted:started,...(!started?{retrySafe:true}:{})};}
 }
-export const trackerAdapter:TrackerAdapter={read:readTrackerWorkbook,write:writeTrackerCells,writeBatch:writeTrackerBatch,appendSentRow:appendSentTrackerRow};
+export const trackerAdapter:TrackerAdapter={writeTransfers:writeTrackerTransfers,read:readTrackerWorkbook,write:writeTrackerCells,writeBatch:writeTrackerBatch,appendSentRow:appendSentTrackerRow};
+
+export async function writeTrackerTransfers(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly TransferWrite[]):Promise<TransferOutcome>{
+ target(env,region,fileId);
+ if(env.TRACKER_TRANSFER_IDENTITY_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+ const token=await access(env,owner);
+ if(region==='khao-lak'){
+  if(env.TRACKER_NATIVE_BEST_EFFORT_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+  const meta=await metadata(token,region,fileId);
+  if(meta.capabilities?.canEdit!==true||meta.capabilities?.canModifyContent!==true)return {status:'conflict',mutationStarted:false};
+  return writeNativeTrackerTransfers(token,fileId,inputs);
+ }
+ if(env.TRACKER_BLOB_CAS_ENABLED!=='true')return {status:'conflict',mutationStarted:false};
+ const current=await readStable(token,region,fileId);
+ if(!current.etag||current.metadata.capabilities?.canEdit!==true||current.metadata.capabilities?.canModifyContent!==true||inputs.some(i=>i.version!==current.version))return {status:'conflict',mutationStarted:false};
+ let bytes:Uint8Array;
+ try{validateTransferBatch({...current.parsed,version:current.version,capabilities:{conditionalWrite:'proven'}},inputs);bytes=patchTrackerTransfers(current.bytes,region,inputs);}catch{return {status:'conflict',mutationStarted:false};}
+ let response:Response;
+ try{response=await v2(token,fileId,'PUT',{headers:{'If-Match':current.etag,'Content-Type':XLSX},body:bytes as BodyInit});}catch{return {status:'uncertain',mutationStarted:true};}
+ if(!response.ok){const rejected=[400,401,403,404,412,429].includes(response.status);await response.body?.cancel();return {status:rejected?'conflict':'uncertain',mutationStarted:!rejected};}
+ await response.body?.cancel();
+ try{const after=await readStable(token,region,fileId);return {status:await digest(after.bytes)===await digest(bytes)?'written':'uncertain',mutationStarted:true,version:after.version};}
+ catch{return {status:'uncertain',mutationStarted:true};}
+}

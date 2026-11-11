@@ -29,9 +29,24 @@ it('selects the only AR address without an attached ID',async()=>{
  const a={...account(),address:{address:{addressLine:lines.slice(0,3)}}};
  expect((await accountWithAddressee({profile:async()=>profile()},'KAT','account',a)).address).toEqual(address('primary',true));
 });
-it('rejects multiple compatible profile addresses without an exact attached ID',async()=>{
+it.each([false,true])('selects the unique primary AR address regardless of list order (reverse: %s)',async reverse=>{
  const a={...account(),address:{address:{addressLine:lines.slice(0,3)}}};
- await expect(accountWithAddressee({profile:async()=>profile([address('primary',true),address('secondary',false)])},'KAT','account',a)).rejects.toThrow('document_addressee_ambiguous');
+ const rows=[address('primary',true),address('secondary',false)];if(reverse)rows.reverse();
+ expect((await accountWithAddressee({profile:async()=>profile(rows)},'KAT','account',a)).address).toEqual(address('primary',true));
+});
+it('selects primary AR stationery when the account references a BUSINESS address',async()=>{
+ const business={...address('business',true),address:{...address('business',true).address,type:'BUSINESS'}};
+ const a={...account(),address:{id:'business'}};
+ expect((await accountWithAddressee({profile:async()=>profile([business,address('secondary',false),address('primary',true)])},'KAT','account',a)).address).toEqual(address('primary',true));
+});
+it('uses the first AR address when none is primary, ignoring BUSINESS primary',async()=>{
+ const business={...address('business',true),address:{...address('business',true).address,type:'BUSINESS'}};
+ expect((await accountWithAddressee({profile:async()=>profile([business,address('first',false),address('second',false)])},'KAT','account',account())).address).toEqual(address('first',false));
+});
+it.each([undefined,'true',1])('does not treat a malformed primary flag as confirmed (%j)',async primaryInd=>{
+ const p=profile([address('first',false),address('second',false)]);
+ Object.assign(p.profileDetails.addresses.addressInfo[1].address,{primaryInd});
+ expect((await accountWithAddressee({profile:async()=>p},'KAT','account',account())).address).toEqual(address('first',false));
 });
 it.each(['lines','city','postal','country'])('uses AR stationery despite different inline business fields (%s)',async field=>{
  const inline={addressLine:lines.slice(0,3),cityName:'Sample Town',postalCode:'10000',country:{code:'TH'}},chosen={...address('primary',true),address:{...address('primary',true).address,cityName:'Sample Town',postalCode:'10000',country:{code:'TH'}}};

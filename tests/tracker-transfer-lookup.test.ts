@@ -1,0 +1,21 @@
+import {expect,it} from 'vitest';
+import {unzipSync,zipSync,strToU8,strFromU8} from 'fflate';
+import {transferWorkbook,transferInput} from './fixtures/tracker-transfer';
+import {patchTrackerTransfers} from '../worker/tracker-sync/workbook';
+const text=(ref:string,value:string)=>'<c r="'+ref+'" t="inlineStr"><is><t>'+value.replaceAll('&','&amp;')+'</t></is></c>';
+it.each([100000,100001])('preserves shared urgent lookups over the current bound %s',lookupEnd=>{
+ const zip=unzipSync(transferWorkbook());
+ zip['xl/workbook.xml']=strToU8(strFromU8(zip['xl/workbook.xml']).replace('</sheets>','<sheet name="🔥 เร่งด่วน" sheetId="3" r:id="rId3"/></sheets>'));
+ zip['xl/_rels/workbook.xml.rels']=strToU8(strFromU8(zip['xl/_rels/workbook.xml.rels']).replace('</Relationships>','<Relationship Id="rId3" Target="worksheets/sheet3.xml"/></Relationships>'));
+ const formula="IFERROR(INDEX('ลูกหนี้ KT+TS'!$R$3:$R$100000,MATCH($R3,'ลูกหนี้ KT+TS'!$AG$3:$AG$"+lookupEnd+",0)),&quot;&quot;)";
+ const view='<worksheet><sheetData><row r="2">'+text('B2','Agent')+text('R2','KEY')+'</row><row r="3">'+text('B3','OLD AGENCY')+text('R3','unrelated')+'<c r="I3"><f t="shared" si="1" ref="I3:I4">'+formula+'</f><v/></c></row><row r="4">'+text('B4','OLD AGENCY')+text('R4',transferInput.rowKey)+'<c r="I4"><f t="shared" si="1"/><v/></c></row></sheetData></worksheet>';
+ zip['xl/worksheets/sheet3.xml']=strToU8(view);
+ const archive=zip['xl/worksheets/sheet2.xml'];
+ const after=unzipSync(patchTrackerTransfers(zipSync(zip),'phuket',[transferInput])),updated=strFromU8(after['xl/worksheets/sheet3.xml']);
+ expect(updated).toContain(transferInput.newRowKey.replaceAll('&','&amp;'));
+ expect(updated).toContain("MATCH($R4,'ลูกหนี้ KT+TS'!$AG$3:$AG$"+lookupEnd+",0)");
+ expect(updated).toContain('NEW &amp; AGENCY');
+ expect(updated).toContain('<t>unrelated</t>');
+ expect(after['xl/worksheets/sheet2.xml']).toEqual(archive);
+ expect(updated).not.toContain('t="shared"');
+});

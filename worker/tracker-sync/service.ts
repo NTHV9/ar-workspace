@@ -1,3 +1,5 @@
+import {syncAccountTransfers} from './transfers';
+import type {TransferWrite,TransferOutcome} from './transfer-model';
 import {backendRpc,type RefreshEnv} from '../refresh/backend';
 import type {ReportSheetLinksEnv} from '../reports/sheet-links';
 import type {DriveEnv} from '../drive/shared';
@@ -9,13 +11,13 @@ import {syncMissingSentRows,type SentAppendInput,type SentAppendResult} from './
 import {syncCreditTerms} from './credit';
 import {validTrackerWriteDiagnostic,type TrackerWriteOutcome} from './write-diagnostics';
 
-type SyncPhase='provider_read'|'validate'|'snapshot_import'|'membership'|'credit'|'outbox'|'write_result'|'provider_write'|'finish';
+type SyncPhase='transfer'|'provider_read'|'validate'|'snapshot_import'|'membership'|'credit'|'outbox'|'write_result'|'provider_write'|'finish';
 const syncErrorCodes=new Set([
  'invalid_configuration','invalid_request','redirect_rejected','provider_unavailable','provider_unauthorized','provider_rejected','response_too_large','invalid_response','timeout','duplicate_member','pagination_incomplete','pagination_changed',
  'tracker_target_conflict','tracker_authorization_required','tracker_provider_unavailable','tracker_snapshot_changed','tracker_schema_unverified','tracker_intent_not_confirmed',
  'tracker_workbook_invalid','tracker_workbook_too_large','tracker_row_identity_ambiguous','tracker_row_identity_invalid','tracker_row_key_ambiguous','tracker_schema_ambiguous',
  'tracker_native_cell_invalid','tracker_native_date_invalid','tracker_native_identity_ambiguous','tracker_native_identity_invalid','tracker_native_schema_invalid',
- 'tracker_native_keys_too_large','tracker_native_grid_too_large','tracker_credit_invalid',
+ 'tracker_transfer_invalid','tracker_native_keys_too_large','tracker_native_grid_too_large','tracker_credit_invalid',
  'drive_response_too_large','drive_unavailable','drive_invalid','drive_not_configured','budget_database_exceeded','retention_busy',
 ]);
 function logSyncFailure(region:RegionId,phase:SyncPhase,error:unknown){
@@ -27,18 +29,19 @@ function logSyncFailure(region:RegionId,phase:SyncPhase,error:unknown){
  console.error(JSON.stringify({event:'tracker_sync_failure',region,phase,code,...(upstreamStatus!==undefined?{upstreamStatus}:{})}));
 }
 
-export interface TrackerEnv extends RefreshEnv,ReportSheetLinksEnv,DriveEnv {TRACKER_SYNC_ENABLED?:string;TRACKER_BLOB_CAS_ENABLED?:string;TRACKER_NATIVE_BEST_EFFORT_ENABLED?:string;TRACKER_SENT_ROW_APPEND_ENABLED?:string;TRACKER_CREDIT_FILL_ENABLED?:string}
+export interface TrackerEnv extends RefreshEnv,ReportSheetLinksEnv,DriveEnv {TRACKER_SYNC_ENABLED?:string;TRACKER_BLOB_CAS_ENABLED?:string;TRACKER_NATIVE_BEST_EFFORT_ENABLED?:string;TRACKER_SENT_ROW_APPEND_ENABLED?:string;TRACKER_CREDIT_FILL_ENABLED?:string;TRACKER_TRANSFER_IDENTITY_ENABLED?:string}
 export interface ProviderRow {rowKey:string;hotel:HotelId;accountNo:string;invoiceNo:string;folio:string|null;folioNo?:string|null;transactionDate?:string|null;agent?:string;property?:string;fields:TrackerValues;locator:unknown;issues?:string[];formulaFields?:TrackerField[];blockedWriteFields?:('R'|'S'|'U'|'V'|'W')[]}
-export interface ProviderSnapshot {version:string;rows:ProviderRow[];schemaFingerprint:string;capabilities:{conditionalWrite:'proven'|'unsupported'|'unverified';writeAssurance?:'cas'|'best-effort'|'held'}}
+export interface ProviderSnapshot {transferGroupsCorrect?:boolean;version:string;rows:ProviderRow[];schemaFingerprint:string;capabilities:{conditionalWrite:'proven'|'unsupported'|'unverified';writeAssurance?:'cas'|'best-effort'|'held'}}
 export interface ProviderWrite {version:string;rowKey:string;expectedIdentity:Omit<ProviderRow,'fields'|'locator'|'rowKey'>;locator:unknown;changes:{field:TrackerField;value:string|null;expected:string|null}[]}
 export interface TrackerAdapter {
+ writeTransfers?(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly TransferWrite[]):Promise<TransferOutcome>;
  appendSentRow?(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:SentAppendInput):Promise<SentAppendResult>;
  read(env:TrackerEnv,owner:string,region:RegionId,fileId:string):Promise<ProviderSnapshot>;
  write(env:TrackerEnv,owner:string,region:RegionId,fileId:string,input:ProviderWrite):Promise<TrackerWriteOutcome>;
  writeBatch?(env:TrackerEnv,owner:string,region:RegionId,fileId:string,inputs:readonly ProviderWrite[]):Promise<TrackerWriteOutcome>;
 }
 export const trackerFile=(env:TrackerEnv,region:RegionId)=>region==='phuket'?env.REPORT_SHEET_PHUKET_ID:env.REPORT_SHEET_KHAOLAK_ID;
-function normalizedRows(snapshot:ProviderSnapshot){
+export function normalizedRows(snapshot:ProviderSnapshot){
  const identityCounts=new Map<string,number>(),key=(r:ProviderRow)=>JSON.stringify([r.hotel,r.accountNo,r.invoiceNo,r.folio]);
  for(const row of snapshot.rows)identityCounts.set(key(row),(identityCounts.get(key(row))??0)+1);
  const corroboratingKey=(r:ProviderRow)=>JSON.stringify([r.hotel,r.invoiceNo,r.folio??null,r.transactionDate??null]),corroboratingCounts=new Map<string,number>(),missingAccountGroups=new Set<string>();
@@ -90,6 +93,12 @@ export async function syncTracker(env:TrackerEnv,actor:string,owner:string,regio
   for(let offset=0;offset<rows.length;offset+=500)await backendRpc(env,'ar_tracker_snapshot',{p_actor:actor,p_region:region,p_lock:lock,p_rows:rows.slice(offset,offset+500)});
   phase='membership';
   await backendRpc(env,'ar_tracker_membership',{p_actor:actor,p_region:region,p_lock:lock,p_keys:snapshot.rows.map(r=>r.rowKey)});
+  phase='transfer';const transferred=await syncAccountTransfers(env,actor,owner,region,lock,claim.fileId,adapter,snapshot);
+  if(transferred.changed){
+   snapshot=await adapter.read(env,owner,region,claim.fileId);validateTrackerSnapshot(snapshot);version=snapshot.version;rows=normalizedRows(snapshot);
+   for(let offset=0;offset<rows.length;offset+=500)await backendRpc(env,'ar_tracker_snapshot',{p_actor:actor,p_region:region,p_lock:lock,p_rows:rows.slice(offset,offset+500)});
+   await backendRpc(env,'ar_tracker_membership',{p_actor:actor,p_region:region,p_lock:lock,p_keys:snapshot.rows.map(r=>r.rowKey)});
+  }
   phase='credit';const credit=await syncCreditTerms(env,actor,owner,region,lock,claim.fileId,adapter,snapshot,rows);
   if(credit.changed){
    phase='provider_read';snapshot=await adapter.read(env,owner,region,claim.fileId);phase='validate';validateTrackerSnapshot(snapshot);version=snapshot.version;rows=normalizedRows(snapshot);
