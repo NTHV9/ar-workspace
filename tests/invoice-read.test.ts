@@ -101,14 +101,14 @@ it('rejects a voucher response for another reservation',async()=>{const {p,reade
 it.each([true,false])('uses payee tax identity only when the selected window and AR profile agree (%s)',async agrees=>{
  const {p,reader}=fixture();const account={...p.account,profileId:{id:'123'}};reader.account.mockResolvedValue({accountDetails:{...account,invoices:[{...p.invoice,reservationId:{id:'777'}}]}});
  reader.reservationFolios.mockResolvedValue({reservationFolioInformation:{reservationInfo:p.reservation,folioHistory:[{folioWindowNo:1,folios:[{invoiceNo:99,folioNo:88}]}],folioWindows:[{folioWindowNo:1,internalFolioWindowID:'456',payeeInfo:{payeeId:{id:agrees?'123':'999'},payeeTaxNumber:'SYNTHETIC-TAX'}}]}});
- const profile=async()=>({profileIdList:[{id:'123',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'verified-primary',address:{...p.account.address.address,primaryInd:true}}],totalResults:1}}});
+ const profile=async()=>({profileIdList:[{id:'123',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'verified-primary',address:{...p.account.address.address,type:'AR ADDRESS',primaryInd:true}}],totalResults:1}}});
  expect((await readInvoiceModel({...reader,profile},p.manifest)).taxId).toBe(agrees?'SYNTHETIC-TAX':'');
 });
 
 function taxProfileFixture(tax1No:unknown='SYN-AR-TAX-77'){
  const {p,reader}=fixture(1);
  reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',type:'Address'},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
- const profileResponse={profileIdList:[{id:'202',type:'Profile'}],profileDetails:{taxInfo:{tax1No},addresses:{addressInfo:[{id:'address-7',type:'Address',address:{...p.account.address.address,primaryInd:true}}],totalResults:1}}};
+ const profileResponse={profileIdList:[{id:'202',type:'Profile'}],profileDetails:{taxInfo:{tax1No},addresses:{addressInfo:[{id:'address-7',type:'Address',address:{...p.account.address.address,type:'AR ADDRESS',primaryInd:true}}],totalResults:1}}};
  return {p,reader:{...reader,profile:vi.fn().mockResolvedValue(profileResponse)},profileResponse};
 }
 it('uses the verified AR profile tax number when the selected folio has no tax number',async()=>{
@@ -147,7 +147,7 @@ it('preserves the verified selected-window tax number when it is populated',asyn
 it('retains verified AR profile tax identity when postal addresses are explicitly empty',async()=>{
  const {p,reader,profileResponse}=taxProfileFixture();
  reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
- profileResponse.profileDetails.addresses.addressInfo=[];profileResponse.profileDetails.addresses.totalResults=0;
+ profileResponse.profileDetails.addresses.addressInfo[0].address.addressLine=['','','',''];
  expect((await readInvoiceModel(reader,p.manifest)).taxId).toBe('SYN-AR-TAX-77');
 });
 it.each([123,{},['SYN-AR-TAX-77']])('rejects malformed AR profile tax identity instead of stringifying it (%j)',async tax1No=>{
@@ -169,14 +169,14 @@ it('identifies an AR credit without a reservation folio without fabricating an i
 it('uses the verified linked profile address when the AR account only supplies an address reference',async()=>{
  const {reader,p}=fixture();const current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
  reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',type:'Address'},invoices:[current]}});
- const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'],primaryInd:false}}],totalResults:1}}});
+ const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{type:'AR ADDRESS',addressLine:['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'],primaryInd:false}}],totalResults:1}}});
  const linkedReader={...reader,profile};const model=await readInvoiceModel(linkedReader,p.manifest);
  expect(model.address).toEqual(['Synthetic Travel','Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123']);
 });
 it('includes country and VAT stationery from the exact profile address when AR supplies only three nonblank lines',async()=>{
  const {reader,p}=fixture(),full=['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'];
  reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',address:{addressLine:full.slice(0,3),country:{}}},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
- const profile=async()=>({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:full,primaryInd:false,country:{}}},{id:'another-primary',address:{addressLine:['Another Address'],primaryInd:true}}],totalResults:2}}});
+ const profile=async()=>({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{type:'AR ADDRESS',addressLine:full,primaryInd:false,country:{}}},{id:'another-primary',address:{addressLine:['Another Address'],primaryInd:true}}],totalResults:2}}});
  const model=await readInvoiceModel({...reader,profile},p.manifest);
  expect(model.address).toEqual(['Synthetic Travel',...full]);expect(model.gross).toBe(663000);expect(model.outstanding).toBe(Math.round(p.manifest.open*100));
 });
@@ -184,7 +184,7 @@ it('includes country and VAT stationery from the exact profile address when AR s
 it('reports bounded address shape on a failed linked profile without returning customer values',async()=>{
  const {reader,p}=fixture(),current={...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'};
  reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'PRIVATE-PROFILE'},address:{id:'PRIVATE-ADDRESS'},invoices:[current]}});
- const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'PRIVATE-ADDRESS',address:{primaryInd:true,cityName:'PRIVATE-CITY'}}],totalResults:1}}});
+ const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'PRIVATE-PROFILE',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'PRIVATE-ADDRESS',address:{type:'AR ADDRESS',primaryInd:true,cityName:'PRIVATE-CITY'}}],totalResults:1}}});
  const report=await auditInvoiceRead({...reader,profile},p.manifest);
  expect(report).toMatchObject({ok:false,error:'document_addressee_unavailable',addressee:{profileIdentityMatches:true,attachedAddressPresent:true,addressesKind:'object',addressInfoKind:'array',addressCount:1,totalResults:1,rows:[{attachedMatch:true,primary:true,lineKind:'undefined',lineCount:null,nonblankLines:null,cityPresent:true}]}});
  expect(profile).toHaveBeenCalledOnce();
@@ -192,7 +192,7 @@ it('reports bounded address shape on a failed linked profile without returning c
 });
 it('renders country-only verified profile stationery without inventing postal lines or changing invoice totals',async()=>{
  const {reader,p}=fixture();reader.account.mockResolvedValue({accountDetails:{...p.account,profileId:{id:'202',type:'Profile'},address:{id:'address-7',type:'Address'},invoices:[{...p.invoice,reservationId:{id:'777'},internalFolioWindowID:'456'}]}});
- const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{addressLine:['','','',''],primaryInd:true,country:{code:'TH'}}}],totalResults:1}}});
+ const profile=vi.fn().mockResolvedValue({profileIdList:[{id:'202',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'address-7',address:{type:'AR ADDRESS',addressLine:['','','',''],primaryInd:true,country:{code:'TH'}}}],totalResults:1}}});
  const model=await readInvoiceModel({...reader,profile},p.manifest);
  expect(model.address).toEqual(['Synthetic Travel','TH']);expect(model.gross).toBe(663000);expect(model.outstanding).toBe(Math.round(p.manifest.open*100));
 });
@@ -264,4 +264,18 @@ it('accepts financial detail rows that omit the reservation object already verif
 it('does not repeat a native report after an uncertain group-control request',async()=>{
  const {reader,p}=await nativeGroupReader(),started=vi.fn();reader.folioReport.mockRejectedValue(new OperaError('timeout'));
  await expect(readInvoiceModel(reader,p.manifest,undefined,started)).rejects.toMatchObject({code:'timeout'});expect(started).toHaveBeenCalledOnce();expect(reader.folioReport).toHaveBeenCalledOnce();
+});
+it('renders the AR address instead of a linked business address without changing tax or invoice money',async()=>{
+ const {p,reader,profileResponse}=taxProfileFixture();
+ const baseline=await readInvoiceModel(reader,p.manifest);
+ const original=profileResponse.profileDetails.addresses.addressInfo[0];
+ const ar={...original,id:'ar-billing',address:{...original.address,type:'AR ADDRESS',primaryInd:false,addressLine:['AR Billing Office','15 Billing Street','Torino 10126']}};
+ const business={...original,address:{...original.address,type:'BUSINESS',primaryInd:true,addressLine:['Business Office','7 Business Street','Milano']}};
+ profileResponse.profileDetails.addresses.addressInfo=[business,ar];
+ profileResponse.profileDetails.addresses.totalResults=2;
+ const model=await readInvoiceModel(reader,p.manifest);
+ expect(model.address).toEqual(['Synthetic Travel','AR Billing Office','15 Billing Street','Torino 10126']);
+ expect(model.taxId).toBe('SYN-AR-TAX-77');
+ expect(model.gross).toBe(baseline.gross);
+ expect(model.outstanding).toBe(Math.round(p.manifest.open*100));
 });

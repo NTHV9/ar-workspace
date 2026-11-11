@@ -2,27 +2,20 @@ import {OperaError} from '../opera/client';
 type Row=Record<string,unknown>;
 const record=(value:unknown):Row=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('document_addressee_invalid');return value as Row;};
 const optional=(value:unknown)=>value==null?{}:record(value);
-const hasLines=(address:Row)=>Array.isArray(address.addressLine)&&address.addressLine.some(value=>typeof value==='string'&&value.trim());
-const compatible=(inline:Row,full:Row)=>{
- if(hasLines(inline)){
-  if(!Array.isArray(inline.addressLine)||!inline.addressLine.every(value=>typeof value==='string')||!Array.isArray(full.addressLine)||!full.addressLine.every(value=>typeof value==='string'))return false;
-  const expected=inline.addressLine.map(value=>value.trim()).filter(Boolean),actual=full.addressLine.map(value=>value.trim()).filter(Boolean);let next=0;
-  for(const line of actual)if(line===expected[next])next++;
-  if(next!==expected.length)return false;
- }
- for(const field of ['cityName','postalCode'])if(inline[field]!=null&&inline[field]!==''&&inline[field]!==full[field])return false;
- const country=optional(inline.country),fullCountry=optional(full.country);
- return Object.entries(country).every(([field,value])=>value==null||value===''||value===fullCountry[field]);
-};
-/** AR inline address lines may be truncated; resolve its verified linked stationery. */
+const isArAddress=(address:Row)=>typeof address.type==='string'&&address.type.trim().toUpperCase()==='AR ADDRESS';
+/** Select AR stationery within the verified Account profile, independently of its primary BUSINESS address. */
 export async function accountWithAddressee(reader:{profile?:(profileId:string)=>Promise<unknown>},hotel:string,accountId:string,input:unknown):Promise<Row>{
  const account=record(input);
  if(account.hotelId!==hotel||String(record(account.accountId).id)!==accountId)throw Error('document_addressee_scope_invalid');
  const attached=optional(account.address),inline=optional(attached.address);
  if(inline.addressLine!==undefined&&!Array.isArray(inline.addressLine))throw Error('document_addressee_invalid');
  const profileId=optional(account.profileId).id;
- // A non-profile account can legitimately have no postal address. Never invent one.
- if(profileId==null)return account;
+ // Accounts without a linked profile expose their own AR stationery directly.
+ // An explicitly different address type cannot qualify as AR stationery.
+ if(profileId==null){
+  if(inline.type!=null&&!isArAddress(inline))throw Error('document_addressee_ar_missing');
+  return account;
+ }
  if(typeof profileId!=='string'||!profileId||!reader.profile)throw Error('document_addressee_unavailable');
  let response:unknown;try{response=await reader.profile(profileId);}catch(error){if(error instanceof OperaError)throw new OperaError(error.code,error.upstreamStatus,'addressee_profile',error.providerMessage);throw Error('document_addressee_unavailable');}
  const profile=record(response);
@@ -33,18 +26,15 @@ export async function accountWithAddressee(reader:{profile?:(profileId:string)=>
  if(envelope.totalResults!==undefined&&envelope.totalResults!==addresses.length||envelope.count!==undefined&&envelope.count!==addresses.length)throw Error('document_addressee_incomplete');
  const attachedId=attached.id;
  if(attachedId!=null&&(typeof attachedId!=='string'||!attachedId))throw Error('document_addressee_invalid');
- const matches=attachedId?addresses.filter(row=>row.id===attachedId):addresses.filter(row=>record(row.address).primaryInd===true);
- if(!addresses.length&&!attachedId){if(hasLines(inline))throw Error('document_addressee_unavailable');return account;}
+ const linked=attachedId?addresses.filter(row=>row.id===attachedId):[];
+ if(attachedId&&linked.length!==1)throw Error('document_addressee_ambiguous');
+ const arAddresses=addresses.filter(row=>isArAddress(record(row.address)));
+ if(!arAddresses.length)throw Error('document_addressee_ar_missing');
+ const linkedAr=linked.filter(row=>isArAddress(record(row.address)));
+ const matches=linkedAr.length?linkedAr:arAddresses;
  if(matches.length!==1)throw Error('document_addressee_ambiguous');
  const chosen=matches[0],address=record(chosen.address);
- // A successful, identity-checked profile can explicitly contain blank postal
- // lines. Keep its selected address (including country) without inventing text.
+ // Keep verified blank AR lines and country as supplied. Never invent postal text.
  if(!Array.isArray(address.addressLine)||!address.addressLine.every(value=>typeof value==='string'))throw Error('document_addressee_unavailable');
- // Without an exact address reference, partial inline data must agree with the
- // selected primary address before replacing it with full profile stationery.
- if(!attachedId){
-  if(!compatible(inline,address))throw Error('document_addressee_ambiguous');
-  if(hasLines(inline)&&addresses.filter(row=>compatible(inline,record(row.address))).length!==1)throw Error('document_addressee_ambiguous');
- }
  return {...account,address:chosen};
 }
