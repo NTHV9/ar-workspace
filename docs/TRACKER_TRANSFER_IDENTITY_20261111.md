@@ -41,3 +41,14 @@ EXPLAIN showed policy matching executed 31,008 times before discarding rows
 without any Account transfer. Materializing the latest reassigned-row scope
 reduced the same read-only query to three policy checks and about 9 ms, with
 the same two eligible results. No timeout or eligibility guard was relaxed.
+
+Native real-file qualification also found 75 intentionally excluded LFS rows,
+a shortened final subtotal after append, and repeated exact Agent blocks.
+Physical grouping now carries keyed LFS rows intact without importing them into
+the operational snapshot, extends a shortened subtotal only across complete
+validated rows, and combines exact Agent/category blocks. Unknown rows, duplicate
+KEYs, ambiguous Agent prefixes and overlapping ranges still hold before POST.
+Real-file read-only preflight reaches a 66-operation atomic publication plan
+for the two current candidates without any real Sheet mutation. Live isolated
+Google tests verify preserved LFS data, corrected subtotal and no second POST
+after a lost successful reply; all three test resources were cleaned by ID.

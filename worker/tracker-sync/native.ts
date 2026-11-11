@@ -119,6 +119,17 @@ export async function readNativeTracker(token:string,file:string,withGroups=fals
    retainedBytes+=new TextEncoder().encode(JSON.stringify(row)).byteLength+1;if(retainedBytes>16*1024*1024)throw Error('tracker_native_grid_too_large');rows.push(row);
   }
   if(withGroups)try{
+   // LFS remains excluded from the app's operational snapshot. Its existing
+   // keyed invoice rows still participate in the Sheet's physical groups and
+   // subtotal sums, and must travel intact rather than disappear on regrouping.
+   for(let n=0;n<page.length;n++){
+    const cs=page[n].values??[],at=start+n;if(at<2||raw(cs[0])!=='LFS')continue;
+    if(identityValue(cs[0])!=='LFS')throw Error('tracker_transfer_layout_invalid');
+    const get=(c:string)=>cs[column(c)],key=identityValue(get('AG')),agent=identityValue(get('B'));
+    if(!key||key.length>500||/[\u0000-\u001f\u007f]/.test(key)||!agent||!identityValue(get('E'))||get('G')?.userEnteredValue?.formulaValue||!date(raw(get('G'))))throw Error('tracker_transfer_layout_invalid');
+    const cents=['H','I','J','K','L','M','N'].map(c=>{if(get(c)?.userEnteredValue?.formulaValue)throw Error('tracker_transfer_layout_invalid');return moneyCents(raw(get(c)));});
+    grouping.data.push({key,hotel:'LFS',agent,accountNo:identityValue(get('C')),row:at+1,cents});
+   }
    for(const r of parsed.rows){
     const index=(r.locator as {rowIndex:number}).rowIndex,rawRow=page[index-start]?.values??[];
     const cents=['H','I','J','K','L','M','N'].map(c=>{const cell=rawRow[column(c)];if(cell?.userEnteredValue?.formulaValue)throw Error('tracker_transfer_layout_invalid');return moneyCents(raw(cell));});
@@ -170,7 +181,7 @@ export async function writeNativeTrackerBatch(token:string,file:string,inputs:re
  try{const after=await readNativeTracker(token,file);if(after.schemaFingerprint!==current.schemaFingerprint)return {status:'uncertain',version:after.version};for(const input of inputs){const row=after.rows.find(r=>r.rowKey===input.rowKey);if(!row||!trackerIdentityMatches(row,input.expectedIdentity)||input.changes.some(c=>row.formulaFields?.includes(c.field)||row.fields[c.field]!==c.value))return {status:'uncertain',version:after.version};}return {status:'written',version:after.version};}catch{return {status:'uncertain'};}
 }
 
-/** One atomic Sheets request changes only B/C/AG. Uncertain publication is readback-only. */
+/** Publish identity and physical Agent grouping atomically. Unknown outcomes are readback-only. */
 export async function writeNativeTrackerTransfers(token:string,file:string,inputs:readonly TransferWrite[]):Promise<TransferOutcome>{
  const current=await readNativeTracker(token,file,true);
  let rows:ProviderRow[];try{rows=validateTransferBatch(current,inputs);}catch{return {status:'conflict',mutationStarted:false};}

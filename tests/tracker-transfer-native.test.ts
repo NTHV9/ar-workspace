@@ -3,7 +3,7 @@ import {trackerHeaders} from '../worker/tracker-sync/workbook';
 import {readNativeTracker,writeNativeTrackerTransfers} from '../worker/tracker-sync/native';
 import type {TransferWrite} from '../worker/tracker-sync/transfer-model';
 const file='synthetic_transfer_tracker_12345',title='ลูกหนี้ เขาหลัก',column=(s:string)=>[...s].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0)-1;
-type Cell={userEnteredValue?:{stringValue?:string;numberValue?:number;formulaValue?:string};effectiveValue?:{stringValue?:string};textFormatRuns?:unknown[]};
+type Cell={userEnteredValue?:{stringValue?:string;numberValue?:number;formulaValue?:string};effectiveValue?:{stringValue?:string;numberValue?:number};textFormatRuns?:unknown[]};
 function native(options:{lost?:boolean;rich?:boolean;grouped?:'existing'|'new';sole?:boolean;urgent?:boolean;lookupEnd?:number}={}){
  const headers:Cell[]=Array.from({length:33},()=>({}));
  for(const [col,value]of Object.entries(trackerHeaders))headers[column(col)]={userEnteredValue:{stringValue:value}};
@@ -99,4 +99,46 @@ it.each([100000,100001])('native retargets urgent KEY over the current lookup bo
  expect(h.urgent[2].values[17].userEnteredValue).toEqual({stringValue:h.input.newRowKey});
  expect(h.urgent[2].values[1].userEnteredValue).toEqual({stringValue:'NEW'});
  expect(h.urgent[2].values[8].userEnteredValue).toEqual(formula);
+});
+
+
+it('retains excluded LFS rows and repairs a shortened subtotal after appended rows',async()=>{
+ const h=native({grouped:'new'}),lfs=structuredClone(h.cells);
+ lfs[0]={userEnteredValue:{stringValue:'LFS'}};lfs[5]={};lfs[4]={userEnteredValue:{stringValue:'75'}};
+ lfs[32]={userEnteredValue:{stringValue:'LFS|OLD|I:75|1'}};lfs[7]={userEnteredValue:{numberValue:10}};lfs[8]={userEnteredValue:{numberValue:10}};
+ h.rows.splice(4,0,{values:lfs});const before=structuredClone(lfs);
+ expect(await writeNativeTrackerTransfers('test-token',file,[h.input])).toMatchObject({status:'written'});
+ expect(h.posts).toHaveLength(1);
+ const snapshot=await readNativeTracker('test-token',file,true);
+ expect(snapshot.transferGroupsCorrect).toBe(true);expect(snapshot.rows).toHaveLength(2);
+ expect(snapshot.rows.some(r=>r.rowKey.startsWith('LFS|'))).toBe(false);
+ const retained=h.rows.find(r=>r.values[32]?.userEnteredValue?.stringValue==='LFS|OLD|I:75|1')!.values;
+ expect(retained).toEqual(before);
+ expect(h.rows.some(r=>r.values[3]?.userEnteredValue?.stringValue==='▸ รวม OLD (2 ใบ)'&&r.values[7]?.effectiveValue?.numberValue===30)).toBe(true);
+});
+
+it('holds unknown non-invoice rows instead of silently dropping them from regrouping',async()=>{
+ const h=native({grouped:'new'});h.rows.splice(4,0,{values:[{userEnteredValue:{stringValue:'UNKNOWN'}}]});
+ expect(await writeNativeTrackerTransfers('test-token',file,[h.input])).toMatchObject({status:'conflict',mutationStarted:false});expect(h.posts).toHaveLength(0);
+});
+
+it('holds a duplicate KEY in an excluded LFS row before publishing any move',async()=>{
+ const h=native({grouped:'new'}),lfs=structuredClone(h.cells);lfs[0]={userEnteredValue:{stringValue:'LFS'}};
+ h.rows.splice(4,0,{values:lfs});
+ expect(await writeNativeTrackerTransfers('test-token',file,[h.input])).toMatchObject({status:'conflict',mutationStarted:false});expect(h.posts).toHaveLength(0);
+});
+
+
+it('combines repeated blocks of the same Agent without dropping invoice or staff rows',async()=>{
+ const h=native({grouped:'existing'}),extra=structuredClone(h.cells),subtotal=structuredClone(h.rows[4].values);
+ extra[4]={userEnteredValue:{stringValue:'20'}};extra[32]={userEnteredValue:{stringValue:'SAN|OLD|I:20|1'}};
+ extra[7]={userEnteredValue:{numberValue:10}};extra[8]={userEnteredValue:{numberValue:10}};
+ subtotal[3]={userEnteredValue:{stringValue:'▸ รวม OLD (1 ใบ)'}};
+ subtotal[7]={userEnteredValue:{formulaValue:'=SUBTOTAL(9,H8:H8)'},effectiveValue:{numberValue:10}};
+ subtotal[8]={userEnteredValue:{numberValue:10}};
+ h.rows.push({values:extra},{values:subtotal});
+ expect(await writeNativeTrackerTransfers('test-token',file,[h.input])).toMatchObject({status:'written'});
+ const after=await readNativeTracker('test-token',file,true);expect(after.transferGroupsCorrect).toBe(true);expect(after.rows).toHaveLength(4);
+ expect(after.rows.find(r=>r.invoiceNo==='20')?.fields.AB).toBe('Preserve note');
+ expect(h.rows.filter(r=>r.values[3]?.userEnteredValue?.stringValue?.startsWith('▸ รวม OLD'))).toHaveLength(1);
 });

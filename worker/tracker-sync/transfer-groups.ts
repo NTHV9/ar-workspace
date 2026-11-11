@@ -18,9 +18,14 @@ export function groupMarker(row:number,label:string,formula:string,cents:number[
 /** Reuse existing subtotal rows and styles; create a target group only when needed. */
 export function planGroups(data:readonly GroupData[],markers:readonly GroupMarker[]):GroupPlan|null {
  if(!markers.length)return null;
- const sorted=[...markers].sort((a,b)=>a.row-b.row),start=sorted[0].start,end=sorted.at(-1)!.row;
- if(start!==3||sorted.some((m,i)=>m.row!==m.end+1||m.start>(m.end)||i>0&&m.start!==sorted[i-1].row+1))fail();
- const byRow=new Map(data.map(r=>[r.row,r]));if(byRow.size!==data.length||data.some(r=>r.row<start||r.row>end||!r.agent||r.cents.length!==7))fail();
+ const observed=[...markers].sort((a,b)=>a.row-b.row),start=observed[0].start,end=observed.at(-1)!.row;
+ if(start!==3||observed.some((m,i)=>m.end>=m.row||m.start>m.end||i>0&&m.start!==observed[i-1].row+1))fail();
+ // Appended invoices can precede an existing subtotal whose formula still
+ // ends at the old last invoice. Extend only through fully observed data rows;
+ // the contiguous-row checks below continue to reject blanks/unknown content.
+ const shortened=new Set(observed.filter(m=>m.end!==m.row-1).map(m=>m.row));
+ const sorted=observed.map(m=>({...m,end:m.row-1}));
+ const byRow=new Map(data.map(r=>[r.row,r]));if(byRow.size!==data.length||new Set(data.map(r=>r.key)).size!==data.length||data.some(r=>r.row<start||r.row>end||!r.agent||r.cents.length!==7))fail();
  const category=(r:GroupData)=>r.accountNo?.toUpperCase().includes('CCR')?'0':'1';
  const originals:{marker:GroupMarker;category:string;agent:string|null}[]=[];
  for(const marker of sorted){
@@ -37,19 +42,21 @@ export function planGroups(data:readonly GroupData[],markers:readonly GroupMarke
  const groups=new Map<string,{category:string;agent:string;rows:GroupData[];marker?:GroupMarker}>();
  for(const row of data){const k=key(category(row),row.agent);let g=groups.get(k);if(!g){g={category:category(row),agent:row.agent,rows:[]};groups.set(k,g);}g.rows.push(row);}
  const order:string[]=[];
- for(const o of originals)if(o.agent){const k=key(o.category,o.agent),g=groups.get(k);if(g&&!order.includes(k)){g.marker=o.marker;order.push(k);}else if(g)fail();}
+ // Repeated blocks with the exact same Agent/category share one subtotal;
+ // redundant generated markers become spare templates, never invoice rows.
+ for(const o of originals)if(o.agent){const k=key(o.category,o.agent),g=groups.get(k);if(g&&!order.includes(k)){g.marker=o.marker;order.push(k);}}
  for(const [k,g]of groups)if(!order.includes(k)){
   let position=order.findIndex(v=>{const other=groups.get(v)!;return other.category>g.category||other.category===g.category&&other.agent.toLowerCase()>g.agent.toLowerCase();});
   if(position<0)position=order.length;order.splice(position,0,k);
  }
  const used=new Set(order.flatMap(k=>groups.get(k)!.marker?.row??[]));
  const spare=originals.map(o=>o.marker).filter(m=>!used.has(m.row));
- const items:GroupPlan['items']=[];let cursor=start,changed=false;
+ const items:GroupPlan['items']=[];let cursor=start,changed=shortened.size>0;
  for(const k of order){
   const g=groups.get(k)!,rows=[...g.rows].sort((a,b)=>a.row-b.row),begin=cursor,sums=Array<number>(7).fill(0);
   for(const row of rows){for(let i=0;i<7;i++){sums[i]+=row.cents[i];if(!Number.isSafeInteger(sums[i]))fail();}items.push({kind:'data',oldRow:row.row,row:cursor,key:row.key});changed||=row.row!==cursor;cursor++;}
   const marker=g.marker??spare.shift(),label='▸ รวม '+g.agent+' ('+rows.length+' ใบ)';
-  items.push({kind:'total',oldRow:marker?.row??null,templateRow:marker?.row??sorted[0].row,category:g.category,agent:g.agent,start:begin,end:cursor-1,row:cursor,count:rows.length,cents:sums,rebuild:!marker||marker.label!==label||marker.cents.some((c,i)=>c!==sums[i])||rows.length!==marker.end-marker.start+1||rows.some(r=>r.row<marker.start||r.row>marker.end)});
+  items.push({kind:'total',oldRow:marker?.row??null,templateRow:marker?.row??sorted[0].row,category:g.category,agent:g.agent,start:begin,end:cursor-1,row:cursor,count:rows.length,cents:sums,rebuild:!marker||shortened.has(marker.row)||marker.label!==label||marker.cents.some((c,i)=>c!==sums[i])||rows.length!==marker.end-marker.start+1||rows.some(r=>r.row<marker.start||r.row>marker.end)});
   changed||=!marker||marker.row!==cursor||marker.start!==begin||marker.end!==cursor-1||marker.label!==label||marker.cents.some((c,i)=>c!==sums[i]);
   cursor++;
  }
