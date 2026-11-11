@@ -4,10 +4,10 @@ import {OperaError} from '../worker/opera/client';
 import {statementModel} from '../worker/statement/model';
 const lines=['Synthetic Legal Name','1 Example Street','Sample Town 10000','Exampleland VAT ID: SYN-123'];
 const account=(hotel='KAT')=>({hotelId:hotel,accountId:{id:'account'},accountName:'Synthetic Travel',profileId:{id:'profile',type:'Profile'},address:{address:{country:{}}}});
-const address=(id:string,primaryInd:boolean)=>({id,type:'Address',address:{addressLine:lines,primaryInd,country:{}}});
+const address=(id:string,primaryInd:boolean)=>({id,type:'Address',address:{type:'AR ADDRESS',addressLine:lines,primaryInd,country:{}}});
 const profile=(addresses=[address('primary',true)])=>({profileIdList:[{id:'profile',type:'Profile'},{id:'external',type:'IATA'}],profileDetails:{addresses:{addressInfo:addresses,totalResults:addresses.length}}});
-it.each(['KAT','TSK','TLKL','WAKL','TLFO','TSAN'])('resolves the linked primary profile address in %s',async hotel=>{
- const read=vi.fn().mockResolvedValue(profile([address('secondary',false),address('primary',true)]));
+it.each(['KAT','TSK','TLKL','WAKL','TLFO','TSAN','TSUN'])('selects AR profile stationery in %s',async hotel=>{
+ const read=vi.fn().mockResolvedValue(profile([{...address('secondary',false),address:{...address('secondary',false).address,type:'BUSINESS'}},address('primary',true)]));
  const result=await accountWithAddressee({profile:read},hotel,'account',account(hotel));expect(result.accountName).toBe('Synthetic Travel');expect(result.address).toEqual(address('primary',true));expect(read).toHaveBeenCalledWith('profile');
 });
 it('uses the AR-attached address rather than a different primary profile address',async()=>{
@@ -25,7 +25,7 @@ it('rejects a wrong attached ID even when inline lines are nonblank and a primar
  const a={...account(),address:{id:'unknown',address:{addressLine:lines.slice(0,3)}}};
  await expect(accountWithAddressee({profile:async()=>profile()},'KAT','account',a)).rejects.toThrow('document_addressee_ambiguous');
 });
-it('accepts compatible primary full stationery without an attached ID',async()=>{
+it('selects the only AR address without an attached ID',async()=>{
  const a={...account(),address:{address:{addressLine:lines.slice(0,3)}}};
  expect((await accountWithAddressee({profile:async()=>profile()},'KAT','account',a)).address).toEqual(address('primary',true));
 });
@@ -33,20 +33,19 @@ it('rejects multiple compatible profile addresses without an exact attached ID',
  const a={...account(),address:{address:{addressLine:lines.slice(0,3)}}};
  await expect(accountWithAddressee({profile:async()=>profile([address('primary',true),address('secondary',false)])},'KAT','account',a)).rejects.toThrow('document_addressee_ambiguous');
 });
-it.each(['lines','city','postal','country'])('rejects a conflicting primary address when no exact attached ID exists (%s)',async field=>{
+it.each(['lines','city','postal','country'])('uses AR stationery despite different inline business fields (%s)',async field=>{
  const inline={addressLine:lines.slice(0,3),cityName:'Sample Town',postalCode:'10000',country:{code:'TH'}},chosen={...address('primary',true),address:{...address('primary',true).address,cityName:'Sample Town',postalCode:'10000',country:{code:'TH'}}};
  if(field==='lines')chosen.address.addressLine=['Unrelated Legal Name',...lines.slice(1)];
  if(field==='city')chosen.address.cityName='Another Town';
  if(field==='postal')chosen.address.postalCode='20000';
  if(field==='country')chosen.address.country={code:'SG'};
- await expect(accountWithAddressee({profile:async()=>profile([chosen])},'KAT','account',{...account(),address:{address:inline}})).rejects.toThrow('document_addressee_ambiguous');
+ expect((await accountWithAddressee({profile:async()=>profile([chosen])},'KAT','account',{...account(),address:{address:inline}})).address).toEqual(chosen);
 });
-it.each(['foreign-profile','foreign-account','two-primary','missing-primary','truncated','wrong-address-id'])('rejects unsafe address selection: %s',async reason=>{
+it.each(['foreign-profile','foreign-account','two-primary','truncated','wrong-address-id'])('rejects unsafe address selection: %s',async reason=>{
  const a:Record<string,unknown>=account(),p=profile();
  if(reason==='foreign-profile')p.profileIdList[0].id='another';
  if(reason==='foreign-account')a.hotelId='TSK';
  if(reason==='two-primary')p.profileDetails.addresses.addressInfo.push(address('second-primary',true));
- if(reason==='missing-primary')p.profileDetails.addresses.addressInfo[0].address.primaryInd=false;
  if(reason==='truncated')p.profileDetails.addresses.totalResults=2;
  if(reason==='wrong-address-id')a.address={id:'unknown'};
  if(reason==='two-primary')p.profileDetails.addresses.totalResults=2;
@@ -61,17 +60,17 @@ it('does not bypass profile errors or wrong profile identity with nonblank inlin
  await expect(accountWithAddressee({profile:async()=>{throw new OperaError('provider_rejected',403);}},'KAT','account',a)).rejects.toMatchObject({stage:'addressee_profile'});
  await expect(accountWithAddressee({profile:async()=>wrong},'KAT','account',a)).rejects.toThrow('document_addressee_scope_invalid');
 });
-it('permits a verified empty address list without inventing address or tax text',async()=>{
- const a=account();expect(await accountWithAddressee({profile:async()=>profile([])},'KAT','account',a)).toBe(a);
+it('reports a missing AR address for a verified empty profile list',async()=>{
+ const a=account();await expect(accountWithAddressee({profile:async()=>profile([])},'KAT','account',a)).rejects.toThrow('document_addressee_ar_missing');
 });
 it.each([true,false])('retains a verified selected profile address with four blank lines (country present: %s)',async countryPresent=>{
- const a={...account('TSAN'),address:{id:'attached',type:'Address'}},chosen={id:'attached',type:'Address',address:{addressLine:['','','',''],primaryInd:true,country:countryPresent?{code:'TH'}:{}}};
+ const a={...account('TSAN'),address:{id:'attached',type:'Address'}},chosen={id:'attached',type:'Address',address:{type:'AR ADDRESS',addressLine:['','','',''],primaryInd:true,country:countryPresent?{code:'TH'}:{}}};
  const p={profileIdList:[{id:'profile',type:'Profile'}],profileDetails:{addresses:{addressInfo:[chosen],totalResults:1}}};
  const result=await accountWithAddressee({profile:async()=>p},'TSAN','account',a);
  expect(result).toEqual({...a,address:chosen});expect(result.accountName).toBe(a.accountName);
 });
 it.each([undefined,null,'',{},[null],[123],['',{}]])('rejects malformed or unconfirmed profile address lines (%j)',async addressLine=>{
- const p={profileIdList:[{id:'profile',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'primary',address:{addressLine,primaryInd:true,country:{code:'TH'}}}],totalResults:1}}};
+ const p={profileIdList:[{id:'profile',type:'Profile'}],profileDetails:{addresses:{addressInfo:[{id:'primary',address:{type:'AR ADDRESS',addressLine,primaryInd:true,country:{code:'TH'}}}],totalResults:1}}};
  await expect(accountWithAddressee({profile:async()=>p},'KAT','account',account())).rejects.toThrow('document_addressee_unavailable');
 });
 it.each([false,true])('feeds verified profile stationery into Statement without changing money or aging (blank lines: %s)',async blank=>{
